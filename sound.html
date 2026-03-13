@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dca — sound field</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #080808;
+      color: #d8cfc7;
+      font-family: Georgia, serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.4rem;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    h1 {
+      font-size: clamp(0.85rem, 2.5vw, 1.3rem);
+      font-weight: normal;
+      letter-spacing: 0.22em;
+      text-transform: lowercase;
+      text-align: center;
+    }
+
+    .sub {
+      font-size: 0.65rem;
+      opacity: 0.35;
+      letter-spacing: 0.14em;
+      font-style: italic;
+      text-align: center;
+      margin-top: 0.3rem;
+    }
+
+    #stage {
+      position: relative;
+    }
+
+    canvas {
+      display: block;
+      cursor: crosshair;
+      touch-action: none;
+      border: 1px solid #1c1c1c;
+    }
+
+    /* axis labels */
+    .al {
+      position: absolute;
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      opacity: 0.25;
+      font-style: italic;
+      pointer-events: none;
+    }
+    #al-left   { bottom: -1.3rem; left: 0; }
+    #al-right  { bottom: -1.3rem; right: 0; }
+    #al-top    { left: -0.4rem; top: 0; writing-mode: vertical-rl; transform: rotate(180deg); }
+    #al-bottom { left: -0.4rem; bottom: 0; writing-mode: vertical-rl; transform: rotate(180deg); }
+
+    #hint {
+      font-size: 0.58rem;
+      opacity: 0.18;
+      letter-spacing: 0.12em;
+      font-style: italic;
+    }
+
+    #err {
+      display: none;
+      color: #c05;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+<div>
+  <h1>welcome &mdash; david carlton adams</h1>
+  <div class="sub">an interactive sound field</div>
+</div>
+
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div class="al" id="al-left">silent</div>
+  <div class="al" id="al-right">open</div>
+  <div class="al" id="al-top">resonant</div>
+  <div class="al" id="al-bottom">quiet</div>
+</div>
+
+<div id="hint">press &amp; drag &mdash; release to silence</div>
+<div id="err"></div>
+
+<script>
+try {
+  // ── sizing ──────────────────────────────────────────────────────
+  const canvas  = document.getElementById('cv');
+  const g       = canvas.getContext('2d');
+  let   ready   = false;  // true after first click inits audio
+
+  function setSize() {
+    const W = Math.min(window.innerWidth - 60, 600);
+    const H = Math.min(window.innerHeight - 180, 400);
+    canvas.width  = Math.max(W, 260);
+    canvas.height = Math.max(H, 180);
+  }
+  setSize();
+  window.addEventListener('resize', () => { setSize(); idle(); });
+
+  // ── audio ───────────────────────────────────────────────────────
+  let ac, osc, filt, vol, acOsc, acGain, scope, scopeBuf, freqBuf;
+
+  function initAudio() {
+    ac    = new (window.AudioContext || window.webkitAudioContext)();
+    osc   = ac.createOscillator();
+    filt  = ac.createBiquadFilter();
+    vol   = ac.createGain();
+    acOsc = ac.createOscillator();   // 3rd harmonic accent
+    acGain= ac.createGain();
+    scope = ac.createAnalyser();
+
+    osc.type          = 'sawtooth';
+    osc.frequency.value = 55;        // A1 — low and dark
+
+    filt.type           = 'lowpass';
+    filt.frequency.value = 60;
+    filt.Q.value         = 1;
+
+    vol.gain.value = 0;
+
+    acOsc.type            = 'sawtooth';
+    acOsc.frequency.value = 165;     // 3rd partial of 55 Hz
+    acGain.gain.value     = 0;
+
+    scope.fftSize        = 2048;
+    scope.smoothingTimeConstant = 0.8;
+    scopeBuf = new Uint8Array(scope.fftSize);
+    freqBuf  = new Uint8Array(scope.frequencyBinCount);
+
+    // graph: [osc, acOsc→acGain] → filt → vol → scope → out
+    osc.connect(filt);
+    acOsc.connect(acGain);
+    acGain.connect(filt);
+    filt.connect(vol);
+    vol.connect(scope);
+    scope.connect(ac.destination);
+
+    osc.start();
+    acOsc.start();
+  }
+
+  // x[0→1] maps to cutoff: 45 Hz (below fundamental) → 18 kHz
+  function filterHz(x) {
+    return 45 * Math.pow(18000 / 45, x);
+  }
+
+  // ── state ────────────────────────────────────────────────────────
+  let px = 0.5, py = 0.5;
+  let held = false, audioLive = false;
+  let raf  = null;
+
+  function engage(nx, ny) {
+    if (!ac) return;
+    if (ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime;
+    const targetVol = 0.55 * ny;
+    const targetQ   = 0.8 + ny * 22;
+    const targetHz  = filterHz(nx);
+
+    vol.gain.cancelScheduledValues(t);
+    vol.gain.setTargetAtTime(targetVol, t, 0.04);
+
+    filt.frequency.cancelScheduledValues(t);
+    filt.frequency.setTargetAtTime(targetHz, t, 0.03);
+
+    filt.Q.cancelScheduledValues(t);
+    filt.Q.setTargetAtTime(targetQ, t, 0.03);
+
+    // accent riff: 3rd harmonic swell
+    acGain.gain.cancelScheduledValues(t);
+    acGain.gain.setValueAtTime(0, t);
+    acGain.gain.linearRampToValueAtTime(0.28, t + 0.06);
+    acGain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+
+    audioLive = true;
+  }
+
+  function move(nx, ny) {
+    if (!ac || !audioLive) return;
+    const t = ac.currentTime;
+    vol.gain.setTargetAtTime(0.55 * ny, t, 0.06);
+    filt.frequency.setTargetAtTime(filterHz(nx), t, 0.05);
+    filt.Q.setTargetAtTime(0.8 + ny * 22, t, 0.05);
+  }
+
+  function release() {
+    if (!ac) return;
+    const t = ac.currentTime;
+    vol.gain.setTargetAtTime(0, t, 0.1);
+    audioLive = false;
+  }
+
+  // ── draw ─────────────────────────────────────────────────────────
+  function loop() { raf = requestAnimationFrame(loop); draw(); }
+  function idle() { if (!raf) draw(); }
+
+  // map a canvas x pixel to log-frequency (20 Hz → 22 kHz)
+  function xToLogHz(x, W) {
+    return 20 * Math.pow(22000 / 20, x / W);
+  }
+
+  function draw() {
+    const W = canvas.width, H = canvas.height;
+    g.fillStyle = '#0a0a0f';
+    g.fillRect(0, 0, W, H);
+
+    // ── grid (brighter) ─────────────────────────────────────────────
+    g.strokeStyle = 'rgba(255,255,255,0.09)';
+    g.lineWidth = 1;
+    for (let i = 1; i < 8; i++) {
+      g.beginPath(); g.moveTo(W * i/8, 0); g.lineTo(W * i/8, H); g.stroke();
+      g.beginPath(); g.moveTo(0, H * i/8); g.lineTo(W, H * i/8); g.stroke();
+    }
+    // stronger mid lines
+    g.strokeStyle = 'rgba(255,255,255,0.15)';
+    g.beginPath(); g.moveTo(W/2, 0); g.lineTo(W/2, H); g.stroke();
+    g.beginPath(); g.moveTo(0, H/2); g.lineTo(W, H/2); g.stroke();
+
+    const cx = px * W;
+    const cy = (1 - py) * H;
+
+    if (audioLive && scope) {
+      const sampleRate = ac.sampleRate;
+      const binCount   = scope.frequencyBinCount; // fftSize/2
+
+      // colour theme: cool-blue when filter closed, violet-amber as it opens
+      const cr = Math.round(80  + px * 160);
+      const cg = Math.round(100 + py * 80);
+      const cb = Math.round(220 - px * 70);
+
+      // ── EQ spectrum (frequency domain) ───────────────────────────
+      // drawn as filled area from canvas bottom — like an EQ plugin
+      scope.getByteFrequencyData(freqBuf);
+
+      g.beginPath();
+      g.moveTo(0, H);
+      for (let xi = 0; xi < W; xi++) {
+        const freq   = xToLogHz(xi, W);
+        const bin    = Math.round(freq * binCount * 2 / sampleRate);
+        const clamped= Math.min(bin, binCount - 1);
+        const amp    = freqBuf[clamped] / 255;           // 0–1
+        const y      = H - amp * H * 0.85;
+        xi === 0 ? g.moveTo(0, y) : g.lineTo(xi, y);
+      }
+      g.lineTo(W, H);
+      g.closePath();
+
+      // filled gradient — glows from bottom
+      const specGrad = g.createLinearGradient(0, 0, 0, H);
+      specGrad.addColorStop(0,   `rgba(${cr},${cg},${cb}, 0.55)`);
+      specGrad.addColorStop(0.5, `rgba(${cr},${cg},${cb}, 0.25)`);
+      specGrad.addColorStop(1,   `rgba(${cr},${cg},${cb}, 0.05)`);
+      g.fillStyle = specGrad;
+      g.fill();
+
+      // glowing outline along the top edge of the spectrum
+      g.beginPath();
+      for (let xi = 0; xi < W; xi++) {
+        const freq   = xToLogHz(xi, W);
+        const bin    = Math.round(freq * binCount * 2 / sampleRate);
+        const clamped= Math.min(bin, binCount - 1);
+        const amp    = freqBuf[clamped] / 255;
+        const y      = H - amp * H * 0.85;
+        xi === 0 ? g.moveTo(0, y) : g.lineTo(xi, y);
+      }
+      g.strokeStyle = `rgba(${cr + 40},${cg + 40},${cb + 20}, 0.85)`;
+      g.lineWidth   = 1.5;
+      g.stroke();
+
+      // ── time-domain waveform (centred, like an oscilloscope) ─────
+      scope.getByteTimeDomainData(scopeBuf);
+
+      g.strokeStyle = `rgba(${cr},${cg + 30},${cb}, 0.55)`;
+      g.lineWidth   = 1.5;
+      g.beginPath();
+      const sw = W / scopeBuf.length;
+      for (let i = 0; i < scopeBuf.length; i++) {
+        const v  = scopeBuf[i] / 128;
+        const wy = H / 2 + (v - 1) * H * 0.38;
+        i === 0 ? g.moveTo(0, wy) : g.lineTo(i * sw, wy);
+      }
+      g.stroke();
+
+      // ── filter cutoff marker line ────────────────────────────────
+      // vertical line at the current filter frequency (log-mapped to x)
+      const cutoffHz  = filterHz(px);
+      const cutoffX   = W * Math.log(cutoffHz / 20) / Math.log(22000 / 20);
+      g.strokeStyle   = `rgba(${cr + 60},${cg},${cb - 30}, 0.5)`;
+      g.lineWidth     = 1;
+      g.setLineDash([4, 4]);
+      g.beginPath(); g.moveTo(cutoffX, 0); g.lineTo(cutoffX, H); g.stroke();
+      g.setLineDash([]);
+
+      // ── sweep atmosphere ─────────────────────────────────────────
+      const sg = g.createLinearGradient(0, 0, W, 0);
+      sg.addColorStop(0,                            'rgba(0,0,0,0)');
+      sg.addColorStop(Math.max(0, px - 0.15),       'rgba(0,0,0,0)');
+      sg.addColorStop(px,  `rgba(${cr},${cg},${cb},${0.14 * py})`);
+      sg.addColorStop(Math.min(1, px + 0.22),       'rgba(0,0,0,0)');
+      sg.addColorStop(1,                            'rgba(0,0,0,0)');
+      g.fillStyle = sg;
+      g.fillRect(0, 0, W, H);
+    }
+
+    // ── cursor glow ──────────────────────────────────────────────────
+    if (audioLive) {
+      const glowR = 50 + py * 80;
+      const gr2   = g.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+      const r2    = Math.round(180 + px * 70);
+      const b2    = Math.round(255 - px * 70);
+      gr2.addColorStop(0,   `rgba(${r2}, 160, ${b2}, ${0.6 * py})`);
+      gr2.addColorStop(0.4, `rgba(${r2}, 160, ${b2}, ${0.2 * py})`);
+      gr2.addColorStop(1,   `rgba(${r2}, 160, ${b2}, 0)`);
+      g.fillStyle = gr2;
+      g.beginPath(); g.arc(cx, cy, glowR, 0, Math.PI * 2); g.fill();
+    }
+
+    // ── dot ──────────────────────────────────────────────────────────
+    g.fillStyle = audioLive ? 'rgba(240,220,255,1)' : 'rgba(180,170,190,0.45)';
+    g.beginPath(); g.arc(cx, cy, audioLive ? 6 : 4, 0, Math.PI * 2); g.fill();
+    // white centre
+    if (audioLive) {
+      g.fillStyle = 'rgba(255,255,255,0.85)';
+      g.beginPath(); g.arc(cx, cy, 2.5, 0, Math.PI * 2); g.fill();
+    }
+
+    // ── idle prompt ──────────────────────────────────────────────────
+    if (!ready) {
+      g.fillStyle = 'rgba(220,210,235,0.45)';
+      g.font = 'italic 13px Georgia';
+      g.textAlign = 'center';
+      g.fillText('press & drag to sound', W / 2, H / 2);
+      g.textAlign = 'left';
+    }
+
+    // ── readout ──────────────────────────────────────────────────────
+    if (audioLive) {
+      g.fillStyle = 'rgba(220,205,240,0.55)';
+      g.font = '11px Georgia';
+      g.textAlign = 'left';
+      const hz   = filterHz(px);
+      const fStr = hz >= 1000 ? (hz/1000).toFixed(1)+' kHz' : Math.round(hz)+' Hz';
+      g.fillText('cutoff ' + fStr, 10, H - 10);
+      g.textAlign = 'right';
+      g.fillText('level ' + Math.round(py * 100) + '%', W - 10, H - 10);
+      g.textAlign = 'left';
+    }
+  }
+
+  idle();
+
+  // ── input: normalise pointer position ───────────────────────────
+  function norm(e) {
+    const r   = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {
+      nx: Math.max(0, Math.min(1, (src.clientX - r.left) / r.width)),
+      ny: Math.max(0, Math.min(1, 1 - (src.clientY - r.top) / r.height))
+    };
+  }
+
+  function begin(e) {
+    if (!ac) {
+      initAudio();
+      ready = true;
+      if (!raf) loop();
+    }
+    held = true;
+    const { nx, ny } = norm(e);
+    px = nx; py = ny;
+    engage(nx, ny);
+  }
+
+  function drag(e) {
+    if (!held) return;
+    const { nx, ny } = norm(e);
+    px = nx; py = ny;
+    move(nx, ny);
+  }
+
+  function end() {
+    if (!held) return;
+    held = false;
+    release();
+  }
+
+  canvas.addEventListener('mousedown',  e => { e.preventDefault(); begin(e); });
+  canvas.addEventListener('mousemove',  e => { drag(e); });
+  canvas.addEventListener('mouseup',    ()  => end());
+  canvas.addEventListener('mouseleave', ()  => end());
+
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); begin(e); }, { passive: false });
+  canvas.addEventListener('touchmove',  e => { e.preventDefault(); drag(e);  }, { passive: false });
+  canvas.addEventListener('touchend',   e => { e.preventDefault(); end();    }, { passive: false });
+
+} catch(err) {
+  document.getElementById('err').style.display = 'block';
+  document.getElementById('err').textContent   = 'error: ' + err.message;
+  console.error(err);
+}
+</script>
+</body>
+</html>
