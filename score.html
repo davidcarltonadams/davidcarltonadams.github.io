@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>a score</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #060606;
+      color: #d4ccC4;
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ── Score text ─────────────────────────────────────── */
+    #score-text {
+      max-width: min(640px, 88vw);
+      text-align: center;
+      padding: 2rem;
+      transition: opacity 0.5s ease;
+    }
+
+    .instruction {
+      font-size: clamp(1.1rem, 3.5vw, 1.7rem);
+      font-weight: normal;
+      line-height: 1.55;
+      letter-spacing: 0.02em;
+      color: #d4ccc4;
+    }
+
+    .instruction em {
+      font-style: italic;
+      color: rgba(212,204,196,0.7);
+    }
+
+    /* ── Number / index ─────────────────────────────────── */
+    #score-num {
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      color: rgba(212,204,196,0.18);
+      margin-bottom: 2.5rem;
+      font-style: italic;
+      display: block;
+      text-align: center;
+    }
+
+    /* ── Hint ───────────────────────────────────────────── */
+    #hint {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.55rem;
+      letter-spacing: 0.16em;
+      color: rgba(212,204,196,0.15);
+      font-style: italic;
+      white-space: nowrap;
+      transition: opacity 1s ease;
+    }
+
+    /* ── Progress dots ──────────────────────────────────── */
+    #progress {
+      position: fixed;
+      bottom: 3.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .prog-dot {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: rgba(212,204,196,0.1);
+      transition: background 0.4s ease;
+    }
+    .prog-dot.done { background: rgba(212,204,196,0.3); }
+    .prog-dot.current { background: rgba(212,204,196,0.6); }
+
+    /* ── Fade states ────────────────────────────────────── */
+    .fade-out { opacity: 0; }
+    .fade-in  { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<span id="score-num">—</span>
+<div id="score-text" aria-live="polite">
+  <p class="instruction" id="instruction-el"></p>
+</div>
+
+<div id="progress" aria-hidden="true"></div>
+<p id="hint">space · click · or wait</p>
+
+<script>
+// ── The score ─────────────────────────────────────────────────────────────
+// 30 instructions. Mix of fixed (handcrafted) and procedurally assembled.
+// Drawn from the vocabulary of DCA's practice:
+//   microtonality, emergence, electronics, voice, guitar, breath,
+//   collaboration, indeterminacy, duration-as-content, listening.
+
+const FIXED = [
+  // ── Listening / attention
+  "Attend to what is already sounding.\nThis is the score.",
+  "Find the frequency between two notes.\nBegin there.",
+  "Listen for the harmonic you did not intend.\nPlay toward it.",
+  "Sustain a single pitch.\nWhen you hear it as a different pitch,\nyou are done.",
+  "Make a sound.\nThen make a sound that makes the first sound\nsound different.",
+
+  // ── Duration / time
+  "Play what you mean.\nWait.\nPlay what you mean now.",
+  "The score is: continue.",
+  "Begin.\nArrive somewhere else.\nThat is also the beginning.",
+  "Hold a sound past the point\nwhere you know what it is.",
+  "Take as long as it takes.\nThen take a little longer.",
+
+  // ── Relation / ensemble
+  "Begin in unison.\nDiverge.",
+  "Find where you and the room\nare the same temperature.\nPlay from there.",
+  "When you hear someone else,\nlet it change what you are doing.\nThis is the form.",
+  "Play until someone else begins.\nThen: become an overtone.",
+  "Interrupt yourself.\nContinue from the interruption.",
+
+  // ── Emergence / indeterminacy
+  "Do not prepare.\nBegin anyway.",
+  "The sound you cannot control\nis the most important one.",
+  "Play what is in the room.\nNot what you brought.",
+  "emergent.\nwhatever that means for you, today.",
+  "Something is already vibrating.\nMatch it.\nThen: move away slowly.",
+
+  // ── Microtonality / timbre
+  "Be as microtonal as the moment requires.",
+  "Find a pitch between A and A.\nStay there for a while.",
+  "Tune to the room, not the instrument.\nThey are different rooms.",
+  "Play the 7th partial.\nOr what you imagine the 7th partial sounds like.\nClose enough.",
+  "Let the overtones decide the melody.",
+
+  // ── Voice / body
+  "Sound = breath = sound.",
+  "Sing what you cannot play.\nPlay what you cannot sing.\nListen to the difference.",
+  "The voice is also an instrument.\nThe instrument is also a voice.\nProceed accordingly.",
+
+  // ── Space / silence
+  "The silence after is also composed.",
+  "Make a space large enough\nfor something unexpected to happen.\nWait."
+];
+
+// Shuffle deterministically per session so each visit is different
+// but within a session you cycle through without repeat
+function seededShuffle(arr, seed) {
+  const a = [...arr];
+  let s = seed;
+  function rand() {
+    s ^= s << 13; s ^= s >> 17; s ^= s << 5;
+    return (s >>> 0) / 0xFFFFFFFF;
+  }
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const seed = Math.floor(Date.now() / 86400000); // changes daily
+const SCORE = seededShuffle(FIXED, seed);
+
+let index = 0;
+let autoTimer = null;
+const AUTO_INTERVAL = 14000; // 14s
+
+// ── Render ────────────────────────────────────────────────────────────────
+const textEl  = document.getElementById('score-text');
+const instrEl = document.getElementById('instruction-el');
+const numEl   = document.getElementById('score-num');
+const hintEl  = document.getElementById('hint');
+const progEl  = document.getElementById('progress');
+
+function buildDots() {
+  progEl.innerHTML = '';
+  SCORE.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'prog-dot';
+    progEl.appendChild(d);
+  });
+}
+
+function updateDots() {
+  const dots = progEl.querySelectorAll('.prog-dot');
+  dots.forEach((d, i) => {
+    d.classList.toggle('done',    i < index);
+    d.classList.toggle('current', i === index);
+  });
+}
+
+function formatInstruction(raw) {
+  // newlines in the string become <br> for display
+  return raw.split('\n').join('<br>');
+}
+
+function show(idx, animate = true) {
+  if (animate) {
+    textEl.classList.add('fade-out');
+    setTimeout(() => {
+      instrEl.innerHTML = formatInstruction(SCORE[idx]);
+      numEl.textContent = (idx + 1) + ' / ' + SCORE.length;
+      textEl.classList.remove('fade-out');
+      updateDots();
+    }, 500);
+  } else {
+    instrEl.innerHTML = formatInstruction(SCORE[idx]);
+    numEl.textContent = (idx + 1) + ' / ' + SCORE.length;
+    updateDots();
+  }
+}
+
+function advance() {
+  index = (index + 1) % SCORE.length;
+  show(index);
+  resetAuto();
+}
+
+// ── Auto-advance ──────────────────────────────────────────────────────────
+function resetAuto() {
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(advance, AUTO_INTERVAL);
+}
+
+// ── Interaction ───────────────────────────────────────────────────────────
+document.addEventListener('click',   advance);
+document.addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') {
+    e.preventDefault();
+    advance();
+  }
+  if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    index = (index - 2 + SCORE.length) % SCORE.length;
+    advance();
+  }
+});
+
+// Hide hint after first interaction
+let hintHidden = false;
+function hideHint() {
+  if (hintHidden) return;
+  hintHidden = true;
+  hintEl.style.opacity = '0';
+}
+document.addEventListener('click',   hideHint, { once: true });
+document.addEventListener('keydown', hideHint, { once: true });
+
+// ── Init ──────────────────────────────────────────────────────────────────
+buildDots();
+show(0, false);
+resetAuto();
+</script>
+</body>
+</html>
