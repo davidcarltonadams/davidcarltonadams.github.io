@@ -12,6 +12,13 @@
 <nav aria-label="Main navigation">
   <div class="nav-inner">
     <a href="index.html" class="nav-name">David Carlton Adams</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
     <ul class="nav-links" role="list">
       <li><a href="index.html" class="active" aria-current="page">about</a></li>
       <li><a href="works.html">works</a></li>
@@ -47,9 +54,9 @@
         <div class="about-links">
           <a href="https://docs.google.com/document/d/1vKV5l7LkChHH9QEOOQwt4NYjv1TWcaCbjviWjgc8ddw/edit"
              target="_blank" rel="noopener" class="btn btn-accent">CV</a>
-          <a href="assets/docs/artist-statement.pdf"
+          <a href="assets/docs/artist-statement.md"
              target="_blank" rel="noopener" class="btn">Artist Statement</a>
-          <a href="assets/docs/teaching-philosophy.pdf"
+          <a href="assets/docs/teaching-philosophy.md"
              target="_blank" rel="noopener" class="btn">Teaching Philosophy</a>
         </div>
       </div>
@@ -57,7 +64,7 @@
       <div class="about-photos" aria-label="Photos of David Carlton Adams">
         <img src="assets/images/_dcaOct24downtown.jpg"
              alt="David Carlton Adams" class="about-photo">
-        <img src="assets/images/_dca+EMP_SEEDS_photo-JakeCline.jpg"
+        <img src="assets/images/_dca-EMP-SEEDS-photo-JakeCline.jpg"
              alt="David Carlton Adams performing — photo by Jake Cline"
              class="about-photo" style="object-position: top center;">
       </div>
@@ -75,5 +82,6 @@
 </footer>
 
 <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+<script src="js/nav.js"></script>
 </body>
 </html>
