@@ -12,6 +12,13 @@
 <nav aria-label="Main navigation">
   <div class="nav-inner">
     <a href="index.html" class="nav-name">David Carlton Adams</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
     <ul class="nav-links" role="list">
       <li><a href="index.html">about</a></li>
       <li><a href="works.html" class="active" aria-current="page">works</a></li>
@@ -95,5 +102,6 @@
 <script src="js/works-data.js"></script>
 <script src="js/works-filter.js"></script>
 <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+<script src="js/nav.js"></script>
 </body>
 </html>
