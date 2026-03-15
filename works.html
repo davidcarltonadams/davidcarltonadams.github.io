@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Works — David Carlton Adams</title>
+  <meta name="description" content="Complete catalogue of compositions by David Carlton Adams.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-name">David Carlton Adams</a>
+    <ul class="nav-links" role="list">
+      <li><a href="index.html">about</a></li>
+      <li><a href="works.html" class="active" aria-current="page">works</a></li>
+      <li><a href="media.html">media</a></li>
+      <li><a href="teaching.html">teaching</a></li>
+      <li><a href="contact.html">contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="container">
+
+    <h1 class="page-title">Works</h1>
+    <p class="page-subtitle">compositions 2008–present</p>
+
+    <!-- ── Filter bar ──────────────────────────────────────────── -->
+    <div class="filter-bar" role="search" aria-label="Filter works">
+
+      <div class="filter-row">
+        <span class="filter-label">search</span>
+        <input type="search" id="works-search"
+               placeholder="title, instrumentation, performers…"
+               aria-label="Search works">
+      </div>
+
+      <div class="filter-row">
+        <span class="filter-label">forces</span>
+        <div id="force-chips" role="group" aria-label="Filter by forces"></div>
+      </div>
+
+      <div class="filter-row">
+        <span class="filter-label">years</span>
+        <div class="year-inputs">
+          <input type="number" id="year-from" aria-label="From year">
+          <span class="year-sep" aria-hidden="true">–</span>
+          <input type="number" id="year-to" aria-label="To year">
+        </div>
+        <div class="toggle-group">
+          <label class="toggle-label">
+            <input type="checkbox" id="toggle-media">
+            has media
+          </label>
+          <label class="toggle-label">
+            <input type="checkbox" id="toggle-highlighted">
+            major works only
+          </label>
+        </div>
+      </div>
+
+    </div>
+    <!-- /filter-bar -->
+
+    <!-- ── Meta row: sort + count ──────────────────────────────── -->
+    <div class="works-meta-row">
+      <div class="sort-group" role="group" aria-label="Sort works">
+        <button class="sort-btn active" data-sort="year-desc">newest first</button>
+        <button class="sort-btn" data-sort="year-asc">oldest first</button>
+        <button class="sort-btn" data-sort="title-asc">a–z</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <button id="clear-filters" aria-label="Clear all filters">✕ clear filters</button>
+        <span id="works-count" class="works-count" aria-live="polite" aria-atomic="true"></span>
+      </div>
+    </div>
+
+    <!-- ── Works list ──────────────────────────────────────────── -->
+    <div id="works-list" role="list" aria-label="Works catalogue"></div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    <span>&copy; <span id="year"></span> David Carlton Adams</span>
+    &ensp;·&ensp;
+    <a href="mailto:davidcarltonadams@gmail.com">davidcarltonadams@gmail.com</a>
+  </div>
+</footer>
+
+<script src="js/works-data.js"></script>
+<script src="js/works-filter.js"></script>
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>
