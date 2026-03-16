@@ -352,7 +352,7 @@ let fundamental = 110;
 let waveform   = 'sine';
 
 // ── Audio engine ─────────────────────────────────────────────────────────
-let ac = null, masterGain, analyser, scopeBuf;
+let ac = null, masterGain, compressor, analyser, scopeBuf;
 let rafId = null;
 const voices = {};    // voiceId → { osc, gain }
 const heldKeys = new Set();
@@ -361,12 +361,20 @@ function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
   masterGain = ac.createGain();
-  masterGain.gain.value = 0.8;
+  masterGain.gain.value = 0.85;
+  // Compressor prevents clipping with many simultaneous voices
+  compressor = ac.createDynamicsCompressor();
+  compressor.threshold.value = -14;
+  compressor.knee.value      =   6;
+  compressor.ratio.value     =   4;
+  compressor.attack.value    = 0.004;
+  compressor.release.value   = 0.12;
   analyser = ac.createAnalyser();
   analyser.fftSize = 1024;
   analyser.smoothingTimeConstant = 0.65;
   scopeBuf = new Uint8Array(analyser.fftSize);
-  masterGain.connect(analyser);
+  masterGain.connect(compressor);
+  compressor.connect(analyser);
   analyser.connect(ac.destination);
 }
 
@@ -379,7 +387,7 @@ function startVoice(vid, freq) {
   osc.type = waveform;
   osc.frequency.value = freq;
   gain.gain.setValueAtTime(0, ac.currentTime);
-  gain.gain.setTargetAtTime(0.18, ac.currentTime, 0.012);
+  gain.gain.setTargetAtTime(0.12, ac.currentTime, 0.012);
   osc.connect(gain);
   gain.connect(masterGain);
   osc.start();
