@@ -430,7 +430,7 @@ function renderRows() {
   const list  = document.getElementById('partials-list');
   list.innerHTML = '';
 
-  for (let n = 1; n <= NUM_PARTIALS; n++) {
+  for (let n = NUM_PARTIALS; n >= 1; n--) {
     const freq    = fund * n;
     const {name, cents} = freqToNote(freq);
     const isOn    = active.has(n);
