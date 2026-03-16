@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tuning systems — david carlton adams</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #080808;
+      --bg2:    #111111;
+      --text:   #d8d0c8;
+      --dim:    rgba(216,208,200,0.4);
+      --dimmer: rgba(216,208,200,0.18);
+      --accent: #8ab0c8;
+      --accent-bg: rgba(138,176,200,0.14);
+      --border: rgba(255,255,255,0.07);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1.5rem 3.5rem;
+      gap: 1.4rem;
+    }
+
+    /* ── Header ──────────────────────────────────────── */
+    .header { text-align: center; }
+
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      font-weight: normal;
+      letter-spacing: 0.2em;
+      text-transform: lowercase;
+    }
+
+    .sub {
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.3rem;
+    }
+
+    /* ── Control rows ─────────────────────────────────── */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.9rem 1.5rem;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ctrl-group {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .ctrl-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.13em;
+      font-style: italic;
+      color: var(--dim);
+      text-transform: lowercase;
+    }
+
+    .btn-row { display: flex; gap: 0.22rem; }
+
+    .tog {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.63rem;
+      letter-spacing: 0.07em;
+      padding: 0.28rem 0.6rem;
+      cursor: pointer;
+      transition: color 0.1s, border-color 0.1s, background 0.1s;
+    }
+    .tog:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+    .tog.on { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+
+    .fund-input {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text);
+      font-family: Georgia, serif;
+      font-size: 0.88rem;
+      text-align: center;
+      width: 5rem;
+      padding: 0.22rem 0.4rem;
+      -moz-appearance: textfield;
+    }
+    .fund-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .fund-input:focus { outline: none; border-color: var(--accent); }
+
+    .oct-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.6rem;
+      padding: 0.22rem 0.48rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .oct-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+
+    /* ── Description bar ──────────────────────────────── */
+    #desc { font-size: 0.58rem; letter-spacing: 0.1em; color: var(--dimmer); font-style: italic; }
+
+    /* ── Keyboard ─────────────────────────────────────── */
+    .kbd-wrap {
+      width: 100%;
+      max-width: 980px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #keyboard {
+      display: flex;
+      gap: 3px;
+      width: max-content;
+      margin: 0 auto;
+    }
+
+    .key {
+      width: 52px;        /* overridden by JS for each tuning */
+      height: 130px;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.45rem 0.1rem 0.38rem;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: background 0.06s, border-color 0.06s;
+    }
+    .key:hover { background: rgba(255,255,255,0.07); }
+    .key.active {
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+    .key.active .key-label { color: var(--accent); }
+
+    .key-cents {
+      font-size: 0.5rem;
+      font-style: italic;
+      letter-spacing: 0.03em;
+      min-height: 0.75rem;
+      text-align: center;
+    }
+
+    .key-label {
+      font-size: 0.78rem;
+      color: var(--text);
+      text-align: center;
+      line-height: 1.2;
+      letter-spacing: 0.02em;
+    }
+
+    .key-shortcut {
+      font-size: 0.48rem;
+      color: var(--dimmer);
+      letter-spacing: 0.1em;
+      font-style: italic;
+    }
+
+    /* ── Scope ────────────────────────────────────────── */
+    .scope-wrap { width: 100%; max-width: 980px; }
+
+    canvas {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+    }
+
+    /* ── Hint ─────────────────────────────────────────── */
+    .hint {
+      font-size: 0.54rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .controls { gap: 0.7rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1 class="title">tuning systems</h1>
+  <p class="sub">click keys or use keyboard &mdash; hold multiple keys for polyphony</p>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">tuning</span>
+    <div class="btn-row" id="tuning-btns">
+      <button class="tog on" data-t="12">12-TET</button>
+      <button class="tog" data-t="19">19-TET</button>
+      <button class="tog" data-t="31">31-TET</button>
+      <button class="tog" data-t="ji">just</button>
+      <button class="tog" data-t="harm">harmonic</button>
+    </div>
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">fundamental</span>
+    <button class="oct-btn" id="oct-dn">&minus;8va</button>
+    <input type="number" id="fund-input" class="fund-input" value="110" min="10" max="4000" step="0.01">
+    <span class="ctrl-label">Hz</span>
+    <button class="oct-btn" id="oct-up">+8va</button>
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">wave</span>
+    <div class="btn-row" id="wave-btns">
+      <button class="tog on" data-w="sine">sine</button>
+      <button class="tog" data-w="sawtooth">saw</button>
+      <button class="tog" data-w="triangle">tri</button>
+    </div>
+  </div>
+
+</div>
+
+<p id="desc"></p>
+
+<!-- Keyboard -->
+<div class="kbd-wrap">
+  <div id="keyboard" role="group" aria-label="Microtonal keyboard"></div>
+</div>
+
+<!-- Oscilloscope -->
+<div class="scope-wrap">
+  <canvas id="scope" height="60" aria-hidden="true"></canvas>
+</div>
+
+<p class="hint">← → shift octave &nbsp;·&nbsp; esc silence all &nbsp;·&nbsp; qwerty rows map low → high</p>
+
+<script>
+// ── Key sequence: 30 keys, lowest to highest pitch ──────────────────────
+// Row order: z-row → a-row → q-row
+const KEY_SEQ = [
+  'z','x','c','v','b','n','m',',','.',
+  '/','a','s','d','f','g','h','j','k','l',';',
+  'q','w','e','r','t','y','u','i','o','p'
+];
+
+// ── Tuning utilities ────────────────────────────────────────────────────
+
+// Cents deviation of a ratio from its nearest 12-TET semitone
+function centsFromRatio(ratio) {
+  const semis   = 12 * Math.log2(ratio);
+  const nearest = Math.round(semis);
+  return Math.round((semis - nearest) * 100);
+}
+
+function fmtCents(c) {
+  if (c === 0) return '';
+  return (c > 0 ? '+' : '') + c + '\u00a2';
+}
+
+// Color encodes deviation magnitude: green (pure) → amber → red (far)
+function centsColor(c) {
+  const a = Math.abs(c);
+  if (a === 0)  return 'transparent';
+  if (a <= 5)   return 'rgba(138,210,160,0.85)';
+  if (a <= 15)  return 'rgba(200,200,120,0.85)';
+  if (a <= 30)  return 'rgba(210,160, 90,0.85)';
+  return             'rgba(210,100, 90,0.85)';
+}
+
+// ── Tuning system definitions ───────────────────────────────────────────
+
+const TET12_NAMES = ['A','A\u266f','B','C','C\u266f','D','D\u266f','E','F','F\u266f','G','G\u266f'];
+
+// 5-limit chromatic just intonation (12 pitches, starting on A)
+const JI_RATIOS = [1, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 9/5, 15/8];
+const JI_NAMES  = ['1/1','16/15','9/8','6/5','5/4','4/3','45/32','3/2','8/5','5/3','9/5','15/8'];
+
+const TUNINGS = {
+  '12': {
+    label: '12-TET',
+    desc:  '12 equal divisions of the octave \u00b7 100\u00a2 per step',
+    steps: 12,
+    freq:  (f, n) => f * Math.pow(2, n / 12),
+    name:  n => TET12_NAMES[n % 12],
+    cents: n => 0,
+  },
+  '19': {
+    label: '19-TET',
+    desc:  '19 equal divisions \u00b7 \u224863\u00a2 per step \u00b7 enharmonic equivalents are distinct pitches',
+    steps: 19,
+    freq:  (f, n) => f * Math.pow(2, n / 19),
+    name:  n => String(n % 19),
+    cents: n => centsFromRatio(Math.pow(2, n / 19)),
+  },
+  '31': {
+    label: '31-TET',
+    desc:  '31 equal divisions \u00b7 \u224839\u00a2 per step \u00b7 close to quarter-comma meantone',
+    steps: 31,
+    freq:  (f, n) => f * Math.pow(2, n / 31),
+    name:  n => String(n % 31),
+    cents: n => centsFromRatio(Math.pow(2, n / 31)),
+  },
+  'ji': {
+    label: 'just intonation',
+    desc:  '5-limit chromatic \u00b7 pure ratios \u00b7 cents show deviation from 12-TET',
+    steps: 12,
+    freq:  (f, n) => f * JI_RATIOS[n % 12],
+    name:  n => JI_NAMES[n % 12],
+    cents: n => centsFromRatio(JI_RATIOS[n % 12]),
+  },
+  'harm': {
+    label: 'harmonic series',
+    desc:  'partials 1\u201316 above fundamental \u00b7 natural overtone sequence',
+    steps: 16,
+    freq:  (f, n) => f * (n + 1),
+    name:  n => String(n + 1),
+    cents: n => centsFromRatio(n + 1),
+  },
+};
+
+// ── State ────────────────────────────────────────────────────────────────
+let tuningKey  = '12';
+let fundamental = 110;
+let waveform   = 'sine';
+
+// ── Audio engine ─────────────────────────────────────────────────────────
+let ac = null, masterGain, analyser, scopeBuf;
+let rafId = null;
+const voices = {};    // voiceId → { osc, gain }
+const heldKeys = new Set();
+
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ac.createGain();
+  masterGain.gain.value = 0.8;
+  analyser = ac.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.65;
+  scopeBuf = new Uint8Array(analyser.fftSize);
+  masterGain.connect(analyser);
+  analyser.connect(ac.destination);
+}
+
+function startVoice(vid, freq) {
+  if (voices[vid]) return;
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  const osc  = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = waveform;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, ac.currentTime);
+  gain.gain.setTargetAtTime(0.18, ac.currentTime, 0.012);
+  osc.connect(gain);
+  gain.connect(masterGain);
+  osc.start();
+  voices[vid] = { osc, gain };
+  if (!rafId) startScope();
+}
+
+function stopVoice(vid) {
+  if (!voices[vid]) return;
+  const { osc, gain } = voices[vid];
+  gain.gain.setTargetAtTime(0, ac.currentTime, 0.05);
+  setTimeout(() => {
+    try { osc.stop(); } catch (_) {}
+    delete voices[vid];
+    checkScope();
+  }, 350);
+}
+
+function stopAll() {
+  Object.keys(voices).forEach(stopVoice);
+  heldKeys.clear();
+  document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
+}
+
+// ── Keyboard DOM ──────────────────────────────────────────────────────────
+function buildKeyboard() {
+  stopAll();
+  const kbd   = document.getElementById('keyboard');
+  const t     = TUNINGS[tuningKey];
+  kbd.innerHTML = '';
+
+  // Compute key width to fill the container when possible
+  const containerW = Math.min(window.innerWidth - 48, 980);
+  const gapTotal   = (t.steps - 1) * 3;
+  const keyW       = Math.max(36, Math.floor((containerW - gapTotal) / t.steps));
+
+  for (let i = 0; i < t.steps; i++) {
+    const kc = KEY_SEQ[i] || '';
+    const c  = t.cents(i);
+
+    const el = document.createElement('div');
+    el.className = 'key';
+    el.style.width = keyW + 'px';
+    el.dataset.step    = i;
+    el.dataset.keychar = kc;
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '-1');
+    el.setAttribute('aria-label', `${t.name(i)}, step ${i}`);
+
+    el.innerHTML =
+      `<span class="key-cents" style="color:${centsColor(c)}">${fmtCents(c)}</span>` +
+      `<span class="key-label">${t.name(i)}</span>` +
+      `<span class="key-shortcut">${kc}</span>`;
+
+    // Pointer events
+    el.addEventListener('mousedown',  e => { e.preventDefault(); pressKey(i, 'm' + i); el.classList.add('active'); });
+    el.addEventListener('mouseup',    ()  => { releaseKey('m' + i); el.classList.remove('active'); });
+    el.addEventListener('mouseleave', ()  => { releaseKey('m' + i); el.classList.remove('active'); });
+    el.addEventListener('touchstart', e => { e.preventDefault(); pressKey(i, 'm' + i); el.classList.add('active'); }, { passive: false });
+    el.addEventListener('touchend',   e => { e.preventDefault(); releaseKey('m' + i); el.classList.remove('active'); }, { passive: false });
+
+    kbd.appendChild(el);
+  }
+
+  document.getElementById('desc').textContent = t.desc;
+}
+
+function pressKey(stepIndex, vid) {
+  const freq = TUNINGS[tuningKey].freq(fundamental, stepIndex);
+  startVoice(vid, freq);
+}
+
+function releaseKey(vid) {
+  stopVoice(vid);
+}
+
+// ── Keyboard input ─────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.repeat) return;
+
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); shiftOctave(-1); return; }
+  if (e.key === 'ArrowRight') { e.preventDefault(); shiftOctave(1);  return; }
+  if (e.key === 'Escape')     { e.preventDefault(); stopAll();        return; }
+
+  const char = e.key;
+  const si   = KEY_SEQ.indexOf(char);
+  if (si === -1 || si >= TUNINGS[tuningKey].steps) return;
+  e.preventDefault();
+
+  const vid = 'k' + char;
+  if (heldKeys.has(vid)) return;
+  heldKeys.add(vid);
+
+  pressKey(si, vid);
+  const el = document.querySelector(`[data-keychar="${CSS.escape(char)}"]`);
+  if (el) el.classList.add('active');
+});
+
+document.addEventListener('keyup', e => {
+  const char = e.key;
+  const vid  = 'k' + char;
+  if (!heldKeys.has(vid)) return;
+  heldKeys.delete(vid);
+  releaseKey(vid);
+  const el = document.querySelector(`[data-keychar="${CSS.escape(char)}"]`);
+  if (el) el.classList.remove('active');
+});
+
+// ── Tuning buttons ─────────────────────────────────────────────────────
+document.getElementById('tuning-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.tog');
+  if (!btn) return;
+  document.querySelectorAll('#tuning-btns .tog').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  tuningKey = btn.dataset.t;
+  buildKeyboard();
+});
+
+// ── Waveform buttons ──────────────────────────────────────────────────
+document.getElementById('wave-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.tog');
+  if (!btn) return;
+  document.querySelectorAll('#wave-btns .tog').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  waveform = btn.dataset.w;
+  Object.values(voices).forEach(v => { v.osc.type = waveform; });
+});
+
+// ── Fundamental ────────────────────────────────────────────────────────
+const fundEl = document.getElementById('fund-input');
+fundEl.addEventListener('input', () => {
+  const v = parseFloat(fundEl.value);
+  if (isFinite(v) && v > 10) { fundamental = v; stopAll(); }
+});
+
+function shiftOctave(dir) {
+  fundamental = Math.round(fundamental * Math.pow(2, dir) * 100) / 100;
+  fundEl.value = fundamental;
+  stopAll();
+}
+
+document.getElementById('oct-dn').addEventListener('click', () => shiftOctave(-1));
+document.getElementById('oct-up').addEventListener('click', () => shiftOctave(1));
+
+// ── Oscilloscope ──────────────────────────────────────────────────────
+function startScope() {
+  if (rafId) return;
+  drawScope();
+}
+
+function checkScope() {
+  if (Object.keys(voices).length === 0 && rafId) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+    blankScope();
+  }
+}
+
+function blankScope() {
+  const cv = document.getElementById('scope');
+  const g  = cv.getContext('2d');
+  g.fillStyle = '#0a0a0a';
+  g.fillRect(0, 0, cv.width, cv.height);
+}
+
+function drawScope() {
+  rafId = requestAnimationFrame(drawScope);
+  const cv = document.getElementById('scope');
+  const W  = cv.width  = cv.offsetWidth * devicePixelRatio;
+  const H  = cv.height = 60 * devicePixelRatio;
+  const g  = cv.getContext('2d');
+  g.scale(devicePixelRatio, devicePixelRatio);
+  const w = W / devicePixelRatio, h = H / devicePixelRatio;
+
+  g.fillStyle = '#0a0a0a';
+  g.fillRect(0, 0, w, h);
+
+  if (!analyser) return;
+  analyser.getByteTimeDomainData(scopeBuf);
+  g.strokeStyle = 'rgba(138,176,200,0.7)';
+  g.lineWidth   = 1;
+  g.beginPath();
+  const sw = w / scopeBuf.length;
+  for (let i = 0; i < scopeBuf.length; i++) {
+    const y = h / 2 + (scopeBuf[i] / 128 - 1) * h * 0.42;
+    i === 0 ? g.moveTo(0, y) : g.lineTo(i * sw, y);
+  }
+  g.stroke();
+}
+
+// Rebuild on resize (debounced)
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(buildKeyboard, 200);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────
+buildKeyboard();
+blankScope();
+</script>
+</body>
+</html>
