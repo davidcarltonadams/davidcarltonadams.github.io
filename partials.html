@@ -338,8 +338,9 @@ function togglePartial(n) {
   } else {
     const fund = getFundamental();
     const freq = fund * n;
-    // amplitude: 1/n (natural harmonic balance)
-    const amp = 0.35 / n;
+    // amplitude: perceptually compensated rolloff (1/n is physically correct
+    // but too steep to hear upper partials — n^0.7 keeps the shape audible)
+    const amp = 0.35 / Math.pow(n, 0.7);
 
     const osc  = ac.createOscillator();
     const gain = ac.createGain();
