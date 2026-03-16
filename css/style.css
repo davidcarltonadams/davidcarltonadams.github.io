@@ -940,3 +940,10 @@ footer a:hover { color: var(--text-2); }
   .filter-bar { padding: 1rem; }
   .work-title { font-size: 1.05rem; }
 }
+
+/* ── Easter eggs — invisible links ──────────────────────────── */
+a.egg {
+  color: inherit;
+  text-decoration: none;
+  cursor: default;
+}
