@@ -20,17 +20,16 @@
       font-weight: 400;
       letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: #444;
+      color: #888;
       margin-bottom: 0.2rem;
     }
     .canon-sub {
       font-size: 0.65rem;
-      color: #2a2a3a;
+      color: #666;
       letter-spacing: 0.08em;
       margin-bottom: 1.25rem;
     }
 
-    /* ── Main layout ── */
     .canon-main {
       display: flex;
       gap: 1rem;
@@ -38,7 +37,6 @@
       flex-wrap: wrap;
     }
 
-    /* ── Grid ── */
     .grid-section { flex: 0 0 auto; }
     .grid-header {
       display: flex;
@@ -47,15 +45,10 @@
       margin-bottom: 0.5rem;
     }
     .grid-label {
-      font-size: 0.62rem; color: #333; letter-spacing: 0.1em; text-transform: uppercase;
+      font-size: 0.62rem; color: #666; letter-spacing: 0.1em; text-transform: uppercase;
     }
+    .grid-outer { display: flex; gap: 0; }
 
-    .grid-outer {
-      display: flex;
-      gap: 0;
-    }
-
-    /* Pitch axis labels */
     .pitch-axis {
       display: flex;
       flex-direction: column;
@@ -65,15 +58,15 @@
     .pitch-label {
       height: 14px;
       font-size: 7px;
-      color: #2a2a3a;
+      color: #444;
       display: flex;
       align-items: center;
       justify-content: flex-end;
       padding-right: 3px;
       letter-spacing: 0;
     }
-    .pitch-label.white-key { color: #383848; }
-    .pitch-label.c-key { color: #555566; }
+    .pitch-label.white-key { color: #666; }
+    .pitch-label.c-key { color: #999; }
 
     canvas#grid-canvas {
       display: block;
@@ -82,22 +75,18 @@
       border-radius: 2px;
     }
 
-    /* ── Controls ── */
     .controls-section {
       flex: 1 1 200px;
       min-width: 180px;
     }
 
-    .ctrl-group {
-      margin-bottom: 1rem;
-    }
+    .ctrl-group { margin-bottom: 1rem; }
     .ctrl-group-label {
-      font-size: 0.6rem; color: #2a2a3a; letter-spacing: 0.1em;
+      font-size: 0.6rem; color: #555; letter-spacing: 0.1em;
       text-transform: uppercase; margin-bottom: 0.4rem;
       border-bottom: 1px solid #141420; padding-bottom: 0.2rem;
     }
 
-    /* Play controls */
     .play-row {
       display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.75rem;
     }
@@ -117,11 +106,8 @@
     .btn-c.active { color: #2ecc71; border-color: #2ecc71; }
     .btn-c.danger:hover { color: #e74c3c; border-color: #e74c3c; }
 
-    /* BPM */
-    .bpm-row {
-      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;
-    }
-    .bpm-lbl { font-size: 0.6rem; color: #333; letter-spacing: 0.06em; }
+    .bpm-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .bpm-lbl { font-size: 0.6rem; color: #555; letter-spacing: 0.06em; }
     #bpm-input {
       width: 4ch; background: #0f0f14; border: 1px solid #1e1e2a;
       border-radius: 2px; color: #ccc; font-family: inherit; font-size: 0.85rem;
@@ -137,11 +123,8 @@
       border-radius: 50%; background: #555; cursor: pointer;
     }
 
-    /* Steps control */
-    .steps-row {
-      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;
-    }
-    .steps-lbl { font-size: 0.6rem; color: #333; letter-spacing: 0.06em; }
+    .steps-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .steps-lbl { font-size: 0.6rem; color: #555; letter-spacing: 0.06em; }
     .step-btn {
       background: none; border: 1px solid #252530; border-radius: 2px;
       color: #555; font-family: inherit; font-size: 0.65rem;
@@ -151,51 +134,59 @@
     .step-btn:hover { color: #aaa; border-color: #444; }
     #steps-val { font-size: 0.85rem; color: #aaa; min-width: 2ch; text-align: center; }
 
-    /* Scale selector */
-    .scale-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-    .scale-lbl { font-size: 0.6rem; color: #333; letter-spacing: 0.06em; }
-    #scale-sel {
+    .tuning-row, .scale-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .tuning-lbl, .scale-lbl { font-size: 0.6rem; color: #555; letter-spacing: 0.06em; }
+    #tuning-sel, #scale-sel, #interval-sel {
       background: #0f0f14; border: 1px solid #1e1e2a; border-radius: 2px;
       color: #777; font-family: inherit; font-size: 0.65rem;
       padding: 0.15rem 0.3rem; outline: none; cursor: pointer;
     }
+    #scale-sel:disabled { opacity: 0.35; cursor: default; }
 
-    /* Voices */
+    .interval-row {
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;
+    }
+    .interval-lbl { font-size: 0.6rem; color: #555; letter-spacing: 0.06em; }
+    .mode-radio {
+      font-size: 0.6rem; color: #555; letter-spacing: 0.05em;
+      display: flex; align-items: center; gap: 0.2rem; cursor: pointer;
+    }
+    .mode-radio input { margin: 0; cursor: pointer; }
+
     .voices-list { display: flex; flex-direction: column; gap: 0.4rem; }
-
     .voice-row {
       display: flex; align-items: center; gap: 0.4rem;
       background: #0f0f14; border: 1px solid #18181f;
       border-radius: 3px; padding: 0.35rem 0.5rem;
     }
     .voice-pip { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .voice-field-lbl { font-size: 0.57rem; color: #2a2a3a; letter-spacing: 0.05em; }
+    .voice-field-lbl { font-size: 0.57rem; color: #555; letter-spacing: 0.05em; }
     .voice-field {
       width: 3ch; background: none; border: none; border-bottom: 1px solid #252530;
       color: #aaa; font-family: inherit; font-size: 0.75rem;
       text-align: center; outline: none; padding: 0;
     }
+    .voice-field.wide { width: 5ch; }
     .voice-field:focus { border-bottom-color: #555; }
     .voice-del {
       margin-left: auto; background: none; border: none;
-      color: #2a2a3a; font-size: 0.7rem; cursor: pointer; padding: 0 0.1rem;
+      color: #444; font-size: 0.7rem; cursor: pointer; padding: 0 0.1rem;
       transition: color 0.1s;
     }
     .voice-del:hover { color: #e74c3c; }
     .voice-row.voice-muted { opacity: 0.4; }
 
     .add-voice-btn {
-      font-size: 0.65rem; color: #2a2a3a; letter-spacing: 0.06em;
-      border: 1px dashed #1e1e2a; border-radius: 3px;
+      font-size: 0.65rem; color: #555; letter-spacing: 0.06em;
+      border: 1px dashed #252530; border-radius: 3px;
       background: none; padding: 0.3rem 0.5rem;
       cursor: pointer; transition: color 0.1s, border-color 0.1s;
       font-family: inherit;
     }
-    .add-voice-btn:hover { color: #666; border-color: #333; }
+    .add-voice-btn:hover { color: #888; border-color: #444; }
 
-    /* ── Piano Roll Canvas ── */
     .roll-section { margin-top: 1rem; }
-    .roll-header { font-size: 0.6rem; color: #2a2a3a; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .roll-header { font-size: 0.6rem; color: #555; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
     canvas#roll-canvas {
       display: block;
       width: 100%;
@@ -204,9 +195,8 @@
       background: #080810;
     }
 
-    /* Hint */
     .hint-row {
-      font-size: 0.6rem; color: #1e1e2a; letter-spacing: 0.05em;
+      font-size: 0.6rem; color: #555; letter-spacing: 0.05em;
       margin-top: 0.75rem; text-align: center;
     }
   </style>
@@ -237,14 +227,13 @@
 <div class="canon-wrap">
 
   <h1 class="canon-title">Canon Machine</h1>
-  <p class="canon-sub">draw a pattern · add voices at any time offset and transposition · watch simple ideas become counterpoint</p>
+  <p class="canon-sub">draw a melody · press play · add voices to hear it canon</p>
 
   <div class="canon-main">
 
-    <!-- ── Grid ── -->
     <div class="grid-section">
       <div class="grid-header">
-        <span class="grid-label">pattern</span>
+        <span class="grid-label">pattern — click to draw</span>
         <button class="btn-c danger" id="btn-clear" style="font-size:0.6rem;padding:0.15rem 0.4rem;">clear</button>
       </div>
       <div class="grid-outer">
@@ -253,7 +242,6 @@
       </div>
     </div>
 
-    <!-- ── Controls ── -->
     <div class="controls-section">
 
       <div class="ctrl-group">
@@ -273,6 +261,15 @@
           <span id="steps-val">16</span>
           <button class="step-btn" id="steps-up">+</button>
         </div>
+        <div class="tuning-row">
+          <span class="tuning-lbl">tuning</span>
+          <select id="tuning-sel">
+            <option value="12">12-TET</option>
+            <option value="19">19-EDO</option>
+            <option value="31">31-EDO</option>
+            <option value="alpha">α scale</option>
+          </select>
+        </div>
         <div class="scale-row">
           <span class="scale-lbl">highlight</span>
           <select id="scale-sel">
@@ -286,7 +283,13 @@
       </div>
 
       <div class="ctrl-group">
-        <div class="ctrl-group-label">voices &nbsp;<span style="color:#1e1e2a;font-size:0.55rem;">offset = steps behind · transpose = semitones</span></div>
+        <div class="ctrl-group-label">voices</div>
+        <div class="interval-row">
+          <span class="interval-lbl">interval</span>
+          <select id="interval-sel"></select>
+          <label class="mode-radio"><input type="radio" name="canon-mode" value="real" checked> real</label>
+          <label class="mode-radio"><input type="radio" name="canon-mode" value="tonal"> tonal</label>
+        </div>
         <div class="voices-list" id="voices-list"></div>
         <button class="add-voice-btn" id="btn-add-voice" style="margin-top:0.4rem;">+ add voice</button>
       </div>
@@ -294,7 +297,6 @@
     </div>
   </div>
 
-  <!-- ── Piano Roll ── -->
   <div class="roll-section">
     <div class="roll-header">canon score — all voices</div>
     <canvas id="roll-canvas" height="120"></canvas>
@@ -314,38 +316,106 @@
 <script>
 (function () {
 
-// ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const NUM_PITCHES = 24;   // C4–B5
-const CELL_W = 28;
-const CELL_H = 14;
-const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const IS_WHITE = [1,0,1,0,1,1,0,1,0,1,0,1]; // C major white keys
+// ─── TUNING SYSTEMS ───────────────────────────────────────────────────────────
+const C4_FREQ = 261.626;
 
-// Scale highlight sets (pitch class 0–11)
-const SCALES = {
-  chromatic:   new Set([0,1,2,3,4,5,6,7,8,9,10,11]),
-  major:       new Set([0,2,4,5,7,9,11]),
-  minor:       new Set([0,2,3,5,7,8,10]),
-  pentatonic:  new Set([0,2,4,7,9]),
-  whole:       new Set([0,2,4,6,8,10]),
+const EDO19_NAMES = ['C','','','D','','','E','','F','','','G','','','A','','','B',''];
+const EDO31_NAMES = new Array(31).fill('');
+[0,5,10,13,18,23,28].forEach((s,i) => { EDO31_NAMES[s] = ['C','D','E','F','G','A','B'][i]; });
+
+const TUNINGS = {
+  '12': {
+    label: '12-TET',
+    stepCents: 100,
+    defaultRows: 24,
+    rowLabel(i) {
+      const NM = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+      const WK = [1,0,1,0,1,1,0,1,0,1,0,1];
+      const pc = i % 12, oct = 4 + Math.floor(i / 12);
+      return { text: pc === 0 ? NM[pc]+oct : (WK[pc] ? NM[pc] : ''), isC: pc===0, isWhite: !!WK[pc] };
+    },
+    scaleSupport: true,
+  },
+  '19': {
+    label: '19-EDO',
+    stepCents: 1200 / 19,
+    defaultRows: 24,
+    rowLabel(i) {
+      const step = i % 19, oct = Math.floor(i / 19);
+      const name = EDO19_NAMES[step];
+      return { text: step === 0 ? 'C'+(4+oct) : (name||''), isC: step===0, isWhite: !!name };
+    },
+    scaleSupport: false,
+  },
+  '31': {
+    label: '31-EDO',
+    stepCents: 1200 / 31,
+    defaultRows: 36,
+    rowLabel(i) {
+      const step = i % 31, oct = Math.floor(i / 31);
+      const name = EDO31_NAMES[step];
+      return { text: step === 0 ? 'C'+(4+oct) : (name||''), isC: step===0, isWhite: !!name };
+    },
+    scaleSupport: false,
+  },
+  'alpha': {
+    label: 'α scale',
+    stepCents: 77.965,
+    defaultRows: 24,
+    rowLabel(i) {
+      return { text: i % 4 === 0 ? 'α'+i : '', isC: i===0, isWhite: i%4===0 };
+    },
+    scaleSupport: false,
+  },
 };
 
-// Voice colors
+// ─── INTERVALS OF IMITATION ───────────────────────────────────────────────────
+const INTERVALS = [
+  { name: 'm2',       cents: 100 },
+  { name: 'M2',       cents: 200 },
+  { name: 'm3',       cents: 300 },
+  { name: 'M3',       cents: 400 },
+  { name: 'P4',       cents: 500 },
+  { name: '11th ∂',   cents: 1200 * Math.log2(11/8) },   // 551.3¢
+  { name: 'TT',       cents: 600 },
+  { name: 'P5',       cents: 700 },
+  { name: 'm6',       cents: 800 },
+  { name: 'tridec',   cents: 1200 * Math.log2(13/8) },   // 840.5¢
+  { name: 'tridec+',  cents: 850 },
+  { name: 'M6',       cents: 900 },
+  { name: 'septimal', cents: 1200 * Math.log2(7/4) },    // 968.8¢
+  { name: 'm7',       cents: 1000 },
+  { name: 'M7',       cents: 1100 },
+  { name: '11.5',     cents: 1150 },
+];
+
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const CELL_W = 28;
+const CELL_H = 14;
+
+const SCALES = {
+  chromatic:  new Set([0,1,2,3,4,5,6,7,8,9,10,11]),
+  major:      new Set([0,2,4,5,7,9,11]),
+  minor:      new Set([0,2,3,5,7,8,10]),
+  pentatonic: new Set([0,2,4,7,9]),
+  whole:      new Set([0,2,4,6,8,10]),
+};
+
 const VOICE_COLORS = ['#e8e8f0','#3498db','#2ecc71','#f39c12','#9b59b6'];
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
-let numSteps  = 16;
-let masterBPM = 120;
-let scale     = SCALES.major;
-let playing   = false;
+let numSteps      = 16;
+let masterBPM     = 120;
+let scale         = SCALES.major;
+let playing       = false;
+let currentTuning = '12';
+let currentMode   = 'real';
+let numRows       = 24;
 
-// grid[pitchIdx][step] = bool — pitchIdx 0 = C4 (lowest), 23 = B5 (highest)
-const grid = Array.from({length: NUM_PITCHES}, () => new Array(numSteps).fill(false));
+let grid = Array.from({length: numRows}, () => new Array(numSteps).fill(false));
 
-// Voices: [{offset:int, transpose:int, color:str, muted:bool}]
-// Voice 0 is the original (immutable offset=0 transpose=0)
 const voices = [
-  { offset: 0, transpose: 0, color: VOICE_COLORS[0], muted: false },
+  { offset: 0, transposeCents: 0, color: VOICE_COLORS[0], muted: false },
 ];
 
 // ─── AUDIO ────────────────────────────────────────────────────────────────────
@@ -356,11 +426,16 @@ function getCtx() {
   return actx;
 }
 
+function rowFreq(pitchIdx) {
+  return C4_FREQ * Math.pow(2, pitchIdx * TUNINGS[currentTuning].stepCents / 1200);
+}
+
 const DECAY = 0.35;
-function playNote(pitchIdx, color, when) {
-  if (pitchIdx < 0 || pitchIdx >= NUM_PITCHES) return;
+function playNote(pitchIdx, transposeCents, color, when) {
+  const baseFreq = rowFreq(pitchIdx);
+  const freq = baseFreq * Math.pow(2, transposeCents / 1200);
+  if (freq < 20 || freq > 18000) return;
   const ctx = getCtx();
-  const freq = 440 * Math.pow(2, (pitchIdx - 9) / 12); // pitchIdx 9 = A4
   const osc  = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
@@ -378,17 +453,17 @@ function playNote(pitchIdx, color, when) {
 let scheduleTimer = null;
 let currentStep   = 0;
 let nextStepTime  = 0;
-let lastScheduledStep = -1;
+let rollHistory   = [];
 
-function stepDuration() { return 60 / masterBPM / 4; } // 16th note
+function stepDuration() { return 60 / masterBPM / 4; }
 
 function scheduleStep(step, when) {
   voices.forEach(voice => {
     if (voice.muted) return;
     const patStep = ((step - voice.offset) % numSteps + numSteps) % numSteps;
-    for (let p = 0; p < NUM_PITCHES; p++) {
-      if (grid[p][patStep]) {
-        playNote(p + voice.transpose, voice.color, when);
+    for (let p = 0; p < numRows; p++) {
+      if (grid[p] && grid[p][patStep]) {
+        playNote(p, voice.transposeCents, voice.color, when);
       }
     }
   });
@@ -399,7 +474,6 @@ function scheduler() {
   const lookahead = 0.15;
   while (nextStepTime < actx.currentTime + lookahead) {
     scheduleStep(currentStep, nextStepTime);
-    // Record for piano roll
     rollHistory.push({ step: currentStep, time: nextStepTime });
     if (rollHistory.length > numSteps * 6) rollHistory.shift();
     nextStepTime += stepDuration();
@@ -426,20 +500,17 @@ function stopPlay() {
 
 function togglePlay() { if (playing) stopPlay(); else startPlay(); }
 
-// ─── PITCH AXIS ────────────────────────────────────────────────────────────────
+// ─── PITCH AXIS ───────────────────────────────────────────────────────────────
 function buildPitchAxis() {
   const axis = document.getElementById('pitch-axis');
   axis.innerHTML = '';
-  for (let p = NUM_PITCHES - 1; p >= 0; p--) {
-    const pc = p % 12;
-    const octave = 4 + Math.floor(p / 12);
-    const name = NOTE_NAMES[pc];
-    const isC = pc === 0;
-    const isWhite = IS_WHITE[pc];
+  const tuning = TUNINGS[currentTuning];
+  for (let p = numRows - 1; p >= 0; p--) {
+    const lbl = tuning.rowLabel(p);
     const div = document.createElement('div');
-    div.className = 'pitch-label' + (isC ? ' c-key' : isWhite ? ' white-key' : '');
+    div.className = 'pitch-label' + (lbl.isC ? ' c-key' : lbl.isWhite ? ' white-key' : '');
     div.style.height = CELL_H + 'px';
-    div.textContent = isC ? name + octave : (isWhite ? name : '');
+    div.textContent = lbl.text;
     axis.appendChild(div);
   }
 }
@@ -450,7 +521,7 @@ let gridW, gridH;
 
 function resizeGridCanvas() {
   gridW = numSteps * CELL_W;
-  gridH = NUM_PITCHES * CELL_H;
+  gridH = numRows * CELL_H;
   gridCanvas.width  = gridW;
   gridCanvas.height = gridH;
 }
@@ -458,52 +529,34 @@ function resizeGridCanvas() {
 function drawGrid() {
   const ctx2 = gridCanvas.getContext('2d');
   ctx2.clearRect(0, 0, gridW, gridH);
+  const tuning = TUNINGS[currentTuning];
 
-  for (let p = 0; p < NUM_PITCHES; p++) {
-    const row = NUM_PITCHES - 1 - p; // visual row (0 = top = high pitch)
-    const pc  = p % 12;
-    const inScale = scale.has(pc);
-
-    // Row background
-    const bg = inScale ? '#0f0f16' : '#0a0a10';
-    ctx2.fillStyle = bg;
+  for (let p = 0; p < numRows; p++) {
+    const row = numRows - 1 - p;
+    const inScale = tuning.scaleSupport && scale.has(p % 12);
+    ctx2.fillStyle = inScale ? '#0f0f16' : '#0a0a10';
     ctx2.fillRect(0, row * CELL_H, gridW, CELL_H);
 
-    // Octave divider
-    if (pc === 0) {
+    const lbl = tuning.rowLabel(p);
+    if (lbl.isC) {
       ctx2.fillStyle = '#1a1a28';
       ctx2.fillRect(0, row * CELL_H, gridW, 1);
     }
 
     for (let s = 0; s < numSteps; s++) {
-      const x = s * CELL_W;
-      const y = row * CELL_H;
+      const x = s * CELL_W, y = row * CELL_H;
+      ctx2.fillStyle = s % 4 === 0 ? '#12121a' : '#0e0e16';
+      ctx2.fillRect(x, y, 1, CELL_H);
 
-      // Beat grouping (every 4 steps)
-      if (s % 4 === 0) {
-        ctx2.fillStyle = '#12121a';
-        ctx2.fillRect(x, y, 1, CELL_H);
-      } else {
-        ctx2.fillStyle = '#0e0e16';
-        ctx2.fillRect(x, y, 1, CELL_H);
-      }
-
-      if (grid[p][s]) {
-        // Determine which voices have this note
-        const voiceHits = voices.filter(v => {
-          const patStep = ((s - v.offset) % numSteps + numSteps) % numSteps;
-          return v.offset === 0; // Only show original pattern
-        });
+      if (grid[p] && grid[p][s]) {
         ctx2.fillStyle = VOICE_COLORS[0];
         ctx2.fillRect(x + 2, y + 2, CELL_W - 3, CELL_H - 3);
-        // Note shine
         ctx2.fillStyle = 'rgba(255,255,255,0.15)';
         ctx2.fillRect(x + 2, y + 2, CELL_W - 3, 3);
       }
     }
   }
 
-  // Current step indicator
   if (playing) {
     const sx = currentStep * CELL_W;
     ctx2.fillStyle = 'rgba(255,255,255,0.06)';
@@ -514,7 +567,7 @@ function drawGrid() {
 }
 
 // ─── GRID INTERACTION ─────────────────────────────────────────────────────────
-let painting = false;
+let painting   = false;
 let paintValue = true;
 
 function gridPos(e) {
@@ -523,21 +576,18 @@ function gridPos(e) {
   const scaleY = gridCanvas.height / rect.height;
   const mx = (e.clientX - rect.left) * scaleX;
   const my = (e.clientY - rect.top) * scaleY;
-  const step = Math.floor(mx / CELL_W);
-  const row  = Math.floor(my / CELL_H);
-  const pitchIdx = NUM_PITCHES - 1 - row;
-  return { step, pitchIdx };
+  return { step: Math.floor(mx / CELL_W), pitchIdx: numRows - 1 - Math.floor(my / CELL_H) };
 }
 
 function gridPaint(e) {
   const { step, pitchIdx } = gridPos(e);
-  if (step < 0 || step >= numSteps || pitchIdx < 0 || pitchIdx >= NUM_PITCHES) return;
+  if (step < 0 || step >= numSteps || pitchIdx < 0 || pitchIdx >= numRows) return;
   grid[pitchIdx][step] = paintValue;
 }
 
 gridCanvas.addEventListener('mousedown', e => {
   const { step, pitchIdx } = gridPos(e);
-  if (step < 0 || step >= numSteps || pitchIdx < 0 || pitchIdx >= NUM_PITCHES) return;
+  if (step < 0 || step >= numSteps || pitchIdx < 0 || pitchIdx >= numRows) return;
   paintValue = !grid[pitchIdx][step];
   painting = true;
   grid[pitchIdx][step] = paintValue;
@@ -546,9 +596,8 @@ gridCanvas.addEventListener('mousemove', e => { if (painting) gridPaint(e); });
 window.addEventListener('mouseup', () => { painting = false; });
 gridCanvas.addEventListener('touchstart', e => {
   e.preventDefault();
-  const touch = e.touches[0];
-  const { step, pitchIdx } = gridPos(touch);
-  if (step >= 0 && step < numSteps && pitchIdx >= 0 && pitchIdx < NUM_PITCHES) {
+  const { step, pitchIdx } = gridPos(e.touches[0]);
+  if (step >= 0 && step < numSteps && pitchIdx >= 0 && pitchIdx < numRows) {
     paintValue = !grid[pitchIdx][step];
     painting = true;
     grid[pitchIdx][step] = paintValue;
@@ -562,60 +611,47 @@ gridCanvas.addEventListener('touchmove', e => {
 // ─── PIANO ROLL ───────────────────────────────────────────────────────────────
 const rollCanvas = document.getElementById('roll-canvas');
 const rollCtx    = rollCanvas.getContext('2d');
-let rollHistory  = []; // {step, time}
 
 function drawRoll() {
   const W = rollCanvas.clientWidth || 600;
   const H = rollCanvas.height;
   rollCanvas.width = W;
-
   rollCtx.fillStyle = '#080810';
   rollCtx.fillRect(0, 0, W, H);
 
-  if (!playing || !actx) {
-    // Show static preview of all voices
-    drawRollStatic(W, H);
-    return;
-  }
+  if (!playing || !actx) { drawRollStatic(W, H); return; }
 
-  const now    = actx.currentTime;
-  const window = stepDuration() * numSteps * 1.5; // show 1.5 loops worth
-  const pixPerSec = W / window;
+  const now = actx.currentTime;
+  const winSec = stepDuration() * numSteps * 1.5;
+  const pixPerSec = W / winSec;
+  const tuning = TUNINGS[currentTuning];
 
-  // Draw pitch rows
-  for (let p = 0; p < NUM_PITCHES; p++) {
-    const pc = p % 12;
-    if (scale.has(pc)) {
-      const y = H - ((p / NUM_PITCHES) * H) - (H / NUM_PITCHES);
+  for (let p = 0; p < numRows; p++) {
+    if (tuning.scaleSupport && scale.has(p % 12)) {
       rollCtx.fillStyle = '#0d0d18';
-      rollCtx.fillRect(0, H - ((p + 1) / NUM_PITCHES) * H, W, H / NUM_PITCHES);
+      rollCtx.fillRect(0, H - ((p + 1) / numRows) * H, W, H / numRows);
     }
   }
 
-  // Draw notes for each voice
-  voices.forEach((voice, vi) => {
+  voices.forEach(voice => {
     if (voice.muted) return;
-    const color = voice.color;
-
+    const tRows = voice.transposeCents / tuning.stepCents;
     for (let s = 0; s < numSteps; s++) {
       const patStep = ((s - voice.offset) % numSteps + numSteps) % numSteps;
-      for (let p = 0; p < NUM_PITCHES; p++) {
-        if (!grid[p][patStep]) continue;
-        const dp = p + voice.transpose;
-        if (dp < 0 || dp >= NUM_PITCHES) continue;
-
-        // Find all occurrences of this step in the recent history
+      for (let p = 0; p < numRows; p++) {
+        if (!grid[p] || !grid[p][patStep]) continue;
+        const dp = p + tRows;
         rollHistory.forEach(h => {
           if (h.step !== s) return;
           const tSince = now - h.time;
           const x = W - tSince * pixPerSec;
           const noteW = stepDuration() * pixPerSec * 0.85;
-          const rowH  = Math.max(3, H / NUM_PITCHES - 1);
-          const y = H - ((dp + 1) / NUM_PITCHES) * H;
+          const rowH  = Math.max(3, H / numRows - 1);
+          const y = H - ((dp + 1) / numRows) * H;
           if (x > -noteW && x < W) {
-            rollCtx.fillStyle = hexA(color, 0.75);
+            rollCtx.fillStyle = hexA(voice.color, 0.75);
             rollCtx.fillRect(x, y, noteW, rowH);
-            rollCtx.fillStyle = hexA(color, 0.3);
+            rollCtx.fillStyle = hexA(voice.color, 0.3);
             rollCtx.fillRect(x, y, noteW, 2);
           }
         });
@@ -623,38 +659,34 @@ function drawRoll() {
     }
   });
 
-  // Playhead
   rollCtx.fillStyle = 'rgba(255,255,255,0.25)';
   rollCtx.fillRect(W - 2, 0, 2, H);
 }
 
 function drawRollStatic(W, H) {
-  // Show the pattern as it will unfold over 2 full loops
-  const totalSteps = numSteps * 2;
-  const cellW = W / totalSteps;
+  const cellW = W / (numSteps * 2);
+  const tuning = TUNINGS[currentTuning];
 
-  // Scale rows
-  for (let p = 0; p < NUM_PITCHES; p++) {
-    if (scale.has(p % 12)) {
+  for (let p = 0; p < numRows; p++) {
+    if (tuning.scaleSupport && scale.has(p % 12)) {
       rollCtx.fillStyle = '#0d0d18';
-      rollCtx.fillRect(0, H - ((p + 1) / NUM_PITCHES) * H, W, Math.max(2, H / NUM_PITCHES));
+      rollCtx.fillRect(0, H - ((p + 1) / numRows) * H, W, Math.max(2, H / numRows));
     }
   }
 
-  voices.forEach((voice, vi) => {
+  voices.forEach(voice => {
     if (voice.muted) return;
+    const tRows = voice.transposeCents / tuning.stepCents;
     for (let loop = 0; loop < 2; loop++) {
       for (let s = 0; s < numSteps; s++) {
         const absStep = loop * numSteps + s + voice.offset;
-        const patStep = s;
-        for (let p = 0; p < NUM_PITCHES; p++) {
-          if (!grid[p][patStep]) continue;
-          const dp = p + voice.transpose;
-          if (dp < 0 || dp >= NUM_PITCHES) continue;
+        for (let p = 0; p < numRows; p++) {
+          if (!grid[p] || !grid[p][s]) continue;
+          const dp = p + tRows;
           const x = absStep * cellW;
-          const y = H - ((dp + 1) / NUM_PITCHES) * H;
+          const y = H - ((dp + 1) / numRows) * H;
           const noteW = cellW * 0.82;
-          const rowH  = Math.max(3, H / NUM_PITCHES - 1);
+          const rowH  = Math.max(3, H / numRows - 1);
           if (x >= 0 && x < W) {
             rollCtx.fillStyle = hexA(voice.color, 0.65);
             rollCtx.fillRect(x, y, noteW, rowH);
@@ -664,8 +696,7 @@ function drawRollStatic(W, H) {
     }
   });
 
-  // Voice entry lines
-  voices.forEach((voice, vi) => {
+  voices.forEach(voice => {
     if (voice.offset === 0) return;
     const x = voice.offset * cellW;
     rollCtx.strokeStyle = hexA(voice.color, 0.2);
@@ -694,18 +725,17 @@ function rebuildVoicesUI() {
     const row = document.createElement('div');
     row.className = 'voice-row' + (voice.muted ? ' voice-muted' : '');
     row.id = `voice-row-${vi}`;
-
     const isOriginal = vi === 0;
     row.innerHTML = `
       <div class="voice-pip" style="background:${voice.color}"></div>
       <span class="voice-field-lbl">off</span>
       <input class="voice-field" type="number" id="voff-${vi}"
              value="${voice.offset}" min="0" max="${numSteps - 1}"
-             ${isOriginal ? 'disabled style="color:#2a2a3a"' : ''}>
-      <span class="voice-field-lbl">st</span>
-      <input class="voice-field" type="number" id="vtr-${vi}"
-             value="${voice.transpose}" min="-24" max="24"
-             ${isOriginal ? 'disabled style="color:#2a2a3a"' : ''}>
+             ${isOriginal ? 'disabled style="color:#333"' : ''}>
+      <span class="voice-field-lbl">¢</span>
+      <input class="voice-field wide" type="number" id="vtr-${vi}"
+             value="${voice.transposeCents.toFixed(1)}" min="-2400" max="2400" step="0.1"
+             ${isOriginal ? 'disabled style="color:#333"' : ''}>
       ${!isOriginal ? `<button class="voice-del" data-vi="${vi}" title="remove">×</button>` : '<span style="width:14px"></span>'}
     `;
     list.appendChild(row);
@@ -715,7 +745,8 @@ function rebuildVoicesUI() {
         voices[vi].offset = Math.max(0, Math.min(numSteps - 1, parseInt(e.target.value) || 0));
       });
       row.querySelector(`#vtr-${vi}`).addEventListener('input', e => {
-        voices[vi].transpose = Math.max(-24, Math.min(24, parseInt(e.target.value) || 0));
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v)) voices[vi].transposeCents = Math.max(-2400, Math.min(2400, v));
       });
     }
   });
@@ -723,29 +754,75 @@ function rebuildVoicesUI() {
   list.addEventListener('click', e => {
     const del = e.target.closest('.voice-del');
     if (!del) return;
-    const vi = parseInt(del.dataset.vi);
-    voices.splice(vi, 1);
+    voices.splice(parseInt(del.dataset.vi), 1);
     rebuildVoicesUI();
   });
 }
 
+// ─── INTERVAL SELECTOR ────────────────────────────────────────────────────────
+function buildIntervalSelector() {
+  const sel = document.getElementById('interval-sel');
+  sel.innerHTML = '';
+  INTERVALS.forEach(iv => {
+    const opt = document.createElement('option');
+    opt.value = iv.cents.toFixed(3);
+    opt.textContent = `${iv.name} (${Math.round(iv.cents)}¢)`;
+    if (iv.name === 'P5') opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function computeTransposeCents(rawCents) {
+  if (currentMode === 'tonal') {
+    const stepCents = TUNINGS[currentTuning].stepCents;
+    return Math.round(rawCents / stepCents) * stepCents;
+  }
+  return rawCents;
+}
+
 document.getElementById('btn-add-voice').addEventListener('click', () => {
   if (voices.length >= VOICE_COLORS.length) return;
+  const rawCents = parseFloat(document.getElementById('interval-sel').value);
   voices.push({
     offset: Math.min(4 * voices.length, numSteps - 1),
-    transpose: voices.length <= 1 ? 7 : voices.length === 2 ? 4 : 0,
+    transposeCents: computeTransposeCents(rawCents),
     color: VOICE_COLORS[voices.length],
     muted: false,
   });
   rebuildVoicesUI();
 });
 
+// ─── TUNING SWITCH ────────────────────────────────────────────────────────────
+function seedPattern() {
+  for (let p = 0; p < numRows; p++) if (grid[p]) grid[p].fill(false);
+  const seeds = {
+    '12':    [[0,0],[4,2],[7,4],[12,6],[7,8],[4,10],[0,12],[4,14]],
+    '19':    [[0,0],[6,2],[11,4],[3,6],[11,8],[6,10],[0,12],[6,14]],
+    '31':    [[0,0],[10,2],[18,4],[5,6],[18,8],[10,10],[0,12],[10,14]],
+    'alpha': [[0,0],[3,2],[6,4],[9,6],[6,8],[3,10],[0,12],[3,14]],
+  };
+  (seeds[currentTuning] || []).forEach(([p,s]) => {
+    if (p < numRows && s < numSteps) grid[p][s] = true;
+  });
+}
+
+function switchTuning(newTuning) {
+  currentTuning = newTuning;
+  numRows = TUNINGS[newTuning].defaultRows;
+  grid = Array.from({length: numRows}, () => new Array(numSteps).fill(false));
+  buildPitchAxis();
+  resizeGridCanvas();
+  const scaleSel = document.getElementById('scale-sel');
+  scaleSel.disabled = newTuning !== '12';
+  if (newTuning !== '12') scale = SCALES.chromatic;
+  seedPattern();
+}
+
 // ─── STEPS CONTROL ────────────────────────────────────────────────────────────
 function updateSteps(n) {
   numSteps = Math.max(4, Math.min(32, n));
-  // Resize grid rows
-  for (let p = 0; p < NUM_PITCHES; p++) {
-    while (grid[p].length < numSteps) grid[p].push(false);
+  for (let p = 0; p < numRows; p++) {
+    if (grid[p]) while (grid[p].length < numSteps) grid[p].push(false);
   }
   resizeGridCanvas();
   document.getElementById('steps-val').textContent = numSteps;
@@ -758,7 +835,7 @@ document.getElementById('steps-down').addEventListener('click', () => updateStep
 document.getElementById('btn-play').addEventListener('click', togglePlay);
 document.getElementById('btn-stop').addEventListener('click', stopPlay);
 document.getElementById('btn-clear').addEventListener('click', () => {
-  for (let p = 0; p < NUM_PITCHES; p++) grid[p].fill(false);
+  for (let p = 0; p < numRows; p++) if (grid[p]) grid[p].fill(false);
 });
 
 document.getElementById('bpm-input').addEventListener('input', e => {
@@ -776,6 +853,12 @@ document.getElementById('bpm-range').addEventListener('input', e => {
 document.getElementById('scale-sel').addEventListener('change', e => {
   scale = SCALES[e.target.value] || SCALES.chromatic;
 });
+document.getElementById('tuning-sel').addEventListener('change', e => {
+  switchTuning(e.target.value);
+});
+document.querySelectorAll('input[name="canon-mode"]').forEach(radio => {
+  radio.addEventListener('change', e => { currentMode = e.target.value; });
+});
 
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
@@ -784,24 +867,14 @@ document.addEventListener('keydown', e => {
 });
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
+buildIntervalSelector();
 buildPitchAxis();
 resizeGridCanvas();
 rebuildVoicesUI();
-
-// Seed a simple example pattern — C major triad arpeggio
-// C4=0, E4=4, G4=7, C5=12
-[[0,0],[4,2],[7,4],[12,6],[7,8],[4,10],[0,12],[4,14]].forEach(([p,s]) => {
-  if (s < numSteps) grid[p][s] = true;
-});
-
+seedPattern();
 document.getElementById('year').textContent = new Date().getFullYear();
 
-// ─── ANIMATION LOOP ───────────────────────────────────────────────────────────
-function loop() {
-  drawGrid();
-  drawRoll();
-  requestAnimationFrame(loop);
-}
+function loop() { drawGrid(); drawRoll(); requestAnimationFrame(loop); }
 requestAnimationFrame(loop);
 
 }());

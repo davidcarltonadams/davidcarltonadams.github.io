@@ -9,7 +9,7 @@
     body { background: #0c0c10; color: #c0c0cc; }
 
     .rhythm-wrap {
-      max-width: 580px;
+      max-width: 900px;
       margin: 0 auto;
       padding: 1.5rem 1rem 3rem;
       font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
@@ -20,22 +20,37 @@
       font-weight: 400;
       letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: #444;
+      color: #888;
       margin-bottom: 0.25rem;
     }
     .rhythm-sub {
       font-size: 0.65rem;
-      color: #2a2a3a;
+      color: #555;
       letter-spacing: 0.1em;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    /* Side-by-side layout on desktop */
+    .rhythm-body {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    @media (min-width: 660px) {
+      .rhythm-body {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 2rem;
+      }
+      .rhythm-left { flex: 0 0 360px; }
+      .rhythm-right { flex: 1; min-width: 0; }
     }
 
     /* Canvas */
     #orr {
       display: block;
-      margin: 0 auto 1.5rem;
       width: 100%;
-      max-width: 500px;
+      max-width: 360px;
       aspect-ratio: 1;
       border-radius: 50%;
       background: #08080c;
@@ -47,8 +62,7 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      justify-content: center;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1rem;
       flex-wrap: wrap;
     }
 
@@ -61,7 +75,7 @@
       border-radius: 4px;
       padding: 0.25rem 0.5rem;
     }
-    .bpm-label { font-size: 0.65rem; color: #444; letter-spacing: 0.08em; }
+    .bpm-label { font-size: 0.65rem; color: #666; letter-spacing: 0.08em; }
     #bpm-display {
       font-size: 1.1rem;
       color: #fff;
@@ -92,7 +106,7 @@
 
     /* BPM slider */
     .bpm-slider-wrap { display: flex; align-items: center; gap: 0.5rem; justify-content: center; margin-bottom: 1.25rem; }
-    .bpm-slider-wrap span { font-size: 0.6rem; color: #333; letter-spacing: 0.05em; min-width: 2ch; }
+    .bpm-slider-wrap span { font-size: 0.6rem; color: #555; letter-spacing: 0.05em; min-width: 2ch; }
     #bpm-slider {
       -webkit-appearance: none;
       width: 180px; height: 2px;
@@ -129,7 +143,7 @@
       flex-shrink: 0;
     }
 
-    .track-label { font-size: 0.65rem; color: #444; letter-spacing: 0.06em; min-width: 3ch; }
+    .track-label { font-size: 0.65rem; color: #777; letter-spacing: 0.06em; min-width: 3ch; }
 
     .ratio-ctrl {
       display: flex; align-items: center; gap: 0.25rem;
@@ -146,7 +160,7 @@
       font-size: 0.85rem; color: #ccc; min-width: 1.5ch; text-align: center;
     }
 
-    .ratio-label { font-size: 0.6rem; color: #2a2a3a; letter-spacing: 0.05em; }
+    .ratio-label { font-size: 0.6rem; color: #555; letter-spacing: 0.05em; }
 
     .beat-flash {
       width: 6px; height: 6px; border-radius: 50%;
@@ -171,12 +185,12 @@
       margin-top: 1rem; flex-wrap: wrap;
     }
     .phase-item {
-      font-size: 0.6rem; color: #2a2a3a; letter-spacing: 0.05em;
+      font-size: 0.6rem; color: #555; letter-spacing: 0.05em;
       display: flex; align-items: center; gap: 0.3rem;
     }
     .phase-pip { width: 6px; height: 6px; border-radius: 50%; }
 
-    .hint { text-align: center; font-size: 0.62rem; color: #222; letter-spacing: 0.05em; margin-top: 1.5rem; }
+    .hint { text-align: center; font-size: 0.62rem; color: #555; letter-spacing: 0.05em; margin-top: 1.5rem; }
   </style>
 </head>
 <body>
@@ -206,28 +220,33 @@
   <h1 class="rhythm-title">Polyrhythm Clock</h1>
   <p class="rhythm-sub">up to six independent pulses · tap to set tempo · watch the orbits converge</p>
 
-  <canvas id="orr" width="500" height="500" title="Click to play/stop"></canvas>
-
-  <div class="master-row">
-    <div class="bpm-group">
-      <span class="bpm-label">BPM</span>
-      <input id="bpm-display" type="number" value="120" min="30" max="300" aria-label="BPM">
+  <div class="rhythm-body">
+    <div class="rhythm-left">
+      <canvas id="orr" width="500" height="500" title="Click to play/stop"></canvas>
     </div>
-    <button class="btn-ctrl" id="btn-tap">TAP</button>
-    <button class="btn-ctrl" id="btn-play">▶ PLAY</button>
-    <button class="btn-ctrl" id="btn-align">⟳ ALIGN</button>
-    <button class="btn-ctrl" id="btn-stop">■ STOP</button>
+    <div class="rhythm-right">
+      <div class="master-row">
+        <div class="bpm-group">
+          <span class="bpm-label">BPM</span>
+          <input id="bpm-display" type="number" value="120" min="30" max="300" aria-label="BPM">
+        </div>
+        <button class="btn-ctrl" id="btn-tap">TAP</button>
+        <button class="btn-ctrl" id="btn-play">▶ PLAY</button>
+        <button class="btn-ctrl" id="btn-align">⟳ ALIGN</button>
+        <button class="btn-ctrl" id="btn-stop">■ STOP</button>
+      </div>
+
+      <div class="bpm-slider-wrap">
+        <span>30</span>
+        <input type="range" id="bpm-slider" min="30" max="300" value="120">
+        <span>300</span>
+      </div>
+
+      <div class="tracks-grid" id="tracks-grid"></div>
+
+      <div class="phase-readout" id="phase-readout"></div>
+    </div>
   </div>
-
-  <div class="bpm-slider-wrap">
-    <span>30</span>
-    <input type="range" id="bpm-slider" min="30" max="300" value="120">
-    <span>300</span>
-  </div>
-
-  <div class="tracks-grid" id="tracks-grid"></div>
-
-  <div class="phase-readout" id="phase-readout"></div>
 
   <p class="hint">click the orrery · space = play/stop · esc = stop · r = realign</p>
 </div>
