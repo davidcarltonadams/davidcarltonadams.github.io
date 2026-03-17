@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lissajous — David Carlton Adams</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { background: #0c0c10; color: #c0c0cc; }
+
+    .liss-wrap {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
+
+    h1.liss-title {
+      font-size: 0.85rem;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 0.2rem;
+    }
+    .liss-sub {
+      font-size: 0.65rem;
+      color: #555;
+      letter-spacing: 0.08em;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Layout */
+    .liss-main {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    /* Canvas */
+    .liss-canvas-wrap {
+      flex: 0 0 auto;
+      position: relative;
+    }
+    #liss-canvas {
+      display: block;
+      background: #06060a;
+      border-radius: 4px;
+      cursor: crosshair;
+    }
+
+    /* Controls */
+    .liss-controls {
+      flex: 1 1 200px;
+      min-width: 200px;
+    }
+
+    .ctrl-section {
+      margin-bottom: 1.25rem;
+    }
+    .ctrl-label {
+      font-size: 0.6rem;
+      color: #555;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-bottom: 1px solid #141420;
+      padding-bottom: 0.2rem;
+      margin-bottom: 0.6rem;
+    }
+
+    /* Interval buttons */
+    .interval-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.3rem;
+      margin-bottom: 0.5rem;
+    }
+    .iv-btn {
+      background: #0f0f14;
+      border: 1px solid #1e1e2a;
+      border-radius: 3px;
+      color: #666;
+      font-family: inherit;
+      font-size: 0.6rem;
+      letter-spacing: 0.04em;
+      padding: 0.35rem 0.2rem;
+      cursor: pointer;
+      text-align: center;
+      transition: color 0.1s, border-color 0.1s, background 0.1s;
+    }
+    .iv-btn:hover { color: #bbb; border-color: #333; }
+    .iv-btn.active {
+      color: #e8e8f0;
+      border-color: #555;
+      background: #151520;
+    }
+    .iv-btn .iv-name { display: block; font-size: 0.62rem; color: inherit; }
+    .iv-btn .iv-ratio { display: block; font-size: 0.52rem; color: #444; margin-top: 0.15rem; }
+    .iv-btn.active .iv-ratio { color: #666; }
+
+    /* Custom ratio row */
+    .custom-row {
+      display: flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem;
+    }
+    .custom-lbl { font-size: 0.6rem; color: #555; letter-spacing: 0.05em; }
+    .ratio-input {
+      width: 3ch; background: #0f0f14; border: none; border-bottom: 1px solid #252530;
+      color: #aaa; font-family: inherit; font-size: 0.85rem;
+      text-align: center; outline: none; padding: 0.1rem 0;
+    }
+    .ratio-input:focus { border-bottom-color: #555; }
+    .ratio-sep { font-size: 0.8rem; color: #444; }
+
+    /* Phase & decay sliders */
+    .slider-row {
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;
+    }
+    .slider-lbl { font-size: 0.6rem; color: #555; letter-spacing: 0.05em; min-width: 5ch; }
+    .liss-range {
+      flex: 1; -webkit-appearance: none; height: 2px;
+      background: #1e1e2a; outline: none; border-radius: 1px;
+    }
+    .liss-range::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: #555; cursor: pointer;
+    }
+    .slider-val { font-size: 0.6rem; color: #666; min-width: 4ch; text-align: right; }
+
+    /* Sound button */
+    .sound-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.75rem; }
+    .btn-l {
+      background: #0f0f14;
+      border: 1px solid #1e1e2a;
+      border-radius: 3px;
+      color: #666;
+      font-family: inherit;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      padding: 0.3rem 0.65rem;
+      cursor: pointer;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .btn-l:hover { color: #bbb; border-color: #333; }
+    .btn-l.active { color: #2ecc71; border-color: #2ecc71; }
+
+    /* Info panel */
+    .info-panel {
+      margin-top: 1.25rem;
+      padding: 0.75rem;
+      background: #0a0a0f;
+      border: 1px solid #141420;
+      border-radius: 4px;
+    }
+    .info-row {
+      display: flex; justify-content: space-between;
+      font-size: 0.6rem; color: #444; letter-spacing: 0.05em;
+      margin-bottom: 0.3rem;
+    }
+    .info-row:last-child { margin-bottom: 0; }
+    .info-val { color: #777; }
+
+    .hint { font-size: 0.6rem; color: #333; letter-spacing: 0.05em; margin-top: 1rem; text-align: center; }
+  </style>
+</head>
+<body>
+
+<nav aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-name">David Carlton Adams</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
+    <ul class="nav-links" role="list">
+      <li><a href="index.html">about</a></li>
+      <li><a href="works.html">works</a></li>
+      <li><a href="media.html">media</a></li>
+      <li><a href="teaching.html">teaching</a></li>
+      <li><a href="contact.html">contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+<div class="liss-wrap">
+
+  <h1 class="liss-title">Lissajous</h1>
+  <p class="liss-sub">every musical ratio has a shape · select an interval · or enter any ratio</p>
+
+  <div class="liss-main">
+
+    <div class="liss-canvas-wrap">
+      <canvas id="liss-canvas" width="380" height="380"></canvas>
+    </div>
+
+    <div class="liss-controls">
+
+      <div class="ctrl-section">
+        <div class="ctrl-label">interval</div>
+        <div class="interval-grid" id="interval-grid"></div>
+        <div class="custom-row">
+          <span class="custom-lbl">custom</span>
+          <input class="ratio-input" id="ratio-a" type="number" value="3" min="1" max="32">
+          <span class="ratio-sep">:</span>
+          <input class="ratio-input" id="ratio-b" type="number" value="2" min="1" max="32">
+        </div>
+      </div>
+
+      <div class="ctrl-section">
+        <div class="ctrl-label">parameters</div>
+        <div class="slider-row">
+          <span class="slider-lbl">phase</span>
+          <input class="liss-range" id="phase-range" type="range" min="0" max="100" value="25">
+          <span class="slider-val" id="phase-val">π/2</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-lbl">speed</span>
+          <input class="liss-range" id="speed-range" type="range" min="1" max="100" value="30">
+          <span class="slider-val" id="speed-val">×1</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-lbl">trail</span>
+          <input class="liss-range" id="trail-range" type="range" min="0" max="100" value="85">
+          <span class="slider-val" id="trail-val">long</span>
+        </div>
+      </div>
+
+      <div class="ctrl-section">
+        <div class="ctrl-label">sound</div>
+        <div class="sound-row">
+          <button class="btn-l" id="btn-sound">♪ tone</button>
+          <button class="btn-l" id="btn-animate">▶ animate</button>
+        </div>
+      </div>
+
+      <div class="info-panel" id="info-panel">
+        <div class="info-row"><span>ratio</span><span class="info-val" id="info-ratio">3 : 2</span></div>
+        <div class="info-row"><span>interval</span><span class="info-val" id="info-name">perfect fifth</span></div>
+        <div class="info-row"><span>cents</span><span class="info-val" id="info-cents">701.96¢</span></div>
+        <div class="info-row"><span>12-TET nearest</span><span class="info-val" id="info-tet">700¢ (P5)</span></div>
+        <div class="info-row"><span>deviation</span><span class="info-val" id="info-dev">+1.96¢</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <p class="hint">the figure closes when the ratio reduces to integers · irrational ratios never close</p>
+
+</div>
+</main>
+
+<footer>
+  <div class="container">
+    <span>&copy; <span id="year"></span> David Carlton Adams</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+
+// ─── INTERVAL LIBRARY ─────────────────────────────────────────────────────────
+const INTERVALS = [
+  { name: 'unison',    ratio: [1, 1],   tetName: 'unison',   tetCents: 0 },
+  { name: 'octave',    ratio: [2, 1],   tetName: 'octave',   tetCents: 1200 },
+  { name: 'P5',        ratio: [3, 2],   tetName: 'P5',       tetCents: 700 },
+  { name: 'P4',        ratio: [4, 3],   tetName: 'P4',       tetCents: 500 },
+  { name: 'M3',        ratio: [5, 4],   tetName: 'M3',       tetCents: 400 },
+  { name: 'm3',        ratio: [6, 5],   tetName: 'm3',       tetCents: 300 },
+  { name: 'M6',        ratio: [5, 3],   tetName: 'M6',       tetCents: 900 },
+  { name: 'm6',        ratio: [8, 5],   tetName: 'm6',       tetCents: 800 },
+  { name: 'M2',        ratio: [9, 8],   tetName: 'M2',       tetCents: 200 },
+  { name: 'm7',        ratio: [9, 5],   tetName: 'm7',       tetCents: 1000 },
+  { name: '7th ∂',     ratio: [7, 4],   tetName: 'm7',       tetCents: 1000 },
+  { name: '11th ∂',    ratio: [11, 8],  tetName: 'TT',       tetCents: 600 },
+  { name: '13th ∂',    ratio: [13, 8],  tetName: 'm6',       tetCents: 800 },
+  { name: 'TT',        ratio: [45, 32], tetName: 'TT',       tetCents: 600 },
+  { name: '3:2:1',     ratio: [3, 1],   tetName: 'P5+oct',   tetCents: 1902 },
+  { name: 'φ ratio',   ratio: [1618, 1000], tetName: '—',    tetCents: null },
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let ratioA     = 3;
+let ratioB     = 2;
+let phase      = Math.PI / 2;
+let speed      = 0.4;
+let trailAlpha = 0.04;
+let animating  = true;
+let sounding   = false;
+let t          = 0;
+let activeBtn  = null;
+
+// ─── AUDIO ────────────────────────────────────────────────────────────────────
+let actx = null, oscA = null, oscB = null, gainNode = null;
+const BASE_FREQ = 220; // A3
+
+function getCtx() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+
+function startSound() {
+  const ctx = getCtx();
+  gainNode = ctx.createGain();
+  gainNode.gain.value = 0;
+  gainNode.connect(ctx.destination);
+
+  oscA = ctx.createOscillator();
+  oscB = ctx.createOscillator();
+  oscA.type = oscB.type = 'sine';
+  oscA.frequency.value = BASE_FREQ;
+  oscB.frequency.value = BASE_FREQ * ratioA / ratioB;
+  oscA.connect(gainNode);
+  oscB.connect(gainNode);
+  oscA.start();
+  oscB.start();
+
+  gainNode.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.05);
+  sounding = true;
+  document.getElementById('btn-sound').classList.add('active');
+  document.getElementById('btn-sound').textContent = '♪ mute';
+}
+
+function stopSound() {
+  if (!gainNode) return;
+  gainNode.gain.linearRampToValueAtTime(0, actx.currentTime + 0.05);
+  setTimeout(() => {
+    oscA && oscA.stop();
+    oscB && oscB.stop();
+    oscA = oscB = gainNode = null;
+  }, 100);
+  sounding = false;
+  document.getElementById('btn-sound').classList.remove('active');
+  document.getElementById('btn-sound').textContent = '♪ tone';
+}
+
+function updateSoundFreqs() {
+  if (!sounding || !oscA || !oscB) return;
+  const now = actx.currentTime;
+  oscA.frequency.setTargetAtTime(BASE_FREQ, now, 0.05);
+  oscB.frequency.setTargetAtTime(BASE_FREQ * ratioA / ratioB, now, 0.05);
+}
+
+function toggleSound() {
+  if (sounding) stopSound(); else startSound();
+}
+
+// ─── CANVAS ───────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('liss-canvas');
+const ctx    = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const CX = W / 2, CY = H / 2;
+const R = W * 0.43;
+
+// Persistent trail layer
+let trailCanvas, trailCtx;
+function initTrail() {
+  trailCanvas = document.createElement('canvas');
+  trailCanvas.width = W;
+  trailCanvas.height = H;
+  trailCtx = trailCanvas.getContext('2d');
+  clearTrail();
+}
+
+function clearTrail() {
+  trailCtx.fillStyle = '#06060a';
+  trailCtx.fillRect(0, 0, W, H);
+}
+
+// Color: hue based on ratio complexity
+function ratioColor(a, b) {
+  const complexity = (a + b) / 2;
+  const hue = (complexity * 37) % 360;
+  return `hsl(${hue}, 60%, 65%)`;
+}
+
+let prevX = null, prevY = null;
+let color = ratioColor(3, 2);
+
+function drawFrame() {
+  if (!animating) return;
+
+  // Fade the trail layer
+  trailCtx.globalAlpha = trailAlpha;
+  trailCtx.fillStyle = '#06060a';
+  trailCtx.fillRect(0, 0, W, H);
+  trailCtx.globalAlpha = 1;
+
+  const x = CX + R * Math.sin(ratioA * t + phase);
+  const y = CY + R * Math.sin(ratioB * t);
+
+  if (prevX !== null) {
+    trailCtx.beginPath();
+    trailCtx.moveTo(prevX, prevY);
+    trailCtx.lineTo(x, y);
+    trailCtx.strokeStyle = color;
+    trailCtx.lineWidth = 1.2;
+    trailCtx.globalAlpha = 0.85;
+    trailCtx.stroke();
+    trailCtx.globalAlpha = 1;
+  }
+
+  prevX = x;
+  prevY = y;
+
+  // Compose: trail + cursor dot
+  ctx.drawImage(trailCanvas, 0, 0);
+
+  // Cursor dot
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = 0.9;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Axis guides (very subtle)
+  ctx.strokeStyle = '#0d0d14';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(CX, 0); ctx.lineTo(CX, H);
+  ctx.moveTo(0, CY); ctx.lineTo(W, CY);
+  ctx.stroke();
+
+  t += speed * 0.003;
+}
+
+// ─── RATIO LOGIC ──────────────────────────────────────────────────────────────
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+function setRatio(a, b) {
+  if (!a || !b || a <= 0 || b <= 0) return;
+  const g = gcd(Math.round(a), Math.round(b));
+  ratioA = Math.round(a) / g;
+  ratioB = Math.round(b) / g;
+  color = ratioColor(ratioA, ratioB);
+  clearTrail();
+  prevX = prevY = null;
+  t = 0;
+  updateInfo();
+  updateSoundFreqs();
+  document.getElementById('ratio-a').value = a;
+  document.getElementById('ratio-b').value = b;
+}
+
+function ratioToCents(a, b) {
+  return 1200 * Math.log2(a / b);
+}
+
+const TET_NAMES = [
+  { cents: 0,    name: 'unison' },
+  { cents: 100,  name: 'm2' },
+  { cents: 200,  name: 'M2' },
+  { cents: 300,  name: 'm3' },
+  { cents: 400,  name: 'M3' },
+  { cents: 500,  name: 'P4' },
+  { cents: 600,  name: 'TT' },
+  { cents: 700,  name: 'P5' },
+  { cents: 800,  name: 'm6' },
+  { cents: 900,  name: 'M6' },
+  { cents: 1000, name: 'm7' },
+  { cents: 1100, name: 'M7' },
+  { cents: 1200, name: 'octave' },
+];
+
+const INTERVAL_NAMES = {
+  '1:1': 'unison', '2:1': 'octave', '3:2': 'perfect fifth', '4:3': 'perfect fourth',
+  '5:4': 'major third', '6:5': 'minor third', '5:3': 'major sixth', '8:5': 'minor sixth',
+  '9:8': 'major second', '16:9': 'minor seventh', '9:5': 'minor seventh (JI)',
+  '7:4': 'harmonic seventh', '7:6': 'septimal minor third', '11:8': 'eleventh partial',
+  '13:8': 'thirteenth partial', '15:8': 'major seventh (JI)', '16:15': 'diatonic semitone',
+};
+
+function updateInfo() {
+  const g = gcd(ratioA, ratioB);
+  const a = ratioA / g, b = ratioB / g;
+  const cents = ratioToCents(ratioA, ratioB);
+  const normCents = ((cents % 1200) + 1200) % 1200;
+
+  // Find nearest 12-TET
+  let nearest = TET_NAMES[0], minDist = Infinity;
+  TET_NAMES.forEach(t => {
+    const d = Math.abs(normCents - t.cents);
+    if (d < minDist) { minDist = d; nearest = t; }
+  });
+
+  const key = `${a}:${b}`;
+  const intName = INTERVAL_NAMES[key] || (cents < 0 ? 'below unison' : cents > 1200 ? 'compound interval' : '—');
+
+  document.getElementById('info-ratio').textContent = `${a} : ${b}`;
+  document.getElementById('info-name').textContent = intName;
+  document.getElementById('info-cents').textContent = `${cents.toFixed(2)}¢`;
+  document.getElementById('info-tet').textContent = `${nearest.cents}¢ (${nearest.name})`;
+  const dev = cents - nearest.cents;
+  document.getElementById('info-dev').textContent = `${dev >= 0 ? '+' : ''}${dev.toFixed(2)}¢`;
+}
+
+// ─── BUILD INTERVAL BUTTONS ───────────────────────────────────────────────────
+function buildIntervalButtons() {
+  const grid = document.getElementById('interval-grid');
+  INTERVALS.forEach((iv, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'iv-btn';
+    btn.dataset.a = iv.ratio[0];
+    btn.dataset.b = iv.ratio[1];
+    btn.innerHTML = `<span class="iv-name">${iv.name}</span><span class="iv-ratio">${iv.ratio[0]}:${iv.ratio[1]}</span>`;
+    if (i === 2) { btn.classList.add('active'); activeBtn = btn; } // P5 default
+    btn.addEventListener('click', () => {
+      if (activeBtn) activeBtn.classList.remove('active');
+      btn.classList.add('active');
+      activeBtn = btn;
+      setRatio(parseInt(btn.dataset.a), parseInt(btn.dataset.b));
+    });
+    grid.appendChild(btn);
+  });
+}
+
+// ─── CONTROLS ─────────────────────────────────────────────────────────────────
+document.getElementById('phase-range').addEventListener('input', e => {
+  const v = parseInt(e.target.value);
+  phase = (v / 100) * Math.PI * 2;
+  const frac = v / 100;
+  const labels = ['0', 'π/4', 'π/2', '3π/4', 'π'];
+  const idx = Math.round(frac * 4);
+  document.getElementById('phase-val').textContent = labels[idx] || (frac * 2).toFixed(2) + 'π';
+  clearTrail(); prevX = prevY = null;
+});
+
+document.getElementById('speed-range').addEventListener('input', e => {
+  const v = parseInt(e.target.value);
+  speed = v / 30;
+  document.getElementById('speed-val').textContent = `×${speed.toFixed(1)}`;
+});
+
+document.getElementById('trail-range').addEventListener('input', e => {
+  const v = parseInt(e.target.value);
+  trailAlpha = (100 - v) / 100 * 0.25 + 0.005;
+  const labels = [[0,'instant'],[25,'short'],[50,'medium'],[75,'long'],[100,'infinite']];
+  const label = labels.reduce((a,b) => Math.abs(b[0]-v) < Math.abs(a[0]-v) ? b : a)[1];
+  document.getElementById('trail-val').textContent = label;
+});
+
+document.getElementById('ratio-a').addEventListener('input', e => {
+  if (activeBtn) { activeBtn.classList.remove('active'); activeBtn = null; }
+  setRatio(parseInt(e.target.value), parseInt(document.getElementById('ratio-b').value));
+});
+document.getElementById('ratio-b').addEventListener('input', e => {
+  if (activeBtn) { activeBtn.classList.remove('active'); activeBtn = null; }
+  setRatio(parseInt(document.getElementById('ratio-a').value), parseInt(e.target.value));
+});
+
+document.getElementById('btn-sound').addEventListener('click', toggleSound);
+
+document.getElementById('btn-animate').addEventListener('click', () => {
+  animating = !animating;
+  const btn = document.getElementById('btn-animate');
+  btn.classList.toggle('active', animating);
+  btn.textContent = animating ? '▶ animate' : '⏸ pause';
+  if (animating) loop();
+});
+
+// ─── ANIMATION LOOP ───────────────────────────────────────────────────────────
+let loopRunning = false;
+function loop() {
+  if (!animating) { loopRunning = false; return; }
+  loopRunning = true;
+  drawFrame();
+  requestAnimationFrame(loop);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+initTrail();
+buildIntervalButtons();
+updateInfo();
+document.getElementById('btn-animate').classList.add('active');
+document.getElementById('year').textContent = new Date().getFullYear();
+loop();
+
+}());
+</script>
+
+<script src="js/nav.js"></script>
+</body>
+</html>
