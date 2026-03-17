@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polyrhythm Clock — David Carlton Adams</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { background: #0c0c10; color: #c0c0cc; }
+
+    .rhythm-wrap {
+      max-width: 580px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
+
+    h1.rhythm-title {
+      font-size: 0.85rem;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #444;
+      margin-bottom: 0.25rem;
+    }
+    .rhythm-sub {
+      font-size: 0.65rem;
+      color: #2a2a3a;
+      letter-spacing: 0.1em;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Canvas */
+    #orr {
+      display: block;
+      margin: 0 auto 1.5rem;
+      width: 100%;
+      max-width: 500px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: #08080c;
+      cursor: pointer;
+    }
+
+    /* Master controls */
+    .master-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .bpm-group {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: #111118;
+      border: 1px solid #1e1e2a;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+    }
+    .bpm-label { font-size: 0.65rem; color: #444; letter-spacing: 0.08em; }
+    #bpm-display {
+      font-size: 1.1rem;
+      color: #fff;
+      width: 3ch;
+      text-align: center;
+      background: none;
+      border: none;
+      outline: none;
+      font-family: inherit;
+    }
+    #bpm-display:focus { color: #f1c40f; }
+
+    .btn-ctrl {
+      background: #111118;
+      border: 1px solid #1e1e2a;
+      border-radius: 4px;
+      color: #888;
+      font-family: inherit;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      padding: 0.35rem 0.75rem;
+      cursor: pointer;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .btn-ctrl:hover { color: #ccc; border-color: #333; }
+    .btn-ctrl.active { color: #fff; border-color: #fff; background: #1a1a22; }
+    #btn-play.playing { color: #2ecc71; border-color: #2ecc71; }
+
+    /* BPM slider */
+    .bpm-slider-wrap { display: flex; align-items: center; gap: 0.5rem; justify-content: center; margin-bottom: 1.25rem; }
+    .bpm-slider-wrap span { font-size: 0.6rem; color: #333; letter-spacing: 0.05em; min-width: 2ch; }
+    #bpm-slider {
+      -webkit-appearance: none;
+      width: 180px; height: 2px;
+      background: #1e1e2a; outline: none; border-radius: 1px;
+    }
+    #bpm-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #fff; cursor: pointer;
+    }
+
+    /* Track rows */
+    .tracks-grid {
+      display: grid;
+      gap: 0.5rem;
+    }
+    .track-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: #0f0f14;
+      border: 1px solid #18181f;
+      border-radius: 4px;
+      padding: 0.4rem 0.65rem;
+      transition: border-color 0.15s;
+    }
+    .track-row.muted { opacity: 0.35; }
+    .track-row:hover { border-color: #252530; }
+
+    .track-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .track-label { font-size: 0.65rem; color: #444; letter-spacing: 0.06em; min-width: 3ch; }
+
+    .ratio-ctrl {
+      display: flex; align-items: center; gap: 0.25rem;
+    }
+    .ratio-btn {
+      background: none; border: 1px solid #252530; border-radius: 2px;
+      color: #555; font-family: inherit; font-size: 0.65rem;
+      width: 18px; height: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .ratio-btn:hover { color: #aaa; border-color: #444; }
+    .ratio-val {
+      font-size: 0.85rem; color: #ccc; min-width: 1.5ch; text-align: center;
+    }
+
+    .ratio-label { font-size: 0.6rem; color: #2a2a3a; letter-spacing: 0.05em; }
+
+    .beat-flash {
+      width: 6px; height: 6px; border-radius: 50%;
+      margin-left: auto;
+      flex-shrink: 0;
+      transition: background 0.05s;
+    }
+
+    .mute-btn {
+      background: none; border: 1px solid #252530; border-radius: 2px;
+      color: #444; font-family: inherit; font-size: 0.6rem;
+      padding: 0.1rem 0.3rem; cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: color 0.1s;
+    }
+    .mute-btn:hover { color: #aaa; }
+    .mute-btn.muted { color: #e74c3c; border-color: #e74c3c; }
+
+    /* Phase display */
+    .phase-readout {
+      display: flex; gap: 0.75rem; justify-content: center;
+      margin-top: 1rem; flex-wrap: wrap;
+    }
+    .phase-item {
+      font-size: 0.6rem; color: #2a2a3a; letter-spacing: 0.05em;
+      display: flex; align-items: center; gap: 0.3rem;
+    }
+    .phase-pip { width: 6px; height: 6px; border-radius: 50%; }
+
+    .hint { text-align: center; font-size: 0.62rem; color: #222; letter-spacing: 0.05em; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+
+<nav aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-name">David Carlton Adams</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
+    <ul class="nav-links" role="list">
+      <li><a href="index.html">about</a></li>
+      <li><a href="works.html">works</a></li>
+      <li><a href="media.html">media</a></li>
+      <li><a href="teaching.html">teaching</a></li>
+      <li><a href="contact.html">contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+<div class="rhythm-wrap">
+  <h1 class="rhythm-title">Polyrhythm Clock</h1>
+  <p class="rhythm-sub">up to six independent pulses · tap to set tempo · watch the orbits converge</p>
+
+  <canvas id="orr" width="500" height="500" title="Click to play/stop"></canvas>
+
+  <div class="master-row">
+    <div class="bpm-group">
+      <span class="bpm-label">BPM</span>
+      <input id="bpm-display" type="number" value="120" min="30" max="300" aria-label="BPM">
+    </div>
+    <button class="btn-ctrl" id="btn-tap">TAP</button>
+    <button class="btn-ctrl" id="btn-play">▶ PLAY</button>
+    <button class="btn-ctrl" id="btn-align">⟳ ALIGN</button>
+    <button class="btn-ctrl" id="btn-stop">■ STOP</button>
+  </div>
+
+  <div class="bpm-slider-wrap">
+    <span>30</span>
+    <input type="range" id="bpm-slider" min="30" max="300" value="120">
+    <span>300</span>
+  </div>
+
+  <div class="tracks-grid" id="tracks-grid"></div>
+
+  <div class="phase-readout" id="phase-readout"></div>
+
+  <p class="hint">click the orrery · space = play/stop · esc = stop · r = realign</p>
+</div>
+</main>
+
+<footer>
+  <div class="container">
+    <span>&copy; <span id="year"></span> David Carlton Adams</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+
+// ─── TRACK DATA ───────────────────────────────────────────────────────────────
+const TRACK_DEFS = [
+  { ratio: 3, pitch: 880,  color: '#e74c3c', name: 'A' },
+  { ratio: 4, pitch: 440,  color: '#e67e22', name: 'B' },
+  { ratio: 5, pitch: 659,  color: '#f1c40f', name: 'C' },
+  { ratio: 7, pitch: 330,  color: '#2ecc71', name: 'D' },
+  { ratio: 2, pitch: 220,  color: '#3498db', name: 'E' },
+  { ratio: 6, pitch: 987,  color: '#9b59b6', name: 'F' },
+];
+
+// ─── AUDIO ────────────────────────────────────────────────────────────────────
+let actx = null;
+function getCtx() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+
+function playClick(freq, color, when) {
+  const ctx = getCtx();
+  const t = when || ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const comp = ctx.createDynamicsCompressor();
+  osc.connect(gain); gain.connect(comp); comp.connect(ctx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, t);
+  osc.frequency.exponentialRampToValueAtTime(freq * 0.5, t + 0.06);
+  gain.gain.setValueAtTime(0.28, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  osc.start(t);
+  osc.stop(t + 0.1);
+}
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let playing   = false;
+let startTime = 0;      // audioCtx.currentTime at last align/play
+let masterBPM = 120;
+
+const tracks = TRACK_DEFS.map(d => ({
+  ratio: d.ratio,
+  pitch: d.pitch,
+  color: d.color,
+  name:  d.name,
+  muted: false,
+  beatCount: 0,  // how many beats have fired
+}));
+
+// Tap tempo
+let tapTimes = [];
+
+// Beat flash timers per track (for canvas glow)
+const flashEnd = tracks.map(() => 0);
+
+// ─── CANVAS SETUP ─────────────────────────────────────────────────────────────
+const canvas = document.getElementById('orr');
+const ctx    = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const CX = W / 2, CY = H / 2;
+
+// Orbit radii (innermost first, matches track order)
+const RADII = [55, 90, 125, 160, 195, 228];
+const DOT_R = 7;
+
+// ─── GEOMETRY ─────────────────────────────────────────────────────────────────
+function trackPhase(trackIdx) {
+  if (!playing) return 0;
+  const ctx2 = actx || null;
+  if (!ctx2) return 0;
+  const elapsed = ctx2.currentTime - startTime;
+  const masterPeriod = 60 / masterBPM;           // seconds per beat
+  const trackPeriod  = masterPeriod / tracks[trackIdx].ratio;
+  return (elapsed / trackPeriod) % 1.0;
+}
+
+function phaseToAngle(phase) {
+  return phase * Math.PI * 2 - Math.PI / 2;      // 0 = top
+}
+
+// ─── DRAW ─────────────────────────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#08080c';
+  ctx.beginPath();
+  ctx.arc(CX, CY, W / 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Center pulse indicator
+  const now = actx ? actx.currentTime : 0;
+
+  // Orbit rings
+  tracks.forEach((t, i) => {
+    ctx.beginPath();
+    ctx.arc(CX, CY, RADII[i], 0, Math.PI * 2);
+    ctx.strokeStyle = t.muted ? '#14141a' : '#16161e';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // "12 o'clock" tick mark
+  tracks.forEach((t, i) => {
+    const r = RADII[i];
+    const x0 = CX + (r - 6) * Math.cos(-Math.PI / 2);
+    const y0 = CY + (r - 6) * Math.sin(-Math.PI / 2);
+    const x1 = CX + (r + 6) * Math.cos(-Math.PI / 2);
+    const y1 = CY + (r + 6) * Math.sin(-Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.strokeStyle = t.muted ? '#1a1a22' : '#252535';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  // Dots
+  tracks.forEach((t, i) => {
+    const phase = trackPhase(i);
+    const angle = phaseToAngle(phase);
+    const r     = RADII[i];
+    const dx    = CX + r * Math.cos(angle);
+    const dy    = CY + r * Math.sin(angle);
+
+    const glowing = flashEnd[i] > now;
+    const alpha   = t.muted ? 0.25 : 1.0;
+
+    // Glow halo
+    if (glowing && !t.muted) {
+      const grad = ctx.createRadialGradient(dx, dy, 0, dx, dy, DOT_R * 4);
+      grad.addColorStop(0, hexAlpha(t.color, 0.6));
+      grad.addColorStop(1, hexAlpha(t.color, 0));
+      ctx.beginPath();
+      ctx.arc(dx, dy, DOT_R * 4, 0, Math.PI * 2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // Dot
+    ctx.beginPath();
+    ctx.arc(dx, dy, DOT_R, 0, Math.PI * 2);
+    ctx.fillStyle = t.muted ? '#333' : hexAlpha(t.color, alpha);
+    ctx.fill();
+    if (!t.muted) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = glowing ? 1.5 : 0.5;
+      ctx.globalAlpha = glowing ? 0.6 : 0.2;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  });
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(CX, CY, 4, 0, Math.PI * 2);
+  ctx.fillStyle = playing ? '#ffffff22' : '#11111a';
+  ctx.fill();
+
+  // "PLAYING" ring
+  if (playing) {
+    ctx.beginPath();
+    ctx.arc(CX, CY, W / 2 - 2, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ffffff08';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+}
+
+function hexAlpha(hex, a) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ─── BEAT SCHEDULING ──────────────────────────────────────────────────────────
+const beatCounters = tracks.map(() => -1); // last fired beat index
+
+function scheduleBeat(trackIdx, beatNum, when) {
+  const t = tracks[trackIdx];
+  if (!t.muted) {
+    playClick(t.pitch, t.color, when);
+  }
+}
+
+function tick() {
+  if (!playing || !actx) return;
+  const now = actx.currentTime;
+  const lookahead = 0.1; // schedule 100ms ahead
+  const masterPeriod = 60 / masterBPM;
+
+  tracks.forEach((t, i) => {
+    const trackPeriod = masterPeriod / t.ratio;
+    const elapsed = now + lookahead - startTime;
+    const nextBeat = Math.floor(elapsed / trackPeriod);
+
+    if (nextBeat > beatCounters[i]) {
+      // Schedule all beats between last and next
+      for (let b = beatCounters[i] + 1; b <= nextBeat; b++) {
+        const when = startTime + b * trackPeriod;
+        if (when >= now) {
+          scheduleBeat(i, b, when);
+          // Schedule flash
+          const delay = (when - now) * 1000;
+          const ii = i;
+          setTimeout(() => {
+            flashEnd[ii] = actx.currentTime + 0.12;
+            updateFlashUI(ii);
+          }, Math.max(0, delay));
+        }
+      }
+      beatCounters[i] = nextBeat;
+    }
+  });
+}
+
+function updateFlashUI(i) {
+  const dot = document.getElementById(`flash-${i}`);
+  if (dot) {
+    dot.style.background = tracks[i].color;
+    setTimeout(() => { if (dot) dot.style.background = ''; }, 100);
+  }
+}
+
+// ─── PLAYBACK CONTROL ─────────────────────────────────────────────────────────
+function play() {
+  getCtx();
+  startTime = actx.currentTime;
+  beatCounters.fill(-1);
+  playing = true;
+  document.getElementById('btn-play').textContent = '▶ PLAY';
+  document.getElementById('btn-play').classList.add('playing');
+}
+
+function stop() {
+  playing = false;
+  beatCounters.fill(-1);
+  document.getElementById('btn-play').classList.remove('playing');
+}
+
+function togglePlay() {
+  if (playing) stop(); else play();
+}
+
+function align() {
+  if (!actx) return;
+  startTime = actx.currentTime;
+  beatCounters.fill(-1);
+}
+
+// ─── TAP TEMPO ────────────────────────────────────────────────────────────────
+function tap() {
+  const now = Date.now();
+  tapTimes.push(now);
+  if (tapTimes.length > 6) tapTimes.shift();
+  if (tapTimes.length >= 2) {
+    const intervals = [];
+    for (let i = 1; i < tapTimes.length; i++) {
+      intervals.push(tapTimes[i] - tapTimes[i-1]);
+    }
+    const avg = intervals.reduce((a,b) => a+b, 0) / intervals.length;
+    masterBPM = Math.min(300, Math.max(30, Math.round(60000 / avg)));
+    updateBPMDisplay();
+  }
+}
+
+function updateBPMDisplay() {
+  document.getElementById('bpm-display').value = masterBPM;
+  document.getElementById('bpm-slider').value  = masterBPM;
+}
+
+// ─── BUILD UI ─────────────────────────────────────────────────────────────────
+const grid = document.getElementById('tracks-grid');
+
+tracks.forEach((t, i) => {
+  const row = document.createElement('div');
+  row.className = 'track-row';
+  row.id = `track-row-${i}`;
+  row.innerHTML = `
+    <div class="track-dot" style="background:${t.color}"></div>
+    <span class="track-label">${t.name}</span>
+    <div class="ratio-ctrl">
+      <button class="ratio-btn" data-i="${i}" data-d="-1">−</button>
+      <span class="ratio-val" id="ratio-val-${i}">${t.ratio}</span>
+      <button class="ratio-btn" data-i="${i}" data-d="1">+</button>
+      <span class="ratio-label">× master</span>
+    </div>
+    <button class="mute-btn" id="mute-${i}">MUTE</button>
+    <div class="beat-flash" id="flash-${i}" style="background:#1e1e2a"></div>
+  `;
+  grid.appendChild(row);
+});
+
+// Phase readout
+const phaseReadout = document.getElementById('phase-readout');
+tracks.forEach((t, i) => {
+  const item = document.createElement('div');
+  item.className = 'phase-item';
+  item.innerHTML = `<div class="phase-pip" style="background:${t.color}"></div><span id="phase-${i}">ratio ${t.ratio}</span>`;
+  phaseReadout.appendChild(item);
+});
+
+// ─── EVENT LISTENERS ──────────────────────────────────────────────────────────
+document.getElementById('btn-play').addEventListener('click', togglePlay);
+document.getElementById('btn-stop').addEventListener('click', stop);
+document.getElementById('btn-tap').addEventListener('click', tap);
+document.getElementById('btn-align').addEventListener('click', align);
+canvas.addEventListener('click', togglePlay);
+
+document.getElementById('bpm-display').addEventListener('input', e => {
+  const v = parseInt(e.target.value);
+  if (v >= 30 && v <= 300) {
+    masterBPM = v;
+    document.getElementById('bpm-slider').value = v;
+  }
+});
+
+document.getElementById('bpm-slider').addEventListener('input', e => {
+  masterBPM = parseInt(e.target.value);
+  updateBPMDisplay();
+});
+
+// Ratio buttons
+grid.addEventListener('click', e => {
+  const btn = e.target.closest('.ratio-btn');
+  if (!btn) return;
+  const i = parseInt(btn.dataset.i);
+  const d = parseInt(btn.dataset.d);
+  tracks[i].ratio = Math.max(1, Math.min(16, tracks[i].ratio + d));
+  document.getElementById(`ratio-val-${i}`).textContent = tracks[i].ratio;
+  document.getElementById(`phase-${i}`).textContent = `ratio ${tracks[i].ratio}`;
+  beatCounters[i] = -1;
+});
+
+// Mute buttons
+grid.addEventListener('click', e => {
+  const btn = e.target.closest('.mute-btn');
+  if (!btn) return;
+  const i = parseInt(btn.id.split('-')[1]);
+  tracks[i].muted = !tracks[i].muted;
+  btn.classList.toggle('muted', tracks[i].muted);
+  btn.textContent = tracks[i].muted ? 'UNMUTE' : 'MUTE';
+  document.getElementById(`track-row-${i}`).classList.toggle('muted', tracks[i].muted);
+});
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.code === 'Escape') stop();
+  if (e.code === 'KeyR') align();
+  if (e.code === 'KeyT') tap();
+});
+
+// ─── MAIN LOOP ────────────────────────────────────────────────────────────────
+let lastTick = 0;
+function loop(ts) {
+  if (playing) {
+    tick();
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('year').textContent = new Date().getFullYear();
+requestAnimationFrame(loop);
+
+}());
+</script>
+
+<script src="js/nav.js"></script>
+</body>
+</html>
