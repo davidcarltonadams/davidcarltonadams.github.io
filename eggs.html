@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>— David Carlton Adams</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { background: #0c0c10; color: #c0c0cc; }
+
+    .eggs-wrap {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 3rem 1rem 4rem;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
+
+    .eggs-epigraph {
+      font-size: 0.68rem;
+      color: #444;
+      letter-spacing: 0.06em;
+      line-height: 1.7;
+      margin-bottom: 3rem;
+      font-style: italic;
+    }
+
+    .eggs-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .egg-item {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid #111118;
+    }
+    .egg-item:first-child { border-top: 1px solid #111118; }
+
+    .egg-link {
+      font-size: 0.75rem;
+      color: #666;
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      transition: color 0.15s;
+    }
+    .egg-link:hover { color: #ccc; }
+
+    .egg-desc {
+      font-size: 0.6rem;
+      color: #333;
+      letter-spacing: 0.04em;
+      flex: 1;
+    }
+
+    .eggs-footer {
+      margin-top: 3rem;
+      font-size: 0.58rem;
+      color: #222;
+      letter-spacing: 0.06em;
+    }
+  </style>
+</head>
+<body>
+
+<nav aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-name">David Carlton Adams</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
+    <ul class="nav-links" role="list">
+      <li><a href="index.html">about</a></li>
+      <li><a href="works.html">works</a></li>
+      <li><a href="media.html">media</a></li>
+      <li><a href="teaching.html">teaching</a></li>
+      <li><a href="contact.html">contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+<div class="eggs-wrap">
+
+  <p class="eggs-epigraph">
+    you found this.<br>
+    nothing here is hidden, exactly —<br>
+    it just wasn't announced.
+  </p>
+
+  <ul class="eggs-list">
+    <li class="egg-item">
+      <a class="egg-link" href="tuning.html">tuning</a>
+      <span class="egg-desc">microtonal keyboard · 12-TET, 19-TET, 31-TET, just intonation, harmonic series</span>
+    </li>
+    <li class="egg-item">
+      <a class="egg-link" href="rhythm.html">rhythm</a>
+      <span class="egg-desc">polyrhythm clock · up to six independent pulses · watch the orbits converge</span>
+    </li>
+    <li class="egg-item">
+      <a class="egg-link" href="canon.html">canon</a>
+      <span class="egg-desc">canon machine · draw a melody · add voices · 12-TET, 19-EDO, 31-EDO, α scale</span>
+    </li>
+    <li class="egg-item">
+      <a class="egg-link" href="lissajous.html">lissajous</a>
+      <span class="egg-desc">interval figures · every musical ratio has a shape</span>
+    </li>
+    <li class="egg-item">
+      <a class="egg-link" href="partials.html">partials</a>
+      <span class="egg-desc">harmonic series explorer · 16 partials · retune and listen</span>
+    </li>
+    <li class="egg-item">
+      <a class="egg-link" href="sound.html">sound</a>
+      <span class="egg-desc">interactive sound field · move through it</span>
+    </li>
+    <li class="egg-item">
+      <a class="egg-link" href="score.html">score</a>
+      <span class="egg-desc">performance instructions · one new one every day</span>
+    </li>
+  </ul>
+
+  <p class="eggs-footer">this page is not linked from anywhere. you got here on your own.</p>
+
+</div>
+</main>
+
+<footer>
+  <div class="container">
+    <span>&copy; <span id="year"></span> David Carlton Adams</span>
+  </div>
+</footer>
+
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+<script src="js/nav.js"></script>
+</body>
+</html>
