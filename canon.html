@@ -85,7 +85,7 @@
   /* ── Notation ──────────── */
   .nota-sec { margin-top:1.15rem; background:var(--s1); border:1px solid var(--brd); border-radius:4px; padding:0.5rem; }
   .nota-t { font-size:0.52rem; color:var(--txdd); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.35rem; }
-  /* canvas#nota replaced by div#nota — see VexFlow section below */
+  /* #nota is a div; SVG rendered inline by drawNotation() */
 
   /* ── Roll ──────────────── */
   .roll-sec { margin-top:0.85rem; }
@@ -94,16 +94,16 @@
 
   .hint { font-size:0.52rem; color:var(--txddd); text-align:center; margin-top:0.65rem; letter-spacing:0.03em; }
 
-  /* ── VexFlow notation dark theme ── */
+  /* ── SVG notation ── */
   #nota { display:block; width:100%; min-height:80px; overflow:hidden; }
-  #nota svg { display:block; }
-  #nota svg text, #nota svg tspan { fill:#8888aa !important; }
-  #nota svg path { fill:#6868a0 !important; stroke:#6868a0 !important; }
-  #nota svg rect { stroke:#6868a0 !important; fill:none !important; }
-  #nota .vf-rest path { fill:#444460 !important; stroke:#444460 !important; }
-  #nota .vf-annotation text { fill:#5a5a80 !important; }
+  .nota-line{stroke:#3a3a54;stroke-width:1}
+  .nota-stem{stroke:#5a5a80;stroke-width:1.2}
+  .nota-acc{fill:#8888aa;font-family:serif;font-size:11px}
+  .nota-dev{font-family:'JetBrains Mono',monospace;font-size:7px}
+  .nota-rest{fill:#444460;font-family:serif;font-size:18px}
+  .nota-clef{fill:#6868a0;font-family:serif;font-size:48px}
+  .nota-lbl{font-family:'JetBrains Mono',monospace;font-size:8px}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.6/build/vexflow.js"></script>
 </head>
 <body>
 <div class="app">
@@ -556,10 +556,10 @@ function drawRoll() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STAFF NOTATION — VexFlow 4
+// STAFF NOTATION — custom SVG renderer
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Pitch-class → VexFlow key name + standard accidental
+// Pitch-class → note letter + standard accidental
 const PC_VEX = [
   {k:'c',  a:null}, // 0  C
   {k:'c#', a:'#' }, // 1  C#
@@ -575,146 +575,160 @@ const PC_VEX = [
   {k:'b',  a:null}, // 11 B
 ];
 
-// Map cents → { key: "c/4", accidental: "#"|"b"|null, deviation: cents±, needsNatural: bool }
-function centsToVexKey(cents) {
+// Diatonic pitch class: C=0 D=1 E=2 F=3 G=4 A=5 B=6
+const DPC = {c:0,d:1,e:2,f:3,g:4,a:5,b:6};
+// Staff layout: NOTA_SLSP = px between adjacent staff lines/spaces (half = step between pos units)
+const NOTA_SLSP=8, NOTA_LPAD=52, NOTA_RPAD=8, NOTA_STAVE_H=60, NOTA_GAP=18;
+
+function mkSVG(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+// cents → {key, accidental, deviation, staffPos, letter, oct}
+// staffPos: treble clef — bottom line E4=0, G4=2, B4=4, D5=6, F5=8
+function centsToNoteInfo(cents) {
   const semi = Math.round(cents / 100);
   const pc   = ((semi % 12) + 12) % 12;
   const oct  = 4 + Math.floor(semi / 12);
   const dev  = Math.round(cents - semi * 100);
   const {k, a} = PC_VEX[pc];
-  return { key:`${k}/${oct}`, accidental:a, deviation:dev };
+  const letter = k[0];
+  const staffPos = (oct - 4) * 7 + DPC[letter] - 2;
+  return { key:`${k}/${oct}`, accidental:a, deviation:dev, staffPos, letter, oct };
 }
 
-function buildVexNote(step, voice) {
-  const {Vex:VX} = window; // safety alias — Vex is the UMD global
-  const VF = (typeof Vex !== 'undefined') ? Vex.Flow : null;
-  if(!VF) return null;
-  const {StaveNote, Accidental, Annotation} = VF;
+// staffPos + staveTop (y of top line, F5=sp8) → pixel y
+function staffPosToY(sp, staveTop) {
+  return staveTop + (8 - sp) * (NOTA_SLSP / 2);
+}
 
-  const {offset, transCents} = voice;
-  const pat = ((step - offset) % numSteps + numSteps) % numSteps;
-
-  const pitchRows = [];
-  for(let p=0; p<numRows; p++) { if(grid[p]&&grid[p][pat]) pitchRows.push(p); }
-
-  if(pitchRows.length === 0) {
-    // Rest
-    return new StaveNote({keys:['b/4'], duration:'16r'});
-  }
-
-  // Map each pitch row → vex key, applying voice transposition
-  const vexKeys = pitchRows.map(p => {
-    const cents = TUNINGS[curTuning].rowCents(p) + transCents;
-    return centsToVexKey(cents);
-  });
-
-  // Sort by octave+pitch so chords render correctly (lowest → highest)
-  vexKeys.sort((a,b) => {
-    const [an, ao] = a.key.split('/'); const [bn, bo] = b.key.split('/');
-    return (+ao - +bo) || an.localeCompare(bn);
-  });
-
-  let note;
-  try {
-    note = new StaveNote({keys: vexKeys.map(k=>k.key), duration:'16', stem_direction:1});
-  } catch(e) {
-    return new StaveNote({keys:['b/4'], duration:'16r'});
-  }
-
-  // Add accidentals — VexFlow requires them explicitly even for notes like c#
-  vexKeys.forEach((vk, i) => {
-    try {
-      if(vk.accidental) note.addModifier(new Accidental(vk.accidental), i);
-    } catch(e) {}
-  });
-
-  // Cent deviation annotations for microtonal pitches
-  vexKeys.forEach((vk, i) => {
-    if(Math.abs(vk.deviation) > 15) {
-      const label = (vk.deviation > 0 ? '+' : '') + vk.deviation + '¢';
-      try {
-        note.addModifier(
-          new Annotation(label).setFont('JetBrains Mono', 7).setVerticalJustification(1),
-          i
-        );
-      } catch(e) {}
+// Draw ledger lines for notes outside the staff
+function drawLedgerLines(svg, x, sp, staveTop) {
+  const lw = 12;
+  if(sp < 0) {
+    // lowestLedger: round toward -∞ to nearest even
+    const lowestLedger = sp % 2 === 0 ? sp : sp + 1;
+    if(lowestLedger >= 0) return; // D4 (sp=-1) and above need no ledger
+    for(let lsp = -2; lsp >= lowestLedger; lsp -= 2) {
+      const ly = staffPosToY(lsp, staveTop);
+      svg.appendChild(mkSVG('line', {x1:x-lw, y1:ly, x2:x+lw, y2:ly, class:'nota-line'}));
     }
-  });
-
-  return note;
+  }
+  if(sp > 8) {
+    // highestLedger: round down to nearest even
+    const highestLedger = sp % 2 === 0 ? sp : sp - 1;
+    if(highestLedger <= 8) return; // G5 (sp=9) needs no ledger
+    for(let lsp = 10; lsp <= highestLedger; lsp += 2) {
+      const ly = staffPosToY(lsp, staveTop);
+      svg.appendChild(mkSVG('line', {x1:x-lw, y1:ly, x2:x+lw, y2:ly, class:'nota-line'}));
+    }
+  }
 }
 
 function drawNotation() {
   notaDirty = false;
   const container = $('nota');
-
-  if(typeof Vex === 'undefined') {
-    container.innerHTML = '<div style="padding:0.5rem;font-size:0.65rem;color:#444;font-family:monospace">Loading notation engine…</div>';
-    notaDirty = true; // retry next time
-    return;
-  }
-
-  try {
-  const {Renderer, Stave, Voice, Formatter} = Vex.Flow;
-
   const visVoices = voices.filter(v => !v.muted);
   container.innerHTML = '';
   if(!visVoices.length) return;
 
-  const W    = container.clientWidth || 800;
-  const LPAD = 56;  // space for clef
-  const RPAD = 12;
-  const noteW = W - LPAD - RPAD;
-  const STAVE_H = 62;
-  const GAP     = 14;
-  const totalH  = visVoices.length * (STAVE_H + GAP) + 16;
+  const W = container.clientWidth || 800;
+  const totalH = 8 + visVoices.length * (NOTA_STAVE_H + NOTA_GAP) + 8;
+  const stepW = (W - NOTA_LPAD - NOTA_RPAD) / numSteps;
 
-  const renderer = new Renderer(container, Renderer.Backends.SVG);
-  renderer.resize(W, totalH);
-  const ctx = renderer.getContext();
+  const svg = mkSVG('svg', {width:W, height:totalH, style:'display:block'});
+  container.appendChild(svg);
 
   visVoices.forEach((v, vi) => {
     const voiceIdx = voices.indexOf(v);
-    const staveY   = 8 + vi * (STAVE_H + GAP);
+    const staveTop = 8 + vi * (NOTA_STAVE_H + NOTA_GAP);
+    const staveBot = staffPosToY(0, staveTop); // y of E4 bottom line
 
-    // Draw stave
-    const stave = new Stave(LPAD, staveY, noteW);
-    if(vi === 0) stave.addClef('treble');
-    stave.setContext(ctx).draw();
-
-    // Voice label (plain text overlay via inline div — VexFlow SVG context is fussy)
-    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
-    lbl.setAttribute('x', LPAD - 6);
-    lbl.setAttribute('y', staveY + STAVE_H / 2 + 4);
-    lbl.setAttribute('text-anchor','end');
-    lbl.setAttribute('font-family','JetBrains Mono');
-    lbl.setAttribute('font-size','8');
-    lbl.setAttribute('fill', hexA(v.color, 0.7));
-    lbl.textContent = voiceIdx === 0 ? 'dux' : 'c' + (voiceIdx + 1);
-    container.querySelector('svg').appendChild(lbl);
-
-    // Build notes
-    const notes = [];
-    for(let s = 0; s < numSteps; s++) {
-      const n = buildVexNote(s, v);
-      if(n) notes.push(n);
+    // 5 staff lines at staffPos 0,2,4,6,8
+    for(let li = 0; li <= 8; li += 2) {
+      const y = staffPosToY(li, staveTop);
+      svg.appendChild(mkSVG('line', {x1:NOTA_LPAD, y1:y, x2:W-NOTA_RPAD, y2:y, class:'nota-line'}));
     }
-    if(!notes.length) return;
 
-    const voice = new Voice({num_beats: numSteps, beat_value: 16});
-    voice.setMode(2); // SOFT — don't enforce total duration
-    voice.addTickables(notes);
+    // Treble clef (voice 0 only)
+    if(vi === 0) {
+      const clef = mkSVG('text', {x:6, y:staveTop+36, class:'nota-clef'});
+      clef.textContent = '\u{1D11E}'; // 𝄞
+      svg.appendChild(clef);
+    }
 
-    try {
-      new Formatter().joinVoices([voice]).format([voice], noteW - 10);
-      voice.draw(ctx, stave);
-    } catch(e) {
-      // Formatting can fail on edge cases (empty subject, extreme pitches) — silent fail
+    // Voice label
+    const lbl = mkSVG('text', {
+      x:NOTA_LPAD-4, y:staveTop+16,
+      'text-anchor':'end', class:'nota-lbl', fill:hexA(v.color,0.7)
+    });
+    lbl.textContent = voiceIdx === 0 ? 'dux' : 'c'+(voiceIdx+1);
+    svg.appendChild(lbl);
+
+    // Notes for each step
+    for(let s = 0; s < numSteps; s++) {
+      const pat = ((s - v.offset) % numSteps + numSteps) % numSteps;
+      const pitchRows = [];
+      for(let p = 0; p < numRows; p++) {
+        if(grid[p] && grid[p][pat]) pitchRows.push(p);
+      }
+
+      const nx = NOTA_LPAD + (s + 0.5) * stepW;
+      const midY = staffPosToY(4, staveTop); // B4 = middle of staff
+
+      if(pitchRows.length === 0) {
+        // 16th rest
+        const rest = mkSVG('text', {x:nx, y:midY+4, 'text-anchor':'middle', class:'nota-rest'});
+        rest.textContent = '\u{1D13E}'; // 𝄾
+        svg.appendChild(rest);
+        continue;
+      }
+
+      pitchRows.forEach(p => {
+        const cents = TUNINGS[curTuning].rowCents(p) + v.transCents + viewOctave * 1200;
+        const {staffPos, accidental, deviation} = centsToNoteInfo(cents);
+        const ny = staffPosToY(staffPos, staveTop);
+
+        // Ledger lines (if needed)
+        drawLedgerLines(svg, nx, staffPos, staveTop);
+
+        // Stem (up if below middle line B4=sp4, down otherwise)
+        const stemUp = staffPos < 4;
+        const stemX  = stemUp ? nx + 5 : nx - 5;
+        svg.appendChild(mkSVG('line', {
+          x1:stemX, y1:ny, x2:stemX, y2:stemUp ? ny-28 : ny+28, class:'nota-stem'
+        }));
+
+        // Note head
+        const nh = mkSVG('ellipse', {
+          cx:nx, cy:ny, rx:5, ry:3.5,
+          transform:`rotate(-15,${nx},${ny})`,
+          fill:v.color,
+          'data-step':s, 'data-row':p,
+          style:'cursor:pointer'
+        });
+        svg.appendChild(nh);
+
+        // Accidental
+        if(accidental) {
+          const acc = mkSVG('text', {x:nx-9, y:ny+4, 'text-anchor':'middle', class:'nota-acc'});
+          acc.textContent = accidental === '#' ? '\u266F' : '\u266D';
+          svg.appendChild(acc);
+        }
+
+        // Cent deviation for microtonal pitches
+        if(Math.abs(deviation) > 15) {
+          const dev = mkSVG('text', {
+            x:nx, y:ny-14, 'text-anchor':'middle', class:'nota-dev', fill:'#7a7a9a'
+          });
+          dev.textContent = (deviation > 0 ? '+' : '') + deviation + '\u00A2';
+          svg.appendChild(dev);
+        }
+      });
     }
   });
-  } catch(e) {
-    container.innerHTML='<div style="padding:0.5rem;font-size:0.6rem;color:#664;font-family:monospace">notation error — '+e.message+'</div>';
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -871,6 +885,12 @@ curTuning=$('tuning-sel').value;
 switchTuning(curTuning);
 buildVoicesUI();
 seed();
+
+// Score click editing — delegate on #nota container (set up once)
+$('nota').addEventListener('click', e => {
+  const s = e.target.dataset.step, p = e.target.dataset.row;
+  if(s !== undefined && p !== undefined) { grid[+p][+s] = !grid[+p][+s]; markNotaDirty(); }
+});
 
 function rafLoop() { drawGrid(); drawRoll(); if(notaDirty) drawNotation(); requestAnimationFrame(rafLoop); }
 requestAnimationFrame(rafLoop);
