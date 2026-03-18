@@ -263,7 +263,7 @@ const TUNINGS = {
     rowLabel(i) {
       const s=i%24, b12=Math.floor(s/2), q=s%2===1, o=4+Math.floor(i/24);
       if(s===0) return {text:'C'+o, hi:true, root:true};
-      return q ? {text:'↑',hi:false,root:false} : {text:this.names12[b12],hi:true,root:false};
+      return q ? {text:this.names12[b12]+'↑',hi:false,root:false} : {text:this.names12[b12],hi:true,root:false};
     },
     rowCents(i) { return i*50; },
     scaleFilter:false,
@@ -412,7 +412,7 @@ function drawGrid() {
     const row=numRows-1-p;
     const lb=t.rowLabel(p);
     const inSc=t.scaleFilter&&scale.has(p%(t.spo||12));
-    gx.fillStyle=lb.root?'#0c1018':inSc?'#0e0e18':'#09090e';
+    gx.fillStyle=lb.root?'#0d1022':inSc?'#0e0e18':lb.hi?'#0c0c1c':'#080810';
     gx.fillRect(0,row*CH,W,CH);
     if(lb.root){ gx.fillStyle='#1a1a30'; gx.fillRect(0,row*CH,W,1); }
     for(let s=0;s<numSteps;s++) {
