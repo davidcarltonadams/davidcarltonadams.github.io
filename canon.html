@@ -385,9 +385,13 @@ function stepDur() { return 60/bpm/4; }
 
 function sched() {
   if(!playing||!actx) return;
+  const maxOff = voices.reduce((m,v)=>Math.max(m,v.offset),0);
+  const onceTot = numSteps + maxOff;
+
   while(nextT<actx.currentTime+0.15) {
     voices.forEach(v => {
       if(v.muted) return;
+      if(!loop && curStep < v.offset) return; // once mode: voices enter at their offset
       const pat=((curStep-v.offset)%numSteps+numSteps)%numSteps;
       for(let p=0;p<numRows;p++) {
         if(grid[p]&&grid[p][pat]) playNote(p,v.transCents,nextT);
@@ -395,14 +399,14 @@ function sched() {
     });
     nextT+=stepDur();
     curStep++;
-    if(curStep>=numSteps) {
-      if(!loop) {
-        // let final note finish before stopping
+    if(loop) {
+      if(curStep>=numSteps) curStep=0;
+    } else {
+      if(curStep>=onceTot) {
         const msRemaining=(nextT-actx.currentTime)*1000+50;
         setTimeout(stopPlay, Math.max(0,msRemaining));
         return;
       }
-      curStep=0;
     }
   }
   schedT=setTimeout(sched,20);
