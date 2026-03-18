@@ -103,7 +103,7 @@
   #nota .vf-rest path { fill:#444460 !important; stroke:#444460 !important; }
   #nota .vf-annotation text { fill:#5a5a80 !important; }
 </style>
-<script src="https://unpkg.com/vexflow@4.2.6/build/vexflow.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.6/build/vexflow.js"></script>
 </head>
 <body>
 <div class="app">
@@ -166,6 +166,12 @@
             <option value="wholetone">whole tone</option>
           </select>
         </div>
+        <div class="r">
+          <span class="l" title="shift view in octaves">oct</span>
+          <button class="btn sm" id="oct-dn">−</button>
+          <span id="oct-v" style="font-size:0.78rem;color:var(--txd);min-width:3ch;text-align:center">±0</span>
+          <button class="btn sm" id="oct-up">+</button>
+        </div>
       </div>
 
       <div class="cg">
@@ -192,7 +198,7 @@
 
   <div class="roll-sec">
     <div class="roll-t">piano roll — all voices</div>
-    <canvas id="roll" height="100"></canvas>
+    <canvas id="roll" height="160"></canvas>
   </div>
 
   <div class="hint">click/drag grid to draw · space = play/stop · esc = stop · stack pitches in same column for double stops</div>
@@ -339,6 +345,7 @@ const VCOL = ['#c0c0d0','#4a9eff','#2ecc71','#f39c12','#9b59b6','#e74c3c','#1abc
 let numSteps=16, numRows, bpm=120, scale=SCALES.chromatic;
 let curTuning='12', playing=false, loop=true, grid;
 let notaDirty=true;
+let viewOctave=0;
 function markNotaDirty(){ notaDirty=true; }
 
 const voices = [{ offset:0, transCents:0, color:VCOL[0], muted:false }];
@@ -348,6 +355,13 @@ function initGrid() {
   grid = Array.from({length:numRows}, () => new Array(numSteps).fill(false));
 }
 initGrid();
+
+function getRowLabel(p) {
+  const lb=TUNINGS[curTuning].rowLabel(p);
+  if(viewOctave===0) return lb;
+  const text=lb.text.replace(/(\d+)$/,n=>String(+n+viewOctave));
+  return {...lb,text};
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AUDIO
@@ -359,7 +373,7 @@ function ac() {
   return actx;
 }
 
-function rowFreq(r) { return C4*Math.pow(2,TUNINGS[curTuning].rowCents(r)/1200); }
+function rowFreq(r) { return C4*Math.pow(2,(TUNINGS[curTuning].rowCents(r)+viewOctave*1200)/1200); }
 
 function playNote(row, transCents, when) {
   const freq=rowFreq(row)*Math.pow(2,transCents/1200);
@@ -430,7 +444,7 @@ function drawGrid() {
   const t=TUNINGS[curTuning];
   for(let p=0;p<numRows;p++) {
     const row=numRows-1-p;
-    const lb=t.rowLabel(p);
+    const lb=getRowLabel(p);
     const inSc=t.scaleFilter&&scale.has(p%(t.spo||12));
     gx.fillStyle=lb.root?'#0d1022':inSc?'#0e0e18':lb.hi?'#0c0c1c':'#080810';
     gx.fillRect(0,row*CH,W,CH);
@@ -488,7 +502,7 @@ function buildAxis() {
   const ax=$('paxis'); ax.innerHTML='';
   const t=TUNINGS[curTuning];
   for(let p=numRows-1;p>=0;p--) {
-    const lb=t.rowLabel(p);
+    const lb=getRowLabel(p);
     const d=document.createElement('div');
     d.className='plbl'+(lb.root?' root':lb.hi?' hi':'');
     d.style.height=CH+'px';
@@ -640,6 +654,7 @@ function drawNotation() {
     return;
   }
 
+  try {
   const {Renderer, Stave, Voice, Formatter} = Vex.Flow;
 
   const visVoices = voices.filter(v => !v.muted);
@@ -697,6 +712,9 @@ function drawNotation() {
       // Formatting can fail on edge cases (empty subject, extreme pitches) — silent fail
     }
   });
+  } catch(e) {
+    container.innerHTML='<div style="padding:0.5rem;font-size:0.6rem;color:#664;font-family:monospace">notation error — '+e.message+'</div>';
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -709,17 +727,15 @@ function buildVoicesUI() {
     const isOrig=i===0;
     const row=document.createElement('div');
     row.className='vrow'+(v.muted?' muted':'')+(isOrig?' source':'');
-    row.innerHTML= isOrig
-      ? `<span class="vfl">dux</span>
-         <span class="vfl" style="margin-left:0.3rem;color:var(--txddd);font-style:italic">source — draw in grid</span>`
-      : `<div class="vpip" style="background:${v.color}"></div>
-         <span class="vfl">v${i+1}</span>
-         <span class="vfl" title="delay in 16ths">dly</span>
-         <input class="vf" type="number" value="${v.offset}" min="0" max="${numSteps*4}" data-i="${i}" data-f="off">
-         <span class="vfl" title="transposition in cents">¢</span>
-         <input class="vf w" type="number" value="${v.transCents.toFixed(1)}" step="50" min="-2400" max="2400" data-i="${i}" data-f="cents">
-         <button class="vmute" data-i="${i}">${v.muted?'unmute':'mute'}</button>
-         <button class="vdel" data-i="${i}">×</button>`;
+    row.innerHTML=`
+      <div class="vpip" style="background:${v.color}"></div>
+      <span class="vfl">${isOrig?'dux':'v'+(i+1)}</span>
+      <span class="vfl" title="delay in 16ths">dly</span>
+      <input class="vf" type="number" value="${v.offset}" min="0" max="${numSteps*4}" ${isOrig?'disabled':''} data-i="${i}" data-f="off">
+      <span class="vfl" title="transposition in cents">¢</span>
+      <input class="vf w" type="number" value="${Math.round(v.transCents)}" step="100" min="-2400" max="2400" ${isOrig?'disabled':''} data-i="${i}" data-f="cents">
+      ${!isOrig?`<button class="vmute" data-i="${i}">${v.muted?'unmute':'mute'}</button><button class="vdel" data-i="${i}">×</button>`:''}
+    `;
     list.appendChild(row);
   });
 
@@ -803,6 +819,19 @@ $('bpm-r').addEventListener('input',e=>{ bpm=parseInt(e.target.value); $('bpm-n'
 $('st-up').addEventListener('click',()=>updateSteps(numSteps+4));
 $('st-dn').addEventListener('click',()=>updateSteps(numSteps-4));
 
+$('oct-up').addEventListener('click',()=>{
+  if(viewOctave>=2) return;
+  viewOctave++;
+  $('oct-v').textContent=(viewOctave>=0?'+':'')+viewOctave;
+  buildAxis(); markNotaDirty();
+});
+$('oct-dn').addEventListener('click',()=>{
+  if(viewOctave<=-2) return;
+  viewOctave--;
+  $('oct-v').textContent=(viewOctave>=0?'+':'')+viewOctave;
+  buildAxis(); markNotaDirty();
+});
+
 function updateSteps(n) {
   numSteps=Math.max(4,Math.min(64,n));
   for(let p=0;p<numRows;p++) {
@@ -838,8 +867,8 @@ document.addEventListener('keydown',e=>{
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════════
 buildIntervals();
-buildAxis();
-resizeG();
+curTuning=$('tuning-sel').value;
+switchTuning(curTuning);
 buildVoicesUI();
 seed();
 
