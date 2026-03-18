@@ -839,8 +839,8 @@ resizeG();
 buildVoicesUI();
 seed();
 
-function loop() { drawGrid(); drawRoll(); if(notaDirty) drawNotation(); requestAnimationFrame(loop); }
-requestAnimationFrame(loop);
+function rafLoop() { drawGrid(); drawRoll(); if(notaDirty) drawNotation(); requestAnimationFrame(rafLoop); }
+requestAnimationFrame(rafLoop);
 
 })();
 </script>
