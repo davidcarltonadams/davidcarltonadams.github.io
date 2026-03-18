@@ -12,7 +12,7 @@
   :root {
     --bg: #08080c; --s1: #0e0e14; --s2: #12121a; --s3: #181822;
     --brd: #22222e; --brd2: #2e2e3c;
-    --tx: #d0d0e2; --txd: #8a8aa8; --txdd: #686884; --txddd: #4e4e68;
+    --tx: #dcdcf0; --txd: #a0a0c4; --txdd: #8888aa; --txddd: #666680;
     --acc: #4a9eff; --accd: #2a5e9f;
     --grn: #2ecc71; --red: #e74c3c; --org: #f39c12; --purp: #9b59b6;
     --mono: 'JetBrains Mono', 'SF Mono', monospace;
@@ -73,6 +73,7 @@
   .vf:disabled { border-bottom-color:transparent; color:var(--txddd); cursor:default; }
   .vf.w { width:6ch; }
   .vrow.source { opacity:0.5; }
+  .vrow.source .vpip { display:none; }
   .vfl { font-size:0.5rem; color:var(--txdd); }
   .vdel { margin-left:auto; background:none; border:none; color:var(--txddd); font-size:0.68rem; cursor:pointer; padding:0 0.1rem; }
   .vdel:hover { color:var(--red); }
@@ -143,6 +144,27 @@
           <button class="btn sm" id="st-up">+</button>
           <span style="font-size:0.5rem;color:var(--txdd)">16ths</span>
         </div>
+        <div class="r">
+          <span class="l" title="swing feel">swing</span>
+          <input type="range" id="swing-r" min="0" max="100" value="0" style="flex:1">
+          <span id="swing-v" style="font-size:0.58rem;color:var(--txd);min-width:5ch;text-align:right">even</span>
+        </div>
+        <div class="r" style="margin-top:-0.25rem;margin-bottom:0.1rem">
+          <span class="l"></span>
+          <div style="flex:1;display:flex;justify-content:space-between;font-size:0.42rem;color:var(--txddd);pointer-events:none">
+            <span>even</span><span>7-let</span><span>5-let</span><span>triplet</span><span>dotted</span><span>2×dot</span>
+          </div>
+        </div>
+        <div class="r">
+          <span class="l" title="oscillator waveform">tone</span>
+          <select id="osc-sel">
+            <option value="triangle">triangle</option>
+            <option value="sine">sine</option>
+            <option value="sawtooth">sawtooth</option>
+            <option value="square">square</option>
+            <option value="pluck">pluck</option>
+          </select>
+        </div>
       </div>
 
       <div class="cg">
@@ -187,6 +209,33 @@
         </div>
         <div class="vlist" id="vlist"></div>
         <button class="add-v" id="btn-add">+ add voice</button>
+      </div>
+
+      <div class="cg" id="fugue-panel">
+        <div class="cg-t">mode</div>
+        <div class="r">
+          <button class="btn sm active" id="btn-mode-canon">canon</button>
+          <button class="btn sm" id="btn-mode-fugue">fugue</button>
+        </div>
+        <div id="fugue-opts" style="display:none">
+          <div class="r" style="margin-top:0.3rem">
+            <span class="l">key</span>
+            <select id="fugue-key">
+              <option value="0">C</option><option value="7">G</option>
+              <option value="2">D</option><option value="9">A</option>
+              <option value="4">E</option><option value="11">B</option>
+              <option value="6">F♯/G♭</option><option value="1">D♭</option>
+              <option value="8">A♭</option><option value="3">E♭</option>
+              <option value="10">B♭</option><option value="5">F</option>
+            </select>
+          </div>
+          <div class="r">
+            <span class="l">answer</span>
+            <button class="btn sm active" id="btn-ans-real">real</button>
+            <button class="btn sm" id="btn-ans-tonal">tonal</button>
+          </div>
+          <div id="fugue-status" style="font-size:0.5rem;color:var(--txddd);margin-top:0.3rem"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -346,6 +395,9 @@ let numSteps=16, numRows, bpm=120, scale=SCALES.chromatic;
 let curTuning='12', playing=false, loop=true, grid;
 let notaDirty=true;
 let viewOctave=0;
+let swingRatio=0.5;   // 0.5=even … 0.875=double-dotted
+let oscType='triangle';
+let fugueMode=false, fugueKeyRoot=0, answerType='real', answerGrid=null;
 function markNotaDirty(){ notaDirty=true; }
 
 const voices = [{ offset:0, transCents:0, color:VCOL[0], muted:false }];
@@ -381,14 +433,22 @@ function playNote(row, transCents, when) {
   const c=ac();
   const osc=c.createOscillator();
   const g=c.createGain();
-  osc.connect(g).connect(c.destination);
-  osc.type='triangle';
-  osc.frequency.value=freq;
+  const isPluck = oscType==='pluck';
+  osc.type = isPluck ? 'triangle' : oscType;
+  osc.frequency.value = freq;
+  if(oscType==='sawtooth'||oscType==='square') {
+    const filt=c.createBiquadFilter();
+    filt.type='lowpass'; filt.frequency.value=Math.min(freq*5,3800); filt.Q.value=0.8;
+    osc.connect(g); g.connect(filt); filt.connect(c.destination);
+  } else {
+    osc.connect(g).connect(c.destination);
+  }
+  const atk=isPluck?0.002:0.008, rel=isPluck?0.13:0.38;
   g.gain.setValueAtTime(0,when);
-  g.gain.linearRampToValueAtTime(0.12,when+0.008);
-  g.gain.exponentialRampToValueAtTime(0.001,when+0.38);
+  g.gain.linearRampToValueAtTime(0.12,when+atk);
+  g.gain.exponentialRampToValueAtTime(0.001,when+rel);
   osc.start(when);
-  osc.stop(when+0.42);
+  osc.stop(when+rel+0.05);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -396,6 +456,11 @@ function playNote(row, transCents, when) {
 // ═══════════════════════════════════════════════════════════════════════════════
 let schedT=null, curStep=0, nextT=0;
 function stepDur() { return 60/bpm/4; }
+function swingDur(step) {
+  if(swingRatio===0.5) return stepDur();
+  const sd=stepDur();
+  return step%2===0 ? swingRatio*2*sd : (1-swingRatio)*2*sd;
+}
 
 function sched() {
   if(!playing||!actx) return;
@@ -405,13 +470,16 @@ function sched() {
   while(nextT<actx.currentTime+0.15) {
     voices.forEach(v => {
       if(v.muted) return;
-      if(!loop && curStep < v.offset) return; // once mode: voices enter at their offset
+      if(!loop && curStep < v.offset) return;
       const pat=((curStep-v.offset)%numSteps+numSteps)%numSteps;
+      const useFugue = fugueMode && v.gridSource==='answer' && answerGrid;
+      const srcGrid  = useFugue ? answerGrid : grid;
+      const effTrans = useFugue ? 0 : v.transCents;
       for(let p=0;p<numRows;p++) {
-        if(grid[p]&&grid[p][pat]) playNote(p,v.transCents,nextT);
+        if(srcGrid[p]&&srcGrid[p][pat]) playNote(p,effTrans,nextT);
       }
     });
-    nextT+=stepDur();
+    nextT+=swingDur(curStep);
     curStep++;
     if(loop) {
       if(curStep>=numSteps) curStep=0;
@@ -480,7 +548,7 @@ function gpos(e) {
 }
 function gpaint(e) {
   const {s,p}=gpos(e);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ grid[p][s]=paintV; markNotaDirty(); }
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ grid[p][s]=paintV; if(fugueMode&&answerType==='tonal') computeAnswerGrid(); markNotaDirty(); }
 }
 gc.addEventListener('mousedown',e=>{
   const {s,p}=gpos(e);
@@ -794,7 +862,78 @@ function switchTuning(t) {
   resizeG();
   $('scale-sel').disabled=!TUNINGS[t].scaleFilter;
   if(!TUNINGS[t].scaleFilter) scale=SCALES.chromatic;
+  if(fugueMode&&answerType==='tonal') computeAnswerGrid();
   markNotaDirty();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SWING + FUGUE HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function swingLabel(r) {
+  if(r<0.51) return 'even';
+  if(r<0.585) return '7-let';
+  if(r<0.63) return '5-let';
+  if(r<0.71) return 'triplet';
+  if(r<0.81) return 'dotted';
+  return '2×dot';
+}
+
+function rowNearestCents(targetCents) {
+  let best=0, bestDist=Infinity;
+  for(let i=0;i<numRows;i++) {
+    const d=Math.abs(TUNINGS[curTuning].rowCents(i)-targetCents);
+    if(d<bestDist){ bestDist=d; best=i; }
+  }
+  return best;
+}
+
+function computeAnswerGrid() {
+  if(answerType!=='tonal'||curTuning!=='12'){ answerGrid=null; return; }
+  answerGrid=Array.from({length:numRows},()=>new Array(numSteps).fill(false));
+  for(let p=0;p<numRows;p++) {
+    for(let s=0;s<numSteps;s++) {
+      if(!grid[p]||!grid[p][s]) continue;
+      const scaleDeg=((Math.round(TUNINGS[curTuning].rowCents(p)/100)-fugueKeyRoot)%12+12)%12;
+      const shift=scaleDeg<5?700:500;
+      const ar=rowNearestCents(TUNINGS[curTuning].rowCents(p)+shift);
+      if(ar>=0&&ar<numRows) answerGrid[ar][s]=true;
+    }
+  }
+}
+
+function ensureComesVoice() {
+  if(voices.length<2) {
+    voices.push({
+      offset:parseInt($('dist-n').value)||4,
+      transCents:answerType==='real'?700:0,
+      color:VCOL[1], muted:false,
+      gridSource:answerType==='tonal'?'answer':null,
+    });
+  } else {
+    voices[1].gridSource=answerType==='tonal'?'answer':null;
+    voices[1].transCents=answerType==='real'?700:0;
+  }
+  buildVoicesUI();
+  markNotaDirty();
+}
+
+const KEY_NAMES=['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+function buildFugueUI() {
+  $('fugue-opts').style.display=fugueMode?'':'none';
+  $('btn-mode-canon').classList.toggle('active',!fugueMode);
+  $('btn-mode-fugue').classList.toggle('active',fugueMode);
+  $('btn-ans-real').classList.toggle('active',answerType==='real');
+  $('btn-ans-tonal').classList.toggle('active',answerType==='tonal');
+  if(!fugueMode) return;
+  ensureComesVoice();
+  computeAnswerGrid();
+  const st=$('fugue-status');
+  if(answerType==='tonal'&&curTuning!=='12')
+    st.textContent='tonal answer requires 12-TET — falling back to real';
+  else if(answerType==='tonal')
+    st.textContent='tonal in '+KEY_NAMES[fugueKeyRoot];
+  else
+    st.textContent='real answer — P5 (700¢)';
 }
 
 function seed() {
@@ -824,7 +963,7 @@ $('btn-loop').addEventListener('click',()=>{
   $('btn-loop').classList.toggle('active',loop);
   $('btn-loop').textContent=loop?'↺ loop':'→ once';
 });
-$('btn-clear').addEventListener('click',()=>{ for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false); markNotaDirty(); });
+$('btn-clear').addEventListener('click',()=>{ for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false); answerGrid=null; markNotaDirty(); });
 $('btn-seed').addEventListener('click',seed);
 
 $('bpm-n').addEventListener('input',e=>{ const v=parseInt(e.target.value); if(v>=20&&v<=400){ bpm=v; $('bpm-r').value=v; } });
@@ -859,6 +998,19 @@ function updateSteps(n) {
 $('tuning-sel').addEventListener('change',e=>switchTuning(e.target.value));
 $('scale-sel').addEventListener('change',e=>{ scale=SCALES[e.target.value]||SCALES.chromatic; });
 
+$('swing-r').addEventListener('input',e=>{
+  swingRatio = 0.5 + (parseInt(e.target.value)/100)*0.375;
+  $('swing-v').textContent = swingLabel(swingRatio);
+});
+
+$('osc-sel').addEventListener('change',e=>{ oscType=e.target.value; });
+
+$('btn-mode-canon').addEventListener('click',()=>{ fugueMode=false; buildFugueUI(); });
+$('btn-mode-fugue').addEventListener('click',()=>{ fugueMode=true; buildFugueUI(); });
+$('btn-ans-real').addEventListener('click',()=>{ answerType='real'; if(fugueMode) buildFugueUI(); });
+$('btn-ans-tonal').addEventListener('click',()=>{ answerType='tonal'; if(fugueMode) buildFugueUI(); });
+$('fugue-key').addEventListener('change',e=>{ fugueKeyRoot=parseInt(e.target.value); if(fugueMode) buildFugueUI(); });
+
 $('btn-add').addEventListener('click',()=>{
   if(voices.length>=VCOL.length) return;
   voices.push({
@@ -884,6 +1036,7 @@ buildIntervals();
 curTuning=$('tuning-sel').value;
 switchTuning(curTuning);
 buildVoicesUI();
+buildFugueUI();
 seed();
 
 // Score click editing — delegate on #nota container (set up once)
