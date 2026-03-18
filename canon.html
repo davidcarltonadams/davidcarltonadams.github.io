@@ -129,6 +129,7 @@
         <div class="r">
           <button class="btn" id="btn-play">▶ play</button>
           <button class="btn" id="btn-stop">■ stop</button>
+          <button class="btn sm active" id="btn-loop" title="loop / one-pass">↺ loop</button>
         </div>
         <div class="r">
           <span class="l">bpm</span>
@@ -336,7 +337,7 @@ const VCOL = ['#c0c0d0','#4a9eff','#2ecc71','#f39c12','#9b59b6','#e74c3c','#1abc
 // STATE
 // ═══════════════════════════════════════════════════════════════════════════════
 let numSteps=16, numRows, bpm=120, scale=SCALES.chromatic;
-let curTuning='12', playing=false, grid;
+let curTuning='12', playing=false, loop=true, grid;
 let notaDirty=true;
 function markNotaDirty(){ notaDirty=true; }
 
@@ -393,7 +394,16 @@ function sched() {
       }
     });
     nextT+=stepDur();
-    curStep=(curStep+1)%numSteps;
+    curStep++;
+    if(curStep>=numSteps) {
+      if(!loop) {
+        // let final note finish before stopping
+        const msRemaining=(nextT-actx.currentTime)*1000+50;
+        setTimeout(stopPlay, Math.max(0,msRemaining));
+        return;
+      }
+      curStep=0;
+    }
   }
   schedT=setTimeout(sched,20);
 }
@@ -696,8 +706,7 @@ function buildVoicesUI() {
     const row=document.createElement('div');
     row.className='vrow'+(v.muted?' muted':'')+(isOrig?' source':'');
     row.innerHTML= isOrig
-      ? `<div class="vpip" style="background:${v.color}"></div>
-         <span class="vfl">dux</span>
+      ? `<span class="vfl">dux</span>
          <span class="vfl" style="margin-left:0.3rem;color:var(--txddd);font-style:italic">source — draw in grid</span>`
       : `<div class="vpip" style="background:${v.color}"></div>
          <span class="vfl">v${i+1}</span>
@@ -776,6 +785,11 @@ function seed() {
 // ═══════════════════════════════════════════════════════════════════════════════
 $('btn-play').addEventListener('click',togglePlay);
 $('btn-stop').addEventListener('click',stopPlay);
+$('btn-loop').addEventListener('click',()=>{
+  loop=!loop;
+  $('btn-loop').classList.toggle('active',loop);
+  $('btn-loop').textContent=loop?'↺ loop':'→ once';
+});
 $('btn-clear').addEventListener('click',()=>{ for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false); markNotaDirty(); });
 $('btn-seed').addEventListener('click',seed);
 
