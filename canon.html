@@ -67,9 +67,12 @@
   .vrow { display:flex; align-items:center; gap:0.3rem; background:var(--bg); border:1px solid var(--brd); border-radius:3px; padding:0.25rem 0.4rem; }
   .vrow.muted { opacity:0.3; }
   .vpip { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-  .vf { width:4ch; background:none; border:none; border-bottom:1px solid var(--brd2); color:var(--txd); font-family:var(--mono); font-size:0.68rem; text-align:center; outline:none; padding:0; }
+  .vf { width:4ch; background:none; border:none; border-bottom:1px solid var(--brd2); color:var(--txd); font-family:var(--mono); font-size:0.68rem; text-align:center; outline:none; padding:0; cursor:text; }
+  .vf:not(:disabled):hover { border-bottom-color:var(--txdd); }
   .vf:focus { border-bottom-color:var(--accd); }
+  .vf:disabled { border-bottom-color:transparent; color:var(--txddd); cursor:default; }
   .vf.w { width:6ch; }
+  .vrow.source { opacity:0.5; }
   .vfl { font-size:0.5rem; color:var(--txdd); }
   .vdel { margin-left:auto; background:none; border:none; color:var(--txddd); font-size:0.68rem; cursor:pointer; padding:0 0.1rem; }
   .vdel:hover { color:var(--red); }
@@ -133,10 +136,11 @@
           <input type="range" id="bpm-r" min="20" max="400" value="120">
         </div>
         <div class="r">
-          <span class="l">steps</span>
+          <span class="l" title="sequence length in 16th notes">len</span>
           <button class="btn sm" id="st-dn">−</button>
           <span id="st-v" style="font-size:0.78rem;color:var(--txd);min-width:2ch;text-align:center">16</span>
           <button class="btn sm" id="st-up">+</button>
+          <span style="font-size:0.5rem;color:var(--txdd)">16ths</span>
         </div>
       </div>
 
@@ -170,9 +174,9 @@
           <select id="iv-sel"></select>
         </div>
         <div class="r" style="margin-bottom:0.45rem">
-          <span class="l">dist</span>
+          <span class="l" title="delay for next voice added">delay</span>
           <input type="number" id="dist-n" value="4" min="1" max="64" style="width:4ch">
-          <span style="font-size:0.5rem;color:var(--txdd)">steps</span>
+          <span style="font-size:0.5rem;color:var(--txdd)">16ths</span>
         </div>
         <div class="vlist" id="vlist"></div>
         <button class="add-v" id="btn-add">+ add voice</button>
@@ -690,17 +694,19 @@ function buildVoicesUI() {
   voices.forEach((v,i)=>{
     const isOrig=i===0;
     const row=document.createElement('div');
-    row.className='vrow'+(v.muted?' muted':'');
-    row.innerHTML=`
-      <div class="vpip" style="background:${v.color}"></div>
-      <span class="vfl">${isOrig?'dux':'v'+(i+1)}</span>
-      <span class="vfl" title="delay in steps">dly</span>
-      <input class="vf" type="number" value="${v.offset}" min="0" max="${numSteps*4}" ${isOrig?'disabled style="color:#333"':''} data-i="${i}" data-f="off">
-      <span class="vfl" title="transposition in cents">¢</span>
-      <input class="vf w" type="number" value="${v.transCents.toFixed(1)}" step="50" min="-2400" max="2400" ${isOrig?'disabled style="color:#333"':''} data-i="${i}" data-f="cents">
-      <button class="vmute" data-i="${i}">${v.muted?'unmute':'mute'}</button>
-      ${!isOrig?`<button class="vdel" data-i="${i}">×</button>`:''}
-    `;
+    row.className='vrow'+(v.muted?' muted':'')+(isOrig?' source':'');
+    row.innerHTML= isOrig
+      ? `<div class="vpip" style="background:${v.color}"></div>
+         <span class="vfl">dux</span>
+         <span class="vfl" style="margin-left:0.3rem;color:var(--txddd);font-style:italic">source — draw in grid</span>`
+      : `<div class="vpip" style="background:${v.color}"></div>
+         <span class="vfl">v${i+1}</span>
+         <span class="vfl" title="delay in 16ths">dly</span>
+         <input class="vf" type="number" value="${v.offset}" min="0" max="${numSteps*4}" data-i="${i}" data-f="off">
+         <span class="vfl" title="transposition in cents">¢</span>
+         <input class="vf w" type="number" value="${v.transCents.toFixed(1)}" step="50" min="-2400" max="2400" data-i="${i}" data-f="cents">
+         <button class="vmute" data-i="${i}">${v.muted?'unmute':'mute'}</button>
+         <button class="vdel" data-i="${i}">×</button>`;
     list.appendChild(row);
   });
 
