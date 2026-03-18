@@ -80,7 +80,7 @@
   /* ── Notation ──────────── */
   .nota-sec { margin-top:1.15rem; background:var(--s1); border:1px solid var(--brd); border-radius:4px; padding:0.5rem; }
   .nota-t { font-size:0.52rem; color:var(--txdd); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.35rem; }
-  canvas#nota { display:block; width:100%; border-radius:2px; }
+  /* canvas#nota replaced by div#nota — see VexFlow section below */
 
   /* ── Roll ──────────────── */
   .roll-sec { margin-top:0.85rem; }
@@ -88,7 +88,17 @@
   canvas#roll { display:block; width:100%; border:1px solid var(--brd); border-radius:2px; }
 
   .hint { font-size:0.52rem; color:var(--txddd); text-align:center; margin-top:0.65rem; letter-spacing:0.03em; }
+
+  /* ── VexFlow notation dark theme ── */
+  #nota { display:block; width:100%; min-height:80px; overflow:hidden; }
+  #nota svg { display:block; }
+  #nota svg text, #nota svg tspan { fill:#8888aa !important; }
+  #nota svg path { fill:#6868a0 !important; stroke:#6868a0 !important; }
+  #nota svg rect { stroke:#6868a0 !important; fill:none !important; }
+  #nota .vf-rest path { fill:#444460 !important; stroke:#444460 !important; }
+  #nota .vf-annotation text { fill:#5a5a80 !important; }
 </style>
+<script src="https://unpkg.com/vexflow@4.2.6/build/vexflow.js"></script>
 </head>
 <body>
 <div class="app">
@@ -170,7 +180,7 @@
 
   <div class="nota-sec">
     <div class="nota-t">staff notation</div>
-    <canvas id="nota" height="220"></canvas>
+    <div id="nota"></div>
   </div>
 
   <div class="roll-sec">
@@ -321,6 +331,8 @@ const VCOL = ['#c0c0d0','#4a9eff','#2ecc71','#f39c12','#9b59b6','#e74c3c','#1abc
 // ═══════════════════════════════════════════════════════════════════════════════
 let numSteps=16, numRows, bpm=120, scale=SCALES.chromatic;
 let curTuning='12', playing=false, grid;
+let notaDirty=true;
+function markNotaDirty(){ notaDirty=true; }
 
 const voices = [{ offset:0, transCents:0, color:VCOL[0], muted:false }];
 
@@ -434,11 +446,11 @@ function gpos(e) {
 }
 function gpaint(e) {
   const {s,p}=gpos(e);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows) grid[p][s]=paintV;
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ grid[p][s]=paintV; markNotaDirty(); }
 }
 gc.addEventListener('mousedown',e=>{
   const {s,p}=gpos(e);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; }
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; markNotaDirty(); }
 });
 gc.addEventListener('mousemove',e=>{ if(painting) gpaint(e); });
 window.addEventListener('mouseup',()=>painting=false);
@@ -510,125 +522,161 @@ function drawRoll() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// STAFF NOTATION
+// STAFF NOTATION — VexFlow 4
 // ═══════════════════════════════════════════════════════════════════════════════
-const nc=$('nota'), nxx=nc.getContext('2d');
 
-function drawNotation() {
-  const W=nc.clientWidth||800;
-  const visVoices=voices.filter(v=>!v.muted);
-  const staffH=50, staffGap=20;
-  const margin={top:15,bottom:10,left:44,right:10};
-  const totalH=margin.top+visVoices.length*(staffH+staffGap)+margin.bottom;
-  nc.height=Math.max(100,totalH);
-  nc.width=W;
+// Pitch-class → VexFlow key name + standard accidental
+const PC_VEX = [
+  {k:'c',  a:null}, // 0  C
+  {k:'c#', a:'#' }, // 1  C#
+  {k:'d',  a:null}, // 2  D
+  {k:'eb', a:'b' }, // 3  Eb
+  {k:'e',  a:null}, // 4  E
+  {k:'f',  a:null}, // 5  F
+  {k:'f#', a:'#' }, // 6  F#
+  {k:'g',  a:null}, // 7  G
+  {k:'ab', a:'b' }, // 8  Ab
+  {k:'a',  a:null}, // 9  A
+  {k:'bb', a:'b' }, // 10 Bb
+  {k:'b',  a:null}, // 11 B
+];
 
-  nxx.fillStyle='#0e0e14';
-  nxx.fillRect(0,0,W,nc.height);
+// Map cents → { key: "c/4", accidental: "#"|"b"|null, deviation: cents±, needsNatural: bool }
+function centsToVexKey(cents) {
+  const semi = Math.round(cents / 100);
+  const pc   = ((semi % 12) + 12) % 12;
+  const oct  = 4 + Math.floor(semi / 12);
+  const dev  = Math.round(cents - semi * 100);
+  const {k, a} = PC_VEX[pc];
+  return { key:`${k}/${oct}`, accidental:a, deviation:dev };
+}
 
-  const t=TUNINGS[curTuning];
-  const noteW=(W-margin.left-margin.right)/numSteps;
-  const lineGap=8;
-  const centerRow=Math.floor(numRows/2);
+function buildVexNote(step, voice) {
+  const {Vex:VX} = window; // safety alias — Vex is the UMD global
+  const VF = (typeof Vex !== 'undefined') ? Vex.Flow : null;
+  if(!VF) return null;
+  const {StaveNote, Accidental, Annotation} = VF;
 
-  visVoices.forEach((v,vi)=>{
-    const voiceIdx=voices.indexOf(v);
-    const staffTop=margin.top+vi*(staffH+staffGap);
-    const staffMid=staffTop+staffH/2;
+  const {offset, transCents} = voice;
+  const pat = ((step - offset) % numSteps + numSteps) % numSteps;
 
-    // 5 staff lines
-    nxx.strokeStyle='rgba(100,100,120,0.3)';
-    nxx.lineWidth=1;
-    for(let l=-2;l<=2;l++) {
-      const y=staffMid+l*lineGap;
-      nxx.beginPath();
-      nxx.moveTo(margin.left-5,y);
-      nxx.lineTo(W-margin.right,y);
-      nxx.stroke();
-    }
+  const pitchRows = [];
+  for(let p=0; p<numRows; p++) { if(grid[p]&&grid[p][pat]) pitchRows.push(p); }
 
-    // Voice label
-    nxx.fillStyle=hexA(v.color,0.7);
-    nxx.font='9px "JetBrains Mono"';
-    nxx.textAlign='right';
-    nxx.textBaseline='middle';
-    nxx.fillText(voiceIdx===0?'dux':'v'+(voiceIdx+1),margin.left-8,staffMid);
+  if(pitchRows.length === 0) {
+    // Rest
+    return new StaveNote({keys:['b/4'], duration:'16r'});
+  }
 
-    // Beat lines
-    for(let s=0;s<=numSteps;s++) {
-      const x=margin.left+s*noteW;
-      nxx.strokeStyle=s%4===0?'rgba(100,100,120,0.25)':'rgba(100,100,120,0.08)';
-      nxx.lineWidth=s%4===0?1:0.5;
-      nxx.beginPath(); nxx.moveTo(x,staffTop-3); nxx.lineTo(x,staffTop+staffH+3); nxx.stroke();
-    }
+  // Map each pitch row → vex key, applying voice transposition
+  const vexKeys = pitchRows.map(p => {
+    const cents = TUNINGS[curTuning].rowCents(p) + transCents;
+    return centsToVexKey(cents);
+  });
 
-    // Notes
-    for(let s=0;s<numSteps;s++) {
-      const pitches=[];
-      for(let p=0;p<numRows;p++) { if(grid[p]&&grid[p][s]) pitches.push(p); }
-      if(!pitches.length) continue;
+  // Sort by octave+pitch so chords render correctly (lowest → highest)
+  vexKeys.sort((a,b) => {
+    const [an, ao] = a.key.split('/'); const [bn, bo] = b.key.split('/');
+    return (+ao - +bo) || an.localeCompare(bn);
+  });
 
-      const x=margin.left+s*noteW+noteW/2;
+  let note;
+  try {
+    note = new StaveNote({keys: vexKeys.map(k=>k.key), duration:'16', stem_direction:1});
+  } catch(e) {
+    return new StaveNote({keys:['b/4'], duration:'16r'});
+  }
 
-      pitches.forEach(p=>{
-        const rowCentsVal=t.rowCents(p);
-        const centerCents=t.rowCents(centerRow);
-        const centsDiff=rowCentsVal-centerCents;
-        const staffPos=centsDiff/200;
-        const y=staffMid-staffPos*lineGap;
-        const topLine=staffMid-2*lineGap, botLine=staffMid+2*lineGap;
+  // Add accidentals — VexFlow requires them explicitly even for notes like c#
+  vexKeys.forEach((vk, i) => {
+    try {
+      if(vk.accidental) note.addModifier(new Accidental(vk.accidental), i);
+    } catch(e) {}
+  });
 
-        // Ledger lines
-        nxx.strokeStyle='rgba(100,100,120,0.3)';
-        nxx.lineWidth=1;
-        if(y<topLine-lineGap*0.3) {
-          for(let ly=topLine-lineGap;ly>=y-lineGap*0.3;ly-=lineGap) {
-            nxx.beginPath(); nxx.moveTo(x-8,ly); nxx.lineTo(x+8,ly); nxx.stroke();
-          }
-        }
-        if(y>botLine+lineGap*0.3) {
-          for(let ly=botLine+lineGap;ly<=y+lineGap*0.3;ly+=lineGap) {
-            nxx.beginPath(); nxx.moveTo(x-8,ly); nxx.lineTo(x+8,ly); nxx.stroke();
-          }
-        }
-
-        // Note head
-        nxx.fillStyle=hexA(v.color,0.85);
-        nxx.beginPath();
-        nxx.ellipse(x,y,5,3.5,-0.2,0,Math.PI*2);
-        nxx.fill();
-
-        // Stem
-        nxx.strokeStyle=hexA(v.color,0.6);
-        nxx.lineWidth=1;
-        const up=y>=staffMid;
-        nxx.beginPath();
-        nxx.moveTo(up?x+4.5:x-4.5,y);
-        nxx.lineTo(up?x+4.5:x-4.5,y+(up?-22:22));
-        nxx.stroke();
-
-        // Microtonal deviation marker
-        const nearSemi=Math.round(rowCentsVal/100)*100;
-        const dev=rowCentsVal-nearSemi;
-        if(Math.abs(dev)>5) {
-          nxx.fillStyle=hexA(v.color,0.5);
-          nxx.font='7px "JetBrains Mono"';
-          nxx.textAlign='left';
-          nxx.textBaseline='middle';
-          nxx.fillText((dev>0?'+':'')+Math.round(dev)+'¢',x+7,y-2);
-        }
-      });
+  // Cent deviation annotations for microtonal pitches
+  vexKeys.forEach((vk, i) => {
+    if(Math.abs(vk.deviation) > 15) {
+      const label = (vk.deviation > 0 ? '+' : '') + vk.deviation + '¢';
+      try {
+        note.addModifier(
+          new Annotation(label).setFont('JetBrains Mono', 7).setVerticalJustification(1),
+          i
+        );
+      } catch(e) {}
     }
   });
 
-  // Playhead
-  if(playing) {
-    const x=margin.left+curStep*noteW;
-    nxx.fillStyle='rgba(74,158,255,0.08)';
-    nxx.fillRect(x,0,noteW,nc.height);
-    nxx.fillStyle='rgba(74,158,255,0.4)';
-    nxx.fillRect(x,0,1.5,nc.height);
+  return note;
+}
+
+function drawNotation() {
+  notaDirty = false;
+  const container = $('nota');
+
+  if(typeof Vex === 'undefined') {
+    container.innerHTML = '<div style="padding:0.5rem;font-size:0.65rem;color:#444;font-family:monospace">Loading notation engine…</div>';
+    notaDirty = true; // retry next time
+    return;
   }
+
+  const {Renderer, Stave, Voice, Formatter} = Vex.Flow;
+
+  const visVoices = voices.filter(v => !v.muted);
+  container.innerHTML = '';
+  if(!visVoices.length) return;
+
+  const W    = container.clientWidth || 800;
+  const LPAD = 56;  // space for clef
+  const RPAD = 12;
+  const noteW = W - LPAD - RPAD;
+  const STAVE_H = 62;
+  const GAP     = 14;
+  const totalH  = visVoices.length * (STAVE_H + GAP) + 16;
+
+  const renderer = new Renderer(container, Renderer.Backends.SVG);
+  renderer.resize(W, totalH);
+  const ctx = renderer.getContext();
+
+  visVoices.forEach((v, vi) => {
+    const voiceIdx = voices.indexOf(v);
+    const staveY   = 8 + vi * (STAVE_H + GAP);
+
+    // Draw stave
+    const stave = new Stave(LPAD, staveY, noteW);
+    if(vi === 0) stave.addClef('treble');
+    stave.setContext(ctx).draw();
+
+    // Voice label (plain text overlay via inline div — VexFlow SVG context is fussy)
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x', LPAD - 6);
+    lbl.setAttribute('y', staveY + STAVE_H / 2 + 4);
+    lbl.setAttribute('text-anchor','end');
+    lbl.setAttribute('font-family','JetBrains Mono');
+    lbl.setAttribute('font-size','8');
+    lbl.setAttribute('fill', hexA(v.color, 0.7));
+    lbl.textContent = voiceIdx === 0 ? 'dux' : 'c' + (voiceIdx + 1);
+    container.querySelector('svg').appendChild(lbl);
+
+    // Build notes
+    const notes = [];
+    for(let s = 0; s < numSteps; s++) {
+      const n = buildVexNote(s, v);
+      if(n) notes.push(n);
+    }
+    if(!notes.length) return;
+
+    const voice = new Voice({num_beats: numSteps, beat_value: 16});
+    voice.setMode(2); // SOFT — don't enforce total duration
+    voice.addTickables(notes);
+
+    try {
+      new Formatter().joinVoices([voice]).format([voice], noteW - 10);
+      voice.draw(ctx, stave);
+    } catch(e) {
+      // Formatting can fail on edge cases (empty subject, extreme pitches) — silent fail
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -659,13 +707,14 @@ function buildVoicesUI() {
       const i=+e.target.dataset.i, f=e.target.dataset.f;
       if(f==='off') voices[i].offset=Math.max(0,parseInt(e.target.value)||0);
       if(f==='cents'){ const v=parseFloat(e.target.value); if(!isNaN(v)) voices[i].transCents=v; }
+      markNotaDirty();
     });
   });
   list.querySelectorAll('.vmute').forEach(b=>{
-    b.addEventListener('click',e=>{ const i=+e.target.dataset.i; voices[i].muted=!voices[i].muted; buildVoicesUI(); });
+    b.addEventListener('click',e=>{ const i=+e.target.dataset.i; voices[i].muted=!voices[i].muted; buildVoicesUI(); markNotaDirty(); });
   });
   list.querySelectorAll('.vdel').forEach(b=>{
-    b.addEventListener('click',e=>{ voices.splice(+e.target.dataset.i,1); buildVoicesUI(); });
+    b.addEventListener('click',e=>{ voices.splice(+e.target.dataset.i,1); buildVoicesUI(); markNotaDirty(); });
   });
 }
 
@@ -694,10 +743,12 @@ function switchTuning(t) {
   resizeG();
   $('scale-sel').disabled=!TUNINGS[t].scaleFilter;
   if(!TUNINGS[t].scaleFilter) scale=SCALES.chromatic;
+  markNotaDirty();
 }
 
 function seed() {
   for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false);
+  markNotaDirty();
   const mid=Math.floor(numRows/2);
   const seeds={
     '12': [[0,0],[2,2],[4,4],[5,6],[4,8],[2,10],[0,12],[2,14]],
@@ -717,7 +768,7 @@ function seed() {
 // ═══════════════════════════════════════════════════════════════════════════════
 $('btn-play').addEventListener('click',togglePlay);
 $('btn-stop').addEventListener('click',stopPlay);
-$('btn-clear').addEventListener('click',()=>{ for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false); });
+$('btn-clear').addEventListener('click',()=>{ for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false); markNotaDirty(); });
 $('btn-seed').addEventListener('click',seed);
 
 $('bpm-n').addEventListener('input',e=>{ const v=parseInt(e.target.value); if(v>=20&&v<=400){ bpm=v; $('bpm-r').value=v; } });
@@ -733,6 +784,7 @@ function updateSteps(n) {
   }
   resizeG();
   $('st-v').textContent=numSteps;
+  markNotaDirty();
 }
 
 $('tuning-sel').addEventListener('change',e=>switchTuning(e.target.value));
@@ -747,6 +799,7 @@ $('btn-add').addEventListener('click',()=>{
     muted:false,
   });
   buildVoicesUI();
+  markNotaDirty();
 });
 
 document.addEventListener('keydown',e=>{
@@ -764,7 +817,7 @@ resizeG();
 buildVoicesUI();
 seed();
 
-function loop() { drawGrid(); drawRoll(); drawNotation(); requestAnimationFrame(loop); }
+function loop() { drawGrid(); drawRoll(); if(notaDirty) drawNotation(); requestAnimationFrame(loop); }
 requestAnimationFrame(loop);
 
 })();
