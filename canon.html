@@ -1,885 +1,773 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Canon Machine — David Carlton Adams</title>
-  <link rel="stylesheet" href="css/style.css">
-  <style>
-    body { background: #0c0c10; color: #c0c0cc; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canon Machine — David Carlton Adams</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
 
-    .canon-wrap {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 1.5rem 1rem 3rem;
-      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-    }
+  * { margin:0; padding:0; box-sizing:border-box; }
 
-    h1.canon-title {
-      font-size: 0.85rem;
-      font-weight: 400;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: #888;
-      margin-bottom: 0.2rem;
-    }
-    .canon-sub {
-      font-size: 0.65rem;
-      color: #666;
-      letter-spacing: 0.08em;
-      margin-bottom: 1.25rem;
-    }
+  :root {
+    --bg: #08080c; --s1: #0e0e14; --s2: #12121a; --s3: #181822;
+    --brd: #1a1a24; --brd2: #252530;
+    --tx: #b8b8c8; --txd: #666678; --txdd: #444458; --txddd: #333344;
+    --acc: #4a9eff; --accd: #2a5e9f;
+    --grn: #2ecc71; --red: #e74c3c; --org: #f39c12; --purp: #9b59b6;
+    --mono: 'JetBrains Mono', 'SF Mono', monospace;
+    --sans: 'DM Sans', system-ui, sans-serif;
+  }
 
-    .canon-main {
-      display: flex;
-      gap: 1rem;
-      align-items: flex-start;
-      flex-wrap: wrap;
-    }
+  body { background:var(--bg); color:var(--tx); font-family:var(--mono); overflow-x:hidden; }
 
-    .grid-section { flex: 0 0 auto; }
-    .grid-header {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin-bottom: 0.5rem;
-    }
-    .grid-label {
-      font-size: 0.62rem; color: #666; letter-spacing: 0.1em; text-transform: uppercase;
-    }
-    .grid-outer { display: flex; gap: 0; }
+  .app { max-width:1120px; margin:0 auto; padding:1.5rem 1rem 4rem; }
 
-    .pitch-axis {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      margin-right: 4px;
-    }
-    .pitch-label {
-      height: 14px;
-      font-size: 7px;
-      color: #444;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      padding-right: 3px;
-      letter-spacing: 0;
-    }
-    .pitch-label.white-key { color: #666; }
-    .pitch-label.c-key { color: #999; }
+  h1 { font-family:var(--sans); font-size:1.05rem; font-weight:500; letter-spacing:0.15em; text-transform:uppercase; color:var(--txd); }
+  .sub { font-size:0.6rem; color:var(--txdd); letter-spacing:0.06em; margin:0.1rem 0 1.25rem; }
 
-    canvas#grid-canvas {
-      display: block;
-      cursor: crosshair;
-      border: 1px solid #14141c;
-      border-radius: 2px;
-    }
+  .main { display:grid; grid-template-columns:auto 1fr; gap:1.25rem; }
+  @media(max-width:720px){ .main{grid-template-columns:1fr;} }
 
-    .controls-section {
-      flex: 1 1 200px;
-      min-width: 180px;
-    }
+  /* ── Grid ──────────────── */
+  .grid-sec { overflow-x:auto; }
+  .grid-lbl { font-size:0.55rem; color:var(--txdd); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.7rem; }
+  .grid-wrap { display:flex; }
+  .paxis { display:flex; flex-direction:column; margin-right:3px; user-select:none; }
+  .plbl { font-size:6px; color:var(--txddd); display:flex; align-items:center; justify-content:flex-end; padding-right:2px; white-space:nowrap; }
+  .plbl.hi { color:var(--txd); }
+  .plbl.root { color:var(--acc); font-weight:500; }
+  canvas#grid { display:block; cursor:crosshair; border-radius:2px; }
 
-    .ctrl-group { margin-bottom: 1rem; }
-    .ctrl-group-label {
-      font-size: 0.6rem; color: #555; letter-spacing: 0.1em;
-      text-transform: uppercase; margin-bottom: 0.4rem;
-      border-bottom: 1px solid #141420; padding-bottom: 0.2rem;
-    }
+  /* ── Controls ──────────── */
+  .ctrls { display:flex; flex-direction:column; gap:0.85rem; min-width:230px; }
+  .cg { background:var(--s1); border:1px solid var(--brd); border-radius:4px; padding:0.55rem 0.65rem; }
+  .cg-t { font-size:0.52rem; color:var(--txdd); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.4rem; padding-bottom:0.2rem; border-bottom:1px solid var(--brd); }
 
-    .play-row {
-      display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.75rem;
-    }
-    .btn-c {
-      background: #0f0f14;
-      border: 1px solid #1e1e2a;
-      border-radius: 3px;
-      color: #777;
-      font-family: inherit;
-      font-size: 0.68rem;
-      letter-spacing: 0.06em;
-      padding: 0.3rem 0.6rem;
-      cursor: pointer;
-      transition: color 0.1s, border-color 0.1s;
-    }
-    .btn-c:hover { color: #bbb; border-color: #333; }
-    .btn-c.active { color: #2ecc71; border-color: #2ecc71; }
-    .btn-c.danger:hover { color: #e74c3c; border-color: #e74c3c; }
+  .r { display:flex; align-items:center; gap:0.45rem; margin-bottom:0.35rem; flex-wrap:wrap; }
+  .l { font-size:0.58rem; color:var(--txdd); letter-spacing:0.04em; min-width:2.5em; }
 
-    .bpm-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .bpm-lbl { font-size: 0.6rem; color: #555; letter-spacing: 0.06em; }
-    #bpm-input {
-      width: 4ch; background: #0f0f14; border: 1px solid #1e1e2a;
-      border-radius: 2px; color: #ccc; font-family: inherit; font-size: 0.85rem;
-      padding: 0.15rem 0.3rem; text-align: center; outline: none;
-    }
-    #bpm-input:focus { border-color: #444; }
-    #bpm-range {
-      flex: 1; -webkit-appearance: none; height: 2px;
-      background: #1e1e2a; outline: none;
-    }
-    #bpm-range::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 10px; height: 10px;
-      border-radius: 50%; background: #555; cursor: pointer;
-    }
+  .btn { background:var(--s2); border:1px solid var(--brd2); border-radius:3px; color:var(--txd); font-family:var(--mono); font-size:0.63rem; letter-spacing:0.04em; padding:0.22rem 0.5rem; cursor:pointer; transition:all 0.1s; }
+  .btn:hover { color:var(--tx); border-color:#383848; }
+  .btn.active { color:var(--grn); border-color:var(--grn); }
+  .btn.sm { font-size:0.55rem; padding:0.12rem 0.3rem; }
+  .btn.danger:hover { color:var(--red); border-color:var(--red); }
 
-    .steps-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .steps-lbl { font-size: 0.6rem; color: #555; letter-spacing: 0.06em; }
-    .step-btn {
-      background: none; border: 1px solid #252530; border-radius: 2px;
-      color: #555; font-family: inherit; font-size: 0.65rem;
-      width: 18px; height: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .step-btn:hover { color: #aaa; border-color: #444; }
-    #steps-val { font-size: 0.85rem; color: #aaa; min-width: 2ch; text-align: center; }
+  select, input[type="number"] { background:var(--s2); border:1px solid var(--brd2); border-radius:2px; color:var(--txd); font-family:var(--mono); font-size:0.63rem; padding:0.12rem 0.25rem; outline:none; }
+  select:focus, input:focus { border-color:var(--accd); }
+  input[type="number"] { width:5ch; text-align:center; }
 
-    .tuning-row, .scale-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-    .tuning-lbl, .scale-lbl { font-size: 0.6rem; color: #555; letter-spacing: 0.06em; }
-    #tuning-sel, #scale-sel, #interval-sel {
-      background: #0f0f14; border: 1px solid #1e1e2a; border-radius: 2px;
-      color: #777; font-family: inherit; font-size: 0.65rem;
-      padding: 0.15rem 0.3rem; outline: none; cursor: pointer;
-    }
-    #scale-sel:disabled { opacity: 0.35; cursor: default; }
+  input[type="range"] { -webkit-appearance:none; height:2px; background:var(--brd2); outline:none; flex:1; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:10px; height:10px; border-radius:50%; background:var(--txdd); cursor:pointer; }
 
-    .interval-row {
-      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;
-    }
-    .interval-lbl { font-size: 0.6rem; color: #555; letter-spacing: 0.06em; }
-    .mode-radio {
-      font-size: 0.6rem; color: #555; letter-spacing: 0.05em;
-      display: flex; align-items: center; gap: 0.2rem; cursor: pointer;
-    }
-    .mode-radio input { margin: 0; cursor: pointer; }
+  /* ── Voices ────────────── */
+  .vlist { display:flex; flex-direction:column; gap:0.3rem; }
+  .vrow { display:flex; align-items:center; gap:0.3rem; background:var(--bg); border:1px solid var(--brd); border-radius:3px; padding:0.25rem 0.4rem; }
+  .vrow.muted { opacity:0.3; }
+  .vpip { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .vf { width:4ch; background:none; border:none; border-bottom:1px solid var(--brd2); color:var(--txd); font-family:var(--mono); font-size:0.68rem; text-align:center; outline:none; padding:0; }
+  .vf:focus { border-bottom-color:var(--accd); }
+  .vf.w { width:6ch; }
+  .vfl { font-size:0.5rem; color:var(--txdd); }
+  .vdel { margin-left:auto; background:none; border:none; color:var(--txddd); font-size:0.68rem; cursor:pointer; padding:0 0.1rem; }
+  .vdel:hover { color:var(--red); }
+  .vmute { background:none; border:none; color:var(--txdd); font-size:0.5rem; cursor:pointer; letter-spacing:0.03em; }
+  .vmute:hover { color:var(--org); }
 
-    .voices-list { display: flex; flex-direction: column; gap: 0.4rem; }
-    .voice-row {
-      display: flex; align-items: center; gap: 0.4rem;
-      background: #0f0f14; border: 1px solid #18181f;
-      border-radius: 3px; padding: 0.35rem 0.5rem;
-    }
-    .voice-pip { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .voice-field-lbl { font-size: 0.57rem; color: #555; letter-spacing: 0.05em; }
-    .voice-field {
-      width: 3ch; background: none; border: none; border-bottom: 1px solid #252530;
-      color: #aaa; font-family: inherit; font-size: 0.75rem;
-      text-align: center; outline: none; padding: 0;
-    }
-    .voice-field.wide { width: 5ch; }
-    .voice-field:focus { border-bottom-color: #555; }
-    .voice-del {
-      margin-left: auto; background: none; border: none;
-      color: #444; font-size: 0.7rem; cursor: pointer; padding: 0 0.1rem;
-      transition: color 0.1s;
-    }
-    .voice-del:hover { color: #e74c3c; }
-    .voice-row.voice-muted { opacity: 0.4; }
+  .add-v { font-family:var(--mono); font-size:0.58rem; color:var(--txdd); border:1px dashed var(--brd2); border-radius:3px; background:none; padding:0.22rem; cursor:pointer; margin-top:0.25rem; width:100%; }
+  .add-v:hover { color:var(--txd); border-color:#383848; }
 
-    .add-voice-btn {
-      font-size: 0.65rem; color: #555; letter-spacing: 0.06em;
-      border: 1px dashed #252530; border-radius: 3px;
-      background: none; padding: 0.3rem 0.5rem;
-      cursor: pointer; transition: color 0.1s, border-color 0.1s;
-      font-family: inherit;
-    }
-    .add-voice-btn:hover { color: #888; border-color: #444; }
+  /* ── Notation ──────────── */
+  .nota-sec { margin-top:1.15rem; background:var(--s1); border:1px solid var(--brd); border-radius:4px; padding:0.5rem; }
+  .nota-t { font-size:0.52rem; color:var(--txdd); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.35rem; }
+  canvas#nota { display:block; width:100%; border-radius:2px; }
 
-    .roll-section { margin-top: 1rem; }
-    .roll-header { font-size: 0.6rem; color: #555; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
-    canvas#roll-canvas {
-      display: block;
-      width: 100%;
-      border: 1px solid #14141c;
-      border-radius: 2px;
-      background: #080810;
-    }
+  /* ── Roll ──────────────── */
+  .roll-sec { margin-top:0.85rem; }
+  .roll-t { font-size:0.52rem; color:var(--txdd); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.25rem; }
+  canvas#roll { display:block; width:100%; border:1px solid var(--brd); border-radius:2px; }
 
-    .hint-row {
-      font-size: 0.6rem; color: #555; letter-spacing: 0.05em;
-      margin-top: 0.75rem; text-align: center;
-    }
-  </style>
+  .hint { font-size:0.52rem; color:var(--txddd); text-align:center; margin-top:0.65rem; letter-spacing:0.03em; }
+</style>
 </head>
 <body>
+<div class="app">
+  <h1>Canon Machine</h1>
+  <div class="sub">draw a subject · rests are empty columns · stack pitches for double stops · add voices at any distance and interval · space = play/stop</div>
 
-<nav aria-label="Main navigation">
-  <div class="nav-inner">
-    <a href="index.html" class="nav-name">David Carlton Adams</a>
-    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-        <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
-        <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
-        <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
-      </svg>
-    </button>
-    <ul class="nav-links" role="list">
-      <li><a href="index.html">about</a></li>
-      <li><a href="works.html">works</a></li>
-      <li><a href="media.html">media</a></li>
-      <li><a href="teaching.html">teaching</a></li>
-      <li><a href="contact.html">contact</a></li>
-    </ul>
-  </div>
-</nav>
-
-<main>
-<div class="canon-wrap">
-
-  <h1 class="canon-title">Canon Machine</h1>
-  <p class="canon-sub">draw a melody · press play · add voices to hear it canon</p>
-
-  <div class="canon-main">
-
-    <div class="grid-section">
-      <div class="grid-header">
-        <span class="grid-label">pattern — click to draw</span>
-        <button class="btn-c danger" id="btn-clear" style="font-size:0.6rem;padding:0.15rem 0.4rem;">clear</button>
+  <div class="main">
+    <div class="grid-sec">
+      <div class="grid-lbl">
+        <span>subject</span>
+        <button class="btn sm danger" id="btn-clear">clear</button>
+        <button class="btn sm" id="btn-seed">seed</button>
       </div>
-      <div class="grid-outer">
-        <div class="pitch-axis" id="pitch-axis"></div>
-        <canvas id="grid-canvas"></canvas>
+      <div class="grid-wrap">
+        <div class="paxis" id="paxis"></div>
+        <canvas id="grid"></canvas>
       </div>
     </div>
 
-    <div class="controls-section">
+    <div class="ctrls">
+      <div class="cg">
+        <div class="cg-t">playback</div>
+        <div class="r">
+          <button class="btn" id="btn-play">▶ play</button>
+          <button class="btn" id="btn-stop">■ stop</button>
+        </div>
+        <div class="r">
+          <span class="l">bpm</span>
+          <input type="number" id="bpm-n" value="120" min="20" max="400">
+          <input type="range" id="bpm-r" min="20" max="400" value="120">
+        </div>
+        <div class="r">
+          <span class="l">steps</span>
+          <button class="btn sm" id="st-dn">−</button>
+          <span id="st-v" style="font-size:0.78rem;color:var(--txd);min-width:2ch;text-align:center">16</span>
+          <button class="btn sm" id="st-up">+</button>
+        </div>
+      </div>
 
-      <div class="ctrl-group">
-        <div class="ctrl-group-label">playback</div>
-        <div class="play-row">
-          <button class="btn-c" id="btn-play">▶ play</button>
-          <button class="btn-c" id="btn-stop">■ stop</button>
-        </div>
-        <div class="bpm-row">
-          <span class="bpm-lbl">BPM</span>
-          <input type="number" id="bpm-input" value="120" min="30" max="300">
-          <input type="range" id="bpm-range" min="30" max="300" value="120">
-        </div>
-        <div class="steps-row">
-          <span class="steps-lbl">steps</span>
-          <button class="step-btn" id="steps-down">−</button>
-          <span id="steps-val">16</span>
-          <button class="step-btn" id="steps-up">+</button>
-        </div>
-        <div class="tuning-row">
-          <span class="tuning-lbl">tuning</span>
+      <div class="cg">
+        <div class="cg-t">tuning</div>
+        <div class="r">
           <select id="tuning-sel">
             <option value="12">12-TET</option>
             <option value="19">19-EDO</option>
+            <option value="24">24-EDO (quarter-tone)</option>
             <option value="31">31-EDO</option>
-            <option value="alpha">α scale</option>
+            <option value="dca">DCA scale</option>
           </select>
         </div>
-        <div class="scale-row">
-          <span class="scale-lbl">highlight</span>
+        <div class="r">
+          <span class="l">filter</span>
           <select id="scale-sel">
             <option value="chromatic">chromatic</option>
-            <option value="major" selected>major (C)</option>
-            <option value="minor">minor (A)</option>
-            <option value="pentatonic">pentatonic (C)</option>
-            <option value="whole">whole tone</option>
+            <option value="major">major</option>
+            <option value="minor">minor</option>
+            <option value="pentatonic">pentatonic</option>
+            <option value="wholetone">whole tone</option>
           </select>
         </div>
       </div>
 
-      <div class="ctrl-group">
-        <div class="ctrl-group-label">voices</div>
-        <div class="interval-row">
-          <span class="interval-lbl">interval</span>
-          <select id="interval-sel"></select>
-          <label class="mode-radio"><input type="radio" name="canon-mode" value="real" checked> real</label>
-          <label class="mode-radio"><input type="radio" name="canon-mode" value="tonal"> tonal</label>
+      <div class="cg">
+        <div class="cg-t">voices</div>
+        <div class="r" style="margin-bottom:0.45rem">
+          <span class="l">intv</span>
+          <select id="iv-sel"></select>
         </div>
-        <div class="voices-list" id="voices-list"></div>
-        <button class="add-voice-btn" id="btn-add-voice" style="margin-top:0.4rem;">+ add voice</button>
+        <div class="r" style="margin-bottom:0.45rem">
+          <span class="l">dist</span>
+          <input type="number" id="dist-n" value="4" min="1" max="64" style="width:4ch">
+          <span style="font-size:0.5rem;color:var(--txdd)">steps</span>
+        </div>
+        <div class="vlist" id="vlist"></div>
+        <button class="add-v" id="btn-add">+ add voice</button>
       </div>
-
     </div>
   </div>
 
-  <div class="roll-section">
-    <div class="roll-header">canon score — all voices</div>
-    <canvas id="roll-canvas" height="120"></canvas>
+  <div class="nota-sec">
+    <div class="nota-t">staff notation</div>
+    <canvas id="nota" height="220"></canvas>
   </div>
 
-  <div class="hint-row">space = play/stop &nbsp;·&nbsp; esc = stop &nbsp;·&nbsp; click grid to draw/erase &nbsp;·&nbsp; drag to paint</div>
+  <div class="roll-sec">
+    <div class="roll-t">piano roll — all voices</div>
+    <canvas id="roll" height="100"></canvas>
+  </div>
 
+  <div class="hint">click/drag grid to draw · space = play/stop · esc = stop · stack pitches in same column for double stops</div>
 </div>
-</main>
-
-<footer>
-  <div class="container">
-    <span>&copy; <span id="year"></span> David Carlton Adams</span>
-  </div>
-</footer>
 
 <script>
-(function () {
+(function(){
+'use strict';
 
-// ─── TUNING SYSTEMS ───────────────────────────────────────────────────────────
-const C4_FREQ = 261.626;
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS (hoisted — available throughout IIFE)
+// ═══════════════════════════════════════════════════════════════════════════════
+function $(id) { return document.getElementById(id); }
+function hexA(hex, a) {
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
 
-const EDO19_NAMES = ['C','','','D','','','E','','F','','','G','','','A','','','B',''];
-const EDO31_NAMES = new Array(31).fill('');
-[0,5,10,13,18,23,28].forEach((s,i) => { EDO31_NAMES[s] = ['C','D','E','F','G','A','B'][i]; });
+// ═══════════════════════════════════════════════════════════════════════════════
+// TUNINGS
+// ═══════════════════════════════════════════════════════════════════════════════
+const C4 = 261.626;
+
+// DCA scale: semitone values within one octave (1 unit = 100¢ = 1 semitone)
+// Base 18 pitches + P4/P5 fills from non-integer steps
+const DCA_BASE = [0, 0.5, 1, 2, 2.7, 3, 3.86, 5, 5.5, 6.7, 7.5, 8, 8.4, 9, 9.7, 10, 11, 11.5];
+
+function buildDCAFull() {
+  const set = new Set(DCA_BASE);
+  DCA_BASE.forEach(s => {
+    if (s !== Math.floor(s)) {
+      set.add(Math.round(((s + 5) % 12) * 10) / 10);  // P4 up
+      set.add(Math.round(((s + 7) % 12) * 10) / 10);  // P5 up
+    }
+  });
+  return [...set].sort((a, b) => a - b);
+}
+
+const DCA_FULL = buildDCAFull();
+
+const DCA_NAMES = {
+  0:'C', 0.5:'C↑', 1:'C♯', 1.4:'C♯↑', 1.7:'D♭↑', 2:'D', 2.5:'D↑', 2.7:'D↑~',
+  3:'E♭', 3.4:'E♭↑', 3.5:'D♯↑', 3.86:'E↓(5/4)', 4:'E', 4.5:'E↑', 4.7:'E↑~',
+  5:'F', 5.5:'F↑', 6:'F♯', 6.5:'F♯↑', 6.7:'F♯↑~', 7:'G', 7.5:'G↑', 7.7:'G↑~',
+  8:'A♭', 8.4:'A♭↑(13)', 8.5:'A♭↑', 8.6:'A♭↑', 8.86:'G♯↑',
+  9:'A', 9.7:'B♭↓(7)', 10:'B♭', 10.5:'B♭↑', 10.86:'B♭↑~', 11:'B', 11.5:'B↑', 11.7:'B↑~',
+};
+function dcaLabel(s) { return DCA_NAMES[s] || (s.toFixed(1)+'st'); }
 
 const TUNINGS = {
   '12': {
-    label: '12-TET',
-    stepCents: 100,
-    defaultRows: 24,
+    label:'12-TET', stepCents:100, spo:12, defRows:25,
+    names:['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'],
+    white:[1,0,1,0,1,1,0,1,0,1,0,1],
     rowLabel(i) {
-      const NM = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-      const WK = [1,0,1,0,1,1,0,1,0,1,0,1];
-      const pc = i % 12, oct = 4 + Math.floor(i / 12);
-      return { text: pc === 0 ? NM[pc]+oct : (WK[pc] ? NM[pc] : ''), isC: pc===0, isWhite: !!WK[pc] };
+      const pc=i%12, o=4+Math.floor(i/12);
+      return { text:pc===0?'C'+o:(this.white[pc]?this.names[pc]:''), hi:!!this.white[pc], root:pc===0 };
     },
-    scaleSupport: true,
+    rowCents(i) { return i*100; },
+    scaleFilter:true,
   },
   '19': {
-    label: '19-EDO',
-    stepCents: 1200 / 19,
-    defaultRows: 24,
+    label:'19-EDO', stepCents:1200/19, spo:19, defRows:24,
+    nm:['C','','','D','','','E','','F','','','G','','','A','','','B',''],
     rowLabel(i) {
-      const step = i % 19, oct = Math.floor(i / 19);
-      const name = EDO19_NAMES[step];
-      return { text: step === 0 ? 'C'+(4+oct) : (name||''), isC: step===0, isWhite: !!name };
+      const s=i%19, o=4+Math.floor(i/19);
+      return { text:s===0?'C'+o:(this.nm[s]||''), hi:!!this.nm[s], root:s===0 };
     },
-    scaleSupport: false,
+    rowCents(i) { return i*(1200/19); },
+    scaleFilter:false,
+  },
+  '24': {
+    label:'24-EDO', stepCents:50, spo:24, defRows:30,
+    names12:['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'],
+    rowLabel(i) {
+      const s=i%24, b12=Math.floor(s/2), q=s%2===1, o=4+Math.floor(i/24);
+      if(s===0) return {text:'C'+o, hi:true, root:true};
+      return q ? {text:'↑',hi:false,root:false} : {text:this.names12[b12],hi:true,root:false};
+    },
+    rowCents(i) { return i*50; },
+    scaleFilter:false,
   },
   '31': {
-    label: '31-EDO',
-    stepCents: 1200 / 31,
-    defaultRows: 36,
+    label:'31-EDO', stepCents:1200/31, spo:31, defRows:36,
+    nm:{0:'C',5:'D',10:'E',13:'F',18:'G',23:'A',28:'B'},
     rowLabel(i) {
-      const step = i % 31, oct = Math.floor(i / 31);
-      const name = EDO31_NAMES[step];
-      return { text: step === 0 ? 'C'+(4+oct) : (name||''), isC: step===0, isWhite: !!name };
+      const s=i%31, o=4+Math.floor(i/31);
+      return { text:s===0?'C'+o:(this.nm[s]||''), hi:!!this.nm[s], root:s===0 };
     },
-    scaleSupport: false,
+    rowCents(i) { return i*(1200/31); },
+    scaleFilter:false,
   },
-  'alpha': {
-    label: 'α scale',
-    stepCents: 77.965,
-    defaultRows: 24,
+  'dca': {
+    label:'DCA scale', stepCents:null, spo:null, defRows:DCA_FULL.length*2,
     rowLabel(i) {
-      return { text: i % 4 === 0 ? 'α'+i : '', isC: i===0, isWhite: i%4===0 };
+      const idx=i%DCA_FULL.length, oct=Math.floor(i/DCA_FULL.length), s=DCA_FULL[idx];
+      if(s===0) return {text:'C'+(4+oct),hi:true,root:true};
+      return {text:dcaLabel(s),hi:DCA_BASE.includes(s),root:false};
     },
-    scaleSupport: false,
+    rowCents(i) {
+      const idx=i%DCA_FULL.length, oct=Math.floor(i/DCA_FULL.length);
+      return DCA_FULL[idx]*100 + oct*1200;
+    },
+    scaleFilter:false,
   },
 };
 
-// ─── INTERVALS OF IMITATION ───────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTERVALS
+// ═══════════════════════════════════════════════════════════════════════════════
 const INTERVALS = [
-  { name: 'm2',       cents: 100 },
-  { name: 'M2',       cents: 200 },
-  { name: 'm3',       cents: 300 },
-  { name: 'M3',       cents: 400 },
-  { name: 'P4',       cents: 500 },
-  { name: '11th ∂',   cents: 1200 * Math.log2(11/8) },   // 551.3¢
-  { name: 'TT',       cents: 600 },
-  { name: 'P5',       cents: 700 },
-  { name: 'm6',       cents: 800 },
-  { name: 'tridec',   cents: 1200 * Math.log2(13/8) },   // 840.5¢
-  { name: 'tridec+',  cents: 850 },
-  { name: 'M6',       cents: 900 },
-  { name: 'septimal', cents: 1200 * Math.log2(7/4) },    // 968.8¢
-  { name: 'm7',       cents: 1000 },
-  { name: 'M7',       cents: 1100 },
-  { name: '11.5',     cents: 1150 },
+  {name:'Unison',       cents:0},
+  {name:'m2',          cents:100},
+  {name:'M2',          cents:200},
+  {name:'m3',          cents:300},
+  {name:'M3',          cents:400},
+  {name:'P4',          cents:500},
+  {name:'TT',          cents:600},
+  {name:'P5',          cents:700},
+  {name:'m6',          cents:800},
+  {name:'M6',          cents:900},
+  {name:'7∂ (969¢)',   cents:1200*Math.log2(7/4)},
+  {name:'m7',          cents:1000},
+  {name:'M7',          cents:1100},
+  {name:'P8',          cents:1200},
+  {name:'−P4',         cents:-500},
+  {name:'−P5',         cents:-700},
+  {name:'−P8',         cents:-1200},
 ];
-
-// ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const CELL_W = 28;
-const CELL_H = 14;
 
 const SCALES = {
   chromatic:  new Set([0,1,2,3,4,5,6,7,8,9,10,11]),
   major:      new Set([0,2,4,5,7,9,11]),
   minor:      new Set([0,2,3,5,7,8,10]),
   pentatonic: new Set([0,2,4,7,9]),
-  whole:      new Set([0,2,4,6,8,10]),
+  wholetone:  new Set([0,2,4,6,8,10]),
 };
 
-const VOICE_COLORS = ['#e8e8f0','#3498db','#2ecc71','#f39c12','#9b59b6'];
+const VCOL = ['#c0c0d0','#4a9eff','#2ecc71','#f39c12','#9b59b6','#e74c3c','#1abc9c','#e67e22'];
 
-// ─── STATE ────────────────────────────────────────────────────────────────────
-let numSteps      = 16;
-let masterBPM     = 120;
-let scale         = SCALES.major;
-let playing       = false;
-let currentTuning = '12';
-let currentMode   = 'real';
-let numRows       = 24;
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let numSteps=16, numRows, bpm=120, scale=SCALES.chromatic;
+let curTuning='12', playing=false, grid;
 
-let grid = Array.from({length: numRows}, () => new Array(numSteps).fill(false));
+const voices = [{ offset:0, transCents:0, color:VCOL[0], muted:false }];
 
-const voices = [
-  { offset: 0, transposeCents: 0, color: VOICE_COLORS[0], muted: false },
-];
+function initGrid() {
+  numRows = TUNINGS[curTuning].defRows;
+  grid = Array.from({length:numRows}, () => new Array(numSteps).fill(false));
+}
+initGrid();
 
-// ─── AUDIO ────────────────────────────────────────────────────────────────────
-let actx = null;
-function getCtx() {
-  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-  if (actx.state === 'suspended') actx.resume();
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════════════════════════════════════════
+let actx=null;
+function ac() {
+  if(!actx) actx=new(window.AudioContext||window.webkitAudioContext)();
+  if(actx.state==='suspended') actx.resume();
   return actx;
 }
 
-function rowFreq(pitchIdx) {
-  return C4_FREQ * Math.pow(2, pitchIdx * TUNINGS[currentTuning].stepCents / 1200);
-}
+function rowFreq(r) { return C4*Math.pow(2,TUNINGS[curTuning].rowCents(r)/1200); }
 
-const DECAY = 0.35;
-function playNote(pitchIdx, transposeCents, color, when) {
-  const baseFreq = rowFreq(pitchIdx);
-  const freq = baseFreq * Math.pow(2, transposeCents / 1200);
-  if (freq < 20 || freq > 18000) return;
-  const ctx = getCtx();
-  const osc  = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.type = 'triangle';
-  osc.frequency.value = freq;
-  gain.gain.setValueAtTime(0, when);
-  gain.gain.linearRampToValueAtTime(0.18, when + 0.012);
-  gain.gain.exponentialRampToValueAtTime(0.001, when + DECAY);
+function playNote(row, transCents, when) {
+  const freq=rowFreq(row)*Math.pow(2,transCents/1200);
+  if(freq<18||freq>20000) return;
+  const c=ac();
+  const osc=c.createOscillator();
+  const g=c.createGain();
+  osc.connect(g).connect(c.destination);
+  osc.type='triangle';
+  osc.frequency.value=freq;
+  g.gain.setValueAtTime(0,when);
+  g.gain.linearRampToValueAtTime(0.12,when+0.008);
+  g.gain.exponentialRampToValueAtTime(0.001,when+0.38);
   osc.start(when);
-  osc.stop(when + DECAY + 0.05);
+  osc.stop(when+0.42);
 }
 
-// ─── SCHEDULER ────────────────────────────────────────────────────────────────
-let scheduleTimer = null;
-let currentStep   = 0;
-let nextStepTime  = 0;
-let rollHistory   = [];
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCHEDULER
+// ═══════════════════════════════════════════════════════════════════════════════
+let schedT=null, curStep=0, nextT=0;
+function stepDur() { return 60/bpm/4; }
 
-function stepDuration() { return 60 / masterBPM / 4; }
-
-function scheduleStep(step, when) {
-  voices.forEach(voice => {
-    if (voice.muted) return;
-    const patStep = ((step - voice.offset) % numSteps + numSteps) % numSteps;
-    for (let p = 0; p < numRows; p++) {
-      if (grid[p] && grid[p][patStep]) {
-        playNote(p, voice.transposeCents, voice.color, when);
+function sched() {
+  if(!playing||!actx) return;
+  while(nextT<actx.currentTime+0.15) {
+    voices.forEach(v => {
+      if(v.muted) return;
+      const pat=((curStep-v.offset)%numSteps+numSteps)%numSteps;
+      for(let p=0;p<numRows;p++) {
+        if(grid[p]&&grid[p][pat]) playNote(p,v.transCents,nextT);
       }
-    }
-  });
-}
-
-function scheduler() {
-  if (!actx || !playing) return;
-  const lookahead = 0.15;
-  while (nextStepTime < actx.currentTime + lookahead) {
-    scheduleStep(currentStep, nextStepTime);
-    rollHistory.push({ step: currentStep, time: nextStepTime });
-    if (rollHistory.length > numSteps * 6) rollHistory.shift();
-    nextStepTime += stepDuration();
-    currentStep = (currentStep + 1) % numSteps;
+    });
+    nextT+=stepDur();
+    curStep=(curStep+1)%numSteps;
   }
-  scheduleTimer = setTimeout(scheduler, 25);
+  schedT=setTimeout(sched,20);
 }
 
-function startPlay() {
-  getCtx();
-  nextStepTime = actx.currentTime + 0.05;
-  currentStep  = 0;
-  playing      = true;
-  document.getElementById('btn-play').classList.add('active');
-  rollHistory  = [];
-  scheduler();
-}
+function startPlay() { ac(); nextT=actx.currentTime+0.05; curStep=0; playing=true; $('btn-play').classList.add('active'); sched(); }
+function stopPlay()  { playing=false; if(schedT) clearTimeout(schedT); $('btn-play').classList.remove('active'); }
+function togglePlay(){ playing?stopPlay():startPlay(); }
 
-function stopPlay() {
-  playing = false;
-  if (scheduleTimer) clearTimeout(scheduleTimer);
-  document.getElementById('btn-play').classList.remove('active');
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// GRID CANVAS
+// ═══════════════════════════════════════════════════════════════════════════════
+const CW=24, CH=12;
+const gc=$('grid'), gx=gc.getContext('2d');
 
-function togglePlay() { if (playing) stopPlay(); else startPlay(); }
-
-// ─── PITCH AXIS ───────────────────────────────────────────────────────────────
-function buildPitchAxis() {
-  const axis = document.getElementById('pitch-axis');
-  axis.innerHTML = '';
-  const tuning = TUNINGS[currentTuning];
-  for (let p = numRows - 1; p >= 0; p--) {
-    const lbl = tuning.rowLabel(p);
-    const div = document.createElement('div');
-    div.className = 'pitch-label' + (lbl.isC ? ' c-key' : lbl.isWhite ? ' white-key' : '');
-    div.style.height = CELL_H + 'px';
-    div.textContent = lbl.text;
-    axis.appendChild(div);
-  }
-}
-
-// ─── GRID CANVAS ──────────────────────────────────────────────────────────────
-const gridCanvas = document.getElementById('grid-canvas');
-let gridW, gridH;
-
-function resizeGridCanvas() {
-  gridW = numSteps * CELL_W;
-  gridH = numRows * CELL_H;
-  gridCanvas.width  = gridW;
-  gridCanvas.height = gridH;
-}
+function resizeG() { gc.width=numSteps*CW; gc.height=numRows*CH; }
 
 function drawGrid() {
-  const ctx2 = gridCanvas.getContext('2d');
-  ctx2.clearRect(0, 0, gridW, gridH);
-  const tuning = TUNINGS[currentTuning];
-
-  for (let p = 0; p < numRows; p++) {
-    const row = numRows - 1 - p;
-    const inScale = tuning.scaleSupport && scale.has(p % 12);
-    ctx2.fillStyle = inScale ? '#0f0f16' : '#0a0a10';
-    ctx2.fillRect(0, row * CELL_H, gridW, CELL_H);
-
-    const lbl = tuning.rowLabel(p);
-    if (lbl.isC) {
-      ctx2.fillStyle = '#1a1a28';
-      ctx2.fillRect(0, row * CELL_H, gridW, 1);
-    }
-
-    for (let s = 0; s < numSteps; s++) {
-      const x = s * CELL_W, y = row * CELL_H;
-      ctx2.fillStyle = s % 4 === 0 ? '#12121a' : '#0e0e16';
-      ctx2.fillRect(x, y, 1, CELL_H);
-
-      if (grid[p] && grid[p][s]) {
-        ctx2.fillStyle = VOICE_COLORS[0];
-        ctx2.fillRect(x + 2, y + 2, CELL_W - 3, CELL_H - 3);
-        ctx2.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx2.fillRect(x + 2, y + 2, CELL_W - 3, 3);
+  const W=gc.width, H=gc.height;
+  gx.clearRect(0,0,W,H);
+  const t=TUNINGS[curTuning];
+  for(let p=0;p<numRows;p++) {
+    const row=numRows-1-p;
+    const lb=t.rowLabel(p);
+    const inSc=t.scaleFilter&&scale.has(p%(t.spo||12));
+    gx.fillStyle=lb.root?'#0c1018':inSc?'#0e0e18':'#09090e';
+    gx.fillRect(0,row*CH,W,CH);
+    if(lb.root){ gx.fillStyle='#1a1a30'; gx.fillRect(0,row*CH,W,1); }
+    for(let s=0;s<numSteps;s++) {
+      const x=s*CW, y=row*CH;
+      gx.fillStyle=s%4===0?'#12121c':'#0b0b12';
+      gx.fillRect(x,y,1,CH);
+      if(grid[p]&&grid[p][s]) {
+        gx.fillStyle='rgba(190,190,210,0.85)';
+        gx.fillRect(x+2,y+1,CW-3,CH-2);
+        gx.fillStyle='rgba(255,255,255,0.12)';
+        gx.fillRect(x+2,y+1,CW-3,2);
       }
     }
   }
-
-  if (playing) {
-    const sx = currentStep * CELL_W;
-    ctx2.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx2.fillRect(sx, 0, CELL_W, gridH);
-    ctx2.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx2.fillRect(sx, 0, 2, gridH);
+  if(playing) {
+    const sx=curStep*CW;
+    gx.fillStyle='rgba(74,158,255,0.07)';
+    gx.fillRect(sx,0,CW,H);
+    gx.fillStyle='rgba(74,158,255,0.55)';
+    gx.fillRect(sx,0,2,H);
   }
 }
 
-// ─── GRID INTERACTION ─────────────────────────────────────────────────────────
-let painting   = false;
-let paintValue = true;
-
-function gridPos(e) {
-  const rect = gridCanvas.getBoundingClientRect();
-  const scaleX = gridCanvas.width / rect.width;
-  const scaleY = gridCanvas.height / rect.height;
-  const mx = (e.clientX - rect.left) * scaleX;
-  const my = (e.clientY - rect.top) * scaleY;
-  return { step: Math.floor(mx / CELL_W), pitchIdx: numRows - 1 - Math.floor(my / CELL_H) };
+// Grid interaction
+let painting=false, paintV=true;
+function gpos(e) {
+  const r=gc.getBoundingClientRect();
+  const mx=(e.clientX-r.left)*gc.width/r.width;
+  const my=(e.clientY-r.top)*gc.height/r.height;
+  return {s:Math.floor(mx/CW), p:numRows-1-Math.floor(my/CH)};
 }
-
-function gridPaint(e) {
-  const { step, pitchIdx } = gridPos(e);
-  if (step < 0 || step >= numSteps || pitchIdx < 0 || pitchIdx >= numRows) return;
-  grid[pitchIdx][step] = paintValue;
+function gpaint(e) {
+  const {s,p}=gpos(e);
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows) grid[p][s]=paintV;
 }
-
-gridCanvas.addEventListener('mousedown', e => {
-  const { step, pitchIdx } = gridPos(e);
-  if (step < 0 || step >= numSteps || pitchIdx < 0 || pitchIdx >= numRows) return;
-  paintValue = !grid[pitchIdx][step];
-  painting = true;
-  grid[pitchIdx][step] = paintValue;
+gc.addEventListener('mousedown',e=>{
+  const {s,p}=gpos(e);
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; }
 });
-gridCanvas.addEventListener('mousemove', e => { if (painting) gridPaint(e); });
-window.addEventListener('mouseup', () => { painting = false; });
-gridCanvas.addEventListener('touchstart', e => {
+gc.addEventListener('mousemove',e=>{ if(painting) gpaint(e); });
+window.addEventListener('mouseup',()=>painting=false);
+gc.addEventListener('touchstart',e=>{
   e.preventDefault();
-  const { step, pitchIdx } = gridPos(e.touches[0]);
-  if (step >= 0 && step < numSteps && pitchIdx >= 0 && pitchIdx < numRows) {
-    paintValue = !grid[pitchIdx][step];
-    painting = true;
-    grid[pitchIdx][step] = paintValue;
-  }
-}, { passive: false });
-gridCanvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  if (painting) gridPaint(e.touches[0]);
-}, { passive: false });
+  const {s,p}=gpos(e.touches[0]);
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; }
+},{passive:false});
+gc.addEventListener('touchmove',e=>{ e.preventDefault(); if(painting) gpaint(e.touches[0]); },{passive:false});
 
-// ─── PIANO ROLL ───────────────────────────────────────────────────────────────
-const rollCanvas = document.getElementById('roll-canvas');
-const rollCtx    = rollCanvas.getContext('2d');
+// ═══════════════════════════════════════════════════════════════════════════════
+// PITCH AXIS
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildAxis() {
+  const ax=$('paxis'); ax.innerHTML='';
+  const t=TUNINGS[curTuning];
+  for(let p=numRows-1;p>=0;p--) {
+    const lb=t.rowLabel(p);
+    const d=document.createElement('div');
+    d.className='plbl'+(lb.root?' root':lb.hi?' hi':'');
+    d.style.height=CH+'px';
+    d.textContent=lb.text;
+    ax.appendChild(d);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PIANO ROLL
+// ═══════════════════════════════════════════════════════════════════════════════
+const rc=$('roll'), rx=rc.getContext('2d');
 
 function drawRoll() {
-  const W = rollCanvas.clientWidth || 600;
-  const H = rollCanvas.height;
-  rollCanvas.width = W;
-  rollCtx.fillStyle = '#080810';
-  rollCtx.fillRect(0, 0, W, H);
+  const W=rc.clientWidth||800, H=rc.height;
+  rc.width=W;
+  rx.fillStyle='#08080c';
+  rx.fillRect(0,0,W,H);
+  const t=TUNINGS[curTuning];
+  const cellW=W/(numSteps*2);
 
-  if (!playing || !actx) { drawRollStatic(W, H); return; }
-
-  const now = actx.currentTime;
-  const winSec = stepDuration() * numSteps * 1.5;
-  const pixPerSec = W / winSec;
-  const tuning = TUNINGS[currentTuning];
-
-  for (let p = 0; p < numRows; p++) {
-    if (tuning.scaleSupport && scale.has(p % 12)) {
-      rollCtx.fillStyle = '#0d0d18';
-      rollCtx.fillRect(0, H - ((p + 1) / numRows) * H, W, H / numRows);
-    }
-  }
-
-  voices.forEach(voice => {
-    if (voice.muted) return;
-    const tRows = voice.transposeCents / tuning.stepCents;
-    for (let s = 0; s < numSteps; s++) {
-      const patStep = ((s - voice.offset) % numSteps + numSteps) % numSteps;
-      for (let p = 0; p < numRows; p++) {
-        if (!grid[p] || !grid[p][patStep]) continue;
-        const dp = p + tRows;
-        rollHistory.forEach(h => {
-          if (h.step !== s) return;
-          const tSince = now - h.time;
-          const x = W - tSince * pixPerSec;
-          const noteW = stepDuration() * pixPerSec * 0.85;
-          const rowH  = Math.max(3, H / numRows - 1);
-          const y = H - ((dp + 1) / numRows) * H;
-          if (x > -noteW && x < W) {
-            rollCtx.fillStyle = hexA(voice.color, 0.75);
-            rollCtx.fillRect(x, y, noteW, rowH);
-            rollCtx.fillStyle = hexA(voice.color, 0.3);
-            rollCtx.fillRect(x, y, noteW, 2);
-          }
-        });
-      }
-    }
-  });
-
-  rollCtx.fillStyle = 'rgba(255,255,255,0.25)';
-  rollCtx.fillRect(W - 2, 0, 2, H);
-}
-
-function drawRollStatic(W, H) {
-  const cellW = W / (numSteps * 2);
-  const tuning = TUNINGS[currentTuning];
-
-  for (let p = 0; p < numRows; p++) {
-    if (tuning.scaleSupport && scale.has(p % 12)) {
-      rollCtx.fillStyle = '#0d0d18';
-      rollCtx.fillRect(0, H - ((p + 1) / numRows) * H, W, Math.max(2, H / numRows));
-    }
-  }
-
-  voices.forEach(voice => {
-    if (voice.muted) return;
-    const tRows = voice.transposeCents / tuning.stepCents;
-    for (let loop = 0; loop < 2; loop++) {
-      for (let s = 0; s < numSteps; s++) {
-        const absStep = loop * numSteps + s + voice.offset;
-        for (let p = 0; p < numRows; p++) {
-          if (!grid[p] || !grid[p][s]) continue;
-          const dp = p + tRows;
-          const x = absStep * cellW;
-          const y = H - ((dp + 1) / numRows) * H;
-          const noteW = cellW * 0.82;
-          const rowH  = Math.max(3, H / numRows - 1);
-          if (x >= 0 && x < W) {
-            rollCtx.fillStyle = hexA(voice.color, 0.65);
-            rollCtx.fillRect(x, y, noteW, rowH);
+  voices.forEach(v=>{
+    if(v.muted) return;
+    const tRows=t.stepCents?v.transCents/t.stepCents:v.transCents/50;
+    for(let loop=0;loop<2;loop++) {
+      for(let s=0;s<numSteps;s++) {
+        const absStep=loop*numSteps+s+v.offset;
+        for(let p=0;p<numRows;p++) {
+          if(!grid[p]||!grid[p][s]) continue;
+          const dp=p+tRows;
+          const x=absStep*cellW;
+          const y=H-((dp+1)/numRows)*H;
+          if(x>=0&&x<W) {
+            rx.fillStyle=hexA(v.color,0.6);
+            rx.fillRect(x,y,cellW*0.8,Math.max(2,H/numRows-1));
           }
         }
       }
     }
   });
 
-  voices.forEach(voice => {
-    if (voice.offset === 0) return;
-    const x = voice.offset * cellW;
-    rollCtx.strokeStyle = hexA(voice.color, 0.2);
-    rollCtx.lineWidth = 1;
-    rollCtx.setLineDash([3, 3]);
-    rollCtx.beginPath();
-    rollCtx.moveTo(x, 0);
-    rollCtx.lineTo(x, H);
-    rollCtx.stroke();
-    rollCtx.setLineDash([]);
+  // Voice entry markers
+  voices.forEach(v=>{
+    if(v.offset===0) return;
+    const x=v.offset*cellW;
+    rx.strokeStyle=hexA(v.color,0.25);
+    rx.lineWidth=1; rx.setLineDash([3,3]);
+    rx.beginPath(); rx.moveTo(x,0); rx.lineTo(x,H); rx.stroke();
+    rx.setLineDash([]);
   });
 }
 
-function hexA(hex, a) {
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
-  return `rgba(${r},${g},${b},${a})`;
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// STAFF NOTATION
+// ═══════════════════════════════════════════════════════════════════════════════
+const nc=$('nota'), nxx=nc.getContext('2d');
 
-// ─── VOICES UI ────────────────────────────────────────────────────────────────
-function rebuildVoicesUI() {
-  const list = document.getElementById('voices-list');
-  list.innerHTML = '';
-  voices.forEach((voice, vi) => {
-    const row = document.createElement('div');
-    row.className = 'voice-row' + (voice.muted ? ' voice-muted' : '');
-    row.id = `voice-row-${vi}`;
-    const isOriginal = vi === 0;
-    row.innerHTML = `
-      <div class="voice-pip" style="background:${voice.color}"></div>
-      <span class="voice-field-lbl">off</span>
-      <input class="voice-field" type="number" id="voff-${vi}"
-             value="${voice.offset}" min="0" max="${numSteps - 1}"
-             ${isOriginal ? 'disabled style="color:#333"' : ''}>
-      <span class="voice-field-lbl">¢</span>
-      <input class="voice-field wide" type="number" id="vtr-${vi}"
-             value="${voice.transposeCents.toFixed(1)}" min="-2400" max="2400" step="0.1"
-             ${isOriginal ? 'disabled style="color:#333"' : ''}>
-      ${!isOriginal ? `<button class="voice-del" data-vi="${vi}" title="remove">×</button>` : '<span style="width:14px"></span>'}
-    `;
-    list.appendChild(row);
+function drawNotation() {
+  const W=nc.clientWidth||800;
+  const visVoices=voices.filter(v=>!v.muted);
+  const staffH=50, staffGap=20;
+  const margin={top:15,bottom:10,left:44,right:10};
+  const totalH=margin.top+visVoices.length*(staffH+staffGap)+margin.bottom;
+  nc.height=Math.max(100,totalH);
+  nc.width=W;
 
-    if (!isOriginal) {
-      row.querySelector(`#voff-${vi}`).addEventListener('input', e => {
-        voices[vi].offset = Math.max(0, Math.min(numSteps - 1, parseInt(e.target.value) || 0));
-      });
-      row.querySelector(`#vtr-${vi}`).addEventListener('input', e => {
-        const v = parseFloat(e.target.value);
-        if (!isNaN(v)) voices[vi].transposeCents = Math.max(-2400, Math.min(2400, v));
+  nxx.fillStyle='#0e0e14';
+  nxx.fillRect(0,0,W,nc.height);
+
+  const t=TUNINGS[curTuning];
+  const noteW=(W-margin.left-margin.right)/numSteps;
+  const lineGap=8;
+  const centerRow=Math.floor(numRows/2);
+
+  visVoices.forEach((v,vi)=>{
+    const voiceIdx=voices.indexOf(v);
+    const staffTop=margin.top+vi*(staffH+staffGap);
+    const staffMid=staffTop+staffH/2;
+
+    // 5 staff lines
+    nxx.strokeStyle='rgba(100,100,120,0.3)';
+    nxx.lineWidth=1;
+    for(let l=-2;l<=2;l++) {
+      const y=staffMid+l*lineGap;
+      nxx.beginPath();
+      nxx.moveTo(margin.left-5,y);
+      nxx.lineTo(W-margin.right,y);
+      nxx.stroke();
+    }
+
+    // Voice label
+    nxx.fillStyle=hexA(v.color,0.7);
+    nxx.font='9px "JetBrains Mono"';
+    nxx.textAlign='right';
+    nxx.textBaseline='middle';
+    nxx.fillText(voiceIdx===0?'dux':'v'+(voiceIdx+1),margin.left-8,staffMid);
+
+    // Beat lines
+    for(let s=0;s<=numSteps;s++) {
+      const x=margin.left+s*noteW;
+      nxx.strokeStyle=s%4===0?'rgba(100,100,120,0.25)':'rgba(100,100,120,0.08)';
+      nxx.lineWidth=s%4===0?1:0.5;
+      nxx.beginPath(); nxx.moveTo(x,staffTop-3); nxx.lineTo(x,staffTop+staffH+3); nxx.stroke();
+    }
+
+    // Notes
+    for(let s=0;s<numSteps;s++) {
+      const pitches=[];
+      for(let p=0;p<numRows;p++) { if(grid[p]&&grid[p][s]) pitches.push(p); }
+      if(!pitches.length) continue;
+
+      const x=margin.left+s*noteW+noteW/2;
+
+      pitches.forEach(p=>{
+        const rowCentsVal=t.rowCents(p);
+        const centerCents=t.rowCents(centerRow);
+        const centsDiff=rowCentsVal-centerCents;
+        const staffPos=centsDiff/200;
+        const y=staffMid-staffPos*lineGap;
+        const topLine=staffMid-2*lineGap, botLine=staffMid+2*lineGap;
+
+        // Ledger lines
+        nxx.strokeStyle='rgba(100,100,120,0.3)';
+        nxx.lineWidth=1;
+        if(y<topLine-lineGap*0.3) {
+          for(let ly=topLine-lineGap;ly>=y-lineGap*0.3;ly-=lineGap) {
+            nxx.beginPath(); nxx.moveTo(x-8,ly); nxx.lineTo(x+8,ly); nxx.stroke();
+          }
+        }
+        if(y>botLine+lineGap*0.3) {
+          for(let ly=botLine+lineGap;ly<=y+lineGap*0.3;ly+=lineGap) {
+            nxx.beginPath(); nxx.moveTo(x-8,ly); nxx.lineTo(x+8,ly); nxx.stroke();
+          }
+        }
+
+        // Note head
+        nxx.fillStyle=hexA(v.color,0.85);
+        nxx.beginPath();
+        nxx.ellipse(x,y,5,3.5,-0.2,0,Math.PI*2);
+        nxx.fill();
+
+        // Stem
+        nxx.strokeStyle=hexA(v.color,0.6);
+        nxx.lineWidth=1;
+        const up=y>=staffMid;
+        nxx.beginPath();
+        nxx.moveTo(up?x+4.5:x-4.5,y);
+        nxx.lineTo(up?x+4.5:x-4.5,y+(up?-22:22));
+        nxx.stroke();
+
+        // Microtonal deviation marker
+        const nearSemi=Math.round(rowCentsVal/100)*100;
+        const dev=rowCentsVal-nearSemi;
+        if(Math.abs(dev)>5) {
+          nxx.fillStyle=hexA(v.color,0.5);
+          nxx.font='7px "JetBrains Mono"';
+          nxx.textAlign='left';
+          nxx.textBaseline='middle';
+          nxx.fillText((dev>0?'+':'')+Math.round(dev)+'¢',x+7,y-2);
+        }
       });
     }
   });
 
-  list.addEventListener('click', e => {
-    const del = e.target.closest('.voice-del');
-    if (!del) return;
-    voices.splice(parseInt(del.dataset.vi), 1);
-    rebuildVoicesUI();
+  // Playhead
+  if(playing) {
+    const x=margin.left+curStep*noteW;
+    nxx.fillStyle='rgba(74,158,255,0.08)';
+    nxx.fillRect(x,0,noteW,nc.height);
+    nxx.fillStyle='rgba(74,158,255,0.4)';
+    nxx.fillRect(x,0,1.5,nc.height);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VOICES UI
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildVoicesUI() {
+  const list=$('vlist');
+  list.innerHTML='';
+  voices.forEach((v,i)=>{
+    const isOrig=i===0;
+    const row=document.createElement('div');
+    row.className='vrow'+(v.muted?' muted':'');
+    row.innerHTML=`
+      <div class="vpip" style="background:${v.color}"></div>
+      <span class="vfl">${isOrig?'dux':'v'+(i+1)}</span>
+      <span class="vfl">off</span>
+      <input class="vf" type="number" value="${v.offset}" min="0" max="${numSteps*4}" ${isOrig?'disabled style="color:#333"':''} data-i="${i}" data-f="off">
+      <span class="vfl">¢</span>
+      <input class="vf w" type="number" value="${v.transCents.toFixed(1)}" step="50" min="-2400" max="2400" ${isOrig?'disabled style="color:#333"':''} data-i="${i}" data-f="cents">
+      <button class="vmute" data-i="${i}">${v.muted?'unmute':'mute'}</button>
+      ${!isOrig?`<button class="vdel" data-i="${i}">×</button>`:''}
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const i=+e.target.dataset.i, f=e.target.dataset.f;
+      if(f==='off') voices[i].offset=Math.max(0,parseInt(e.target.value)||0);
+      if(f==='cents'){ const v=parseFloat(e.target.value); if(!isNaN(v)) voices[i].transCents=v; }
+    });
+  });
+  list.querySelectorAll('.vmute').forEach(b=>{
+    b.addEventListener('click',e=>{ const i=+e.target.dataset.i; voices[i].muted=!voices[i].muted; buildVoicesUI(); });
+  });
+  list.querySelectorAll('.vdel').forEach(b=>{
+    b.addEventListener('click',e=>{ voices.splice(+e.target.dataset.i,1); buildVoicesUI(); });
   });
 }
 
-// ─── INTERVAL SELECTOR ────────────────────────────────────────────────────────
-function buildIntervalSelector() {
-  const sel = document.getElementById('interval-sel');
-  sel.innerHTML = '';
-  INTERVALS.forEach(iv => {
-    const opt = document.createElement('option');
-    opt.value = iv.cents.toFixed(3);
-    opt.textContent = `${iv.name} (${Math.round(iv.cents)}¢)`;
-    if (iv.name === 'P5') opt.selected = true;
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTERVAL SELECTOR
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildIntervals() {
+  const sel=$('iv-sel');
+  sel.innerHTML='';
+  INTERVALS.forEach(iv=>{
+    const opt=document.createElement('option');
+    opt.value=iv.cents.toFixed(3);
+    opt.textContent=`${iv.name} (${Math.round(iv.cents)}¢)`;
+    if(iv.name==='P5') opt.selected=true;
     sel.appendChild(opt);
   });
 }
 
-function computeTransposeCents(rawCents) {
-  if (currentMode === 'tonal') {
-    const stepCents = TUNINGS[currentTuning].stepCents;
-    return Math.round(rawCents / stepCents) * stepCents;
-  }
-  return rawCents;
+// ═══════════════════════════════════════════════════════════════════════════════
+// TUNING SWITCH
+// ═══════════════════════════════════════════════════════════════════════════════
+function switchTuning(t) {
+  curTuning=t;
+  initGrid();
+  buildAxis();
+  resizeG();
+  $('scale-sel').disabled=!TUNINGS[t].scaleFilter;
+  if(!TUNINGS[t].scaleFilter) scale=SCALES.chromatic;
 }
 
-document.getElementById('btn-add-voice').addEventListener('click', () => {
-  if (voices.length >= VOICE_COLORS.length) return;
-  const rawCents = parseFloat(document.getElementById('interval-sel').value);
-  voices.push({
-    offset: Math.min(4 * voices.length, numSteps - 1),
-    transposeCents: computeTransposeCents(rawCents),
-    color: VOICE_COLORS[voices.length],
-    muted: false,
-  });
-  rebuildVoicesUI();
-});
-
-// ─── TUNING SWITCH ────────────────────────────────────────────────────────────
-function seedPattern() {
-  for (let p = 0; p < numRows; p++) if (grid[p]) grid[p].fill(false);
-  const seeds = {
-    '12':    [[0,0],[4,2],[7,4],[12,6],[7,8],[4,10],[0,12],[4,14]],
-    '19':    [[0,0],[6,2],[11,4],[3,6],[11,8],[6,10],[0,12],[6,14]],
-    '31':    [[0,0],[10,2],[18,4],[5,6],[18,8],[10,10],[0,12],[10,14]],
-    'alpha': [[0,0],[3,2],[6,4],[9,6],[6,8],[3,10],[0,12],[3,14]],
+function seed() {
+  for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false);
+  const mid=Math.floor(numRows/2);
+  const seeds={
+    '12': [[0,0],[2,2],[4,4],[5,6],[4,8],[2,10],[0,12],[2,14]],
+    '19': [[0,0],[3,2],[6,4],[8,6],[6,8],[3,10],[0,12],[3,14]],
+    '24': [[0,0],[4,2],[7,4],[10,6],[7,8],[4,10],[0,12],[4,14]],
+    '31': [[0,0],[5,2],[10,4],[13,6],[10,8],[5,10],[0,12],[5,14]],
+    'dca':[[0,0],[3,2],[6,4],[8,6],[6,8],[3,10],[0,12],[3,14]],
   };
-  (seeds[currentTuning] || []).forEach(([p,s]) => {
-    if (p < numRows && s < numSteps) grid[p][s] = true;
+  (seeds[curTuning]||[]).forEach(([p,s])=>{
+    const row=mid+p;
+    if(row>=0&&row<numRows&&s<numSteps) grid[row][s]=true;
   });
 }
 
-function switchTuning(newTuning) {
-  currentTuning = newTuning;
-  numRows = TUNINGS[newTuning].defaultRows;
-  grid = Array.from({length: numRows}, () => new Array(numSteps).fill(false));
-  buildPitchAxis();
-  resizeGridCanvas();
-  const scaleSel = document.getElementById('scale-sel');
-  scaleSel.disabled = newTuning !== '12';
-  if (newTuning !== '12') scale = SCALES.chromatic;
-  seedPattern();
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════════════════════════════
+$('btn-play').addEventListener('click',togglePlay);
+$('btn-stop').addEventListener('click',stopPlay);
+$('btn-clear').addEventListener('click',()=>{ for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false); });
+$('btn-seed').addEventListener('click',seed);
 
-// ─── STEPS CONTROL ────────────────────────────────────────────────────────────
+$('bpm-n').addEventListener('input',e=>{ const v=parseInt(e.target.value); if(v>=20&&v<=400){ bpm=v; $('bpm-r').value=v; } });
+$('bpm-r').addEventListener('input',e=>{ bpm=parseInt(e.target.value); $('bpm-n').value=bpm; });
+
+$('st-up').addEventListener('click',()=>updateSteps(numSteps+4));
+$('st-dn').addEventListener('click',()=>updateSteps(numSteps-4));
+
 function updateSteps(n) {
-  numSteps = Math.max(4, Math.min(32, n));
-  for (let p = 0; p < numRows; p++) {
-    if (grid[p]) while (grid[p].length < numSteps) grid[p].push(false);
+  numSteps=Math.max(4,Math.min(64,n));
+  for(let p=0;p<numRows;p++) {
+    if(grid[p]){ while(grid[p].length<numSteps) grid[p].push(false); grid[p].length=numSteps; }
   }
-  resizeGridCanvas();
-  document.getElementById('steps-val').textContent = numSteps;
+  resizeG();
+  $('st-v').textContent=numSteps;
 }
 
-document.getElementById('steps-up').addEventListener('click', () => updateSteps(numSteps + 4));
-document.getElementById('steps-down').addEventListener('click', () => updateSteps(numSteps - 4));
+$('tuning-sel').addEventListener('change',e=>switchTuning(e.target.value));
+$('scale-sel').addEventListener('change',e=>{ scale=SCALES[e.target.value]||SCALES.chromatic; });
 
-// ─── CONTROLS ─────────────────────────────────────────────────────────────────
-document.getElementById('btn-play').addEventListener('click', togglePlay);
-document.getElementById('btn-stop').addEventListener('click', stopPlay);
-document.getElementById('btn-clear').addEventListener('click', () => {
-  for (let p = 0; p < numRows; p++) if (grid[p]) grid[p].fill(false);
-});
-
-document.getElementById('bpm-input').addEventListener('input', e => {
-  const v = parseInt(e.target.value);
-  if (v >= 30 && v <= 300) {
-    masterBPM = v;
-    document.getElementById('bpm-range').value = v;
-  }
-});
-document.getElementById('bpm-range').addEventListener('input', e => {
-  masterBPM = parseInt(e.target.value);
-  document.getElementById('bpm-input').value = masterBPM;
+$('btn-add').addEventListener('click',()=>{
+  if(voices.length>=VCOL.length) return;
+  voices.push({
+    offset:parseInt($('dist-n').value)||4,
+    transCents:parseFloat($('iv-sel').value)||700,
+    color:VCOL[voices.length],
+    muted:false,
+  });
+  buildVoicesUI();
 });
 
-document.getElementById('scale-sel').addEventListener('change', e => {
-  scale = SCALES[e.target.value] || SCALES.chromatic;
-});
-document.getElementById('tuning-sel').addEventListener('change', e => {
-  switchTuning(e.target.value);
-});
-document.querySelectorAll('input[name="canon-mode"]').forEach(radio => {
-  radio.addEventListener('change', e => { currentMode = e.target.value; });
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  if(e.code==='Space'){ e.preventDefault(); togglePlay(); }
+  if(e.code==='Escape') stopPlay();
 });
 
-document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
-  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
-  if (e.code === 'Escape') stopPlay();
-});
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+buildIntervals();
+buildAxis();
+resizeG();
+buildVoicesUI();
+seed();
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
-buildIntervalSelector();
-buildPitchAxis();
-resizeGridCanvas();
-rebuildVoicesUI();
-seedPattern();
-document.getElementById('year').textContent = new Date().getFullYear();
-
-function loop() { drawGrid(); drawRoll(); requestAnimationFrame(loop); }
+function loop() { drawGrid(); drawRoll(); drawNotation(); requestAnimationFrame(loop); }
 requestAnimationFrame(loop);
 
-}());
+})();
 </script>
-
-<script src="js/nav.js"></script>
 </body>
 </html>
