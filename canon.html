@@ -55,7 +55,9 @@
 
   select, input[type="number"] { background:var(--s2); border:1px solid var(--brd2); border-radius:2px; color:var(--txd); font-family:var(--mono); font-size:0.63rem; padding:0.12rem 0.25rem; outline:none; }
   select:focus, input:focus { border-color:var(--accd); }
-  input[type="number"] { width:5ch; text-align:center; }
+  input[type="number"] { width:5ch; text-align:center; -moz-appearance:textfield; }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
 
   input[type="range"] { -webkit-appearance:none; height:2px; background:var(--brd2); outline:none; flex:1; }
   input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:10px; height:10px; border-radius:50%; background:var(--txdd); cursor:pointer; }
@@ -150,7 +152,7 @@
           </select>
         </div>
         <div class="r">
-          <span class="l">filter</span>
+          <span class="l" title="Scale filter — 12-TET only">scale</span>
           <select id="scale-sel">
             <option value="chromatic">chromatic</option>
             <option value="major">major</option>
@@ -692,9 +694,9 @@ function buildVoicesUI() {
     row.innerHTML=`
       <div class="vpip" style="background:${v.color}"></div>
       <span class="vfl">${isOrig?'dux':'v'+(i+1)}</span>
-      <span class="vfl">off</span>
+      <span class="vfl" title="delay in steps">dly</span>
       <input class="vf" type="number" value="${v.offset}" min="0" max="${numSteps*4}" ${isOrig?'disabled style="color:#333"':''} data-i="${i}" data-f="off">
-      <span class="vfl">¢</span>
+      <span class="vfl" title="transposition in cents">¢</span>
       <input class="vf w" type="number" value="${v.transCents.toFixed(1)}" step="50" min="-2400" max="2400" ${isOrig?'disabled style="color:#333"':''} data-i="${i}" data-f="cents">
       <button class="vmute" data-i="${i}">${v.muted?'unmute':'mute'}</button>
       ${!isOrig?`<button class="vdel" data-i="${i}">×</button>`:''}
