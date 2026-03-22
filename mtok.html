@@ -507,7 +507,17 @@ function initCanvas() {
 
   const tun = TUNING_DATA[currentTuning];
   const logicalW = tun.octaves * OCT_W;
-  const logicalH = Math.max(wrap.clientHeight || 0, 180);
+
+  // Compute keyboard height. On some iPadOS versions wrap.clientHeight returns
+  // 0 in the initial rAF because flex layout isn't settled yet.
+  // Fall back to window.innerHeight minus measured sibling heights.
+  const topbarH   = (document.querySelector('.topbar')  || {}).offsetHeight || 44;
+  const hintBarH  = (document.querySelector('.hint-bar') || {}).offsetHeight || 22;
+  const ctlPanel  = document.getElementById('ctl-panel');
+  const ctlH      = ctlPanel && !ctlPanel.classList.contains('hidden')
+                    ? (ctlPanel.offsetHeight || 0) : 0;
+  const fromWindow = window.innerHeight - topbarH - hintBarH - ctlH;
+  const logicalH = Math.max(wrap.clientHeight || 0, fromWindow, 180);
 
   kbCanvas.style.width  = logicalW + 'px';
   kbCanvas.style.height = logicalH + 'px';
@@ -823,7 +833,11 @@ function setMasterVol(val) {
 }
 
 function updateVoiceCount() {
-  document.getElementById('voice-count').textContent = voices.size + ' vx';
+  const el = document.getElementById('voice-count');
+  el.textContent = voices.size + ' vx';
+  // Visual debug: turns blue when any voice is active — confirms touch
+  // is registering even if audio is broken (e.g. AudioContext still suspended)
+  el.style.color = voices.size > 0 ? 'var(--acc)' : '';
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') panicAll(); });
@@ -842,10 +856,12 @@ Object.assign(window, {
   setOscLevel, updateVal, setMasterVol, panicAll,
 });
 
-// Audio unlock for pointer/mouse interactions (iPad trackpad, desktop mouse).
-// click is always a trusted gesture for AudioContext on all platforms.
-document.addEventListener('click',     () => ensureCtx(), {passive:true});
-document.addEventListener('mousedown', () => ensureCtx(), {passive:true});
+// Audio unlock for any gesture on the page.
+// touchstart at document level ensures the AudioContext is unlocked even if
+// the user's first touch is on the topbar or controls — not just the canvas.
+document.addEventListener('touchstart', () => ensureCtx(), {passive:true});
+document.addEventListener('click',      () => ensureCtx(), {passive:true});
+document.addEventListener('mousedown',  () => ensureCtx(), {passive:true});
 
 // ── Init ── Double-rAF: first frame starts layout; second frame measures it.
 // Needed on iPadOS Safari where 100vh + flex layout isn't settled in one frame.
