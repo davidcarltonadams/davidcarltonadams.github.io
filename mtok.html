@@ -368,6 +368,31 @@ function makeVoice(freq, pointerId, lx0, ly0) {
     baseDrive: drive, baseLP: lpf.frequency.value, baseMakeup: makeupGain,
   };
   voices.set(pointerId, voice);
+
+  // iOS AudioContext unlock is async: resume() is called in ensureCtx() but the
+  // context may still be suspended when oscillators start. The ADSR attack ramps
+  // are scheduled at frozen actx.currentTime=0. If the user releases before the
+  // context resumes, releaseVoice() cancels those ramps (at still-frozen t=0),
+  // so when the context finally starts, the voice is already in release → silence.
+  //
+  // Fix: listen for statechange and reschedule the attack from the actual moment
+  // the context starts running. The voice.released check handles the case where
+  // the user lifted their finger before the context woke up.
+  if (actx.state !== 'running') {
+    const onReady = () => {
+      if (actx.state !== 'running') return;
+      actx.removeEventListener('statechange', onReady);
+      if (!voice.released) {
+        const now = actx.currentTime;
+        voice.adsrG.gain.cancelScheduledValues(now);
+        voice.adsrG.gain.setValueAtTime(0, now);
+        voice.adsrG.gain.linearRampToValueAtTime(0.8, now + params.atk);
+        voice.adsrG.gain.linearRampToValueAtTime(0.65, now + params.atk + 0.05);
+      }
+    };
+    actx.addEventListener('statechange', onReady);
+  }
+
   updateVoiceCount();
   return voice;
 }
@@ -402,6 +427,14 @@ function releaseVoice(voice) {
   if (voice.released) return;
   voice.released = true;
   if (voice.rect) { voice.rect.active = false; voice.rect.modAmt = 0; }
+
+  // If the context was never running, no audio was ever produced.
+  // Skip the ADSR ramp (it would fire at frozen t=0 and be meaningless),
+  // and just clean up the nodes directly.
+  if (!actx || actx.state !== 'running') {
+    setTimeout(() => stopAndDisconnectVoice(voice), 50);
+    return;
+  }
 
   const now = actx.currentTime;
   const rel = Math.max(params.rel, 0.02);
