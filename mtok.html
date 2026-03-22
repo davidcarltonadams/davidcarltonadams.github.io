@@ -129,7 +129,10 @@
     <div class="tb-sep"></div>
     <button class="btn sm danger" onclick="panicAll()">■ panic</button>
     <div class="tb-sep"></div>
+    <button class="btn sm" onclick="testBeep()">beep</button>
+    <div class="tb-sep"></div>
     <span id="voice-count">0 vx</span>
+    <span id="ctx-state" style="font-size:0.48rem;color:var(--txddd);margin-left:0.3rem;">ctx:—</span>
   </div>
 
   <!-- ── Controls panel ── -->
@@ -262,15 +265,27 @@ let pointerEventsWorking = false;
 // AUDIO CONTEXT
 // ═══════════════════════════════════════════════════════════
 
+function updateCtxDisplay() {
+  const el = document.getElementById('ctx-state');
+  if (!el) return;
+  const s = actx ? actx.state : 'null';
+  el.textContent = 'ctx:' + s;
+  el.style.color = s === 'running'   ? 'var(--grn)'
+                 : s === 'suspended' ? 'var(--org)'
+                 : 'var(--txddd)';
+}
+
 function ensureCtx() {
   if (!actx) {
     actx = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = actx.createGain();
     masterGain.gain.value = params.vol;
     masterGain.connect(actx.destination);
+    actx.onstatechange = updateCtxDisplay;
   }
+  updateCtxDisplay();
   if (actx.state !== 'running') {
-    actx.resume();
+    actx.resume().then(updateCtxDisplay).catch(() => {});
     // iOS belt-and-suspenders: play a silent 1-sample buffer to force unlock
     try {
       const buf = actx.createBuffer(1, 1, actx.sampleRate);
@@ -280,6 +295,28 @@ function ensureCtx() {
       src.start(0);
     } catch(_) {}
   }
+}
+
+// Test tone: bypasses the entire voice chain (masterGain, shaper, filters, etc.)
+// and connects a plain sine directly to actx.destination.
+// If this works but keys don't → signal chain bug.
+// If this is also silent → AudioContext itself can't output on this device.
+function testBeep() {
+  ensureCtx();
+  if (!actx) return;
+  try {
+    const osc = actx.createOscillator();
+    const g   = actx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 440;
+    g.gain.setValueAtTime(0, actx.currentTime);
+    g.gain.linearRampToValueAtTime(0.4, actx.currentTime + 0.02);
+    g.gain.linearRampToValueAtTime(0, actx.currentTime + 0.6);
+    osc.connect(g);
+    g.connect(actx.destination);  // intentionally bypasses masterGain
+    osc.start();
+    osc.stop(actx.currentTime + 0.7);
+  } catch(e) { console.error('testBeep:', e); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -886,7 +923,7 @@ window.addEventListener('pointercancel', globalPointerUp, {passive:true});
 // Expose UI callbacks to global scope (onclick= attributes can't see inside IIFE)
 Object.assign(window, {
   setXYMode, shiftOctave, changeTuning, toggleControls,
-  setOscLevel, updateVal, setMasterVol, panicAll,
+  setOscLevel, updateVal, setMasterVol, panicAll, testBeep,
 });
 
 // Audio unlock for any gesture on the page.
