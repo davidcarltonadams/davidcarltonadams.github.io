@@ -36,12 +36,14 @@
     flex:1;overflow-x:auto;overflow-y:hidden;
     -webkit-overflow-scrolling:touch;
     background:var(--bg);
+    touch-action:none;
   }
   .keyboard{
     display:flex;align-items:stretch;
     height:100%;
     user-select:none;
     -webkit-user-select:none;
+    touch-action:none;
   }
   .hint-bar{
     font-size:0.5rem;color:var(--txddd);letter-spacing:0.06em;
@@ -326,11 +328,14 @@ const voices = new Map(); // pointerId → voice object
 // ═══════════════════════════════════════════════════════════
 
 function ensureCtx() {
-  if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
-  ctx = new (window.AudioContext || window.webkitAudioContext)();
-  masterGain = ctx.createGain();
-  masterGain.gain.value = 0.75;
-  masterGain.connect(ctx.destination);
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ctx.createGain();
+    masterGain.gain.value = 0.75;
+    masterGain.connect(ctx.destination);
+  }
+  // iOS: AudioContext always starts suspended; must resume() inside user gesture
+  if (ctx.state === 'suspended') ctx.resume();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -583,11 +588,16 @@ function renderKeyboard() {
     el.appendChild(lbl);
     if (currentTuning === 'ji') el.appendChild(rat);
 
-    // ── Pointer events ──
-    el.addEventListener('pointerdown', onKeyDown, {passive:false});
-    el.addEventListener('pointermove', onKeyMove, {passive:false});
-    el.addEventListener('pointerup',   onKeyUp,   {passive:false});
-    el.addEventListener('pointercancel', onKeyUp, {passive:false});
+    // ── Pointer events (preferred — gives capture + cross-key tracking) ──
+    el.addEventListener('pointerdown',   onKeyDown, {passive:false});
+    el.addEventListener('pointermove',   onKeyMove, {passive:false});
+    el.addEventListener('pointerup',     onKeyUp,   {passive:false});
+    el.addEventListener('pointercancel', onKeyUp,   {passive:false});
+    // ── Touch events fallback (iOS Safari compatibility) ──
+    el.addEventListener('touchstart',  onTouchStart, {passive:false});
+    el.addEventListener('touchmove',   onTouchMove,  {passive:false});
+    el.addEventListener('touchend',    onTouchEnd,   {passive:false});
+    el.addEventListener('touchcancel', onTouchEnd,   {passive:false});
 
     kb.appendChild(el);
   });
@@ -609,16 +619,17 @@ function gcd(a,b){ while(b){ const t=b; b=a%b; a=t; } return a; }
 function onKeyDown(e) {
   e.preventDefault();
   e.stopPropagation();
+  if (e.pointerType === 'touch') pointerEventsWorking = true;
   ensureCtx();
 
   const el = e.currentTarget;
-  el.setPointerCapture(e.pointerId);
+  try { el.setPointerCapture(e.pointerId); } catch(_) {}  // fails gracefully on some iOS builds
 
   const freq = parseFloat(el.dataset.freq);
   el.classList.add('active');
 
   const voice = makeVoice(freq, e.pointerId, e.clientX, e.clientY);
-  voice.keyEl = el;  // store reference for later
+  voice.keyEl = el;
 }
 
 function onKeyMove(e) {
@@ -633,6 +644,50 @@ function onKeyUp(e) {
   const voice = voices.get(e.pointerId);
   if (!voice) return;
   releaseVoice(voice, voice.keyEl);
+}
+
+// ── Touch event fallback (iOS Safari < 13.4 or Pointer Events quirks) ──
+// Uses a separate touch-id → pointerId-compatible integer mapping.
+const touchVoices = new Map(); // touch.identifier → voice
+
+// pointerType will be 'touch' when Pointer Events fire for a touch gesture.
+// In that case we skip the Touch fallback to avoid double-triggering.
+let pointerEventsWorking = false;
+
+function onTouchStart(e) {
+  if (pointerEventsWorking) return;  // Pointer Events handled it already
+  e.preventDefault();
+  ensureCtx();
+  const el = e.currentTarget;
+  for (const t of e.changedTouches) {
+    if (touchVoices.has(t.identifier)) continue;
+    const freq = parseFloat(el.dataset.freq);
+    el.classList.add('active');
+    // Use a negative ID space to avoid colliding with pointer IDs
+    const fakeId = -(t.identifier + 1);
+    const voice = makeVoice(freq, fakeId, t.clientX, t.clientY);
+    voice.keyEl = el;
+    touchVoices.set(t.identifier, voice);
+  }
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const voice = touchVoices.get(t.identifier);
+    if (!voice || voice.released) continue;
+    updateVoiceXY(voice, t.clientX, t.clientY, voice.keyEl);
+  }
+}
+
+function onTouchEnd(e) {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const voice = touchVoices.get(t.identifier);
+    if (!voice) continue;
+    releaseVoice(voice, voice.keyEl);
+    touchVoices.delete(t.identifier);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
