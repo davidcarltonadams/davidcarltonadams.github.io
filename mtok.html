@@ -163,8 +163,8 @@
     <div class="tb-sep"></div>
     <div class="ctl-grp">
       <span class="ctl-lbl">LPF</span>
-      <input type=range id="sl-lpf" min=0 max=100 value=85 oninput="updateVal('lpf',this.value)">
-      <span class="ctl-val" id="vl-lpf">85</span>
+      <input type=range id="sl-lpf" min=0 max=100 value=50 oninput="updateVal('lpf',this.value)">
+      <span class="ctl-val" id="vl-lpf">50</span>
     </div>
     <div class="ctl-grp">
       <span class="ctl-lbl">drive</span>
@@ -251,7 +251,7 @@ let currentTuning = 'ji', octaveShift = 0, xyMode = 'filter';
 
 const params = {
   saw: 0.70, tri: 0.00, sin: 0.50,
-  atk: 0.010, rel: 0.300, lpf: 0.85, drive: 0.15, vol: 0.75,
+  atk: 0.010, rel: 0.300, lpf: 0.50, drive: 0.15, vol: 0.75,
 };
 
 const voices     = new Map();  // pointerId → voice
@@ -681,9 +681,11 @@ function onCanvasUp(e) {
 }
 
 function onCanvasTouchStart(e) {
+  // Always unlock audio on touchstart — iOS treats touchstart as a trusted
+  // user gesture for Web Audio even when pointerdown is not.
+  ensureCtx();
   if (pointerEventsWorking) return;
   e.preventDefault();
-  ensureCtx();
   for (const t of e.changedTouches) {
     if (touchVoices.has(t.identifier)) continue;
     const {lx, ly} = canvasXY(t.clientX, t.clientY);
@@ -836,6 +838,10 @@ requestAnimationFrame(() => {
   kbCanvas.addEventListener('pointermove',   onCanvasMove,       {passive:false});
   kbCanvas.addEventListener('pointerup',     onCanvasUp,         {passive:false});
   kbCanvas.addEventListener('pointercancel', onCanvasUp,         {passive:false});
+  // Capture-phase touchstart: unlock audio BEFORE pointer event handling.
+  // On iOS, touchstart is always a trusted gesture for AudioContext.resume()
+  // even when pointerdown is not (varies by iOS/browser version).
+  kbCanvas.addEventListener('touchstart', () => ensureCtx(), {passive:true, capture:true});
   kbCanvas.addEventListener('touchstart',    onCanvasTouchStart, {passive:false});
   kbCanvas.addEventListener('touchmove',     onCanvasTouchMove,  {passive:false});
   kbCanvas.addEventListener('touchend',      onCanvasTouchEnd,   {passive:false});
