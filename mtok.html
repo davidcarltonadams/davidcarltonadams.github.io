@@ -831,22 +831,30 @@ Object.assign(window, {
   setOscLevel, updateVal, setMasterVol, panicAll,
 });
 
-// ── Init ── (defer one frame so iOS flex layout finishes before measuring height)
-requestAnimationFrame(() => {
+// Audio unlock for pointer/mouse interactions (iPad trackpad, desktop mouse).
+// click is always a trusted gesture for AudioContext on all platforms.
+document.addEventListener('click',     () => ensureCtx(), {passive:true});
+document.addEventListener('mousedown', () => ensureCtx(), {passive:true});
+
+// ── Init ── Double-rAF: first frame starts layout; second frame measures it.
+// Needed on iPadOS Safari where 100vh + flex layout isn't settled in one frame.
+requestAnimationFrame(() => requestAnimationFrame(() => {
   initCanvas();
   kbCanvas.addEventListener('pointerdown',   onCanvasDown,       {passive:false});
   kbCanvas.addEventListener('pointermove',   onCanvasMove,       {passive:false});
   kbCanvas.addEventListener('pointerup',     onCanvasUp,         {passive:false});
   kbCanvas.addEventListener('pointercancel', onCanvasUp,         {passive:false});
-  // Capture-phase touchstart: unlock audio BEFORE pointer event handling.
-  // On iOS, touchstart is always a trusted gesture for AudioContext.resume()
-  // even when pointerdown is not (varies by iOS/browser version).
+  // Prevent contextmenu (Force Touch / right-click) — blocks pointerup on macOS trackpad
+  kbCanvas.addEventListener('contextmenu',   e => e.preventDefault());
+  // Capture-phase touchstart: iOS trusted gesture for AudioContext.resume()
   kbCanvas.addEventListener('touchstart', () => ensureCtx(), {passive:true, capture:true});
   kbCanvas.addEventListener('touchstart',    onCanvasTouchStart, {passive:false});
   kbCanvas.addEventListener('touchmove',     onCanvasTouchMove,  {passive:false});
   kbCanvas.addEventListener('touchend',      onCanvasTouchEnd,   {passive:false});
   kbCanvas.addEventListener('touchcancel',   onCanvasTouchEnd,   {passive:false});
-});
+  // Re-init canvas on resize (orientation change, browser chrome show/hide)
+  window.addEventListener('resize', () => { panicAll(); initCanvas(); });
+}));
 
 })();
 </script>
