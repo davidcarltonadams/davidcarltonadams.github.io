@@ -491,34 +491,48 @@ function releaseVoice(voice, keyEl) {
   }
 
   const now = ctx.currentTime;
-  const rel = params.rel;
+  const rel = Math.max(params.rel, 0.02);
+
+  // Cancel any scheduled attack/decay, snapshot current value (clamped positive),
+  // then linear ramp to 0. Exponential ramp to near-zero is glitchy when gain < 0.01.
   voice.adsrG.gain.cancelScheduledValues(now);
-  voice.adsrG.gain.setValueAtTime(voice.adsrG.gain.value, now);
-  voice.adsrG.gain.exponentialRampToValueAtTime(0.0001, now + rel);
+  const curGain = Math.max(voice.adsrG.gain.value, 0.001);
+  voice.adsrG.gain.setValueAtTime(curGain, now);
+  voice.adsrG.gain.linearRampToValueAtTime(0, now + rel);
 
-  // Reset LFO depth (cleans up vibrato)
-  voice.lfoG.gain.setTargetAtTime(0, now, 0.05);
+  // Kill vibrato LFO
+  voice.lfoG.gain.cancelScheduledValues(now);
+  voice.lfoG.gain.setValueAtTime(0, now);
 
-  setTimeout(() => {
-    voice.oscs.forEach(o => { try { o.stop(); o.disconnect(); } catch(e){} });
-    try { voice.lfoOsc.stop(); voice.lfoOsc.disconnect(); } catch(e){}
-    [voice.lfoG, voice.sawG, voice.triG, voice.sinG, voice.mixG,
-     voice.adsrG, voice.shaper, voice.shaperPost, voice.lpf,
-     voice.hpf, voice.panner, voice.voiceAmp].forEach(n => {
-      try { n.disconnect(); } catch(e){}
-    });
-    voices.delete(voice.pointerId);
-    updateVoiceCount();
-  }, (rel + 0.1) * 1000);
+  const cleanupMs = (rel + 0.15) * 1000;
+  setTimeout(() => stopAndDisconnectVoice(voice), cleanupMs);
+}
+
+function stopAndDisconnectVoice(voice) {
+  voice.oscs.forEach(o => { try { o.stop(); } catch(_){} try { o.disconnect(); } catch(_){} });
+  try { voice.lfoOsc.stop(); } catch(_){} try { voice.lfoOsc.disconnect(); } catch(_){}
+  [voice.lfoG, voice.sawG, voice.triG, voice.sinG, voice.mixG,
+   voice.adsrG, voice.shaper, voice.shaperPost, voice.lpf,
+   voice.hpf, voice.panner, voice.voiceAmp].forEach(n => {
+    try { n.disconnect(); } catch(_){}
+  });
+  voices.delete(voice.pointerId);
+  updateVoiceCount();
 }
 
 function panicAll() {
-  voices.forEach(v => {
-    v.released = true;
-    v.oscs.forEach(o => { try { o.stop(); o.disconnect(); } catch(e){} });
-    try { v.lfoOsc.stop(); } catch(e){}
-  });
+  // Instant silence first — avoids any tail from lingering scheduled ramps
+  if (masterGain) {
+    masterGain.gain.cancelScheduledValues(ctx.currentTime);
+    masterGain.gain.setValueAtTime(0, ctx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(params.vol || 0.75, ctx.currentTime + 0.05);
+  }
+  // Stop and fully disconnect every voice (both pointer and touch maps)
+  const allVoices = [...voices.values()];
   voices.clear();
+  touchVoices.clear();
+  allVoices.forEach(v => { v.released = true; stopAndDisconnectVoice(v); });
+  // Clear visuals
   document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
   document.querySelectorAll('.key-mod').forEach(m => m.style.height = '0%');
   updateVoiceCount();
