@@ -138,6 +138,19 @@
   <!-- ── Controls panel ── -->
   <div class="controls hidden" id="ctl-panel">
     <div class="ctl-grp">
+      <span class="ctl-lbl">preset</span>
+      <select id="preset-sel" onchange="loadPreset(this.value)" style="font-size:0.5rem;">
+        <option value="">— select —</option>
+        <option value="bright">Bright Saw</option>
+        <option value="pad">Soft Pad</option>
+        <option value="buzz">Buzz</option>
+        <option value="glass">Glass</option>
+        <option value="organ">Organ</option>
+      </select>
+      <button class="btn sm" id="btn-save-preset" onclick="savePreset()">save</button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="ctl-grp">
       <span class="ctl-lbl">saw</span>
       <input type=range id="sl-saw" min=0 max=100 value=70 oninput="setOscLevel('saw',this.value)">
       <span class="ctl-val" id="vl-saw">70</span>
@@ -151,6 +164,11 @@
       <span class="ctl-lbl">sin</span>
       <input type=range id="sl-sin" min=0 max=100 value=50 oninput="setOscLevel('sin',this.value)">
       <span class="ctl-val" id="vl-sin">50</span>
+    </div>
+    <div class="ctl-grp">
+      <span class="ctl-lbl">sq</span>
+      <input type=range id="sl-sq" min=0 max=100 value=0 oninput="setOscLevel('sq',this.value)">
+      <span class="ctl-val" id="vl-sq">0</span>
     </div>
     <div class="tb-sep"></div>
     <div class="ctl-grp">
@@ -250,11 +268,21 @@ const TUNING_DATA = {
 // ═══════════════════════════════════════════════════════════
 
 let actx = null, masterGain = null;
-let currentTuning = 'ji', octaveShift = 0, xyMode = 'filter';
+let currentTuning = 'ji', octaveShift = 0;
+const activeXYModes = new Set(['filter']); // multi-select; at least one always active
 
 const params = {
-  saw: 0.70, tri: 0.00, sin: 0.50,
+  saw: 0.70, tri: 0.00, sin: 0.50, sq: 0.00,
   atk: 0.010, rel: 0.300, lpf: 0.50, drive: 0.15, vol: 0.75,
+};
+
+// ── Presets ─────────────────────────────────────────────────
+const PRESETS = {
+  bright: { name:'Bright Saw',  saw:90, tri:0,  sin:15, sq:0,  atk:5,  rel:250, lpf:68, drive:12, vol:75 },
+  pad:    { name:'Soft Pad',    saw:25, tri:55, sin:65, sq:0,  atk:90, rel:900, lpf:42, drive:4,  vol:70 },
+  buzz:   { name:'Buzz',        saw:55, tri:0,  sin:0,  sq:75, atk:8,  rel:300, lpf:58, drive:28, vol:65 },
+  glass:  { name:'Glass',       saw:0,  tri:15, sin:85, sq:0,  atk:5,  rel:700, lpf:38, drive:2,  vol:72 },
+  organ:  { name:'Organ',       saw:15, tri:35, sin:65, sq:35, atk:10, rel:120, lpf:62, drive:8,  vol:70 },
 };
 
 const voices     = new Map();  // pointerId → voice
@@ -348,10 +376,12 @@ function makeVoice(freq, pointerId, lx0, ly0) {
   const sawOsc = actx.createOscillator(); sawOsc.type = 'sawtooth'; sawOsc.frequency.value = freq;
   const triOsc = actx.createOscillator(); triOsc.type = 'triangle'; triOsc.frequency.value = freq;
   const sinOsc = actx.createOscillator(); sinOsc.type = 'sine';     sinOsc.frequency.value = freq;
+  const sqOsc  = actx.createOscillator(); sqOsc.type  = 'square';   sqOsc.frequency.value  = freq;
 
   const sawG = actx.createGain(); sawG.gain.value = params.saw;
   const triG = actx.createGain(); triG.gain.value = params.tri;
   const sinG = actx.createGain(); sinG.gain.value = params.sin;
+  const sqG  = actx.createGain(); sqG.gain.value  = params.sq;
   const mixG = actx.createGain(); mixG.gain.value = 1.0;
 
   const adsrG = actx.createGain();
@@ -366,6 +396,7 @@ function makeVoice(freq, pointerId, lx0, ly0) {
   lfoG.connect(sawOsc.frequency);
   lfoG.connect(triOsc.frequency);
   lfoG.connect(sinOsc.frequency);
+  lfoG.connect(sqOsc.frequency);
 
   const drive = 1 + params.drive * 11;
   const makeupGain = 1 + params.drive * 2.8;
@@ -388,19 +419,19 @@ function makeVoice(freq, pointerId, lx0, ly0) {
   }
   const voiceAmp = actx.createGain(); voiceAmp.gain.value = 0.25;
 
-  sawOsc.connect(sawG); triOsc.connect(triG); sinOsc.connect(sinG);
-  sawG.connect(mixG); triG.connect(mixG); sinG.connect(mixG);
+  sawOsc.connect(sawG); triOsc.connect(triG); sinOsc.connect(sinG); sqOsc.connect(sqG);
+  sawG.connect(mixG); triG.connect(mixG); sinG.connect(mixG); sqG.connect(mixG);
   mixG.connect(adsrG); adsrG.connect(shaper);
   shaper.connect(shaperPost); shaperPost.connect(lpf);
   lpf.connect(hpf); hpf.connect(panner); panner.connect(voiceAmp);
   voiceAmp.connect(masterGain);
 
-  sawOsc.start(); triOsc.start(); sinOsc.start(); lfoOsc.start();
+  sawOsc.start(); triOsc.start(); sinOsc.start(); sqOsc.start(); lfoOsc.start();
 
   const voice = {
     freq, pointerId, lx0, ly0, rect: null,
-    oscs: [sawOsc, triOsc, sinOsc], lfoOsc, lfoG,
-    sawG, triG, sinG, mixG, adsrG, shaper, shaperPost, lpf, hpf, panner, voiceAmp,
+    oscs: [sawOsc, triOsc, sinOsc, sqOsc], lfoOsc, lfoG,
+    sawG, triG, sinG, sqG, mixG, adsrG, shaper, shaperPost, lpf, hpf, panner, voiceAmp,
     released: false,
     baseDrive: drive, baseLP: lpf.frequency.value, baseMakeup: makeupGain,
   };
@@ -448,13 +479,15 @@ function updateVoiceXY(voice, lx, ly) {
   const panShift = (xyAngle - 0.5) * 0.6;
   voice.panner.pan.setTargetAtTime(panShift, actx.currentTime, 0.02);
 
-  if (xyMode === 'filter') {
+  if (activeXYModes.has('filter')) {
     voice.lpf.frequency.setTargetAtTime(
       Math.min(voice.baseLP * (1 + xyMod * 2), 20000), actx.currentTime, 0.02);
-  } else if (xyMode === 'vibrato') {
+  }
+  if (activeXYModes.has('vibrato')) {
     voice.lfoOsc.frequency.setTargetAtTime(0.5 + xyAngle * 11.5, actx.currentTime, 0.02);
     voice.lfoG.gain.setTargetAtTime(xyMod * 0.06 * voice.freq, actx.currentTime, 0.02);
-  } else if (xyMode === 'overdrive') {
+  }
+  if (activeXYModes.has('overdrive')) {
     voice.shaper.curve = makeTanhCurve(voice.baseDrive + xyMod * 10);
     voice.shaperPost.gain.setTargetAtTime(voice.baseMakeup + xyMod * 1.5, actx.currentTime, 0.02);
   }
@@ -486,7 +519,7 @@ function releaseVoice(voice) {
 function stopAndDisconnectVoice(voice) {
   voice.oscs.forEach(o => { try{o.stop();}catch(_){} try{o.disconnect();}catch(_){} });
   try{voice.lfoOsc.stop();}catch(_){} try{voice.lfoOsc.disconnect();}catch(_){}
-  [voice.lfoG,voice.sawG,voice.triG,voice.sinG,voice.mixG,
+  [voice.lfoG,voice.sawG,voice.triG,voice.sinG,voice.sqG,voice.mixG,
    voice.adsrG,voice.shaper,voice.shaperPost,voice.lpf,
    voice.hpf,voice.panner,voice.voiceAmp].forEach(n=>{try{n.disconnect();}catch(_){}});
   voices.delete(voice.pointerId);
@@ -838,13 +871,18 @@ function toFraction(ratio) {
 // ═══════════════════════════════════════════════════════════
 
 function setXYMode(mode, btn) {
-  xyMode = mode;
-  document.querySelectorAll('.topbar .btn.sm').forEach(b => {
-    if (['btn-filter','btn-vibrato','btn-drive'].includes(b.id)) b.classList.remove('active');
-  });
-  btn.classList.add('active');
+  if (activeXYModes.has(mode)) {
+    if (activeXYModes.size > 1) {   // keep at least one active
+      activeXYModes.delete(mode);
+      btn.classList.remove('active');
+    }
+  } else {
+    activeXYModes.add(mode);
+    btn.classList.add('active');
+  }
   const dot = document.getElementById('xy-mode-dot');
-  dot.className = mode === 'vibrato' ? 'vibrato' : mode === 'overdrive' ? 'overdrive' : '';
+  dot.className = activeXYModes.has('overdrive') ? 'overdrive'
+                : activeXYModes.has('vibrato')   ? 'vibrato' : '';
 }
 
 function shiftOctave(delta) {
@@ -872,10 +910,72 @@ function setOscLevel(osc, val) {
   const v = val / 100;
   params[osc] = v;
   document.getElementById('vl-' + osc).textContent = val;
-  voices.forEach(voice => {
-    const gn = osc === 'saw' ? voice.sawG : osc === 'tri' ? voice.triG : voice.sinG;
-    gn.gain.setTargetAtTime(v, actx.currentTime, 0.01);
+  const gainKey = { saw:'sawG', tri:'triG', sin:'sinG', sq:'sqG' }[osc];
+  if (gainKey && actx) {
+    voices.forEach(voice => voice[gainKey].gain.setTargetAtTime(v, actx.currentTime, 0.01));
+  }
+}
+
+// ── Presets ─────────────────────────────────────────────────
+
+function applyPresetObj(p) {
+  const setSlider = (slId, vlId, val, suffix='') => {
+    const sl = document.getElementById(slId);
+    const vl = document.getElementById(vlId);
+    if (sl) sl.value = val;
+    if (vl) vl.textContent = val + suffix;
+  };
+  const map = [
+    ['saw','sl-saw','vl-saw',''],['tri','sl-tri','vl-tri',''],
+    ['sin','sl-sin','vl-sin',''],['sq','sl-sq','vl-sq',''],
+    ['lpf','sl-lpf','vl-lpf',''],['drive','sl-drive','vl-drive',''],
+    ['vol','sl-vol','vl-vol',''],
+  ];
+  map.forEach(([k, sl, vl, sfx]) => {
+    if (p[k] !== undefined) { params[k] = p[k] / 100; setSlider(sl, vl, p[k], sfx); }
   });
+  if (p.atk !== undefined) { params.atk = p.atk/1000; setSlider('sl-atk','vl-atk', p.atk, 'ms'); }
+  if (p.rel !== undefined) { params.rel = p.rel/1000; setSlider('sl-rel','vl-rel', p.rel, 'ms'); }
+  if (masterGain) masterGain.gain.value = params.vol;
+  if (p.xyModes) {
+    activeXYModes.clear();
+    p.xyModes.forEach(m => activeXYModes.add(m));
+    const btnMap = { filter:'btn-filter', vibrato:'btn-vibrato', overdrive:'btn-drive' };
+    Object.entries(btnMap).forEach(([m, id]) => {
+      const btn = document.getElementById(id);
+      if (btn) btn.classList.toggle('active', activeXYModes.has(m));
+    });
+  }
+}
+
+function loadPreset(key) {
+  if (!key) return;
+  if (key === 'custom') {
+    const saved = localStorage.getItem('mtok-preset');
+    if (saved) try { applyPresetObj(JSON.parse(saved)); } catch(_) {}
+    return;
+  }
+  if (PRESETS[key]) applyPresetObj(PRESETS[key]);
+}
+
+function savePreset() {
+  const state = {
+    saw: Math.round(params.saw*100), tri: Math.round(params.tri*100),
+    sin: Math.round(params.sin*100), sq:  Math.round(params.sq*100),
+    atk: Math.round(params.atk*1000), rel: Math.round(params.rel*1000),
+    lpf: Math.round(params.lpf*100), drive: Math.round(params.drive*100),
+    vol: Math.round(params.vol*100), xyModes: [...activeXYModes],
+  };
+  localStorage.setItem('mtok-preset', JSON.stringify(state));
+  const btn = document.getElementById('btn-save-preset');
+  if (btn) { btn.textContent = 'saved!'; setTimeout(() => btn.textContent = 'save', 1500); }
+  // Make custom slot selectable
+  const sel = document.getElementById('preset-sel');
+  if (sel) {
+    let opt = sel.querySelector('[value="custom"]');
+    if (!opt) { opt = document.createElement('option'); opt.value='custom'; sel.appendChild(opt); }
+    opt.textContent = 'Custom (saved)';
+  }
 }
 
 function updateVal(param, val) {
@@ -924,6 +1024,7 @@ window.addEventListener('pointercancel', globalPointerUp, {passive:true});
 Object.assign(window, {
   setXYMode, shiftOctave, changeTuning, toggleControls,
   setOscLevel, updateVal, setMasterVol, panicAll, testBeep,
+  loadPreset, savePreset,
 });
 
 // Audio unlock for any gesture on the page.
