@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MTOK — David Carlton Adams</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --bg:#08080c;--s1:#0e0e14;--s2:#12121a;--s3:#181822;
+    --brd:#22222e;--brd2:#2e2e3c;
+    --tx:#dcdcf0;--txd:#a0a0c4;--txdd:#8888aa;--txddd:#666680;
+    --acc:#4a9eff;--accd:#2a5e9f;
+    --grn:#2ecc71;--red:#e74c3c;--org:#f39c12;--amber:#d4a843;
+    --mono:'JetBrains Mono','SF Mono',monospace;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--mono);overflow:hidden;}
+
+  /* ── Layout ── */
+  .wrap{display:flex;flex-direction:column;height:100vh;}
+  .topbar{
+    display:flex;flex-wrap:wrap;gap:0.45rem;align-items:center;
+    padding:0.45rem 0.65rem;
+    background:var(--s1);border-bottom:1px solid var(--brd);
+    flex-shrink:0;
+  }
+  .controls{
+    display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;
+    padding:0.4rem 0.65rem;
+    background:var(--s2);border-bottom:1px solid var(--brd);
+    flex-shrink:0;
+  }
+  .controls.hidden{display:none;}
+  .keyboard-wrap{
+    flex:1;overflow-x:auto;overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    background:var(--bg);
+  }
+  .keyboard{
+    display:flex;align-items:stretch;
+    height:100%;
+    user-select:none;
+    -webkit-user-select:none;
+  }
+  .hint-bar{
+    font-size:0.5rem;color:var(--txddd);letter-spacing:0.06em;
+    padding:0.3rem 0.65rem;
+    background:var(--s1);border-top:1px solid var(--brd);
+    flex-shrink:0;
+  }
+
+  /* ── Topbar elements ── */
+  .tb-sep{width:1px;height:16px;background:var(--brd2);flex-shrink:0;}
+  .tb-grp{display:flex;align-items:center;gap:0.3rem;}
+  .lbl{font-size:0.5rem;color:var(--txdd);letter-spacing:0.1em;text-transform:uppercase;}
+  .btn{
+    background:var(--s2);border:1px solid var(--brd2);border-radius:3px;
+    color:var(--txd);font-family:var(--mono);font-size:0.58rem;letter-spacing:0.04em;
+    padding:0.18rem 0.4rem;cursor:pointer;transition:all 0.1s;
+  }
+  .btn:hover{color:var(--tx);border-color:#383848;}
+  .btn.active{color:var(--grn);border-color:var(--grn);}
+  .btn.danger{color:var(--red);border-color:var(--red);}
+  .btn.sm{font-size:0.5rem;padding:0.1rem 0.25rem;}
+  select{
+    background:var(--s2);border:1px solid var(--brd2);border-radius:2px;
+    color:var(--txd);font-family:var(--mono);font-size:0.58rem;
+    padding:0.1rem 0.2rem;outline:none;
+  }
+
+  /* ── Sliders ── */
+  .ctl-grp{display:flex;align-items:center;gap:0.25rem;}
+  .ctl-lbl{font-size:0.48rem;color:var(--txdd);letter-spacing:0.08em;text-transform:uppercase;min-width:2.2rem;}
+  .ctl-val{font-size:0.52rem;color:var(--txd);min-width:2.5ch;text-align:right;}
+  input[type=range]{
+    -webkit-appearance:none;height:2px;background:var(--brd2);outline:none;width:64px;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:10px;height:10px;border-radius:50%;
+    background:var(--txdd);cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb:active{background:var(--acc);}
+
+  /* ── Keys ── */
+  .key{
+    flex-shrink:0;width:36px;
+    display:flex;flex-direction:column;justify-content:flex-end;align-items:center;
+    padding-bottom:6px;
+    border-right:1px solid var(--bg);
+    cursor:pointer;touch-action:none;
+    transition:background 0.05s;
+    position:relative;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .key.nat  {background:#1c1c26;}
+  .key.acc  {background:#0d0d16;}
+  .key.qt   {background:#141420;}
+  .key.oct-start{border-left:2px solid #2a2a3c;}
+
+  .key.active.nat {background:#1a3a6a;}
+  .key.active.acc {background:#122a54;}
+  .key.active.qt  {background:#163060;}
+  .key.active      {border-right-color:#2a5e9f;}
+
+  /* XY mod indicator — filled from bottom */
+  .key-mod{
+    position:absolute;bottom:0;left:0;right:0;
+    background:rgba(74,158,255,0.18);
+    height:0%;
+    transition:height 0.05s;
+    pointer-events:none;
+  }
+  .key-label{
+    font-size:5.5px;letter-spacing:0.04em;
+    color:var(--txddd);text-align:center;line-height:1.3;
+    position:relative;z-index:1;pointer-events:none;
+  }
+  .key.nat  .key-label{color:#8888aa;}
+  .key.acc  .key-label{color:#555570;}
+  .key.qt   .key-label{color:var(--amber);}
+  .key.oct-start .key-label{color:#a0a0c4;}
+
+  .key-ratio{
+    font-size:4.5px;color:var(--txddd);opacity:0.6;
+    position:relative;z-index:1;pointer-events:none;
+  }
+
+  /* ── XY mode indicator ring ── */
+  #xy-mode-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--acc);flex-shrink:0;
+    transition:background 0.2s;
+  }
+  #xy-mode-dot.vibrato{background:var(--grn);}
+  #xy-mode-dot.overdrive{background:var(--org);}
+
+  /* ── Active voices badge ── */
+  #voice-count{
+    font-size:0.5rem;color:var(--txddd);
+    min-width:3ch;text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── Top bar ── -->
+  <div class="topbar">
+    <div class="tb-grp">
+      <div id="xy-mode-dot" title="XY mode indicator"></div>
+      <span class="lbl">XY</span>
+      <button class="btn sm active" id="btn-filter" onclick="setXYMode('filter',this)">filter</button>
+      <button class="btn sm" id="btn-vibrato" onclick="setXYMode('vibrato',this)">vibrato</button>
+      <button class="btn sm" id="btn-drive" onclick="setXYMode('overdrive',this)">drive</button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-grp">
+      <span class="lbl">oct</span>
+      <button class="btn sm" onclick="shiftOctave(-1)">−</button>
+      <span id="oct-v" style="font-size:0.72rem;color:var(--txd);min-width:2.5ch;text-align:center">0</span>
+      <button class="btn sm" onclick="shiftOctave(+1)">+</button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-grp">
+      <span class="lbl">tuning</span>
+      <select id="tuning-sel" onchange="changeTuning(this.value)">
+        <option value="ji" selected>JI alpha</option>
+        <option value="31">31-EDO</option>
+        <option value="19">19-EDO</option>
+        <option value="12">12-TET</option>
+      </select>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-grp">
+      <button class="btn sm" onclick="toggleControls()" id="btn-ctl">controls ▾</button>
+    </div>
+    <div class="tb-sep"></div>
+    <button class="btn sm danger" onclick="panicAll()">■ panic</button>
+    <div class="tb-sep"></div>
+    <span id="voice-count">0 vx</span>
+  </div>
+
+  <!-- ── Controls panel ── -->
+  <div class="controls hidden" id="ctl-panel">
+    <!-- Osc mix -->
+    <div class="ctl-grp">
+      <span class="ctl-lbl">saw</span>
+      <input type=range id="sl-saw" min=0 max=100 value=70 oninput="setOscLevel('saw',this.value)">
+      <span class="ctl-val" id="vl-saw">70</span>
+    </div>
+    <div class="ctl-grp">
+      <span class="ctl-lbl">tri</span>
+      <input type=range id="sl-tri" min=0 max=100 value=0 oninput="setOscLevel('tri',this.value)">
+      <span class="ctl-val" id="vl-tri">0</span>
+    </div>
+    <div class="ctl-grp">
+      <span class="ctl-lbl">sin</span>
+      <input type=range id="sl-sin" min=0 max=100 value=50 oninput="setOscLevel('sin',this.value)">
+      <span class="ctl-val" id="vl-sin">50</span>
+    </div>
+    <div class="tb-sep"></div>
+    <!-- Envelope -->
+    <div class="ctl-grp">
+      <span class="ctl-lbl">atk</span>
+      <input type=range id="sl-atk" min=1 max=200 value=10 oninput="updateVal('atk',this.value)">
+      <span class="ctl-val" id="vl-atk">10ms</span>
+    </div>
+    <div class="ctl-grp">
+      <span class="ctl-lbl">rel</span>
+      <input type=range id="sl-rel" min=20 max=3000 value=300 oninput="updateVal('rel',this.value)">
+      <span class="ctl-val" id="vl-rel">300ms</span>
+    </div>
+    <div class="tb-sep"></div>
+    <!-- Filter & drive -->
+    <div class="ctl-grp">
+      <span class="ctl-lbl">LPF</span>
+      <input type=range id="sl-lpf" min=0 max=100 value=85 oninput="updateVal('lpf',this.value)">
+      <span class="ctl-val" id="vl-lpf">85</span>
+    </div>
+    <div class="ctl-grp">
+      <span class="ctl-lbl">drive</span>
+      <input type=range id="sl-drive" min=0 max=100 value=15 oninput="updateVal('drive',this.value)">
+      <span class="ctl-val" id="vl-drive">15</span>
+    </div>
+    <div class="ctl-grp">
+      <span class="ctl-lbl">vol</span>
+      <input type=range id="sl-vol" min=0 max=100 value=75 oninput="setMasterVol(this.value)">
+      <span class="ctl-val" id="vl-vol">75</span>
+    </div>
+  </div>
+
+  <!-- ── Keyboard ── -->
+  <div class="keyboard-wrap" id="kb-wrap">
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+
+  <div class="hint-bar">
+    drag after touch: XY modulation &nbsp;·&nbsp; slide finger between keys: legato &nbsp;·&nbsp; panic clears all voices
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+// TUNINGS
+// ═══════════════════════════════════════════════════════════
+
+const ROOT_C3 = 130.81;
+
+// JI alpha: 25 pitches/oct, C3 root, ratios from MTOK_A.scd
+const JI_KEYS = [
+  {key:'c',       label:'C',        ratio:1/1,        type:'nat'},
+  {key:'cqs',     label:'C↑',       ratio:33/32,      type:'qt'},
+  {key:'cs',      label:'C♯',       ratio:17/16,      type:'acc'},
+  {key:'dqfl',    label:'D♭↑',      ratio:12/11,      type:'qt'},
+  {key:'d',       label:'D',        ratio:9/8,        type:'nat'},
+  {key:'dqs',     label:'D↑',       ratio:11/10,      type:'qt'},
+  {key:'eflqfl',  label:'E♭¹³',     ratio:13/11,      type:'qt'},
+  {key:'efl',     label:'E♭',       ratio:6/5,        type:'acc'},
+  {key:'eqfl',    label:'E♭↑',      ratio:11/9,       type:'qt'},
+  {key:'e',       label:'E',        ratio:5/4,        type:'nat'},
+  {key:'eqs',     label:'E↑⁹⁷',     ratio:9/7,        type:'qt'},
+  {key:'f',       label:'F',        ratio:4/3,        type:'nat'},
+  {key:'fqs',     label:'F↑¹¹',     ratio:11/8,       type:'qt'},
+  {key:'fsh',     label:'F♯',       ratio:45/32,      type:'acc'},
+  {key:'fshqs',   label:'F♯↑',      ratio:23/16,      type:'qt'},
+  {key:'g',       label:'G',        ratio:3/2,        type:'nat'},
+  {key:'gqs',     label:'G↑¹⁴',     ratio:14/9,       type:'qt'},
+  {key:'gsh',     label:'G♯¹¹',     ratio:11/7,       type:'qt'},
+  {key:'atri',    label:'A♭¹³',     ratio:13/8,       type:'qt'},
+  {key:'a',       label:'A',        ratio:5/3,        type:'nat'},
+  {key:'bflsept', label:'B♭⁷',      ratio:7/4,        type:'qt'},
+  {key:'bfl',     label:'B♭',       ratio:9/5,        type:'acc'},
+  {key:'bflqs',   label:'B♭↑',      ratio:11/6,       type:'qt'},
+  {key:'b',       label:'B',        ratio:15/8,       type:'nat'},
+  {key:'bqs',     label:'B↑',       ratio:243/128,    type:'qt'},
+];
+
+// EDO helpers
+function edoKeys(n) {
+  const step = 1200 / n;
+  return Array.from({length:n}, (_,i) => ({
+    key: `p${i}`,
+    label: i === 0 ? 'C' : (i % Math.round(n/7) === 0 ? stepLabel(i,n) : ''),
+    ratio: Math.pow(2, i/n),
+    type: i === 0 ? 'nat' : (i % Math.round(n/12) === 0 ? 'acc' : 'qt'),
+  }));
+}
+function stepLabel(i,n){ return `${i}/${n}`; }
+
+const TUNING_DATA = {
+  ji:  {keys: JI_KEYS,        root: ROOT_C3, octaves: 3},
+  '31':{keys: edoKeys(31),    root: ROOT_C3, octaves: 3},
+  '19':{keys: edoKeys(19),    root: ROOT_C3, octaves: 3},
+  '12':{keys: edoKeys(12),    root: ROOT_C3, octaves: 3},
+};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+
+let ctx = null;           // AudioContext (lazy)
+let masterGain = null;
+let currentTuning = 'ji';
+let octaveShift = 0;
+let xyMode = 'filter';    // 'filter' | 'vibrato' | 'overdrive'
+
+// Slider values (0–1 normalised)
+const params = {
+  saw:   0.70,
+  tri:   0.00,
+  sin:   0.50,
+  atk:   0.010,   // seconds
+  rel:   0.300,   // seconds
+  lpf:   0.85,    // 0–1 → 80–20000 Hz (log)
+  drive: 0.15,    // 0–1 → 1–12 drive units
+};
+
+const voices = new Map(); // pointerId → voice object
+
+// ═══════════════════════════════════════════════════════════
+// AUDIO CONTEXT
+// ═══════════════════════════════════════════════════════════
+
+function ensureCtx() {
+  if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ctx.createGain();
+  masterGain.gain.value = 0.75;
+  masterGain.connect(ctx.destination);
+}
+
+// ═══════════════════════════════════════════════════════════
+// TANH WAVESHAPER
+// ═══════════════════════════════════════════════════════════
+
+function makeTanhCurve(drive, n=512) {
+  const curve = new Float32Array(n);
+  const d = Math.max(drive, 0.001);
+  const norm = Math.tanh(d);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2 / (n - 1)) - 1;
+    curve[i] = Math.tanh(x * d) / norm;
+  }
+  return curve;
+}
+
+// ═══════════════════════════════════════════════════════════
+// VOICE MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+
+function makeVoice(freq, pointerId, x0, y0) {
+  ensureCtx();
+
+  // -- Oscillators --
+  const sawOsc = ctx.createOscillator(); sawOsc.type = 'sawtooth'; sawOsc.frequency.value = freq;
+  const triOsc = ctx.createOscillator(); triOsc.type = 'triangle'; triOsc.frequency.value = freq;
+  const sinOsc = ctx.createOscillator(); sinOsc.type = 'sine';     sinOsc.frequency.value = freq;
+
+  // Per-osc level gains (set from params)
+  const sawG = ctx.createGain(); sawG.gain.value = params.saw;
+  const triG = ctx.createGain(); triG.gain.value = params.tri;
+  const sinG = ctx.createGain(); sinG.gain.value = params.sin;
+
+  // Mix → pre-shaper drive gain
+  const mixG = ctx.createGain(); mixG.gain.value = 1.0;
+
+  // ADSR gain
+  const adsrG = ctx.createGain(); adsrG.gain.setValueAtTime(0, ctx.currentTime);
+  const now = ctx.currentTime;
+  adsrG.gain.linearRampToValueAtTime(0.8, now + params.atk);
+  adsrG.gain.linearRampToValueAtTime(0.65, now + params.atk + 0.05);  // slight decay to sustain
+
+  // Vibrato LFO (only active in mode=vibrato)
+  const lfoOsc = ctx.createOscillator(); lfoOsc.type = 'sine'; lfoOsc.frequency.value = 5;
+  const lfoG = ctx.createGain(); lfoG.gain.value = 0;  // depth=0 until xyMod applied
+  lfoOsc.connect(lfoG);
+  lfoG.connect(sawOsc.frequency);
+  lfoG.connect(triOsc.frequency);
+  lfoG.connect(sinOsc.frequency);
+
+  // Waveshaper
+  const drive = 1 + params.drive * 11;  // 1–12
+  const makeupGain = 1 + params.drive * 2.8;
+  const shaper = ctx.createWaveShaper();
+  shaper.curve = makeTanhCurve(drive);
+  shaper.oversample = '2x';
+  const shaperPost = ctx.createGain(); shaperPost.gain.value = makeupGain;
+
+  // Filters
+  const lpf = ctx.createBiquadFilter(); lpf.type = 'lowpass';
+  lpf.frequency.value = lpfParamToHz(params.lpf);
+  lpf.Q.value = 2.0;
+  const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass';
+  hpf.frequency.value = 30;
+
+  // Panner
+  const panner = ctx.createStereoPanner(); panner.pan.value = 0;
+
+  // Final voice gain (for per-note amplitude)
+  const voiceAmp = ctx.createGain(); voiceAmp.gain.value = 0.25;
+
+  // -- Routing --
+  sawOsc.connect(sawG); triOsc.connect(triG); sinOsc.connect(sinG);
+  sawG.connect(mixG); triG.connect(mixG); sinG.connect(mixG);
+  mixG.connect(adsrG);
+  adsrG.connect(shaper);
+  shaper.connect(shaperPost);
+  shaperPost.connect(lpf);
+  lpf.connect(hpf);
+  hpf.connect(panner);
+  panner.connect(voiceAmp);
+  voiceAmp.connect(masterGain);
+
+  // Start oscillators
+  sawOsc.start(); triOsc.start(); sinOsc.start(); lfoOsc.start();
+
+  const voice = {
+    freq, pointerId, x0, y0,
+    oscs: [sawOsc, triOsc, sinOsc], lfoOsc, lfoG,
+    sawG, triG, sinG, mixG, adsrG, shaper, shaperPost, lpf, hpf, panner, voiceAmp,
+    released: false,
+    baseDrive: drive, baseLP: lpf.frequency.value,
+    baseMakeup: makeupGain,
+  };
+
+  voices.set(pointerId, voice);
+  updateVoiceCount();
+  return voice;
+}
+
+function updateVoiceXY(voice, clientX, clientY, keyEl) {
+  if (voice.released) return;
+  const rect = keyEl.getBoundingClientRect();
+  const keyW = rect.width;
+  const keyH = rect.height;
+
+  // Normalised delta from touch origin (in key-widths / key-heights)
+  const dx = (clientX - voice.x0) / keyW;
+  const dy = (voice.y0 - clientY) / keyH;   // up = positive
+
+  const xyMod   = Math.min(Math.sqrt(dx*dx + dy*dy), 1.0);
+  const xyAngle = (Math.atan2(dy, dx) / Math.PI) * 0.5 + 0.5; // 0–1
+
+  // Visual feedback: mod bar height
+  const modEl = keyEl.querySelector('.key-mod');
+  if (modEl) modEl.style.height = (xyMod * 100) + '%';
+
+  // Pan shift (all modes): ±0.3 range
+  const panShift = (xyAngle - 0.5) * 0.6;
+  voice.panner.pan.setTargetAtTime(panShift, ctx.currentTime, 0.02);
+
+  if (xyMode === 'filter') {
+    // Mode 0: xyMod opens LPF up to 3× base freq
+    const target = Math.min(voice.baseLP * (1 + xyMod * 2), 20000);
+    voice.lpf.frequency.setTargetAtTime(target, ctx.currentTime, 0.02);
+
+  } else if (xyMode === 'vibrato') {
+    // Mode 1: xyMod = depth (0–6%), xyAngle = rate (0.5–12 Hz)
+    const rate  = 0.5 + xyAngle * 11.5;
+    const depth = xyMod * 0.06 * voice.freq;
+    voice.lfoOsc.frequency.setTargetAtTime(rate, ctx.currentTime, 0.02);
+    voice.lfoG.gain.setTargetAtTime(depth, ctx.currentTime, 0.02);
+
+  } else if (xyMode === 'overdrive') {
+    // Mode 2: xyMod adds extra drive (up to +10)
+    const newDrive = voice.baseDrive + xyMod * 10;
+    const newMakeup = voice.baseMakeup + xyMod * 1.5;
+    voice.shaper.curve = makeTanhCurve(newDrive);
+    voice.shaperPost.gain.setTargetAtTime(newMakeup, ctx.currentTime, 0.02);
+  }
+}
+
+function releaseVoice(voice, keyEl) {
+  if (voice.released) return;
+  voice.released = true;
+
+  // Reset visual
+  if (keyEl) {
+    const modEl = keyEl.querySelector('.key-mod');
+    if (modEl) modEl.style.height = '0%';
+    keyEl.classList.remove('active');
+  }
+
+  const now = ctx.currentTime;
+  const rel = params.rel;
+  voice.adsrG.gain.cancelScheduledValues(now);
+  voice.adsrG.gain.setValueAtTime(voice.adsrG.gain.value, now);
+  voice.adsrG.gain.exponentialRampToValueAtTime(0.0001, now + rel);
+
+  // Reset LFO depth (cleans up vibrato)
+  voice.lfoG.gain.setTargetAtTime(0, now, 0.05);
+
+  setTimeout(() => {
+    voice.oscs.forEach(o => { try { o.stop(); o.disconnect(); } catch(e){} });
+    try { voice.lfoOsc.stop(); voice.lfoOsc.disconnect(); } catch(e){}
+    [voice.lfoG, voice.sawG, voice.triG, voice.sinG, voice.mixG,
+     voice.adsrG, voice.shaper, voice.shaperPost, voice.lpf,
+     voice.hpf, voice.panner, voice.voiceAmp].forEach(n => {
+      try { n.disconnect(); } catch(e){}
+    });
+    voices.delete(voice.pointerId);
+    updateVoiceCount();
+  }, (rel + 0.1) * 1000);
+}
+
+function panicAll() {
+  voices.forEach(v => {
+    v.released = true;
+    v.oscs.forEach(o => { try { o.stop(); o.disconnect(); } catch(e){} });
+    try { v.lfoOsc.stop(); } catch(e){}
+  });
+  voices.clear();
+  document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
+  document.querySelectorAll('.key-mod').forEach(m => m.style.height = '0%');
+  updateVoiceCount();
+}
+
+// ═══════════════════════════════════════════════════════════
+// KEYBOARD RENDERING
+// ═══════════════════════════════════════════════════════════
+
+function lpfParamToHz(p) {
+  return 80 * Math.pow(20000/80, Math.max(p, 0.001));
+}
+
+function buildAllKeys() {
+  const tun = TUNING_DATA[currentTuning];
+  const octMult = Math.pow(2, octaveShift);
+  const allKeys = [];
+  for (let oct = 0; oct < tun.octaves; oct++) {
+    tun.keys.forEach((pk, i) => {
+      const freq = tun.root * pk.ratio * Math.pow(2, oct) * octMult;
+      const octLabel = oct === 0 && i === 0 ? true : false;  // not used, use i===0
+      allKeys.push({
+        key: pk.key + oct,
+        label: pk.label,
+        freq,
+        type: pk.type,
+        octStart: i === 0,
+        ratio: pk.ratio,
+        oct,
+      });
+    });
+  }
+  return allKeys;
+}
+
+function renderKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  const allKeys = buildAllKeys();
+
+  allKeys.forEach(kd => {
+    const el = document.createElement('div');
+    el.className = `key ${kd.type}${kd.octStart ? ' oct-start' : ''}`;
+    el.dataset.freq = kd.freq;
+    el.dataset.key = kd.key;
+
+    const mod = document.createElement('div');
+    mod.className = 'key-mod';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'key-label';
+    lbl.textContent = kd.label + (kd.octStart ? (3 + kd.oct) : '');
+
+    const rat = document.createElement('div');
+    rat.className = 'key-ratio';
+    if (currentTuning === 'ji') {
+      // Show ratio as fraction string for JI
+      const r = JI_KEYS.find(k => k.key === kd.key.replace(/\d$/,''));
+      if (r) {
+        const n = Math.round(r.ratio * 32), d = 32;
+        const g = gcd(n,d);
+        rat.textContent = (n/g)+'/'+(d/g);
+      }
+    }
+
+    el.appendChild(mod);
+    el.appendChild(lbl);
+    if (currentTuning === 'ji') el.appendChild(rat);
+
+    // ── Pointer events ──
+    el.addEventListener('pointerdown', onKeyDown, {passive:false});
+    el.addEventListener('pointermove', onKeyMove, {passive:false});
+    el.addEventListener('pointerup',   onKeyUp,   {passive:false});
+    el.addEventListener('pointercancel', onKeyUp, {passive:false});
+
+    kb.appendChild(el);
+  });
+
+  // Scroll to middle octave (C4) on load
+  requestAnimationFrame(() => {
+    const wrap = document.getElementById('kb-wrap');
+    const keysPerOct = TUNING_DATA[currentTuning].keys.length;
+    wrap.scrollLeft = keysPerOct * 36;  // one octave in
+  });
+}
+
+function gcd(a,b){ while(b){ const t=b; b=a%b; a=t; } return a; }
+
+// ═══════════════════════════════════════════════════════════
+// POINTER HANDLERS
+// ═══════════════════════════════════════════════════════════
+
+function onKeyDown(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  ensureCtx();
+
+  const el = e.currentTarget;
+  el.setPointerCapture(e.pointerId);
+
+  const freq = parseFloat(el.dataset.freq);
+  el.classList.add('active');
+
+  const voice = makeVoice(freq, e.pointerId, e.clientX, e.clientY);
+  voice.keyEl = el;  // store reference for later
+}
+
+function onKeyMove(e) {
+  e.preventDefault();
+  const voice = voices.get(e.pointerId);
+  if (!voice) return;
+  updateVoiceXY(voice, e.clientX, e.clientY, voice.keyEl);
+}
+
+function onKeyUp(e) {
+  e.preventDefault();
+  const voice = voices.get(e.pointerId);
+  if (!voice) return;
+  releaseVoice(voice, voice.keyEl);
+}
+
+// ═══════════════════════════════════════════════════════════
+// UI CONTROLS
+// ═══════════════════════════════════════════════════════════
+
+function setXYMode(mode, btn) {
+  xyMode = mode;
+  document.querySelectorAll('.topbar .btn.sm').forEach(b => {
+    if (['btn-filter','btn-vibrato','btn-drive'].includes(b.id)) b.classList.remove('active');
+  });
+  btn.classList.add('active');
+  const dot = document.getElementById('xy-mode-dot');
+  dot.className = '';
+  if (mode === 'vibrato') dot.className = 'vibrato';
+  else if (mode === 'overdrive') dot.className = 'overdrive';
+}
+
+function shiftOctave(delta) {
+  octaveShift = Math.max(-2, Math.min(2, octaveShift + delta));
+  document.getElementById('oct-v').textContent = (octaveShift >= 0 ? '+' : '') + octaveShift;
+  renderKeyboard();
+}
+
+function changeTuning(val) {
+  panicAll();
+  currentTuning = val;
+  renderKeyboard();
+}
+
+function toggleControls() {
+  const panel = document.getElementById('ctl-panel');
+  const btn = document.getElementById('btn-ctl');
+  panel.classList.toggle('hidden');
+  btn.textContent = panel.classList.contains('hidden') ? 'controls ▾' : 'controls ▴';
+}
+
+function setOscLevel(osc, val) {
+  const v = val / 100;
+  params[osc] = v;
+  document.getElementById('vl-' + osc).textContent = val;
+  // Update all active voices
+  voices.forEach(voice => {
+    const gn = osc === 'saw' ? voice.sawG : (osc === 'tri' ? voice.triG : voice.sinG);
+    gn.gain.setTargetAtTime(v, ctx.currentTime, 0.01);
+  });
+}
+
+function updateVal(param, val) {
+  if (param === 'atk') {
+    params.atk = val / 1000;
+    document.getElementById('vl-atk').textContent = val + 'ms';
+  } else if (param === 'rel') {
+    params.rel = val / 1000;
+    document.getElementById('vl-rel').textContent = val + 'ms';
+  } else if (param === 'lpf') {
+    params.lpf = val / 100;
+    document.getElementById('vl-lpf').textContent = val;
+    const hz = lpfParamToHz(params.lpf);
+    voices.forEach(v => { if (!v.released) v.lpf.frequency.setTargetAtTime(hz, ctx.currentTime, 0.02); });
+  } else if (param === 'drive') {
+    params.drive = val / 100;
+    document.getElementById('vl-drive').textContent = val;
+  }
+}
+
+function setMasterVol(val) {
+  params.vol = val / 100;
+  document.getElementById('vl-vol').textContent = val;
+  if (masterGain) masterGain.gain.setTargetAtTime(params.vol, ctx.currentTime, 0.02);
+}
+
+function updateVoiceCount() {
+  document.getElementById('voice-count').textContent = voices.size + ' vx';
+}
+
+// ── Keyboard shortcut: Escape = panic ──
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') panicAll();
+});
+
+// ── Init ──
+renderKeyboard();
+
+})();
+</script>
+</body>
+</html>
