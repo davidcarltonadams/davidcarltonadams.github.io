@@ -269,7 +269,17 @@ function ensureCtx() {
     masterGain.gain.value = params.vol;
     masterGain.connect(actx.destination);
   }
-  if (actx.state === 'suspended') actx.resume();
+  if (actx.state !== 'running') {
+    actx.resume();
+    // iOS belt-and-suspenders: play a silent 1-sample buffer to force unlock
+    try {
+      const buf = actx.createBuffer(1, 1, actx.sampleRate);
+      const src = actx.createBufferSource();
+      src.buffer = buf;
+      src.connect(actx.destination);
+      src.start(0);
+    } catch(_) {}
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -330,7 +340,15 @@ function makeVoice(freq, pointerId, lx0, ly0) {
   const lpf = actx.createBiquadFilter(); lpf.type = 'lowpass';
   lpf.frequency.value = lpfParamToHz(params.lpf); lpf.Q.value = 2.0;
   const hpf = actx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 30;
-  const panner = actx.createStereoPanner(); panner.pan.value = 0;
+  // StereoPannerNode: try-catch for iOS < 14.5 compatibility
+  let panner;
+  try {
+    panner = actx.createStereoPanner();
+    panner.pan.value = 0;
+  } catch(_) {
+    panner = actx.createGain();          // passthrough — no pan on older iOS
+    panner.pan = { setTargetAtTime: () => {}, value: 0 };
+  }
   const voiceAmp = actx.createGain(); voiceAmp.gain.value = 0.25;
 
   sawOsc.connect(sawG); triOsc.connect(triG); sinOsc.connect(sinG);
@@ -406,13 +424,23 @@ function stopAndDisconnectVoice(voice) {
 }
 
 function panicAll() {
-  if (masterGain) {
-    masterGain.gain.cancelScheduledValues(actx.currentTime);
-    masterGain.gain.setValueAtTime(0, actx.currentTime);
-    masterGain.gain.linearRampToValueAtTime(params.vol, actx.currentTime + 0.05);
-  }
-  [...voices.values()].forEach(v => { v.released = true; stopAndDisconnectVoice(v); });
+  // Nuclear silence: stop all oscillators, then sever masterGain from destination
+  // and recreate it — cuts any zombie connections that bypassed stopAndDisconnect
+  [...voices.values()].forEach(v => {
+    v.released = true;
+    v.oscs.forEach(o => { try { o.stop(); } catch(_) {} });
+    try { v.lfoOsc.stop(); } catch(_) {}
+  });
   voices.clear(); touchVoices.clear();
+
+  if (actx && masterGain) {
+    masterGain.gain.setValueAtTime(0, actx.currentTime);
+    masterGain.disconnect();
+    masterGain = actx.createGain();
+    masterGain.gain.value = params.vol;
+    masterGain.connect(actx.destination);
+  }
+
   keyRects.forEach(r => { r.active = false; r.modAmt = 0; });
   drawKeyboard();
   updateVoiceCount();
@@ -625,8 +653,13 @@ function onCanvasDown(e) {
   if (!rect) return;
   try { kbCanvas.setPointerCapture(e.pointerId); } catch(_) {}
   rect.active = true;
-  const voice = makeVoice(rect.freq, e.pointerId, lx, ly);
-  voice.rect = rect;
+  try {
+    const voice = makeVoice(rect.freq, e.pointerId, lx, ly);
+    voice.rect = rect;
+  } catch(err) {
+    rect.active = false;  // rollback visual if synthesis failed
+    console.error('makeVoice:', err);
+  }
   drawKeyboard();
 }
 
@@ -781,6 +814,14 @@ function updateVoiceCount() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') panicAll(); });
+
+// Global safety net: catch pointer-up that misses the canvas (finger slides off topbar etc.)
+function globalPointerUp(e) {
+  const voice = voices.get(e.pointerId);
+  if (voice) { releaseVoice(voice); drawKeyboard(); }
+}
+window.addEventListener('pointerup',     globalPointerUp, {passive:true});
+window.addEventListener('pointercancel', globalPointerUp, {passive:true});
 
 // Expose UI callbacks to global scope (onclick= attributes can't see inside IIFE)
 Object.assign(window, {
