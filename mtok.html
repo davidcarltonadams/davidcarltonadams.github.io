@@ -636,8 +636,15 @@ function hitTest(lx, ly) {
 }
 
 function canvasXY(clientX, clientY) {
-  const bcr = kbCanvas.getBoundingClientRect();
-  return { lx: clientX - bcr.left, ly: clientY - bcr.top };
+  // Use wrapper BCR + scrollLeft instead of canvas BCR — Safari on iPad
+  // can return wrong values for getBoundingClientRect() on a child element
+  // inside a horizontally-scrolled overflow container.
+  const wrap = document.getElementById('kb-wrap');
+  const bcr  = wrap.getBoundingClientRect();
+  return {
+    lx: clientX - bcr.left + wrap.scrollLeft,
+    ly: clientY - bcr.top,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -652,6 +659,10 @@ function onCanvasDown(e) {
   const rect = hitTest(lx, ly);
   if (!rect) return;
   try { kbCanvas.setPointerCapture(e.pointerId); } catch(_) {}
+  // If this pointer already has a voice (e.g. Force Touch fires a second
+  // pointerdown at deeper click depth), release the old voice cleanly first.
+  const existing = voices.get(e.pointerId);
+  if (existing) releaseVoice(existing);
   rect.active = true;
   try {
     const voice = makeVoice(rect.freq, e.pointerId, lx, ly);
