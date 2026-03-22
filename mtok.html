@@ -86,46 +86,104 @@
 
   /* ── Keys ── */
   .key{
-    flex-shrink:0;width:36px;
-    display:flex;flex-direction:column;justify-content:flex-end;align-items:center;
-    padding-bottom:6px;
-    border-right:1px solid var(--bg);
+    flex-shrink:0;
+    width:52px;
+    display:flex;flex-direction:column;justify-content:space-between;align-items:center;
+    padding:8px 2px 10px;
+    border-right:1px solid rgba(0,0,0,0.5);
+    border-top:1px solid rgba(255,255,255,0.06);
     cursor:pointer;touch-action:none;
-    transition:background 0.05s;
+    transition:background 0.04s, box-shadow 0.04s;
     position:relative;
     -webkit-tap-highlight-color:transparent;
   }
-  .key.nat  {background:#1c1c26;}
-  .key.acc  {background:#0d0d16;}
-  .key.qt   {background:#141420;}
-  .key.oct-start{border-left:2px solid #2a2a3c;}
 
-  .key.active.nat {background:#1a3a6a;}
-  .key.active.acc {background:#122a54;}
-  .key.active.qt  {background:#163060;}
-  .key.active      {border-right-color:#2a5e9f;}
+  /* Natural notes — visible blue-grey */
+  .key.nat {
+    background: linear-gradient(180deg, #252838 0%, #1e2030 100%);
+    border-right-color: #0d0e18;
+  }
+  /* Chromatic accidentals — clearly darker */
+  .key.acc {
+    background: linear-gradient(180deg, #0f1020 0%, #0a0b16 100%);
+    border-right-color: #06070f;
+  }
+  /* Quarter-tones — warm amber tint, clearly different from both */
+  .key.qt {
+    background: linear-gradient(180deg, #1e1a0c 0%, #161208 100%);
+    border-right-color: #0a0800;
+  }
 
-  /* XY mod indicator — filled from bottom */
+  /* Octave start — bright left border, distinct C marker */
+  .key.oct-start {
+    border-left: 2px solid #4a4a70;
+  }
+
+  /* ── Active / pressed ── */
+  .key.active.nat {
+    background: linear-gradient(180deg, #2a5cb8 0%, #1a3c7a 100%);
+    box-shadow: inset 0 0 12px rgba(74,158,255,0.3);
+    border-right-color: #1a3060;
+  }
+  .key.active.acc {
+    background: linear-gradient(180deg, #1e4898 0%, #122c60 100%);
+    box-shadow: inset 0 0 12px rgba(74,158,255,0.25);
+    border-right-color: #0e2040;
+  }
+  .key.active.qt {
+    background: linear-gradient(180deg, #6a4010 0%, #3a2008 100%);
+    box-shadow: inset 0 0 12px rgba(212,168,67,0.3);
+    border-right-color: #2a1800;
+  }
+
+  /* XY mod indicator — luminous fill from bottom */
   .key-mod{
     position:absolute;bottom:0;left:0;right:0;
-    background:rgba(74,158,255,0.18);
+    background:linear-gradient(0deg, rgba(74,158,255,0.35) 0%, rgba(74,158,255,0.05) 100%);
     height:0%;
-    transition:height 0.05s;
     pointer-events:none;
   }
-  .key-label{
-    font-size:5.5px;letter-spacing:0.04em;
-    color:var(--txddd);text-align:center;line-height:1.3;
-    position:relative;z-index:1;pointer-events:none;
+  .key.qt .key-mod {
+    background:linear-gradient(0deg, rgba(212,168,67,0.4) 0%, rgba(212,168,67,0.05) 100%);
   }
-  .key.nat  .key-label{color:#8888aa;}
-  .key.acc  .key-label{color:#555570;}
-  .key.qt   .key-label{color:var(--amber);}
-  .key.oct-start .key-label{color:#a0a0c4;}
 
-  .key-ratio{
-    font-size:4.5px;color:var(--txddd);opacity:0.6;
+  /* Pitch name — large, centered, top of key */
+  .key-label{
+    font-size:9px;
+    font-weight:500;
+    letter-spacing:0.02em;
+    text-align:center;
+    line-height:1.2;
     position:relative;z-index:1;pointer-events:none;
+    margin-top:2px;
+  }
+  .key.nat  .key-label { color:#9898bc; }
+  .key.acc  .key-label { color:#484860; }
+  .key.qt   .key-label { color:#c09848; }
+  .key.oct-start .key-label { color:#c0c0e0; font-weight:500; }
+  .key.active     .key-label { color:#ffffff !important; }
+
+  /* Ratio — small, bottom of key */
+  .key-ratio{
+    font-size:6px;
+    color:rgba(255,255,255,0.2);
+    text-align:center;
+    position:relative;z-index:1;pointer-events:none;
+    line-height:1;
+  }
+  .key.nat  .key-ratio { color:rgba(160,160,200,0.3); }
+  .key.qt   .key-ratio { color:rgba(192,152,72,0.35); }
+  .key.active .key-ratio { color:rgba(255,255,255,0.5) !important; }
+
+  /* Octave number badge on C keys */
+  .key-oct{
+    position:absolute;
+    top:5px;left:0;right:0;
+    text-align:center;
+    font-size:7px;
+    color:rgba(180,180,220,0.5);
+    pointer-events:none;
+    z-index:1;
   }
 
   /* ── XY mode indicator ring ── */
@@ -579,28 +637,38 @@ function renderKeyboard() {
     el.dataset.freq = kd.freq;
     el.dataset.key = kd.key;
 
+    // XY mod fill (from bottom)
     const mod = document.createElement('div');
     mod.className = 'key-mod';
 
+    // Octave badge — only on C (octStart) keys
+    if (kd.octStart) {
+      const oct = document.createElement('div');
+      oct.className = 'key-oct';
+      oct.textContent = (3 + kd.oct);
+      el.appendChild(oct);
+    }
+
+    // Pitch name — large, top area
     const lbl = document.createElement('div');
     lbl.className = 'key-label';
-    lbl.textContent = kd.label + (kd.octStart ? (3 + kd.oct) : '');
+    lbl.textContent = kd.label;
 
+    // JI ratio — small, bottom
     const rat = document.createElement('div');
     rat.className = 'key-ratio';
     if (currentTuning === 'ji') {
-      // Show ratio as fraction string for JI
       const r = JI_KEYS.find(k => k.key === kd.key.replace(/\d$/,''));
       if (r) {
-        const n = Math.round(r.ratio * 32), d = 32;
-        const g = gcd(n,d);
-        rat.textContent = (n/g)+'/'+(d/g);
+        // Compute ratio as reduced fraction from floating point
+        const best = toFraction(r.ratio);
+        rat.textContent = best;
       }
     }
 
     el.appendChild(mod);
     el.appendChild(lbl);
-    if (currentTuning === 'ji') el.appendChild(rat);
+    el.appendChild(rat);
 
     // ── Pointer events (preferred — gives capture + cross-key tracking) ──
     el.addEventListener('pointerdown',   onKeyDown, {passive:false});
@@ -620,8 +688,27 @@ function renderKeyboard() {
   requestAnimationFrame(() => {
     const wrap = document.getElementById('kb-wrap');
     const keysPerOct = TUNING_DATA[currentTuning].keys.length;
-    wrap.scrollLeft = keysPerOct * 36;  // one octave in
+    wrap.scrollLeft = keysPerOct * 52;  // one octave in (52px key width)
   });
+}
+
+function toFraction(ratio) {
+  // Convert JI ratio (stored as JS float) back to n/d string
+  // Using the actual ratio values from JI_KEYS to avoid float drift
+  const known = {
+    [1/1]:'1/1',[33/32]:'33/32',[17/16]:'17/16',[12/11]:'12/11',
+    [9/8]:'9/8',[11/10]:'11/10',[13/11]:'13/11',[6/5]:'6/5',
+    [11/9]:'11/9',[5/4]:'5/4',[9/7]:'9/7',[4/3]:'4/3',
+    [11/8]:'11/8',[45/32]:'45/32',[23/16]:'23/16',[3/2]:'3/2',
+    [14/9]:'14/9',[11/7]:'11/7',[13/8]:'13/8',[5/3]:'5/3',
+    [7/4]:'7/4',[9/5]:'9/5',[11/6]:'11/6',[15/8]:'15/8',
+    [243/128]:'243/128',
+  };
+  // Find closest match within float tolerance
+  for (const [k, v] of Object.entries(known)) {
+    if (Math.abs(parseFloat(k) - ratio) < 0.00001) return v;
+  }
+  return ratio.toFixed(4);
 }
 
 function gcd(a,b){ while(b){ const t=b; b=a%b; a=t; } return a; }
