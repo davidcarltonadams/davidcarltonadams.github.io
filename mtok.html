@@ -440,15 +440,28 @@ function buildKeyRects(logicalH) {
       .map((pk, i) => ({...pk, cents: centsOf(pk.ratio), origIdx: i}))
       .sort((a, b) => a.cents - b.cents);
 
+    // Natural keys get sequential edge-to-edge positions (like a piano).
+    // Accidentals and QTs get cents-based positions overlaid on top.
+    const natKeys = sorted.filter(pk => pk.type === 'nat');
+
     sorted.forEach(pk => {
       const freq = tun.root * pk.ratio * Math.pow(2, oct) * octMult;
-      const w = pk.type === 'nat' ? NAT_W : pk.type === 'acc' ? ACC_W : QT_W;
-      const h = pk.type === 'nat' ? logicalH
-               : pk.type === 'acc' ? Math.round(logicalH * 0.60)
-               : Math.round(logicalH * 0.76);
-      const xc = oct * OCT_W + (pk.cents / 1200) * OCT_W;
+      let x, w, h;
+
+      if (pk.type === 'nat') {
+        const ni = natKeys.indexOf(pk);
+        x = oct * OCT_W + ni * NAT_W;
+        w = NAT_W; h = logicalH;
+      } else {
+        const xc = oct * OCT_W + (pk.cents / 1200) * OCT_W;
+        w = pk.type === 'acc' ? ACC_W : QT_W;
+        h = pk.type === 'acc' ? Math.round(logicalH * 0.60)
+                               : Math.round(logicalH * 0.76);
+        x = Math.round(xc - w / 2);
+      }
+
       rects.push({
-        x: Math.round(xc - w / 2), y: 0, w, h,
+        x, y: 0, w, h,
         type: pk.type, label: pk.label, ratio: pk.ratio,
         freq, cents: pk.cents, oct,
         octStart: pk.origIdx === 0,
@@ -519,11 +532,16 @@ function drawKey(r) {
   c.lineTo(x + 0.5, y);
   c.fill();
 
-  c.strokeStyle = col.brd; c.lineWidth = 0.5; c.stroke();
+  // Border — 1px right and bottom edge for all keys
+  c.strokeStyle = type === 'nat' ? '#000008'
+                : type === 'acc' ? '#000004'
+                : '#080400';
+  c.lineWidth = 1;
+  c.stroke();
 
   // Octave-start left border
   if (octStart) {
-    c.strokeStyle = '#4a4a70'; c.lineWidth = 2;
+    c.strokeStyle = '#5a5a88'; c.lineWidth = 2;
     c.beginPath(); c.moveTo(x + 1, y); c.lineTo(x + 1, y + h); c.stroke();
   }
 
@@ -764,16 +782,24 @@ function updateVoiceCount() {
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') panicAll(); });
 
-// ── Init ──
-initCanvas();
-kbCanvas.addEventListener('pointerdown',   onCanvasDown,       {passive:false});
-kbCanvas.addEventListener('pointermove',   onCanvasMove,       {passive:false});
-kbCanvas.addEventListener('pointerup',     onCanvasUp,         {passive:false});
-kbCanvas.addEventListener('pointercancel', onCanvasUp,         {passive:false});
-kbCanvas.addEventListener('touchstart',    onCanvasTouchStart, {passive:false});
-kbCanvas.addEventListener('touchmove',     onCanvasTouchMove,  {passive:false});
-kbCanvas.addEventListener('touchend',      onCanvasTouchEnd,   {passive:false});
-kbCanvas.addEventListener('touchcancel',   onCanvasTouchEnd,   {passive:false});
+// Expose UI callbacks to global scope (onclick= attributes can't see inside IIFE)
+Object.assign(window, {
+  setXYMode, shiftOctave, changeTuning, toggleControls,
+  setOscLevel, updateVal, setMasterVol, panicAll,
+});
+
+// ── Init ── (defer one frame so iOS flex layout finishes before measuring height)
+requestAnimationFrame(() => {
+  initCanvas();
+  kbCanvas.addEventListener('pointerdown',   onCanvasDown,       {passive:false});
+  kbCanvas.addEventListener('pointermove',   onCanvasMove,       {passive:false});
+  kbCanvas.addEventListener('pointerup',     onCanvasUp,         {passive:false});
+  kbCanvas.addEventListener('pointercancel', onCanvasUp,         {passive:false});
+  kbCanvas.addEventListener('touchstart',    onCanvasTouchStart, {passive:false});
+  kbCanvas.addEventListener('touchmove',     onCanvasTouchMove,  {passive:false});
+  kbCanvas.addEventListener('touchend',      onCanvasTouchEnd,   {passive:false});
+  kbCanvas.addEventListener('touchcancel',   onCanvasTouchEnd,   {passive:false});
+});
 
 })();
 </script>
