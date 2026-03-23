@@ -121,6 +121,7 @@
         <option value="19">19-EDO</option>
         <option value="12">12-TET</option>
       </select>
+      <button class="btn sm" id="btn-reload-tuning" onclick="reloadTunings()" title="reload tunings.json">↺</button>
     </div>
     <div class="tb-sep"></div>
     <div class="tb-grp">
@@ -262,6 +263,88 @@ const TUNING_DATA = {
   '19': {keys: edoKeys(19),  root: ROOT_C3, octaves: 3},
   '12': {keys: edoKeys(12),  root: ROOT_C3, octaves: 3},
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXTERNAL TUNINGS  (tunings.json → TUNING_DATA)
+// Same pitch notation as canon.html: 0=C, 1=C#, 0.5=C↑(+50¢), 9.7≈7th partial.
+// ═══════════════════════════════════════════════════════════════════════════════
+const _NOTE12m = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const _WHITE12m = [1,0,1,0,1,1,0,1,0,1,0,1];
+const _MICRO_NAMESm = {
+  0:'C', 0.5:'C↑', 1:'C♯', 2:'D', 2.5:'D↑', 3:'E♭', 3.86:'E↓(5/4)', 4:'E', 5:'F',
+  5.5:'F↑', 6:'F♯', 7:'G', 7.5:'G↑', 8:'A♭', 9:'A', 9.7:'B♭↓(7)', 10:'B♭', 11:'B', 11.5:'B↑',
+};
+
+function _semLabelM(s) {
+  if(_MICRO_NAMESm[s]) return _MICRO_NAMESm[s];
+  const near = Math.round(s), pc = ((near%12)+12)%12;
+  const dev = Math.round((s - near) * 100);
+  return _NOTE12m[pc] + (dev ? (dev>0?'+':'')+dev+'¢' : '');
+}
+
+// Key type: nat (white), acc (black), qt (microtone) — from proximity to 12-TET
+function _semKeyType(s) {
+  const near = Math.round(s), dev = Math.abs(s - near);
+  if(dev <= 0.49) { const pc=((near%12)+12)%12; return _WHITE12m[pc] ? 'nat' : 'acc'; }
+  return 'qt';
+}
+
+// Convert a welltemp JSON entry to MTOK keys (12-note piano layout, adjusted ratios)
+function wellTempToMTOKKeys(entry) {
+  const keyIds = ['c','cs','d','ef','e','f','fs','g','af','a','bf','b'];
+  return entry.pitches.map((s, i) => {
+    const cents = s * 100;
+    const dev = Math.round(cents - i*100);
+    const devStr = dev ? ' '+(dev>0?'+':'')+dev+'¢' : '';
+    return {
+      key: keyIds[i],
+      label: _NOTE12m[i] + devStr,
+      ratio: Math.pow(2, cents/1200),
+      type: _WHITE12m[i] ? 'nat' : 'acc',
+    };
+  });
+}
+
+// Convert a custom JSON entry to MTOK keys (arbitrary pitch set)
+function customToMTOKKeys(entry) {
+  return entry.pitches.map((s, i) => ({
+    key: 'ext'+i,
+    label: _semLabelM(s),
+    ratio: Math.pow(2, s/12),
+    type: _semKeyType(s),
+  }));
+}
+
+// Fetch + inject; adds <option>s marked with data-ext for easy reload removal.
+function loadExternalTunings(data) {
+  const sel = document.getElementById('tuning-sel');
+  [...sel.options].filter(o => o.dataset.ext).forEach(o => o.remove());
+  (data.tunings || []).forEach(entry => {
+    if(!entry.id || !Array.isArray(entry.pitches) || entry.pitches.length < 2) return;
+    const keys = entry.type === 'welltemp'
+      ? wellTempToMTOKKeys(entry)
+      : customToMTOKKeys(entry);
+    TUNING_DATA[entry.id] = {keys, root: ROOT_C3, octaves: 3};
+    const opt = document.createElement('option');
+    opt.value = entry.id;
+    opt.textContent = entry.name;
+    opt.dataset.ext = '1';
+    if(entry.description) opt.title = entry.description;
+    sel.appendChild(opt);
+  });
+}
+
+function reloadTunings() {
+  const btn = document.getElementById('btn-reload-tuning');
+  fetch('./tunings.json')
+    .then(r=>r.json())
+    .then(data=>{
+      loadExternalTunings(data);
+      const orig=btn.textContent; btn.textContent='↺ ok';
+      setTimeout(()=>btn.textContent=orig, 1000);
+    })
+    .catch(()=>{ btn.textContent='✗'; setTimeout(()=>btn.textContent='↺', 1200); });
+}
 
 // ═══════════════════════════════════════════════════════════
 // STATE
@@ -1033,6 +1116,12 @@ Object.assign(window, {
 document.addEventListener('touchstart', () => ensureCtx(), {passive:true});
 document.addEventListener('click',      () => ensureCtx(), {passive:true});
 document.addEventListener('mousedown',  () => ensureCtx(), {passive:true});
+
+/// Load tunings.json (K3, Vallotti, DCA Beta, any custom entries) on startup.
+fetch('./tunings.json')
+  .then(r=>r.json())
+  .then(data=>loadExternalTunings(data))
+  .catch(()=>{});  // graceful: built-in tunings still work if file missing
 
 // ── Init ── Double-rAF: first frame starts layout; second frame measures it.
 // Needed on iPadOS Safari where 100vh + flex layout isn't settled in one frame.
