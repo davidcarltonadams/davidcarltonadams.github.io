@@ -117,6 +117,8 @@
         <span>subject</span>
         <button class="btn sm danger" id="btn-clear">clear</button>
         <button class="btn sm" id="btn-seed">seed</button>
+        <button class="btn sm" id="btn-save" title="save grid + settings to browser storage">save</button>
+        <button class="btn sm" id="btn-load" title="load from browser storage">load</button>
       </div>
       <div class="grid-wrap">
         <div class="paxis" id="paxis"></div>
@@ -177,6 +179,7 @@
             <option value="31">31-EDO</option>
             <option value="dca">DCA scale</option>
           </select>
+          <button class="btn sm" id="btn-reload-tuning" title="reload tunings.json">↺</button>
         </div>
         <div class="r">
           <span class="l" title="Scale filter — 12-TET only">scale</span>
@@ -356,6 +359,76 @@ const TUNINGS = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// EXTERNAL TUNINGS  (tunings.json → TUNINGS)
+// Pitch notation: 0=C, 1=C#, 0.5=C↑(+50¢), 9.7≈7th partial of C.
+// ═══════════════════════════════════════════════════════════════════════════════
+const _NOTE12 = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const _WHITE12 = [1,0,1,0,1,1,0,1,0,1,0,1];
+
+// Label for an arbitrary semitone value — checks DCA_NAMES first, then
+// finds nearest 12-TET pitch class and shows cent deviation (e.g. "E −8¢").
+function semToLabel(s) {
+  if(DCA_NAMES[s]) return DCA_NAMES[s];
+  const near = Math.round(s), pc = ((near%12)+12)%12;
+  const dev = Math.round((s - near) * 100);
+  return _NOTE12[pc] + (dev ? (dev>0?'+':'')+dev+'¢' : '');
+}
+
+// Build a TUNINGS entry from a "welltemp" JSON tuning (12 pitches, piano key layout).
+// Row labels show note name + cent deviation from 12-TET (e.g. "E −14¢").
+function wellTempTuning(entry) {
+  const cents = entry.pitches.map(s => s * 100);
+  return {
+    label: entry.name, stepCents: null, spo: 12, defRows: 25,
+    _cents: cents,
+    rowLabel(i) {
+      const pc = i%12, o = 4+Math.floor(i/12);
+      const dev = Math.round(cents[pc] - pc*100);
+      const devStr = dev ? ' '+(dev>0?'+':'')+dev+'¢' : '';
+      if(pc===0) return {text:'C'+o, hi:true, root:true};
+      return {text: _NOTE12[pc]+devStr, hi:!!_WHITE12[pc], root:false};
+    },
+    rowCents(i) { return this._cents[i%12] + Math.floor(i/12)*1200; },
+    scaleFilter: false,
+  };
+}
+
+// Build a TUNINGS entry from a "custom" JSON tuning (arbitrary pitch set).
+function customTuningFromJSON(entry) {
+  const pitches = entry.pitches, cents = pitches.map(s => s*100), N = pitches.length;
+  return {
+    label: entry.name, stepCents: null, spo: null, defRows: N*2,
+    _pitches: pitches, _cents: cents,
+    rowLabel(i) {
+      const idx = i%N, oct = Math.floor(i/N), s = pitches[idx];
+      if(s===0) return {text:'C'+(4+oct), hi:true, root:true};
+      return {text: semToLabel(s), hi:false, root:false};
+    },
+    rowCents(i) { return cents[i%N] + Math.floor(i/N)*1200; },
+    scaleFilter: false,
+  };
+}
+
+// Fetch tunings.json, build TUNINGS entries, and inject <option>s into the selector.
+// Safe to call multiple times (reload): replaces previously injected options.
+function loadExternalTunings(data) {
+  const sel = $('tuning-sel');
+  [...sel.options].filter(o => o.dataset.ext).forEach(o => o.remove());
+  (data.tunings || []).forEach(entry => {
+    if(!entry.id || !Array.isArray(entry.pitches) || entry.pitches.length < 2) return;
+    TUNINGS[entry.id] = entry.type === 'welltemp'
+      ? wellTempTuning(entry)
+      : customTuningFromJSON(entry);
+    const opt = document.createElement('option');
+    opt.value = entry.id;
+    opt.textContent = entry.name;
+    opt.dataset.ext = '1';
+    if(entry.description) opt.title = entry.description;
+    sel.appendChild(opt);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // INTERVALS
 // ═══════════════════════════════════════════════════════════════════════════════
 const INTERVALS = [
@@ -398,7 +471,7 @@ let viewOctave=0;
 let swingRatio=0.5;   // 0.5=even … 0.875=double-dotted
 let oscType='triangle';
 let fugueMode=false, fugueKeyRoot=0, answerType='real', answerGrid=null;
-function markNotaDirty(){ notaDirty=true; }
+function markNotaDirty(){ notaDirty=true; scheduleAutoSave(); }
 
 const voices = [{ offset:0, transCents:0, color:VCOL[0], muted:false }];
 
@@ -954,6 +1027,68 @@ function seed() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// SAVE / LOAD  (localStorage key: canon-v1)
+// Auto-saves 1.2 s after any grid or settings change.
+// ═══════════════════════════════════════════════════════════════════════════════
+let _autoSaveTimer = null;
+function scheduleAutoSave() {
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(saveGrid, 1200);
+}
+
+function saveGrid() {
+  const state = {
+    v: 1, tuning: curTuning, numSteps, bpm, swingRatio, oscType,
+    voices: voices.map(v => ({offset:v.offset, transCents:v.transCents, muted:!!v.muted, gridSource:v.gridSource||null})),
+    grid: grid.map(row => row ? [...row] : null),
+  };
+  try {
+    localStorage.setItem('canon-v1', JSON.stringify(state));
+    const btn = $('btn-save');
+    if(btn) { const orig=btn.textContent; btn.textContent='saved!'; setTimeout(()=>btn.textContent=orig, 1200); }
+  } catch(e) { console.warn('canon save failed:', e); }
+}
+
+function loadGrid() {
+  const raw = localStorage.getItem('canon-v1');
+  if(!raw) return false;
+  try {
+    const s = JSON.parse(raw);
+    if(!s || s.v !== 1) return false;
+    if(s.tuning && TUNINGS[s.tuning]) {
+      $('tuning-sel').value = s.tuning;
+      switchTuning(s.tuning);
+    }
+    if(s.numSteps) updateSteps(s.numSteps);
+    if(s.bpm) { bpm=s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
+    if(s.swingRatio != null) {
+      swingRatio = s.swingRatio;
+      $('swing-r').value = Math.round((swingRatio-0.5)/0.375*100);
+      $('swing-v').textContent = swingLabel(swingRatio);
+    }
+    if(s.oscType) { oscType=s.oscType; $('osc-sel').value=oscType; }
+    if(s.grid) {
+      for(let p=0; p<Math.min(s.grid.length,numRows); p++) {
+        if(s.grid[p] && grid[p]) {
+          for(let st=0; st<Math.min(s.grid[p].length,numSteps); st++) {
+            grid[p][st] = !!s.grid[p][st];
+          }
+        }
+      }
+    }
+    if(s.voices && s.voices.length > 0) {
+      voices.length = 0;
+      s.voices.forEach((v,i) => {
+        voices.push({offset:v.offset||0, transCents:v.transCents||0, color:VCOL[i%VCOL.length], muted:!!v.muted, gridSource:v.gridSource||null});
+      });
+      buildVoicesUI();
+    }
+    markNotaDirty();
+    return true;
+  } catch(e) { console.warn('canon load failed:', e); return false; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // CONTROLS
 // ═══════════════════════════════════════════════════════════════════════════════
 $('btn-play').addEventListener('click',togglePlay);
@@ -998,6 +1133,25 @@ function updateSteps(n) {
 $('tuning-sel').addEventListener('change',e=>switchTuning(e.target.value));
 $('scale-sel').addEventListener('change',e=>{ scale=SCALES[e.target.value]||SCALES.chromatic; });
 
+$('btn-save').addEventListener('click', saveGrid);
+$('btn-load').addEventListener('click', () => {
+  if(!loadGrid()) {
+    const btn=$('btn-load'); const orig=btn.textContent;
+    btn.textContent='nothing saved'; setTimeout(()=>btn.textContent=orig, 1400);
+  }
+});
+$('btn-reload-tuning').addEventListener('click', () => {
+  const btn=$('btn-reload-tuning');
+  fetch('./tunings.json')
+    .then(r=>r.json())
+    .then(data=>{
+      loadExternalTunings(data);
+      const orig=btn.textContent; btn.textContent='↺ ok';
+      setTimeout(()=>btn.textContent=orig, 1000);
+    })
+    .catch(()=>{ btn.textContent='✗'; setTimeout(()=>btn.textContent='↺', 1200); });
+});
+
 $('swing-r').addEventListener('input',e=>{
   swingRatio = 0.5 + (parseInt(e.target.value)/100)*0.375;
   $('swing-v').textContent = swingLabel(swingRatio);
@@ -1037,7 +1191,14 @@ curTuning=$('tuning-sel').value;
 switchTuning(curTuning);
 buildVoicesUI();
 buildFugueUI();
-seed();
+seed(); // show something immediately; loadGrid() below will overwrite if saved state exists
+
+// Load tunings.json (K3, Vallotti, DCA Beta, any custom entries David added),
+// then restore saved state. Falls back gracefully if file not found.
+fetch('./tunings.json')
+  .then(r=>r.json())
+  .then(data=>{ loadExternalTunings(data); loadGrid(); })
+  .catch(()=>{ loadGrid(); });
 
 // Score click editing — delegate on #nota container (set up once)
 $('nota').addEventListener('click', e => {

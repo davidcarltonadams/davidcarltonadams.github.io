@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "comment": "Pitch notation: 0=C, 1=C#, 0.5=C quarter-sharp (+50¢), 9.7≈7th partial of C (970¢). Octave = 12.0. Pitches must be sorted ascending and stay within [0, 12).",
+  "tunings": [
+    {
+      "id": "k3",
+      "name": "Kirnberger III",
+      "description": "Well-temperament. Four 1/4-comma narrow fifths C-G-D-A-E give pure major third C-E (386¢). Remaining fifths pure. Warm in C major, increasingly bright toward F#. Bach-associated.",
+      "type": "welltemp",
+      "pitches": [0, 0.90225, 1.93157, 2.94135, 3.86314, 4.98045, 5.90224, 6.96578, 7.92180, 8.89735, 9.96090, 10.88269]
+    },
+    {
+      "id": "vallotti",
+      "name": "Vallotti",
+      "description": "Well-temperament. Six narrow fifths (F-C-G-D-A-E-B, each -1/6 Pythagorean comma = ~3.9¢), six pure. Thirds gradually sharpen as you move away from C toward F#.",
+      "type": "welltemp",
+      "pitches": [0, 0.94135, 1.96090, 2.98045, 3.92180, 5.01955, 5.92180, 6.98045, 7.96090, 8.94135, 10.00000, 10.90225]
+    },
+    {
+      "id": "dca-beta",
+      "name": "DCA Beta",
+      "description": "Vallotti backbone + three JI microtones: 0.5 (C↑, +50¢), 5.5 (F↑, 11/8 zone, 550¢), 9.7 (Bb↓, 7th partial, 970¢). Edit pitches[] freely — add, remove, or tweak values. Sorted ascending required.",
+      "type": "custom",
+      "pitches": [0, 0.5, 0.94135, 1.96090, 2.98045, 3.92180, 5.01955, 5.5, 5.92180, 6.98045, 7.96090, 8.94135, 9.7, 10.00000, 10.90225]
+    }
+  ]
+}
