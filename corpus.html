@@ -127,6 +127,8 @@
     <span class="title"><span>corpus</span> · dca</span>
     <button class="btn" id="btn-ctrl">ctrl</button>
     <div class="sep"></div>
+    <button class="btn" id="btn-pedal">pedal</button>
+    <div class="sep"></div>
     <button class="btn" id="btn-mute">mute</button>
     <button class="btn danger" id="btn-panic">panic</button>
   </div>
@@ -137,6 +139,16 @@
       <span class="ctl-lbl">scatter</span>
       <input type="range" id="scatter" min="0" max="60" value="12">
       <span class="ctl-val" id="scatter-val">12¢</span>
+    </div>
+    <div class="ctl-grp">
+      <span class="ctl-lbl">spread</span>
+      <input type="range" id="spread" min="0" max="100" value="40">
+      <span class="ctl-val" id="spread-val">0.4</span>
+    </div>
+    <div class="ctl-grp">
+      <span class="ctl-lbl">grain</span>
+      <input type="range" id="grain-len" min="5" max="200" value="50">
+      <span class="ctl-val" id="grain-val">0.5s</span>
     </div>
     <div class="ctl-grp">
       <span class="ctl-lbl">release</span>
@@ -152,6 +164,16 @@
         <option value="square">sqr</option>
       </select>
     </div>
+    <div class="ctl-grp">
+      <span class="ctl-lbl">rev wet</span>
+      <input type="range" id="rev-wet" min="0" max="100" value="20">
+      <span class="ctl-val" id="rev-wet-val">20%</span>
+    </div>
+    <div class="ctl-grp">
+      <span class="ctl-lbl">rev dec</span>
+      <input type="range" id="rev-dec" min="5" max="50" value="20">
+      <span class="ctl-val" id="rev-dec-val">2.0s</span>
+    </div>
   </div>
 
   <!-- Chord selector -->
@@ -161,16 +183,16 @@
   <div class="pads-area">
     <div class="pad-container" id="pc1">
       <canvas class="pad-canvas" id="pad1"></canvas>
-      <div class="pad-label" id="lbl1">corpus &nbsp;·&nbsp; x: spread &nbsp;·&nbsp; y: density</div>
+      <div class="pad-label" id="lbl1">corpus &nbsp;·&nbsp; x: density &nbsp;·&nbsp; y: tessitura</div>
     </div>
     <div class="pad-container" id="pc2">
       <canvas class="pad-canvas" id="pad2"></canvas>
-      <div class="pad-label">mix &nbsp;·&nbsp; x: hpf cutoff &nbsp;·&nbsp; y: volume</div>
+      <div class="pad-label">mix &nbsp;·&nbsp; x: lpf cutoff &nbsp;·&nbsp; y: volume</div>
     </div>
   </div>
 
   <!-- Hint -->
-  <div class="hint">select chord · sculpt corpus · set mix · wired audio out → mixer</div>
+  <div class="hint">hold corpus pad to play · release to stop · pedal = always on · select chord · set mix</div>
 
 </div>
 <script>
@@ -186,7 +208,7 @@ const CHORDS = [
   {
     id:'C~', label:'C~', desc:'pan-hybrid',
     tones:[[0,1.0],[200,0.6],[393,0.8],[550,0.7],[700,1.0],[845,0.5],[1088,0.6]],
-    ext:  [[970,0.3],[50,0.25]]   // A~ (sometimes), Cqts (way up top)
+    ext:  [[970,0.3],[50,0.25]]
   },
   {
     id:'Cqts_m', label:'C↑m', desc:'C quarter-sharp minor',
@@ -200,42 +222,47 @@ const CHORDS = [
   },
   {
     id:'Dm', label:'Dm', desc:'D minor / neutral 3rd',
-    tones:[[200,1.0],[550,0.8],[900,0.9]],   // neutral Fqts as the 3rd
-    ext:  [[500,0.35]]                        // F (pure minor 3rd, sometimes)
+    tones:[[200,1.0],[550,0.8],[900,0.9]],
+    ext:  [[500,0.35]]
   },
   {
     id:'Em', label:'Em', desc:'E minor + Fqts b9',
     tones:[[400,1.0],[700,0.9],[1100,0.8]],
-    ext:  [[550,0.4]]                         // Fqts as half-flat 9
+    ext:  [[550,0.4]]
   },
   {
     id:'F', label:'F', desc:'F major',
-    tones:[[500,1.0],[900,0.8],[0,0.9]],      // F A C (C wraps below as pitch class)
+    tones:[[500,1.0],[900,0.8],[0,0.9]],
     ext:  []
   },
   {
     id:'Fqts_m', label:'F↑m', desc:'F quarter-sharp minor',
-    tones:[[550,1.0],[866,0.8],[52,0.9]],     // Fqts, neutral-Ab, Cqts (5th)
+    tones:[[550,1.0],[866,0.8],[52,0.9]],
     ext:  []
   },
   {
     id:'G', label:'G', desc:'G major (ET)',
-    tones:[[700,1.0],[1100,0.8],[200,0.9]],   // G B D
+    tones:[[700,1.0],[1100,0.8],[200,0.9]],
     ext:  []
   },
   {
+    id:'Gm_lo', label:'Gm↓', desc:'G min · Bb−9.7¢',
+    tones:[[700,1.0],[990.3,0.85],[200,0.9]],   // G, Bb−9.7¢, D
+    ext:  [[495.3,0.4]]                          // F−4.7¢
+  },
+  {
     id:'Am', label:'Am', desc:'A minor',
-    tones:[[900,1.0],[0,0.8],[400,0.9]],      // A C E
-    ext:  [[1050,0.3],[550,0.3]]              // Bhb (half-flat 9), Fqts (sometimes)
+    tones:[[900,1.0],[0,0.8],[400,0.9]],
+    ext:  [[1050,0.3],[550,0.3]]
   },
   {
     id:'Bb', label:'B♭', desc:'Bb major',
-    tones:[[1000,1.0],[200,0.8],[500,0.9]],   // Bb D F
+    tones:[[1000,1.0],[200,0.8],[500,0.9]],
     ext:  []
   },
   {
     id:'Bm', label:'Bm', desc:'B minor',
-    tones:[[1100,1.0],[200,0.8],[600,0.9]],   // B D F#
+    tones:[[1100,1.0],[200,0.8],[600,0.9]],
     ext:  []
   },
 ];
@@ -245,27 +272,51 @@ const CHORDS = [
 // ═══════════════════════════════════════════════════════
 const state = {
   chordIdx: 0,
-  xy1: {x:0.5, y:0.35},   // corpus: x=spread, y=density
-  xy2: {x:0.1, y:0.65},   // mix:    x=hpf,    y=volume
-  scatter: 12,             // cents of pitch scatter per grain
-  relMult: 1.0,            // grain release multiplier
+  xy1: {x:0.35, y:0.5},   // corpus: x=density, y=tessitura
+  xy2: {x:0.75, y:0.65},  // mix:    x=lpf,     y=volume
+  scatter:  12,            // cents of pitch scatter per grain
+  spread:   0.4,           // octave scatter width (0=none, 1=±2 octaves)
+  grainLen: 0.5,           // grain duration in seconds
+  relMult:  1.0,           // grain release multiplier
   oscType: 'sawtooth',
   muted: false,
+  pedalMode: false,
+  reverbWet: 0.20,         // 0–1
+  reverbDecay: 2.0,        // seconds
 };
 
 // ═══════════════════════════════════════════════════════
 // BLOCK 3: AUDIO ENGINE
+// Chain: grains → masterGain → lpfNode → shaperNode → dryGain → limiter → out
+//                                                    ↘ reverbConv → wetGain → limiter → out
 // ═══════════════════════════════════════════════════════
 let ctx = null;
 let masterGain = null;
-let hpfNode = null;
+let lpfNode = null;
 let shaperNode = null;
+let reverbConv = null;
+let wetGain = null;
+let dryGain = null;
+let limiter = null;
 let audioReady = false;
 
 function makeShaperCurve(amt){
   const n=256, c=new Float32Array(n);
   for(let i=0;i<n;i++){const x=(i*2)/n-1; c[i]=((Math.PI+amt)*x)/(Math.PI+amt*Math.abs(x));}
   return c;
+}
+
+function makeReverbIR(actx, decaySec){
+  const sr  = actx.sampleRate;
+  const len = Math.ceil(sr * decaySec);
+  const ir  = actx.createBuffer(2, len, sr);
+  for(let c=0;c<2;c++){
+    const d = ir.getChannelData(c);
+    for(let i=0;i<len;i++){
+      d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2.0);
+    }
+  }
+  return ir;
 }
 
 function initAudio(){
@@ -275,24 +326,38 @@ function initAudio(){
   masterGain = ctx.createGain();
   masterGain.gain.value = applyVolCurve(state.xy2.y);
 
-  hpfNode = ctx.createBiquadFilter();
-  hpfNode.type = 'highpass';
-  hpfNode.frequency.value = applyHPFCurve(state.xy2.x);
-  hpfNode.Q.value = 0.7;
+  lpfNode = ctx.createBiquadFilter();
+  lpfNode.type = 'lowpass';
+  lpfNode.frequency.value = applyLPFCurve(state.xy2.x);
+  lpfNode.Q.value = 0.5;
 
   shaperNode = ctx.createWaveShaper();
   shaperNode.curve = makeShaperCurve(25);
   shaperNode.oversample = '2x';
 
-  const limiter = ctx.createGain();
+  reverbConv = ctx.createConvolver();
+  reverbConv.buffer = makeReverbIR(ctx, state.reverbDecay);
+
+  wetGain = ctx.createGain();
+  wetGain.gain.value = state.reverbWet;
+
+  dryGain = ctx.createGain();
+  dryGain.gain.value = 1.0;
+
+  limiter = ctx.createGain();
   limiter.gain.value = 0.72;
 
-  masterGain.connect(hpfNode);
-  hpfNode.connect(shaperNode);
-  shaperNode.connect(limiter);
+  // Wire chain
+  masterGain.connect(lpfNode);
+  lpfNode.connect(shaperNode);
+  shaperNode.connect(dryGain);
+  shaperNode.connect(reverbConv);
+  reverbConv.connect(wetGain);
+  dryGain.connect(limiter);
+  wetGain.connect(limiter);
   limiter.connect(ctx.destination);
 
-  // Silent buffer — iOS AudioContext unlock
+  // iOS AudioContext unlock
   const buf = ctx.createBuffer(1,1,ctx.sampleRate);
   const s = ctx.createBufferSource(); s.buffer=buf;
   s.connect(ctx.destination); s.start(0);
@@ -307,16 +372,26 @@ function ensureAudio(){
 
 // ── Curves ──
 function applyVolCurve(y){ return Math.pow(clamp(y,0,1), 1.8); }
-function applyHPFCurve(x){
-  // x=0 → 20 Hz (open), x=1 → 3000 Hz (bright)
-  return 20 * Math.pow(3000/20, clamp(x,0,1));
+function applyLPFCurve(x){
+  // x=0 → 200 Hz (dark/closed), x=1 → 8000 Hz (bright/open)
+  return 200 * Math.pow(8000/200, clamp(x,0,1));
 }
 
 function applyMixState(){
   if(!audioReady) return;
   const vol = state.muted ? 0 : applyVolCurve(state.xy2.y);
   masterGain.gain.setTargetAtTime(vol, ctx.currentTime, 0.04);
-  hpfNode.frequency.setTargetAtTime(applyHPFCurve(state.xy2.x), ctx.currentTime, 0.04);
+  lpfNode.frequency.setTargetAtTime(applyLPFCurve(state.xy2.x), ctx.currentTime, 0.04);
+}
+
+function updateReverbWet(){
+  if(!audioReady) return;
+  wetGain.gain.setTargetAtTime(state.reverbWet, ctx.currentTime, 0.05);
+}
+
+function updateReverbDecay(){
+  if(!audioReady || !reverbConv) return;
+  reverbConv.buffer = makeReverbIR(ctx, state.reverbDecay);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -335,40 +410,34 @@ function weightedPick(arr){
   return arr[arr.length-1][0];
 }
 
-function octaveForSpread(spread){
-  // spread 0→1 : max octave offset 0→2
-  const maxOct = Math.round(spread*2);
-  if(maxOct===0) return 0;
-  return (Math.floor(Math.random()*(maxOct*2+1))-maxOct)*1200;
-}
-
 // Grain visual particles
 const particles = [];
 
 function triggerGrain(){
   if(!audioReady || !ctx) return;
-  const chord  = CHORDS[state.chordIdx];
-  const spread  = state.xy1.x;
-  const density = state.xy1.y;
+  const chord   = CHORDS[state.chordIdx];
+  const density = state.xy1.x;        // grain rate + amp
+  const tess    = state.xy1.y;        // register height (0=low, 1=high)
 
-  // Build weighted tone pool (core + extensions)
+  // Pitch: pick class, add tessitura center + random octave scatter
   const pool = [...chord.tones, ...chord.ext];
-
-  // Pick pitch class + octave
-  const pc    = weightedPick(pool);
-  const octOff = octaveForSpread(spread);
-  const scatterCents = (Math.random()-0.5)*2*state.scatter;
+  const pc   = weightedPick(pool);
+  // tessitura: y=0 → −2 oct (C2), y=0.5 → −0.5 oct, y=1 → +1 oct (C5)
+  const tessCenter   = lerp(-2400, 1200, tess);
+  const spreadRange  = state.spread * 2400;
+  const octOff       = tessCenter + (Math.random()-0.5)*2 * spreadRange;
+  const scatterCents = (Math.random()-0.5)*2 * state.scatter;
   const finalCents   = pc + octOff + scatterCents;
   const freq = centsToHz(finalCents);
 
-  // Grain timing
-  const dur    = lerp(1.5, 0.12, density);
-  const attack = lerp(0.09, 0.007, density);
-  const rel    = dur * lerp(0.55, 0.45, density) * state.relMult;
+  // Grain timing — duration from grainLen dial
+  const dur    = state.grainLen;
+  const attack = Math.min(0.09, dur * 0.12);
+  const rel    = dur * 0.45 * state.relMult;
   const amp    = lerp(0.20, 0.055, density) * (0.55 + Math.random()*0.45);
 
   // Build nodes
-  const now = ctx.currentTime;
+  const now    = ctx.currentTime;
   const osc    = ctx.createOscillator();
   const gEnv   = ctx.createGain();
   const grainF = ctx.createBiquadFilter();
@@ -376,18 +445,18 @@ function triggerGrain(){
   osc.type = state.oscType;
   osc.frequency.value = freq;
 
-  // Per-grain LPF: varies with density (denser = brighter overall texture)
+  // Per-grain LPF: varies with density
   grainF.type = 'lowpass';
-  grainF.frequency.value = lerp(380,3200,density) * (0.6+Math.random()*0.8);
+  grainF.frequency.value = lerp(380, 3200, density) * (0.6+Math.random()*0.8);
   grainF.Q.value = 0.4 + Math.random()*0.8;
 
   // Stereo pan — spread controls width
   let pan;
   try{
     pan = ctx.createStereoPanner();
-    pan.pan.value = (Math.random()-0.5)*2*lerp(0.3,1.0,spread);
+    pan.pan.value = (Math.random()-0.5)*2*lerp(0.3,1.0,state.spread);
   } catch(e){
-    pan = ctx.createGain(); pan.pan={value:0}; // iOS < 14.5 fallback
+    pan = ctx.createGain(); pan.pan={value:0};
   }
 
   // Envelope
@@ -408,7 +477,7 @@ function triggerGrain(){
     try{osc.disconnect();grainF.disconnect();gEnv.disconnect();pan.disconnect();}catch(e){}
   };
 
-  // Visual particle — scatter cloud around cursor
+  // Visual particle — scatter around tessitura/density position
   const jx = state.xy1.x + (Math.random()-0.5)*0.35;
   const jy = state.xy1.y + (Math.random()-0.5)*0.35;
   particles.push({
@@ -417,18 +486,18 @@ function triggerGrain(){
     life: 1.0,
     decay: 1/(dur * 60 * lerp(0.7,1.4,density)),
     size: lerp(11,4,density),
-    hue: 210 + Math.round(pc/1200*60), // shift hue by pitch
+    hue: 210 + Math.round(pc/1200*60),
   });
 }
 
 // ── Scheduler ──
-let grainTimer  = null;
-let engineOn    = false;
+let grainTimer = null;
+let engineOn   = false;
 
 function scheduleGrain(){
   if(!engineOn) return;
   triggerGrain();
-  const rate     = lerp(0.35, 9.5, state.xy1.y);
+  const rate     = lerp(0.35, 9.5, state.xy1.x);   // density on x
   const interval = (1000/rate) * (0.65+Math.random()*0.7);
   grainTimer = setTimeout(scheduleGrain, interval);
 }
@@ -448,27 +517,45 @@ function panicAll(){
   stopEngine();
   particles.length = 0;
   if(!ctx) return;
-  // Rebuild gain chain to kill stuck audio
   try{masterGain.disconnect();}catch(e){}
-  try{hpfNode.disconnect();}catch(e){}
+  try{lpfNode.disconnect();}catch(e){}
   try{shaperNode.disconnect();}catch(e){}
+  try{reverbConv.disconnect();}catch(e){}
+  try{wetGain.disconnect();}catch(e){}
+  try{dryGain.disconnect();}catch(e){}
+  try{limiter.disconnect();}catch(e){}
 
   masterGain = ctx.createGain();
   masterGain.gain.value = state.muted ? 0 : applyVolCurve(state.xy2.y);
-  hpfNode = ctx.createBiquadFilter();
-  hpfNode.type='highpass';
-  hpfNode.frequency.value = applyHPFCurve(state.xy2.x);
-  hpfNode.Q.value = 0.7;
+
+  lpfNode = ctx.createBiquadFilter();
+  lpfNode.type = 'lowpass';
+  lpfNode.frequency.value = applyLPFCurve(state.xy2.x);
+  lpfNode.Q.value = 0.5;
+
   shaperNode = ctx.createWaveShaper();
   shaperNode.curve = makeShaperCurve(25);
   shaperNode.oversample = '2x';
-  const lim = ctx.createGain(); lim.gain.value=0.72;
-  masterGain.connect(hpfNode);
-  hpfNode.connect(shaperNode);
-  shaperNode.connect(lim);
-  lim.connect(ctx.destination);
 
-  startEngine();
+  reverbConv = ctx.createConvolver();
+  reverbConv.buffer = makeReverbIR(ctx, state.reverbDecay);
+
+  wetGain = ctx.createGain();
+  wetGain.gain.value = state.reverbWet;
+  dryGain = ctx.createGain();
+  dryGain.gain.value = 1.0;
+
+  limiter = ctx.createGain();
+  limiter.gain.value = 0.72;
+
+  masterGain.connect(lpfNode);
+  lpfNode.connect(shaperNode);
+  shaperNode.connect(dryGain);
+  shaperNode.connect(reverbConv);
+  reverbConv.connect(wetGain);
+  dryGain.connect(limiter);
+  wetGain.connect(limiter);
+  limiter.connect(ctx.destination);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -480,7 +567,6 @@ const pad2 = document.getElementById('pad2');
 function resizePads(){
   const pc1=document.getElementById('pc1');
   const pc2=document.getElementById('pc2');
-  // Canvas fills container minus label strip
   const l1=pc1.querySelector('.pad-label');
   const l2=pc2.querySelector('.pad-label');
   pad1.width  = pc1.clientWidth;
@@ -520,7 +606,6 @@ function drawPad1(){
   const W=pad1.width, H=pad1.height;
   if(!W||!H) return;
 
-  // Background
   g.fillStyle = C.s1; g.fillRect(0,0,W,H);
   drawGrid(g,W,H);
 
@@ -538,33 +623,50 @@ function drawPad1(){
   }
 
   // Axis labels
-  g.font=`10px ${C.txddd} JetBrains Mono,monospace`;
+  g.font=`10px JetBrains Mono,monospace`;
   g.fillStyle=C.txddd;
-  g.fillText('tight', 5, H-5);
-  g.fillText('wide',  W-30, H-5);
-  g.fillText('dense', 5, 13);
-  g.fillText('sparse',5, H-16);
+  g.fillText('sparse', 5, H-5);
+  g.fillText('dense',  W-36, H-5);
+  g.fillText('high',   5, 13);
+  g.fillText('low',    5, H-16);
 
   // Chord name
   const chord = CHORDS[state.chordIdx];
   g.fillStyle  = C.txd;
   g.font       = `bold 13px JetBrains Mono,monospace`;
   g.textAlign  = 'center';
+  g.fillColor  = C.txd;
+
+  // Engine indicator
+  if(engineOn){
+    g.fillStyle = C.grn;
+    g.font = `bold 13px JetBrains Mono,monospace`;
+  } else {
+    g.fillStyle = C.txd;
+    g.font = `bold 13px JetBrains Mono,monospace`;
+  }
   g.fillText(chord.label, W/2, 16);
   g.font       = `10px JetBrains Mono,monospace`;
   g.fillStyle  = C.txddd;
   g.fillText(chord.desc, W/2, 30);
   g.textAlign  = 'left';
 
-  // Density readout
-  const d = Math.round(state.xy1.y*100);
-  const s = Math.round(state.xy1.x*100);
+  // Readouts
+  const d = Math.round(state.xy1.x*100);
+  const t = Math.round(state.xy1.y*100);
   g.fillStyle = C.txdd; g.font=`9px JetBrains Mono,monospace`;
   g.textAlign = 'right';
-  g.fillText(`den ${d}%  spd ${s}%`, W-5, H-5);
+  g.fillText(`den ${d}%  tess ${t}%`, W-5, H-5);
   g.textAlign = 'left';
 
-  drawCursor(g, state.xy1.x, state.xy1.y, W, H, C.acc);
+  // Pedal mode indicator
+  if(state.pedalMode){
+    g.fillStyle = C.amber;
+    g.font = `9px JetBrains Mono,monospace`;
+    g.fillText('pedal', 5, 28);
+  }
+
+  drawCursor(g, state.xy1.x, state.xy1.y, W, H, engineOn ? C.grn : C.acc);
 }
 
 function drawPad2(){
@@ -575,7 +677,7 @@ function drawPad2(){
   g.fillStyle = C.s1; g.fillRect(0,0,W,H);
   drawGrid(g,W,H);
 
-  // Volume fill — vertical gradient showing vol level
+  // Volume fill
   const volY = (1-state.xy2.y)*H;
   if(!state.muted && state.xy2.y>0.01){
     const grad=g.createLinearGradient(0,H,0,volY);
@@ -585,11 +687,11 @@ function drawPad2(){
     g.fillRect(0,volY,W,H-volY);
   }
 
-  // HPF fill — horizontal gradient showing filter amount
+  // LPF fill — horizontal gradient showing filter openness
   if(state.xy2.x>0.02){
     const grad2=g.createLinearGradient(0,0,state.xy2.x*W,0);
-    grad2.addColorStop(0,'rgba(78,162,216,0.12)');
-    grad2.addColorStop(1,'rgba(78,162,216,0.0)');
+    grad2.addColorStop(0,'rgba(46,204,113,0.0)');
+    grad2.addColorStop(1,'rgba(46,204,113,0.12)');
     g.fillStyle=grad2;
     g.fillRect(0,0,state.xy2.x*W,H);
   }
@@ -597,20 +699,20 @@ function drawPad2(){
   // Axis labels
   g.font=`10px JetBrains Mono,monospace`;
   g.fillStyle=C.txddd;
-  g.fillText('open', 5, H-5);
-  g.fillText('bright',W-38,H-5);
-  g.fillText('loud',  5, 13);
-  g.fillText('quiet', 5, H-16);
+  g.fillText('dark',   5, H-5);
+  g.fillText('bright', W-38, H-5);
+  g.fillText('loud',   5, 13);
+  g.fillText('quiet',  5, H-16);
 
   // Readouts
   const volPct = state.muted ? 'MUTE' : Math.round(applyVolCurve(state.xy2.y)*100)+'%';
-  const hpfHz  = Math.round(applyHPFCurve(state.xy2.x));
-  const hpfStr = hpfHz<1000 ? hpfHz+'Hz' : (hpfHz/1000).toFixed(1)+'k';
+  const lpfHz  = Math.round(applyLPFCurve(state.xy2.x));
+  const lpfStr = lpfHz<1000 ? lpfHz+'Hz' : (lpfHz/1000).toFixed(1)+'k';
   g.textAlign = 'right';
   g.fillStyle = state.muted ? C.red : C.txdd;
   g.fillText(`vol ${volPct}`, W-5, 13);
   g.fillStyle = C.txdd;
-  g.fillText(`hpf ${hpfStr}`, W-5, 26);
+  g.fillText(`lpf ${lpfStr}`, W-5, 26);
   g.textAlign = 'left';
 
   drawCursor(g, state.xy2.x, state.xy2.y, W, H,
@@ -627,10 +729,6 @@ function animate(){
 // ═══════════════════════════════════════════════════════
 // BLOCK 6: PAD INTERACTION
 // ═══════════════════════════════════════════════════════
-
-// Get normalized [0,1] x,y from pointer/touch event on a canvas.
-// Handles the Safari BCR issue by using the container's BCR
-// and accounting for any scrolled offset.
 function getPadXY(e, canvas){
   const rect  = canvas.getBoundingClientRect();
   const src   = e.touches ? e.touches[0] : e;
@@ -639,7 +737,7 @@ function getPadXY(e, canvas){
   return {x, y};
 }
 
-function setupPad(canvas, xyKey, onMove){
+function setupPad(canvas, xyKey, onDown, onMove, onUp){
   let active = false;
 
   function down(e){
@@ -649,6 +747,7 @@ function setupPad(canvas, xyKey, onMove){
     canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
     const xy = getPadXY(e, canvas);
     state[xyKey] = xy;
+    if(onDown) onDown(xy);
     onMove(xy);
   }
   function move(e){
@@ -658,23 +757,32 @@ function setupPad(canvas, xyKey, onMove){
     state[xyKey] = xy;
     onMove(xy);
   }
-  function up(){ active = false; }
+  function up(){
+    if(!active) return;
+    active = false;
+    if(onUp) onUp();
+  }
 
   canvas.addEventListener('pointerdown',   down,  {passive:false});
   canvas.addEventListener('pointermove',   move,  {passive:false});
   canvas.addEventListener('pointerup',     up);
   canvas.addEventListener('pointercancel', up);
-  // touchstart for iOS AudioContext unlock (reliable gesture)
   canvas.addEventListener('touchstart', e=>{e.preventDefault();ensureAudio();},{passive:false});
 }
 
-setupPad(pad1, 'xy1', ()=>{
-  // corpus position changed — grain engine reads state.xy1 on each grain
-});
+// Pad 1: touch = play, release = stop (unless pedal mode)
+setupPad(pad1, 'xy1',
+  ()=>{ startEngine(); },          // down → start
+  ()=>{ /* grain reads state */ },  // move
+  ()=>{ if(!state.pedalMode) stopEngine(); }  // up → stop unless pedal
+);
 
-setupPad(pad2, 'xy2', ()=>{
-  applyMixState();
-});
+// Pad 2: mix control only
+setupPad(pad2, 'xy2',
+  null,
+  ()=>{ applyMixState(); },
+  null
+);
 
 // ═══════════════════════════════════════════════════════
 // BLOCK 7: CHORD SELECTION
@@ -694,7 +802,6 @@ function buildChordBar(){
     });
     bar.appendChild(btn);
   });
-  // Desc label (updates with active chord)
   const desc = document.createElement('span');
   desc.className = 'chord-desc';
   desc.id = 'chord-desc';
@@ -714,6 +821,22 @@ function initControls(){
     scVl.textContent=scEl.value+'¢';
   });
 
+  // Spread
+  const spEl=document.getElementById('spread');
+  const spVl=document.getElementById('spread-val');
+  spEl.addEventListener('input',()=>{
+    state.spread=+spEl.value/100;
+    spVl.textContent=(+spEl.value/100).toFixed(2);
+  });
+
+  // Grain length
+  const glEl=document.getElementById('grain-len');
+  const glVl=document.getElementById('grain-val');
+  glEl.addEventListener('input',()=>{
+    state.grainLen=+glEl.value/100;
+    glVl.textContent=(+glEl.value/100).toFixed(2)+'s';
+  });
+
   // Release multiplier
   const relEl=document.getElementById('rel');
   const relVl=document.getElementById('rel-val');
@@ -727,9 +850,37 @@ function initControls(){
     state.oscType=e.target.value;
   });
 
+  // Reverb wet
+  const rwEl=document.getElementById('rev-wet');
+  const rwVl=document.getElementById('rev-wet-val');
+  rwEl.addEventListener('input',()=>{
+    state.reverbWet=+rwEl.value/100;
+    rwVl.textContent=rwEl.value+'%';
+    updateReverbWet();
+  });
+
+  // Reverb decay
+  const rdEl=document.getElementById('rev-dec');
+  const rdVl=document.getElementById('rev-dec-val');
+  rdEl.addEventListener('input',()=>{
+    state.reverbDecay=+rdEl.value/10;
+    rdVl.textContent=(+rdEl.value/10).toFixed(1)+'s';
+    updateReverbDecay();
+  });
+
   // Controls toggle
   document.getElementById('btn-ctrl').addEventListener('click',()=>{
     document.getElementById('ctrls').classList.toggle('hidden');
+  });
+
+  // Pedal mode
+  const pedalBtn = document.getElementById('btn-pedal');
+  pedalBtn.addEventListener('click',()=>{
+    ensureAudio();
+    state.pedalMode = !state.pedalMode;
+    pedalBtn.classList.toggle('active', state.pedalMode);
+    // If turning pedal off while engine is on and no finger down → stop
+    // (can't detect finger state here, so just leave running; next touch-up will stop)
   });
 
   // Mute
@@ -747,7 +898,7 @@ function initControls(){
     panicAll();
   });
 
-  // Global unlock belt-and-suspenders (iPad trackpad users)
+  // Global unlock
   document.addEventListener('mousedown',  ensureAudio, {once:true});
   document.addEventListener('touchstart', ensureAudio, {once:true,passive:true});
   document.addEventListener('click',      ensureAudio, {once:true});
@@ -757,7 +908,6 @@ function initControls(){
 // BLOCK 9: RESIZE + ORIENTATION
 // ═══════════════════════════════════════════════════════
 function doResize(){
-  // Double rAF — Safari needs two frames to settle flex layout heights
   requestAnimationFrame(()=>requestAnimationFrame(()=>{
     resizePads();
   }));
@@ -772,25 +922,10 @@ window.addEventListener('orientationchange', ()=>{
 // ═══════════════════════════════════════════════════════
 // BLOCK 10: INIT
 // ═══════════════════════════════════════════════════════
-
-// Called once on first user gesture — init audio + start engine.
-function onFirstGesture(){
-  ensureAudio();
-  // Give AudioContext a frame to settle before first grain
-  setTimeout(()=>{ if(!engineOn) startEngine(); }, 60);
-}
-
 function init(){
   buildChordBar();
   initControls();
   doResize();
-
-  // Grain engine starts on first gesture (iOS requires user interaction).
-  // Pads call ensureAudio on touch, which also covers this —
-  // but we also listen on document for the mute/panic buttons etc.
-  document.addEventListener('touchstart', onFirstGesture, {once:true, passive:true});
-  document.addEventListener('mousedown',  onFirstGesture, {once:true});
-
   animate();
 }
 
