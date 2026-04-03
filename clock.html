@@ -774,13 +774,8 @@ function condTick() {
   $('cond-section-label').textContent = cur ? cur.label : '—';
 
   // Update timeline chips
-  const chips = document.querySelectorAll('.timeline-chip');
-  chips.forEach(chip => {
-    const offset = parseInt(chip.dataset.offset, 10);
-    if (elapsed >= offset && (!next || offset >= getCurrentSection(elapsed)?.offset || 0)) {
-      // current
-    }
-    const s = sections.find(s => s.offset === offset);
+  document.querySelectorAll('.timeline-chip').forEach(chip => {
+    const s = sections.find(s => s.offset === parseInt(chip.dataset.offset, 10));
     if (!s) return;
     chip.classList.toggle('active', cur?.offset === s.offset);
     chip.classList.toggle('past',   cur?.offset !== s.offset && elapsed >= s.offset);
@@ -792,6 +787,7 @@ function condTick() {
 // ── Performer clock loop ───────────────────────────────────────────────────
 let perfAnimId = null;
 let unlockedSections = new Set();
+let lastRenderedId = null; // track rendered section so DOM isn't rebuilt every frame
 
 function perfTick() {
   const elapsed = getElapsed();
@@ -802,15 +798,22 @@ function perfTick() {
 
   if (cur) {
     $('perf-section-label').textContent = cur.label || '';
-    renderPerfContent(cur);
+    // Only re-render content when section changes — prevents unlock form being wiped 60x/sec
+    if (cur.id !== lastRenderedId) {
+      lastRenderedId = cur.id;
+      renderPerfContent(cur);
+    }
   } else {
-    $('perf-section-label').textContent = '';
-    $('perf-content').innerHTML = '';
+    if (lastRenderedId !== null) {
+      lastRenderedId = null;
+      $('perf-section-label').textContent = '';
+      $('perf-content').innerHTML = '';
+    }
   }
 
   if (next) {
     const rem = next.offset - elapsed;
-    $('perf-next').textContent = next.label + ' in ' + fmtClock(rem);
+    $('perf-next').textContent = (next.label ? next.label + ' · ' : '') + fmtClock(rem);
   } else {
     $('perf-next').textContent = '';
   }
@@ -834,6 +837,7 @@ function renderPerfContent(section) {
       const val = e.target.querySelector('input').value;
       if (val === section.password) {
         unlockedSections.add(section.id);
+        lastRenderedId = null; // force re-render on next tick
         renderPerfContent(section);
       } else {
         e.target.querySelector('input').value = '';
@@ -1014,8 +1018,17 @@ $('create-btn').addEventListener('click', () => {
   $('session-code-display').textContent = roomCode;
   $('conductor-url-text').textContent   = condURL;
   $('performer-url-text').textContent   = perfURL;
-  $('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=d4ccc4&bgcolor=060606&data=${encodeURIComponent(perfURL)}`;
   $('open-conductor-btn').href = condURL;
+
+  // QR codes cap out around 3KB of data — skip if URL is too large (e.g. base64 images)
+  if (perfURL.length < 2800) {
+    $('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=d4ccc4&bgcolor=060606&data=${encodeURIComponent(perfURL)}`;
+    $('qr-img').style.display = 'block';
+    document.querySelector('.qr-note').textContent = 'performers scan to load score · share performer URL in chat as fallback';
+  } else {
+    $('qr-img').style.display = 'none';
+    document.querySelector('.qr-note').textContent = 'URL too large for QR (contains image data) — share performer URL directly';
+  }
 
   showView('session-view');
 });
