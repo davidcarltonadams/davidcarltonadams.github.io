@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tools — David Carlton Adams</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { background: #0a0a0e; color: #c8c0b8; }
+
+    .tools-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    .tools-header {
+      margin-bottom: 3rem;
+    }
+
+    h1.tools-title {
+      font-size: 0.65rem;
+      font-weight: 400;
+      letter-spacing: 0.22em;
+      color: rgba(200,192,184,0.3);
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+
+    .tools-subtitle {
+      font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+      color: rgba(200,192,184,0.5);
+      font-style: italic;
+      line-height: 1.5;
+      max-width: 480px;
+    }
+
+    /* ── Tool cards ─────────────────────────────────────────── */
+    .tools-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      list-style: none;
+    }
+
+    .tool-card {
+      display: grid;
+      grid-template-columns: 7rem 1fr;
+      gap: 1.2rem;
+      align-items: start;
+      padding: 1.4rem 0;
+      border-bottom: 1px solid rgba(200,192,184,0.07);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.15s;
+    }
+    .tool-card:first-child { border-top: 1px solid rgba(200,192,184,0.07); }
+    .tool-card:hover { background: rgba(200,192,184,0.02); }
+
+    .tool-name {
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      color: rgba(200,192,184,0.55);
+      font-style: italic;
+      padding-top: 0.15rem;
+      text-align: right;
+    }
+
+    .tool-body {}
+
+    .tool-headline {
+      font-size: clamp(0.95rem, 2.2vw, 1.1rem);
+      color: #c8c0b8;
+      margin-bottom: 0.35rem;
+      font-weight: normal;
+      line-height: 1.3;
+    }
+
+    .tool-desc {
+      font-size: 0.72rem;
+      color: rgba(200,192,184,0.4);
+      line-height: 1.6;
+      letter-spacing: 0.01em;
+    }
+
+    .tool-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.6rem;
+    }
+
+    .tag {
+      font-size: 0.45rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(200,192,184,0.22);
+      border: 1px solid rgba(200,192,184,0.1);
+      padding: 0.15rem 0.4rem;
+      border-radius: 1px;
+    }
+
+    /* ── Footer note ────────────────────────────────────────── */
+    .tools-footer {
+      margin-top: 3.5rem;
+      font-size: 0.55rem;
+      color: rgba(200,192,184,0.15);
+      letter-spacing: 0.1em;
+      font-style: italic;
+      line-height: 1.7;
+    }
+
+    /* Mobile: stack name above body */
+    @media (max-width: 480px) {
+      .tool-card {
+        grid-template-columns: 1fr;
+        gap: 0.3rem;
+      }
+      .tool-name { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+
+<nav aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-name">David Carlton Adams</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
+    <ul class="nav-links" role="list">
+      <li><a href="index.html">about</a></li>
+      <li><a href="works.html">works</a></li>
+      <li><a href="media.html">media</a></li>
+      <li><a href="teaching.html">teaching</a></li>
+      <li><a href="contact.html">contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+<div class="tools-wrap">
+
+  <div class="tools-header">
+    <h1 class="tools-title">tools</h1>
+    <p class="tools-subtitle">browser-based instruments and utilities for performers, composers, and anyone who thinks in sound.</p>
+  </div>
+
+  <ul class="tools-list">
+
+    <li>
+      <a class="tool-card" href="clock.html">
+        <span class="tool-name">clock</span>
+        <div class="tool-body">
+          <p class="tool-headline">Performance Clock</p>
+          <p class="tool-desc">Synchronized clock for ensemble performance. Define sections with text or image content — rehearsal letters, score pages, improvisation prompts. One conductor starts; everyone connected sees the same clock and the same score. Works over any internet connection. Performers scan a QR code to join. Per-section passwords for staged reveals.</p>
+          <div class="tool-tags">
+            <span class="tag">ensemble</span>
+            <span class="tag">real-time</span>
+            <span class="tag">improvisation</span>
+            <span class="tag">conductor</span>
+            <span class="tag">score display</span>
+          </div>
+        </div>
+      </a>
+    </li>
+
+    <li>
+      <a class="tool-card" href="score.html">
+        <span class="tool-name">score</span>
+        <div class="tool-body">
+          <p class="tool-headline">Performance Instructions</p>
+          <p class="tool-desc">Thirty graphic score prompts drawn from the vocabulary of an extended practice: microtonality, emergence, duration, ensemble relations, voice, silence. Random on load. Each instruction has its own URL — link to one directly with <span style="font-family:monospace;font-size:0.85em">?n=14</span>. Changes every five minutes on its own.</p>
+          <div class="tool-tags">
+            <span class="tag">score</span>
+            <span class="tag">improvisation</span>
+            <span class="tag">text score</span>
+            <span class="tag">indeterminacy</span>
+          </div>
+        </div>
+      </a>
+    </li>
+
+    <li>
+      <a class="tool-card" href="notation.html">
+        <span class="tool-name">notation</span>
+        <div class="tool-body">
+          <p class="tool-headline">Generated Score Instructions</p>
+          <p class="tool-desc">Procedurally generated performance instructions built from the structural patterns and vocabulary of the practice. Every instruction is unique. Shareable via URL seed — if you find one you like, the URL will regenerate it exactly.</p>
+          <div class="tool-tags">
+            <span class="tag">score</span>
+            <span class="tag">generative</span>
+            <span class="tag">improvisation</span>
+          </div>
+        </div>
+      </a>
+    </li>
+
+    <li>
+      <a class="tool-card" href="drone.html">
+        <span class="tool-name">drone</span>
+        <div class="tool-body">
+          <p class="tool-headline">Drone Machine</p>
+          <p class="tool-desc">Pure tone drone with just intonation tuning, variable beating, and harmonic partial toggles. Choose a root from C through B, select an octave, dial in a beat rate. Add upper partials (2nd through 7th) to build a harmonic field. Useful for ear training, tuning, and meditative listening.</p>
+          <div class="tool-tags">
+            <span class="tag">tuning</span>
+            <span class="tag">just intonation</span>
+            <span class="tag">ear training</span>
+            <span class="tag">drone</span>
+          </div>
+        </div>
+      </a>
+    </li>
+
+    <li>
+      <a class="tool-card" href="spectrogram.html">
+        <span class="tool-name">spectrogram</span>
+        <div class="tool-body">
+          <p class="tool-headline">Real-Time Spectrum Analyzer</p>
+          <p class="tool-desc">Microphone input, FFT analysis on a log-frequency scale with overlaid just intonation partial markers. Choose a root pitch; markers show where partials 1–16 fall relative to your signal. Useful for microtonal ear training, tuning investigations, and understanding what your instrument is actually doing. Listens only — no audio output.</p>
+          <div class="tool-tags">
+            <span class="tag">analysis</span>
+            <span class="tag">microtonality</span>
+            <span class="tag">ear training</span>
+            <span class="tag">mic input</span>
+          </div>
+        </div>
+      </a>
+    </li>
+
+  </ul>
+
+  <p class="tools-footer">
+    more tools live in the <a href="eggs.html" style="color:inherit">easter eggs</a> — interactive instruments, visual experiments, and stranger things.<br>
+    all tools run in the browser. no installation, no account, no data collected.
+  </p>
+
+</div>
+</main>
+
+<footer>
+  <div class="container">
+    <span>&copy; <span id="year"></span> David Carlton Adams</span>
+  </div>
+</footer>
+
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<script src="js/nav.js"></script>
+</body>
+</html>
