@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>spectrogram — David Carlton Adams</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #060606;
+      color: #d4ccc4;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem 2rem;
+      gap: 1rem;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: baseline;
+      gap: 1.5rem;
+      width: min(960px, 100%);
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      font-size: 0.65rem;
+      font-weight: 400;
+      letter-spacing: 0.22em;
+      color: rgba(212,204,196,0.25);
+      text-transform: uppercase;
+    }
+
+    .listen-note {
+      font-size: 0.52rem;
+      color: rgba(212,204,196,0.12);
+      letter-spacing: 0.1em;
+      font-style: italic;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      width: min(960px, 100%);
+      flex-wrap: wrap;
+    }
+
+    .ctrl-label {
+      font-size: 0.5rem;
+      letter-spacing: 0.14em;
+      color: rgba(212,204,196,0.25);
+      text-transform: uppercase;
+    }
+
+    select {
+      background: transparent;
+      border: 1px solid rgba(212,204,196,0.1);
+      color: rgba(212,204,196,0.45);
+      font-size: 0.58rem;
+      font-family: inherit;
+      padding: 0.25rem 0.5rem;
+      cursor: pointer;
+      outline: none;
+    }
+    select:hover { border-color: rgba(212,204,196,0.2); }
+    select option { background: #111; }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      height: 1px;
+      background: rgba(212,204,196,0.12);
+      outline: none;
+      cursor: pointer;
+      width: 80px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(212,204,196,0.35);
+      cursor: pointer;
+    }
+
+    #mic-btn {
+      font-size: 0.52rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(212,204,196,0.25);
+      background: none;
+      border: 1px solid rgba(212,204,196,0.1);
+      padding: 0.35rem 1rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    #mic-btn:hover { color: rgba(212,204,196,0.5); border-color: rgba(212,204,196,0.2); }
+    #mic-btn.active { color: rgba(212,204,196,0.7); border-color: rgba(212,204,196,0.3); }
+
+    #status {
+      font-size: 0.52rem;
+      letter-spacing: 0.1em;
+      color: rgba(212,204,196,0.18);
+      font-style: italic;
+    }
+
+    /* Canvas area */
+    #canvas-wrap {
+      position: relative;
+      width: min(960px, 100%);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 300px;
+    }
+
+    #label-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      pointer-events: none;
+    }
+
+    /* Frequency axis */
+    #freq-axis {
+      display: flex;
+      justify-content: space-between;
+      width: min(960px, 100%);
+      padding: 0.2rem 0;
+    }
+    .freq-tick {
+      font-size: 0.45rem;
+      color: rgba(212,204,196,0.15);
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+<!--
+  ══════════════════════════════════════════════════════════════════════════
+  NO AUDIO OUTPUT — THIS PAGE MUST NEVER GENERATE SOUND
+
+  Mic input is routed: MediaStreamSource → AnalyserNode ONLY.
+  The source node is never connected to AudioContext.destination.
+  No oscillators, buffers, gain nodes, or any audio-producing nodes
+  should ever be added to this file. Adding audio output on a
+  spectrogram/analysis page creates a feedback risk when performers
+  have monitors or open mics near playback.
+  ══════════════════════════════════════════════════════════════════════════
+-->
+
+<div class="top-bar">
+  <h1>spectrogram</h1>
+  <span class="listen-note">listens only · no audio output · headphones recommended if others are playing</span>
+</div>
+
+<div class="controls">
+  <button id="mic-btn">enable mic</button>
+  <span id="status">off</span>
+
+  <span class="ctrl-label">root</span>
+  <select id="root-select">
+    <option value="55">A1 · 55 Hz</option>
+    <option value="110">A2 · 110 Hz</option>
+    <option value="146.83">D3 · 146.83 Hz</option>
+    <option value="164.81">E3 · 164.81 Hz</option>
+    <option value="196">G3 · 196 Hz</option>
+    <option value="220">A3 · 220 Hz</option>
+    <option value="261.63">C4 · 261.63 Hz</option>
+    <option value="293.66">D4 · 293.66 Hz</option>
+    <option value="329.63">E4 · 329.63 Hz</option>
+    <option value="349.23">F4 · 349.23 Hz</option>
+    <option value="392">G4 · 392 Hz</option>
+    <option value="440" selected>A4 · 440 Hz</option>
+    <option value="523.25">C5 · 523.25 Hz</option>
+  </select>
+
+  <span class="ctrl-label">range</span>
+  <select id="range-select">
+    <option value="2000">0–2 kHz</option>
+    <option value="4000" selected>0–4 kHz</option>
+    <option value="8000">0–8 kHz</option>
+    <option value="16000">0–16 kHz</option>
+  </select>
+
+  <span class="ctrl-label">smooth</span>
+  <input type="range" id="smooth" min="0" max="0.93" step="0.03" value="0.72">
+
+  <span class="ctrl-label">partials</span>
+  <select id="partials-select">
+    <option value="8">1–8</option>
+    <option value="12" selected>1–12</option>
+    <option value="16">1–16</option>
+  </select>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="spec-canvas"></canvas>
+  <canvas id="label-canvas"></canvas>
+</div>
+
+<div id="freq-axis"></div>
+
+<script>
+// ── NO AUDIO OUTPUT — see file header comment ──────────────────────────────
+
+const W = 1920, H = 600; // logical resolution
+
+const specCanvas  = document.getElementById('spec-canvas');
+const labelCanvas = document.getElementById('label-canvas');
+const sCtx        = specCanvas.getContext('2d');
+const lCtx        = labelCanvas.getContext('2d');
+specCanvas.width  = labelCanvas.width  = W;
+specCanvas.height = labelCanvas.height = H;
+
+const micBtn      = document.getElementById('mic-btn');
+const statusEl    = document.getElementById('status');
+const rootSel     = document.getElementById('root-select');
+const rangeSel    = document.getElementById('range-select');
+const smoothEl    = document.getElementById('smooth');
+const partialsSel = document.getElementById('partials-select');
+const freqAxis    = document.getElementById('freq-axis');
+
+let audioCtx = null, analyser = null, stream = null, animId = null;
+let running  = false;
+let rootHz   = 440;
+let maxFreq  = 4000;
+let maxPartial = 12;
+
+// ── Log-scale frequency → x ────────────────────────────────────────────────
+const MIN_FREQ = 20;
+function freqToX(f) {
+  if (f <= MIN_FREQ) return 0;
+  return (Math.log(f / MIN_FREQ) / Math.log(maxFreq / MIN_FREQ)) * W;
+}
+
+// ── Partial colors (HSL, varying hue) ─────────────────────────────────────
+function partialColor(n, alpha) {
+  if (n === 1) return `rgba(212,204,196,${alpha})`;
+  const hue = ((n - 2) * 27 + 210) % 360;
+  return `hsla(${hue},55%,62%,${alpha})`;
+}
+
+// ── Partial interval names ─────────────────────────────────────────────────
+const INTERVAL = ['f','P8','5th','P8²','M3','5th²','b7','P8³',
+                  'M2','M3²','TT','5th³','M6','b7²','M7','P8⁴'];
+
+// ── Draw JI partial markers ────────────────────────────────────────────────
+function drawMarkers() {
+  lCtx.clearRect(0, 0, W, H);
+
+  for (let n = 1; n <= maxPartial; n++) {
+    const f = rootHz * n;
+    if (f > maxFreq * 1.02) break;
+
+    const x = freqToX(f);
+    const col = partialColor(n, n === 1 ? 0.55 : 0.4);
+
+    lCtx.strokeStyle = col;
+    lCtx.lineWidth = n === 1 ? 2 : 1;
+    lCtx.setLineDash(n === 1 ? [] : [5, 5]);
+    lCtx.beginPath();
+    lCtx.moveTo(x, 0);
+    lCtx.lineTo(x, H);
+    lCtx.stroke();
+    lCtx.setLineDash([]);
+
+    // Partial number label
+    lCtx.fillStyle = partialColor(n, n === 1 ? 0.8 : 0.6);
+    lCtx.font = `bold ${n === 1 ? 28 : 22}px monospace`;
+    lCtx.textAlign = 'center';
+    lCtx.fillText(n, x, 28);
+
+    // Interval name
+    if (INTERVAL[n - 1]) {
+      lCtx.font = '16px monospace';
+      lCtx.fillStyle = partialColor(n, 0.3);
+      lCtx.fillText(INTERVAL[n - 1], x, 50);
+    }
+
+    // Frequency
+    lCtx.font = '14px monospace';
+    lCtx.fillStyle = partialColor(n, 0.2);
+    lCtx.fillText(f < 1000 ? f.toFixed(1) + ' Hz' : (f/1000).toFixed(2) + ' kHz', x, 68);
+  }
+}
+
+// ── Frequency axis ticks ───────────────────────────────────────────────────
+function buildAxis() {
+  freqAxis.innerHTML = '';
+  const ticks = maxFreq <= 2000
+    ? [100, 200, 400, 600, 800, 1000, 1500, 2000]
+    : maxFreq <= 4000
+      ? [100, 200, 500, 1000, 1500, 2000, 3000, 4000]
+      : maxFreq <= 8000
+        ? [100, 200, 500, 1000, 2000, 4000, 6000, 8000]
+        : [100, 500, 1000, 2000, 4000, 8000, 12000, 16000];
+
+  ticks.forEach(f => {
+    const el = document.createElement('span');
+    el.className = 'freq-tick';
+    el.textContent = f >= 1000 ? (f/1000) + 'k' : f;
+    // position relative to log scale
+    const pct = (Math.log(f / MIN_FREQ) / Math.log(maxFreq / MIN_FREQ)) * 100;
+    el.style.position = 'absolute';
+    el.style.left = pct + '%';
+    freqAxis.style.position = 'relative';
+    freqAxis.appendChild(el);
+  });
+}
+
+// ── Draw spectrum ──────────────────────────────────────────────────────────
+function drawSpectrum() {
+  if (!analyser) return;
+
+  const bufLen = analyser.frequencyBinCount;
+  const data   = new Float32Array(bufLen);
+  analyser.getFloatFrequencyData(data);
+
+  const sampleRate = audioCtx.sampleRate;
+  const binHz      = sampleRate / analyser.fftSize;
+
+  // Fade trail
+  sCtx.fillStyle = 'rgba(6,6,6,0.25)';
+  sCtx.fillRect(0, 0, W, H);
+
+  // Spectrum line
+  sCtx.beginPath();
+  sCtx.strokeStyle = 'rgba(200,192,182,0.85)';
+  sCtx.lineWidth   = 1.5;
+  let first = true;
+
+  for (let i = 1; i < bufLen; i++) {
+    const f = i * binHz;
+    if (f > maxFreq) break;
+
+    const x = freqToX(f);
+    // Map dB: roughly -100 dBFS = floor, 0 dBFS = top
+    const norm = Math.max(0, Math.min(1, (data[i] + 100) / 100));
+    const y    = H - norm * H;
+
+    first ? (sCtx.moveTo(x, y), first = false) : sCtx.lineTo(x, y);
+  }
+  sCtx.stroke();
+}
+
+// ── Animation loop ─────────────────────────────────────────────────────────
+function loop() {
+  drawSpectrum();
+  animId = requestAnimationFrame(loop);
+}
+
+// ── Mic control ────────────────────────────────────────────────────────────
+async function startMic() {
+  if (running) { stopMic(); return; }
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      video: false,
+    });
+
+    // ── MIC → ANALYSER ONLY — never connect to destination ─────────────────
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize              = 8192;
+    analyser.smoothingTimeConstant = parseFloat(smoothEl.value);
+
+    const source = audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
+    // source.connect(audioCtx.destination) is intentionally absent
+
+    running = true;
+    micBtn.textContent = 'stop';
+    micBtn.classList.add('active');
+    statusEl.textContent = 'listening';
+
+    drawMarkers();
+    buildAxis();
+    loop();
+
+  } catch (err) {
+    statusEl.textContent = 'mic access denied';
+    console.error(err);
+  }
+}
+
+function stopMic() {
+  if (animId)  { cancelAnimationFrame(animId); animId = null; }
+  if (stream)  { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (audioCtx){ audioCtx.close(); audioCtx = null; analyser = null; }
+  running = false;
+  micBtn.textContent = 'enable mic';
+  micBtn.classList.remove('active');
+  statusEl.textContent = 'off';
+  sCtx.clearRect(0, 0, W, H);
+  lCtx.clearRect(0, 0, W, H);
+}
+
+// ── Controls ───────────────────────────────────────────────────────────────
+micBtn.addEventListener('click', startMic);
+
+rootSel.addEventListener('change', () => {
+  rootHz = parseFloat(rootSel.value);
+  if (running) drawMarkers();
+});
+
+rangeSel.addEventListener('change', () => {
+  maxFreq = parseInt(rangeSel.value, 10);
+  if (running) { drawMarkers(); buildAxis(); }
+});
+
+smoothEl.addEventListener('input', () => {
+  if (analyser) analyser.smoothingTimeConstant = parseFloat(smoothEl.value);
+});
+
+partialsSel.addEventListener('change', () => {
+  maxPartial = parseInt(partialsSel.value, 10);
+  if (running) drawMarkers();
+});
+
+// Release mic when page is hidden (tab switch, etc.)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && running) stopMic();
+});
+
+// Init axis
+buildAxis();
+</script>
+</body>
+</html>
