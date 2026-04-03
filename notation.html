@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>a notation</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #060606;
+      color: #d4ccC4;
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #score-text {
+      max-width: min(640px, 88vw);
+      text-align: center;
+      padding: 2rem;
+      transition: opacity 0.5s ease;
+    }
+
+    .instruction {
+      font-size: clamp(1.1rem, 3.5vw, 1.7rem);
+      font-weight: normal;
+      line-height: 1.55;
+      letter-spacing: 0.02em;
+      color: #d4ccc4;
+    }
+
+    #score-meta {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      color: rgba(212,204,196,0.12);
+      font-style: italic;
+      white-space: nowrap;
+    }
+
+    #random-btn {
+      position: fixed;
+      bottom: 1.6rem;
+      right: 2rem;
+      font-size: 1rem;
+      color: rgba(212,204,196,0.13);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      padding: 0.4rem 0.6rem;
+      transition: color 0.3s ease;
+      line-height: 1;
+    }
+    #random-btn:hover { color: rgba(212,204,196,0.4); }
+
+    .fade-out { opacity: 0; }
+  </style>
+</head>
+<body>
+
+<div id="score-text" aria-live="polite">
+  <p class="instruction" id="instruction-el"></p>
+</div>
+
+<p id="score-meta">generated</p>
+<button id="random-btn" title="generate another" aria-label="generate another notation">↻</button>
+
+<script>
+// ── Seeded PRNG (xorshift) ─────────────────────────────────────────────────
+function makeRng(seed) {
+  let s = (seed ^ 0xDEADBEEF) >>> 0 || 1;
+  return function() {
+    s ^= s << 13; s ^= s >> 17; s ^= s << 5;
+    return (s >>> 0) / 0xFFFFFFFF;
+  };
+}
+
+// ── Vocabulary pools ───────────────────────────────────────────────────────
+const P = {
+
+  attend_verb: [
+    "Attend to", "Listen for", "Notice", "Find", "Watch for",
+  ],
+
+  attend_obj: [
+    "what is already sounding",
+    "the frequency you almost hear",
+    "the note beneath the note",
+    "what the room is doing on its own",
+    "what you did not intend",
+    "the last sound before silence",
+    "the edge of the sound",
+    "the interval between breaths",
+    "what is ending",
+    "what is about to begin",
+    "the resonance you did not ask for",
+    "the sound that keeps happening after you stop",
+    "what changes when you enter the room",
+    "the frequency that was already there",
+    "the silence with the most content",
+  ],
+
+  attend_then: [
+    "This is the score.",
+    "Begin there.",
+    "That is enough.",
+    "Play toward it.",
+    "Respond.",
+    "Do not explain it.",
+    "That is also music.",
+    "That is the form.",
+    "Let it change what you do.",
+    "Proceed from there.",
+    "Stay.",
+    "That is your starting point.",
+    "Let that be the instruction.",
+  ],
+
+  find_obj: [
+    "the frequency between two frequencies",
+    "the pitch that is already in the room",
+    "the note you are already hearing",
+    "the harmonic that wasn't asked for",
+    "the threshold between sound and noise",
+    "where you and the instrument agree",
+    "the microtone between A and A",
+    "the pitch that makes this room resonate",
+    "the comma between two versions of the same note",
+    "the moment just before the sound begins",
+    "where two sounds become the same temperature",
+    "the overtone nobody played",
+  ],
+
+  find_then: [
+    "Begin there.",
+    "Play from there.",
+    "Stay as long as it will let you.",
+    "Operate there.",
+    "That is the root.",
+    "Do not leave.",
+    "Let it decide what comes next.",
+    "That is the piece.",
+    "Make that your home pitch.",
+  ],
+
+  hold_verb: ["Hold", "Sustain", "Keep"],
+
+  hold_obj: [
+    "a single pitch",
+    "a sound",
+    "the last note",
+    "a frequency",
+    "an interval",
+    "a breath",
+    "whatever you have",
+    "the quietest sound you can make",
+  ],
+
+  hold_until: [
+    "past the point where you know what it is.",
+    "until it becomes something else.",
+    "until you are uncertain which pitch it is.",
+    "until the room changes.",
+    "as long as it will let you.",
+    "until someone else moves.",
+    "until you have nothing left to add.",
+    "past the point of comfort.\nThat is where it starts.",
+    "until it sounds like a question.",
+    "until you forget you are holding it.",
+    "longer than necessary.\nThen longer.",
+  ],
+
+  do_action: [
+    "Play the same note differently",
+    "Make the quietest sound you can",
+    "Make a sound you cannot repeat",
+    "Play what you mean",
+    "Begin in the wrong register",
+    "Begin before you are ready",
+    "Play past the end",
+    "Arrive somewhere you did not plan",
+    "Make a sound and immediately forget it",
+    "Play the pitch you cannot quite reach",
+    "Interrupt yourself",
+    "Approach the sound from the wrong direction",
+    "Play the note before the note",
+    "Play what you did not mean",
+    "Make a space where something unexpected can happen",
+  ],
+
+  consequence: [
+    "Notice what changes.",
+    "Correct nothing.",
+    "Continue from it.",
+    "That was also the score.",
+    "Then begin again.",
+    "That is the piece.",
+    "Notice when it isn't.",
+    "Proceed from there.",
+    "Stay with it.",
+    "That is also a beginning.",
+    "Let that be enough.",
+    "Let it stand.",
+    "Do not explain it.",
+    "That is the form.",
+  ],
+
+  subject: [
+    "The silence",
+    "The room",
+    "The rest",
+    "The error",
+    "The overtone",
+    "The breath",
+    "The pause",
+    "The decay",
+    "The space between sounds",
+    "The drone",
+    "The noise",
+    "The air",
+    "The interval you didn't choose",
+    "The sound after the sound",
+    "The room's own sound",
+    "The mistake",
+  ],
+
+  is_also: [
+    "is also composed.",
+    "is also the score.",
+    "is also music.",
+    "is also an instrument.",
+    "is also a voice.",
+    "is also listening.",
+    "is also a beginning.",
+    "is also the form.",
+    "is also enough.",
+    "is also intentional.",
+    "is also a question.",
+    "was also planned.",
+    "is also the piece.",
+    "is also a pitch.",
+  ],
+
+  play_cond: [
+    "Play until someone else begins",
+    "Play until the room has changed",
+    "Play until you are uncertain",
+    "Begin in unison",
+    "Play what you mean",
+    "Play the version you didn't rehearse",
+    "Play until you run out of ideas",
+    "Play until you forget the tempo",
+  ],
+
+  play_then: [
+    "become an overtone.",
+    "start over.",
+    "do the opposite.",
+    "rest.",
+    "diverge.",
+    "play it again, differently.",
+    "listen.",
+    "hold what you have.",
+    "wait.",
+    "change nothing.",
+    "disappear into the room.",
+  ],
+
+  do_not: [
+    "Do not prepare.",
+    "Do not decide in advance.",
+    "Do not repeat.",
+    "Do not explain.",
+    "Do not finish.",
+    "Do not correct it.",
+    "Do not leave.",
+    "Do not begin on the beat.",
+    "Do not play the obvious note.",
+    "Do not resolve.",
+  ],
+
+  do_anyway: [
+    "Begin anyway.",
+    "Play anyway.",
+    "Proceed.",
+    "Continue.",
+    "Let it stand.",
+    "Begin.",
+    "Arrive.",
+    "Stay.",
+  ],
+
+  eq_a: [
+    "Sound", "Breath", "Silence", "Duration", "Attention",
+    "Listening", "Waiting", "Pitch", "Intention", "Rest",
+    "The room", "Time", "The body",
+  ],
+
+  eq_b: [
+    "sound", "breath", "silence", "pitch", "intention", "form",
+    "the score", "time", "duration", "attention", "preparation", "listening",
+  ],
+
+  oracular: [
+    "The score is: continue.",
+    "Begin. Arrive somewhere else.\nThat is also the beginning.",
+    "Play what you mean. Wait.\nPlay what you mean now.",
+    "Take as long as it takes.\nThen take a little longer.",
+    "Something is already vibrating.\nMatch it.\nThen: move away slowly.",
+    "Sound = breath = sound.",
+    "Tune to the drone you cannot hear.",
+    "Begin anywhere. Arrive.",
+    "Continue past the end.\nSee what is there.",
+    "The score is: listen.",
+    "Hold what you have.\nThat is enough.",
+    "The room is already tuned.",
+    "Play what is already there.",
+    "Proceed. This is the score.",
+    "Begin before you are ready.",
+    "Play the version of this you didn't plan.",
+    "Let the overtones decide.\nNot you.",
+    "Begin in the middle.",
+    "End before the end.\nListen to what comes after.",
+    "The piece is already happening.",
+    "You are already performing.",
+    "Play what the room needs.\nNot what you brought.",
+    "The instruction is: stay.",
+    "Start anywhere. This is also the beginning.",
+    "Wait until you are uncertain.\nThen begin.",
+    "Play the note after the note you planned.",
+    "The form is: whatever this is.",
+    "Make a decision.\nRevoke it.\nProceed.",
+    "Be as specific as the moment allows.",
+    "There is no wrong answer.\nThis does not make it easy.",
+  ],
+
+  micro: [
+    "Be as microtonal as the moment requires.",
+    "Find a pitch between A and A.\nStay there for a while.",
+    "Tune to the room, not the instrument.\nThey are different rooms.",
+    "Let the overtones decide the melody.",
+    "Play the 7th partial.\nOr your idea of the 7th partial.\nClose enough.",
+    "Find the comma between the two versions of this note.\nLive there.",
+    "Tune until it sounds like something no one has tuned to before.",
+    "Play the note that is almost a note.\nThat one.",
+    "The pitch exists.\nFind it.",
+    "Find the frequency the instrument almost plays.\nHelp it.",
+    "Play the overtone series as a melody.\nBegin anywhere.",
+    "Detune slightly.\nListen to what opens up.",
+    "Tune your instrument to itself, not to anything else.",
+    "The comma is a room.\nPlay inside it.",
+  ],
+};
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function pick(rng, arr) {
+  return arr[Math.floor(rng() * arr.length)];
+}
+
+function pickDiff(rng, arr, avoid) {
+  const filtered = arr.filter(x => x !== avoid);
+  return filtered.length ? filtered[Math.floor(rng() * filtered.length)] : arr[0];
+}
+
+// ── Templates ──────────────────────────────────────────────────────────────
+function tAttend(rng) {
+  return pick(rng, P.attend_verb) + ' ' + pick(rng, P.attend_obj) + '.\n' + pick(rng, P.attend_then);
+}
+function tFind(rng) {
+  return 'Find ' + pick(rng, P.find_obj) + '.\n' + pick(rng, P.find_then);
+}
+function tHold(rng) {
+  return pick(rng, P.hold_verb) + ' ' + pick(rng, P.hold_obj) + ' ' + pick(rng, P.hold_until);
+}
+function tDo(rng) {
+  return pick(rng, P.do_action) + '.\n' + pick(rng, P.consequence);
+}
+function tIsAlso(rng) {
+  return pick(rng, P.subject) + ' ' + pick(rng, P.is_also);
+}
+function tPlayThen(rng) {
+  return pick(rng, P.play_cond) + '.\nThen: ' + pick(rng, P.play_then);
+}
+function tDoNot(rng) {
+  return pick(rng, P.do_not) + '\n' + pick(rng, P.do_anyway);
+}
+function tOracular(rng) {
+  return pick(rng, P.oracular);
+}
+function tMicro(rng) {
+  return pick(rng, P.micro);
+}
+function tEquation(rng) {
+  const a = pick(rng, P.eq_a);
+  const b = pickDiff(rng, P.eq_b, a.toLowerCase());
+  return a + ' = ' + b + '.';
+}
+function tEquation3(rng) {
+  const a = pick(rng, P.eq_a);
+  const b = pickDiff(rng, P.eq_b, a.toLowerCase());
+  const c = pickDiff(rng, P.eq_b, b);
+  return a + ' = ' + b + ' = ' + c + '.';
+}
+
+const TEMPLATES = [
+  { w: 18, fn: tAttend },
+  { w: 12, fn: tFind },
+  { w: 10, fn: tHold },
+  { w: 10, fn: tDo },
+  { w:  8, fn: tIsAlso },
+  { w:  8, fn: tPlayThen },
+  { w:  8, fn: tDoNot },
+  { w: 12, fn: tOracular },
+  { w:  8, fn: tMicro },
+  { w:  3, fn: tEquation },
+  { w:  3, fn: tEquation3 },
+];
+const TOTAL_W = TEMPLATES.reduce((s, t) => s + t.w, 0);
+
+function generate(seed) {
+  const rng = makeRng(seed);
+  // pick weighted template
+  let r = rng() * TOTAL_W;
+  let fn = TEMPLATES[TEMPLATES.length - 1].fn;
+  for (const t of TEMPLATES) {
+    r -= t.w;
+    if (r <= 0) { fn = t.fn; break; }
+  }
+  return fn(rng);
+}
+
+// ── Display ────────────────────────────────────────────────────────────────
+const textEl  = document.getElementById('score-text');
+const instrEl = document.getElementById('instruction-el');
+const btn     = document.getElementById('random-btn');
+
+let currentSeed = null;
+
+function fmt(raw) { return raw.split('\n').join('<br>'); }
+
+function show(seed, animate) {
+  currentSeed = seed;
+  const text = generate(seed);
+  history.replaceState(null, '', '?s=' + seed);
+  if (animate) {
+    textEl.classList.add('fade-out');
+    setTimeout(() => {
+      instrEl.innerHTML = fmt(text);
+      textEl.classList.remove('fade-out');
+    }, 500);
+  } else {
+    instrEl.innerHTML = fmt(text);
+  }
+}
+
+function next() {
+  show(Math.floor(Math.random() * 0xFFFFFF), true);
+}
+
+// ── Interactions ───────────────────────────────────────────────────────────
+document.addEventListener('click', e => { if (e.target !== btn) next(); });
+document.addEventListener('keydown', e => {
+  if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') {
+    e.preventDefault(); next();
+  }
+});
+btn.addEventListener('click', e => { e.stopPropagation(); next(); });
+
+// ── Init ───────────────────────────────────────────────────────────────────
+const params = new URLSearchParams(window.location.search);
+const s = params.get('s');
+show(s ? (parseInt(s, 10) || Math.floor(Math.random() * 0xFFFFFF))
+       : Math.floor(Math.random() * 0xFFFFFF),
+     false);
+</script>
+</body>
+</html>
