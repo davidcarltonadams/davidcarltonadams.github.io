@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>performance clock</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #060606;
+      --text:    #d4ccc4;
+      --dim:     rgba(212,204,196,0.35);
+      --dimmer:  rgba(212,204,196,0.15);
+      --ghost:   rgba(212,204,196,0.08);
+      --border:  rgba(212,204,196,0.1);
+      --accent:  rgba(212,204,196,0.55);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ══════════════════════════════════════════════
+       SETUP VIEW
+    ══════════════════════════════════════════════ */
+    #setup-view {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+
+    .setup-title {
+      font-size: 0.65rem;
+      font-weight: 400;
+      letter-spacing: 0.22em;
+      color: var(--dimmer);
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+    }
+
+    .setup-section-label {
+      font-size: 0.52rem;
+      letter-spacing: 0.18em;
+      color: var(--dimmer);
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+      margin-top: 1.8rem;
+    }
+
+    /* Section list */
+    #section-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .section-row {
+      display: grid;
+      grid-template-columns: 3rem 4rem 1fr 5.5rem auto;
+      gap: 0.5rem;
+      align-items: start;
+      padding: 0.6rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: rgba(212,204,196,0.02);
+      position: relative;
+    }
+
+    .section-row input, .section-row textarea, .section-row select {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: Georgia, serif;
+      font-size: 0.75rem;
+      padding: 0.3rem 0.4rem;
+      width: 100%;
+      border-radius: 2px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .section-row input:focus,
+    .section-row textarea:focus { border-color: var(--dim); }
+
+    .section-row textarea {
+      resize: vertical;
+      min-height: 2.2rem;
+      grid-column: 3;
+    }
+
+    .section-row select {
+      font-size: 0.65rem;
+      cursor: pointer;
+    }
+    .section-row select option { background: #111; }
+
+    .section-row .img-drop {
+      grid-column: 3;
+      border: 1px dashed var(--border);
+      border-radius: 2px;
+      padding: 0.5rem;
+      text-align: center;
+      font-size: 0.55rem;
+      color: var(--dimmer);
+      cursor: pointer;
+      transition: border-color 0.2s;
+      position: relative;
+    }
+    .section-row .img-drop.drag-over { border-color: var(--dim); color: var(--dim); }
+    .section-row .img-drop img { max-width: 100%; max-height: 80px; display: block; margin: 0 auto 0.3rem; }
+    .section-row .img-drop input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+      border: none;
+    }
+
+    .remove-btn {
+      background: none;
+      border: none;
+      color: var(--dimmer);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0 0.2rem;
+      line-height: 1;
+      transition: color 0.15s;
+      align-self: center;
+    }
+    .remove-btn:hover { color: var(--text); }
+
+    .input-hint {
+      font-size: 0.47rem;
+      color: rgba(212,204,196,0.15);
+      margin-top: 0.2rem;
+      font-style: italic;
+    }
+
+    /* Add section button */
+    #add-section-btn {
+      margin-top: 0.8rem;
+      background: none;
+      border: 1px dashed var(--border);
+      color: var(--dimmer);
+      font-family: Georgia, serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      padding: 0.5rem 1.2rem;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.15s;
+    }
+    #add-section-btn:hover { color: var(--dim); border-color: var(--dim); }
+
+    /* Session options */
+    .setup-opts {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    .setup-opts label {
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+    }
+
+    .setup-opts input[type=text] {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'SF Mono', monospace;
+      font-size: 0.7rem;
+      padding: 0.3rem 0.5rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      width: 8rem;
+      outline: none;
+      border-radius: 2px;
+    }
+
+    /* Create button */
+    #create-btn {
+      margin-top: 2rem;
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--text);
+      font-family: Georgia, serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      font-style: italic;
+      padding: 0.65rem 2rem;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    #create-btn:hover { background: rgba(212,204,196,0.05); }
+
+    /* ══════════════════════════════════════════════
+       SESSION CREATED VIEW
+    ══════════════════════════════════════════════ */
+    #session-view {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+    }
+
+    .session-code {
+      font-size: clamp(1.8rem, 8vw, 3rem);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      letter-spacing: 0.2em;
+      color: var(--text);
+      margin-bottom: 2rem;
+    }
+
+    .url-row {
+      margin-bottom: 1.2rem;
+    }
+    .url-label {
+      font-size: 0.5rem;
+      letter-spacing: 0.18em;
+      color: var(--dimmer);
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+    .url-box {
+      display: flex;
+      gap: 0.5rem;
+      align-items: stretch;
+    }
+    .url-text {
+      flex: 1;
+      font-size: 0.58rem;
+      font-family: 'SF Mono', monospace;
+      color: var(--dim);
+      background: rgba(212,204,196,0.03);
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.6rem;
+      border-radius: 2px;
+      word-break: break-all;
+      letter-spacing: 0.04em;
+    }
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dimmer);
+      font-family: 'SF Mono', monospace;
+      font-size: 0.5rem;
+      letter-spacing: 0.1em;
+      padding: 0 0.8rem;
+      cursor: pointer;
+      border-radius: 2px;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover { color: var(--dim); border-color: var(--dim); }
+    .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+
+    #qr-img {
+      margin-top: 1.2rem;
+      width: 160px;
+      height: 160px;
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 6px;
+      border-radius: 2px;
+      display: block;
+    }
+    .qr-note {
+      font-size: 0.47rem;
+      color: var(--dimmer);
+      margin-top: 0.4rem;
+      font-style: italic;
+    }
+
+    #open-conductor-btn {
+      margin-top: 2rem;
+      display: inline-block;
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--text);
+      font-family: Georgia, serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      font-style: italic;
+      padding: 0.65rem 2rem;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    #open-conductor-btn:hover { background: rgba(212,204,196,0.05); }
+
+    /* ══════════════════════════════════════════════
+       CONDUCTOR VIEW
+    ══════════════════════════════════════════════ */
+    #conductor-view {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      gap: 1.5rem;
+    }
+
+    #cond-clock {
+      font-size: min(22vw, 22vh);
+      font-weight: normal;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      font-feature-settings: "tnum";
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cond-section-info {
+      text-align: center;
+      min-height: 2rem;
+    }
+    .cond-section-label {
+      font-size: clamp(1.2rem, 4vw, 2.2rem);
+      color: var(--dim);
+      letter-spacing: 0.05em;
+    }
+
+    .cond-controls {
+      display: flex;
+      gap: 0.8rem;
+    }
+
+    .ctrl-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dimmer);
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-size: 0.62rem;
+      letter-spacing: 0.15em;
+      padding: 0.5rem 1.4rem;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    .ctrl-btn:hover { color: var(--dim); border-color: var(--dim); }
+    .ctrl-btn.primary { color: var(--text); border-color: var(--dim); }
+    .ctrl-btn:disabled { opacity: 0.3; cursor: default; }
+
+    .cond-meta {
+      font-size: 0.5rem;
+      letter-spacing: 0.15em;
+      color: var(--dimmer);
+      font-style: italic;
+      text-align: center;
+    }
+
+    /* Section timeline (conductor) */
+    #section-timeline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      max-width: 600px;
+    }
+
+    .timeline-chip {
+      font-size: 0.55rem;
+      letter-spacing: 0.08em;
+      color: var(--dimmer);
+      border: 1px solid transparent;
+      padding: 0.2rem 0.5rem;
+      border-radius: 2px;
+      font-style: italic;
+      white-space: nowrap;
+    }
+    .timeline-chip.active {
+      color: var(--text);
+      border-color: var(--border);
+      background: var(--ghost);
+    }
+    .timeline-chip.past { color: rgba(212,204,196,0.2); }
+
+    /* ══════════════════════════════════════════════
+       PERFORMER VIEW
+    ══════════════════════════════════════════════ */
+    #performer-view {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      gap: 0;
+      text-align: center;
+    }
+
+    #perf-clock {
+      font-size: min(30vw, 28vh);
+      font-weight: normal;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      font-feature-settings: "tnum";
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 0.2em;
+    }
+
+    #perf-divider {
+      width: min(80vw, 360px);
+      height: 1px;
+      background: var(--border);
+      margin: 1rem auto;
+    }
+
+    #perf-section-label {
+      font-size: min(18vw, 16vh);
+      font-weight: normal;
+      line-height: 1;
+      color: var(--dim);
+      letter-spacing: 0.02em;
+      margin-bottom: 0.5rem;
+      min-height: 1.2em;
+    }
+
+    #perf-content {
+      font-size: clamp(0.9rem, 3vw, 1.5rem);
+      line-height: 1.55;
+      color: var(--dim);
+      max-width: min(500px, 88vw);
+      letter-spacing: 0.02em;
+      min-height: 3rem;
+    }
+
+    #perf-content img {
+      max-width: 100%;
+      max-height: 35vh;
+      display: block;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+
+    #perf-locked {
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+
+    .unlock-form {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+      justify-content: center;
+      align-items: center;
+    }
+    .unlock-form input {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'SF Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      padding: 0.3rem 0.6rem;
+      width: 8rem;
+      text-align: center;
+      border-radius: 2px;
+      outline: none;
+    }
+    .unlock-form button {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dimmer);
+      font-family: Georgia, serif;
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      padding: 0.35rem 0.8rem;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.15s;
+    }
+    .unlock-form button:hover { color: var(--dim); border-color: var(--dim); }
+
+    #perf-status {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      font-size: 0.45rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+
+    #perf-next {
+      position: fixed;
+      bottom: 1.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.47rem;
+      letter-spacing: 0.12em;
+      color: rgba(212,204,196,0.1);
+      font-style: italic;
+      white-space: nowrap;
+    }
+
+    /* waiting state */
+    #perf-waiting {
+      font-size: clamp(1rem, 4vw, 1.6rem);
+      color: var(--dimmer);
+      font-style: italic;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     SETUP VIEW (default)
+══════════════════════════════════════════ -->
+<div id="setup-view">
+  <p class="setup-title">performance clock</p>
+
+  <p class="setup-section-label">sections</p>
+  <div id="section-list"></div>
+  <button id="add-section-btn">+ add section</button>
+
+  <p class="setup-section-label">session</p>
+  <div class="setup-opts">
+    <label>room code</label>
+    <input type="text" id="room-input" maxlength="8" placeholder="auto" autocomplete="off" spellcheck="false">
+    <label>session password&nbsp;<span style="font-size:0.45rem;color:rgba(212,204,196,0.15)">(optional — all performers)</span></label>
+    <input type="text" id="session-pw" maxlength="20" placeholder="none" autocomplete="off">
+  </div>
+
+  <button id="create-btn">create session →</button>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SESSION CREATED VIEW
+══════════════════════════════════════════ -->
+<div id="session-view" class="hidden">
+  <p class="setup-title" style="margin-bottom:0.8rem">session ready</p>
+  <p class="session-code" id="session-code-display">——</p>
+
+  <div class="url-row">
+    <p class="url-label">conductor</p>
+    <div class="url-box">
+      <span class="url-text" id="conductor-url-text"></span>
+      <button class="copy-btn" data-target="conductor-url-text">copy</button>
+    </div>
+  </div>
+
+  <div class="url-row">
+    <p class="url-label">performer</p>
+    <div class="url-box">
+      <span class="url-text" id="performer-url-text"></span>
+      <button class="copy-btn" data-target="performer-url-text">copy</button>
+    </div>
+  </div>
+
+  <img id="qr-img" alt="QR code for performer URL" src="">
+  <p class="qr-note">performers scan to load score · share performer URL in chat as fallback</p>
+
+  <a id="open-conductor-btn" href="#">open conductor view →</a>
+</div>
+
+<!-- ══════════════════════════════════════════
+     CONDUCTOR VIEW
+══════════════════════════════════════════ -->
+<div id="conductor-view" class="hidden">
+  <div id="cond-clock">00:00</div>
+
+  <div class="cond-section-info">
+    <div class="cond-section-label" id="cond-section-label">—</div>
+  </div>
+
+  <div id="section-timeline"></div>
+
+  <div class="cond-controls">
+    <button class="ctrl-btn primary" id="start-btn">start</button>
+    <button class="ctrl-btn" id="pause-btn" disabled>pause</button>
+    <button class="ctrl-btn" id="reset-btn">reset</button>
+  </div>
+
+  <p class="cond-meta" id="cond-meta">connecting…</p>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PERFORMER VIEW
+══════════════════════════════════════════ -->
+<div id="performer-view" class="hidden">
+  <span id="perf-status">connecting…</span>
+
+  <div id="perf-waiting">waiting for conductor</div>
+
+  <div id="perf-clock" style="display:none">00:00</div>
+  <div id="perf-divider" style="display:none"></div>
+  <div id="perf-section-label" style="display:none"></div>
+  <div id="perf-content" style="display:none"></div>
+  <div id="perf-next"></div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+// ── Utility ────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const PEER_NS = 'dcaclock-';
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+function fmtClock(ms) {
+  const s = Math.floor(ms / 1000);
+  return pad(Math.floor(s / 60)) + ':' + pad(s % 60);
+}
+
+function genCode() {
+  return Math.random().toString(36).substr(2, 6).toUpperCase();
+}
+
+// ── URL param helpers ──────────────────────────────────────────────────────
+const params = new URLSearchParams(window.location.search);
+const ROOM   = params.get('room');
+const IS_COND = params.has('c');
+const SESS_DATA = params.get('s');
+const SESS_PW   = params.get('pw');
+
+function buildURL(room, isCond, sections, pw) {
+  const u = new URL(window.location.href);
+  u.search = '';
+  u.searchParams.set('room', room);
+  if (isCond) u.searchParams.set('c', '1');
+  if (sections && sections.length) u.searchParams.set('s', btoa(JSON.stringify(sections)));
+  if (pw) u.searchParams.set('pw', pw);
+  return u.toString();
+}
+
+// ── Session data ───────────────────────────────────────────────────────────
+let sections = [];
+try { if (SESS_DATA) sections = JSON.parse(atob(SESS_DATA)); } catch(e) {}
+
+// ── Clock state ────────────────────────────────────────────────────────────
+let state = {
+  startTime:   null,   // Date.now() when started
+  paused:      false,
+  pausedAt:    null,   // elapsed ms when paused
+};
+
+function getElapsed() {
+  if (!state.startTime) return 0;
+  if (state.paused) return state.pausedAt;
+  return Date.now() - state.startTime;
+}
+
+function getCurrentSection(elapsed) {
+  let cur = null;
+  for (const s of sections) {
+    if (elapsed >= s.offset) cur = s;
+    else break;
+  }
+  return cur;
+}
+
+function getNextSection(elapsed) {
+  for (const s of sections) {
+    if (elapsed < s.offset) return s;
+  }
+  return null;
+}
+
+// ── PeerJS network ─────────────────────────────────────────────────────────
+let peer = null;
+let hostConns = new Map();  // conductor: map of connected performer conns
+let clientConn = null;       // performer: connection to conductor
+
+function broadcast(msg) {
+  hostConns.forEach(conn => { try { conn.send(msg); } catch(e) {} });
+}
+
+function applyMsg(msg) {
+  if (msg.type === 'start') {
+    state.startTime = msg.startTime;
+    state.paused    = false;
+    state.pausedAt  = null;
+    onClockStart();
+  } else if (msg.type === 'pause') {
+    state.paused   = true;
+    state.pausedAt = msg.elapsed;
+    onClockPause();
+  } else if (msg.type === 'resume') {
+    state.startTime = Date.now() - state.pausedAt;
+    state.paused    = false;
+    state.pausedAt  = null;
+    onClockResume();
+  } else if (msg.type === 'reset') {
+    state.startTime = null;
+    state.paused    = false;
+    state.pausedAt  = null;
+    onClockReset();
+  } else if (msg.type === 'sync') {
+    state = msg.state;
+    if (state.startTime && !state.paused) onClockStart();
+    else if (state.paused) onClockPause();
+    else onClockReset();
+  }
+}
+
+function startPeerHost(roomCode) {
+  peer = new Peer(PEER_NS + roomCode, { debug: 0 });
+
+  peer.on('open', () => {
+    $('cond-meta').textContent = roomCode + ' · 0 performers connected';
+  });
+
+  peer.on('connection', conn => {
+    conn.on('open', () => {
+      hostConns.set(conn.peer, conn);
+      $('cond-meta').textContent = roomCode + ' · ' + hostConns.size + ' performer' + (hostConns.size !== 1 ? 's' : '') + ' connected';
+      // Sync new performer to current state
+      conn.send({ type: 'sync', state });
+    });
+    conn.on('close', () => {
+      hostConns.delete(conn.peer);
+      $('cond-meta').textContent = roomCode + ' · ' + hostConns.size + ' performer' + (hostConns.size !== 1 ? 's' : '') + ' connected';
+    });
+    conn.on('error', err => console.warn('conn error', err));
+  });
+
+  peer.on('error', err => {
+    $('cond-meta').textContent = 'peer error: ' + err.type + ' — check room code and reload';
+    console.error('Peer error:', err);
+  });
+}
+
+function startPeerClient(roomCode) {
+  peer = new Peer({ debug: 0 });
+
+  peer.on('open', () => {
+    $('perf-status').textContent = 'connecting to ' + roomCode + '…';
+    clientConn = peer.connect(PEER_NS + roomCode, { reliable: true });
+
+    clientConn.on('open', () => {
+      $('perf-status').textContent = roomCode + ' · connected';
+    });
+    clientConn.on('data', msg => applyMsg(msg));
+    clientConn.on('close', () => {
+      $('perf-status').textContent = 'disconnected — reload to reconnect';
+    });
+    clientConn.on('error', err => {
+      $('perf-status').textContent = 'connection error — reload to retry';
+      console.warn('Client conn error:', err);
+    });
+  });
+
+  peer.on('error', err => {
+    $('perf-status').textContent = 'peer error: ' + err.type;
+    console.error('Peer error:', err);
+  });
+}
+
+// ── Conductor clock loop ───────────────────────────────────────────────────
+let condAnimId = null;
+
+function condTick() {
+  const elapsed = getElapsed();
+  $('cond-clock').textContent = fmtClock(elapsed);
+
+  const cur  = getCurrentSection(elapsed);
+  const next = getNextSection(elapsed);
+  $('cond-section-label').textContent = cur ? cur.label : '—';
+
+  // Update timeline chips
+  const chips = document.querySelectorAll('.timeline-chip');
+  chips.forEach(chip => {
+    const offset = parseInt(chip.dataset.offset, 10);
+    if (elapsed >= offset && (!next || offset >= getCurrentSection(elapsed)?.offset || 0)) {
+      // current
+    }
+    const s = sections.find(s => s.offset === offset);
+    if (!s) return;
+    chip.classList.toggle('active', cur?.offset === s.offset);
+    chip.classList.toggle('past',   cur?.offset !== s.offset && elapsed >= s.offset);
+  });
+
+  condAnimId = requestAnimationFrame(condTick);
+}
+
+// ── Performer clock loop ───────────────────────────────────────────────────
+let perfAnimId = null;
+let unlockedSections = new Set();
+
+function perfTick() {
+  const elapsed = getElapsed();
+  $('perf-clock').textContent = fmtClock(elapsed);
+
+  const cur  = getCurrentSection(elapsed);
+  const next = getNextSection(elapsed);
+
+  if (cur) {
+    $('perf-section-label').textContent = cur.label || '';
+    renderPerfContent(cur);
+  } else {
+    $('perf-section-label').textContent = '';
+    $('perf-content').innerHTML = '';
+  }
+
+  if (next) {
+    const rem = next.offset - elapsed;
+    $('perf-next').textContent = next.label + ' in ' + fmtClock(rem);
+  } else {
+    $('perf-next').textContent = '';
+  }
+
+  perfAnimId = requestAnimationFrame(perfTick);
+}
+
+function renderPerfContent(section) {
+  const contentEl = $('perf-content');
+
+  // Password protection
+  if (section.password && !unlockedSections.has(section.id)) {
+    contentEl.innerHTML = `
+      <span id="perf-locked">locked</span>
+      <form class="unlock-form" data-id="${section.id}">
+        <input type="text" placeholder="enter code" autocomplete="off" autocapitalize="off">
+        <button type="submit">unlock</button>
+      </form>`;
+    contentEl.querySelector('form').addEventListener('submit', e => {
+      e.preventDefault();
+      const val = e.target.querySelector('input').value;
+      if (val === section.password) {
+        unlockedSections.add(section.id);
+        renderPerfContent(section);
+      } else {
+        e.target.querySelector('input').value = '';
+      }
+    });
+    return;
+  }
+
+  if (section.type === 'image') {
+    contentEl.innerHTML = `<img src="${section.content}" alt="">`;
+  } else {
+    contentEl.innerHTML = (section.content || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\n/g, '<br>');
+  }
+}
+
+// ── Clock event handlers ───────────────────────────────────────────────────
+function onClockStart() {
+  if (!IS_COND) {
+    $('perf-waiting').style.display = 'none';
+    $('perf-clock').style.display   = 'block';
+    $('perf-divider').style.display = 'block';
+    $('perf-section-label').style.display = 'block';
+    $('perf-content').style.display = 'block';
+    if (!perfAnimId) perfTick();
+  }
+}
+function onClockPause()  { /* display continues, getElapsed handles it */ }
+function onClockResume() { /* same */ }
+function onClockReset() {
+  if (!IS_COND) {
+    if (perfAnimId) { cancelAnimationFrame(perfAnimId); perfAnimId = null; }
+    $('perf-waiting').style.display = 'block';
+    $('perf-clock').style.display = 'none';
+    $('perf-divider').style.display = 'none';
+    $('perf-section-label').style.display = 'none';
+    $('perf-content').style.display = 'none';
+    $('perf-clock').textContent   = '00:00';
+    $('perf-section-label').textContent = '';
+    $('perf-content').innerHTML   = '';
+    $('perf-next').textContent    = '';
+  }
+}
+
+// ── Setup view ─────────────────────────────────────────────────────────────
+let setupSections = [
+  { id: 's0', label: 'begin', offset: 0, type: 'text', content: '', password: '' }
+];
+
+function renderSetup() {
+  const list = $('section-list');
+  list.innerHTML = '';
+  setupSections.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'section-row';
+    row.dataset.id = s.id;
+
+    const mm  = Math.floor(s.offset / 60000);
+    const ss  = Math.floor((s.offset % 60000) / 1000);
+    const timeVal = pad(mm) + ':' + pad(ss);
+
+    row.innerHTML = `
+      <div>
+        <input type="text" class="f-label" value="${s.label}" placeholder="A" maxlength="8">
+        <p class="input-hint">label</p>
+      </div>
+      <div>
+        <input type="text" class="f-time" value="${timeVal}" placeholder="00:00" pattern="\\d+:\\d{2}">
+        <p class="input-hint">mm:ss</p>
+      </div>
+      <div class="content-area">
+        ${s.type === 'image'
+          ? `<div class="img-drop" data-id="${s.id}">
+               ${s.content ? `<img src="${s.content}" alt="">` : ''}
+               <span>${s.content ? 'change image' : 'drop image / click'}</span>
+               <input type="file" accept="image/*">
+             </div>`
+          : `<textarea class="f-content" placeholder="score instruction, rehearsal note, or leave blank">${s.content}</textarea>`
+        }
+      </div>
+      <select class="f-type">
+        <option value="text"  ${s.type==='text'  ?'selected':''}>text</option>
+        <option value="image" ${s.type==='image' ?'selected':''}>image</option>
+      </select>
+      <button class="remove-btn" title="remove">×</button>
+    `;
+
+    // pw field below (full width)
+    const pwRow = document.createElement('div');
+    pwRow.style.cssText = 'grid-column:1/-1;display:flex;gap:0.5rem;align-items:center;margin-top:0.3rem';
+    pwRow.innerHTML = `
+      <span style="font-size:0.47rem;color:rgba(212,204,196,0.2);letter-spacing:0.1em;text-transform:uppercase">lock</span>
+      <input type="text" class="f-pw" value="${s.password}" placeholder="optional password to reveal content" maxlength="20"
+             style="flex:1;font-size:0.62rem;padding:0.25rem 0.4rem">
+    `;
+    row.appendChild(pwRow);
+    list.appendChild(row);
+
+    // Events
+    row.querySelector('.remove-btn').addEventListener('click', () => {
+      if (setupSections.length > 1) {
+        setupSections = setupSections.filter(x => x.id !== s.id);
+        renderSetup();
+      }
+    });
+
+    row.querySelector('.f-type').addEventListener('change', e => {
+      s.type = e.target.value;
+      s.content = '';
+      renderSetup();
+    });
+
+    row.querySelector('.f-label').addEventListener('input', e => { s.label = e.target.value; });
+    row.querySelector('.f-time').addEventListener('change', e => {
+      const [m, sc] = (e.target.value || '0:0').split(':');
+      s.offset = (parseInt(m, 10) || 0) * 60000 + (parseInt(sc, 10) || 0) * 1000;
+      // keep sorted
+      setupSections.sort((a, b) => a.offset - b.offset);
+      renderSetup();
+    });
+
+    if (s.type === 'text') {
+      row.querySelector('.f-content').addEventListener('input', e => { s.content = e.target.value; });
+    }
+
+    const pwEl = row.querySelector('.f-pw');
+    if (pwEl) pwEl.addEventListener('input', e => { s.password = e.target.value; });
+
+    // Image drag-drop
+    if (s.type === 'image') {
+      const dropZone = row.querySelector('.img-drop');
+      const fileInput = dropZone.querySelector('input[type=file]');
+
+      function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          s.content = ev.target.result;
+          renderSetup();
+        };
+        reader.readAsDataURL(file);
+      }
+
+      fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+      dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+      });
+    }
+  });
+}
+
+$('add-section-btn').addEventListener('click', () => {
+  const last = setupSections[setupSections.length - 1];
+  setupSections.push({
+    id:       'S' + Date.now(),
+    label:    '',
+    offset:   last ? last.offset + 30000 : 0,
+    type:     'text',
+    content:  '',
+    password: '',
+  });
+  renderSetup();
+});
+
+$('create-btn').addEventListener('click', () => {
+  const roomCode = ($('room-input').value.trim() || genCode()).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) || genCode();
+  const pw       = $('session-pw').value.trim();
+  const sects    = setupSections.map(s => ({...s}));
+
+  const condURL = buildURL(roomCode, true,  sects, pw);
+  const perfURL = buildURL(roomCode, false, sects, pw);
+
+  $('session-code-display').textContent = roomCode;
+  $('conductor-url-text').textContent   = condURL;
+  $('performer-url-text').textContent   = perfURL;
+  $('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=d4ccc4&bgcolor=060606&data=${encodeURIComponent(perfURL)}`;
+  $('open-conductor-btn').href = condURL;
+
+  showView('session-view');
+});
+
+// ── Conductor view ─────────────────────────────────────────────────────────
+function buildTimeline() {
+  const tl = $('section-timeline');
+  tl.innerHTML = '';
+  sections.forEach(s => {
+    const chip = document.createElement('div');
+    chip.className = 'timeline-chip';
+    chip.dataset.offset = s.offset;
+    chip.textContent = (s.label || '?') + ' · ' + fmtClock(s.offset);
+    tl.appendChild(chip);
+  });
+}
+
+function initConductor(roomCode) {
+  buildTimeline();
+  startPeerHost(roomCode);
+
+  const startBtn = $('start-btn');
+  const pauseBtn = $('pause-btn');
+  const resetBtn = $('reset-btn');
+
+  startBtn.addEventListener('click', () => {
+    if (!state.startTime) {
+      state.startTime = Date.now();
+      state.paused    = false;
+    }
+    const msg = { type: 'start', startTime: state.startTime };
+    broadcast(msg);
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    condTick();
+  });
+
+  pauseBtn.addEventListener('click', () => {
+    if (state.paused) {
+      // resume
+      state.startTime = Date.now() - state.pausedAt;
+      state.paused    = false;
+      const msg = { type: 'resume' };
+      broadcast(msg);
+      pauseBtn.textContent = 'pause';
+    } else {
+      state.paused  = true;
+      state.pausedAt = getElapsed();
+      const msg = { type: 'pause', elapsed: state.pausedAt };
+      broadcast(msg);
+      pauseBtn.textContent = 'resume';
+    }
+  });
+
+  resetBtn.addEventListener('click', () => {
+    if (condAnimId) { cancelAnimationFrame(condAnimId); condAnimId = null; }
+    state = { startTime: null, paused: false, pausedAt: null };
+    broadcast({ type: 'reset' });
+    $('cond-clock').textContent = '00:00';
+    $('cond-section-label').textContent = '—';
+    startBtn.disabled = false;
+    pauseBtn.disabled = true;
+    pauseBtn.textContent = 'pause';
+    document.querySelectorAll('.timeline-chip').forEach(c => {
+      c.classList.remove('active','past');
+    });
+  });
+}
+
+// ── Performer view ─────────────────────────────────────────────────────────
+function initPerformer(roomCode) {
+  // Session password gate
+  const pw = SESS_PW;
+  if (pw) {
+    const entered = sessionStorage.getItem('dcaclock-pw-' + roomCode);
+    if (entered !== pw) {
+      const val = prompt('session password:');
+      if (val !== pw) {
+        document.body.innerHTML = '<p style="color:#666;font-family:Georgia;padding:2rem;font-style:italic">incorrect password.</p>';
+        return;
+      }
+      sessionStorage.setItem('dcaclock-pw-' + roomCode, val);
+    }
+  }
+
+  startPeerClient(roomCode);
+}
+
+// ── Copy buttons ───────────────────────────────────────────────────────────
+document.querySelectorAll('.copy-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const text = $(btn.dataset.target).textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'copied';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+    }).catch(() => {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = 'copied';
+      setTimeout(() => btn.textContent = 'copy', 2000);
+    });
+  });
+});
+
+// ── View management ────────────────────────────────────────────────────────
+function showView(id) {
+  ['setup-view','session-view','conductor-view','performer-view'].forEach(v => {
+    $(v).classList.toggle('hidden', v !== id);
+  });
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+if (ROOM) {
+  if (IS_COND) {
+    showView('conductor-view');
+    initConductor(ROOM);
+  } else {
+    showView('performer-view');
+    initPerformer(ROOM);
+  }
+} else {
+  showView('setup-view');
+  renderSetup();
+}
+</script>
+</body>
+</html>
