@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>drone — David Carlton Adams</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #060606;
+      --bg2:     #0d0d0d;
+      --text:    #d4ccc4;
+      --dim:     rgba(212,204,196,0.35);
+      --dimmer:  rgba(212,204,196,0.15);
+      --accent:  rgba(212,204,196,0.6);
+      --on-bg:   rgba(212,204,196,0.08);
+      --border:  rgba(212,204,196,0.07);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5rem;
+      padding: 2rem 1.5rem 3rem;
+    }
+
+    /* ── Pitch display ──────────────────────────────────────── */
+    #freq-display {
+      text-align: center;
+      cursor: pointer;
+    }
+
+    #note-name {
+      font-size: clamp(3rem, 12vw, 6rem);
+      font-weight: normal;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      line-height: 1;
+      transition: color 0.3s;
+    }
+    #note-name.playing { color: #d4ccc4; }
+
+    #freq-hz {
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      color: var(--dimmer);
+      margin-top: 0.4rem;
+      font-style: italic;
+    }
+
+    /* ── Beat visualizer ────────────────────────────────────── */
+    #beat-canvas {
+      width: min(360px, 88vw);
+      height: 40px;
+      opacity: 0.4;
+      transition: opacity 0.5s;
+    }
+    #beat-canvas.active { opacity: 1; }
+
+    /* ── Controls ───────────────────────────────────────────── */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.6rem;
+      width: min(360px, 88vw);
+    }
+
+    .ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .ctrl-label {
+      font-size: 0.55rem;
+      letter-spacing: 0.18em;
+      color: var(--dimmer);
+      text-transform: uppercase;
+      width: 4.5rem;
+      flex-shrink: 0;
+      font-style: italic;
+    }
+
+    .ctrl-value {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      width: 4rem;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    input[type=range] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 1px;
+      background: var(--border);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--dim);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      background: var(--accent);
+    }
+    input[type=range]:focus { outline: none; }
+
+    /* ── Pitch wheel ────────────────────────────────────────── */
+    #pitch-wheel {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .note-btn {
+      font-size: 0.55rem;
+      letter-spacing: 0.06em;
+      color: var(--dimmer);
+      background: none;
+      border: 1px solid transparent;
+      padding: 0.3rem 0.45rem;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      border-radius: 2px;
+      transition: all 0.15s;
+    }
+    .note-btn:hover { color: var(--dim); border-color: var(--border); }
+    .note-btn.selected {
+      color: var(--text);
+      border-color: var(--dim);
+      background: var(--on-bg);
+    }
+
+    /* ── Partial toggles ────────────────────────────────────── */
+    #partial-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .partial-btn {
+      font-size: 0.55rem;
+      letter-spacing: 0.08em;
+      color: var(--dimmer);
+      background: none;
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.5rem;
+      cursor: pointer;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      border-radius: 2px;
+      transition: all 0.15s;
+      min-width: 2rem;
+      text-align: center;
+    }
+    .partial-btn:hover { color: var(--dim); }
+    .partial-btn.on {
+      color: var(--text);
+      border-color: var(--dim);
+      background: var(--on-bg);
+    }
+
+    /* ── On/Off ─────────────────────────────────────────────── */
+    #toggle-btn {
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+      background: none;
+      border: 1px solid var(--border);
+      padding: 0.6rem 2rem;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      font-style: italic;
+      border-radius: 2px;
+      transition: all 0.2s;
+    }
+    #toggle-btn:hover { color: var(--dim); border-color: var(--dim); }
+    #toggle-btn.playing {
+      color: var(--text);
+      border-color: rgba(212,204,196,0.4);
+    }
+  </style>
+</head>
+<body>
+
+<div id="freq-display">
+  <div id="note-name">A</div>
+  <div id="freq-hz">220.00 Hz · A3</div>
+</div>
+
+<canvas id="beat-canvas" width="720" height="80"></canvas>
+
+<div class="controls">
+
+  <!-- Pitch selection -->
+  <div id="pitch-wheel"></div>
+
+  <!-- Octave -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">octave</span>
+    <input type="range" id="octave-slider" min="1" max="5" step="1" value="3">
+    <span class="ctrl-value" id="octave-val">3</span>
+  </div>
+
+  <!-- Beating -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">beating</span>
+    <input type="range" id="beat-slider" min="0" max="8" step="0.05" value="0">
+    <span class="ctrl-value" id="beat-val">off</span>
+  </div>
+
+  <!-- Volume -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">volume</span>
+    <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.4">
+    <span class="ctrl-value" id="vol-val">40%</span>
+  </div>
+
+  <!-- Partials -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">partials</span>
+    <div id="partial-row"></div>
+  </div>
+
+  <button id="toggle-btn">sound</button>
+
+</div>
+
+<script>
+// ── Pitch data ─────────────────────────────────────────────────────────────
+const NOTES = [
+  { name: 'C',  ratio: 1/1 },
+  { name: 'D',  ratio: 9/8 },
+  { name: 'E',  ratio: 5/4 },
+  { name: 'F',  ratio: 4/3 },
+  { name: 'G',  ratio: 3/2 },
+  { name: 'A',  ratio: 5/3 },
+  { name: 'B',  ratio: 15/8 },
+];
+// JI ratios relative to C4 = 261.63 Hz
+const C4 = 261.63;
+
+const PARTIALS = [2, 3, 4, 5, 7];
+const PARTIAL_LABELS = ['2', '3', '4', '5', '7'];
+const PARTIAL_NAMES  = ['octave', '5th', '2nd oct', '3rd', 'b7th'];
+
+let state = {
+  noteIdx:   5,   // A
+  octave:    3,
+  beatCents: 0,
+  volume:    0.4,
+  partials:  new Set(),
+  playing:   false,
+};
+
+function rootFreq() {
+  const n = NOTES[state.noteIdx];
+  // C in the chosen octave
+  const cFreq = C4 * Math.pow(2, state.octave - 4);
+  return cFreq * n.ratio;
+}
+
+function noteLabel() {
+  return NOTES[state.noteIdx].name + state.octave;
+}
+
+// ── Web Audio ──────────────────────────────────────────────────────────────
+let ctx, masterGain, oscNodes = [];
+
+function startAudio() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ctx.createGain();
+  masterGain.gain.value = state.volume;
+  masterGain.connect(ctx.destination);
+}
+
+function startDrone() {
+  if (!ctx) startAudio();
+  if (ctx.state === 'suspended') ctx.resume();
+  stopDrone();
+
+  const freq = rootFreq();
+
+  function makeOsc(f, gainVal) {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = f;
+    gain.gain.value = gainVal;
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start();
+    return { osc, gain };
+  }
+
+  // Fundamental
+  oscNodes.push(makeOsc(freq, 1.0));
+
+  // Detuned copy for beating
+  if (state.beatCents > 0) {
+    // convert cents to Hz offset: f * (2^(cents/1200) - 1)
+    const detuned = freq * Math.pow(2, state.beatCents / 1200);
+    oscNodes.push(makeOsc(detuned, 0.7));
+  }
+
+  // Active partials (scaled volume: 1/partial)
+  for (const p of state.partials) {
+    oscNodes.push(makeOsc(freq * p, 0.5 / p));
+  }
+}
+
+function stopDrone() {
+  oscNodes.forEach(({ osc }) => { try { osc.stop(); } catch(e) {} });
+  oscNodes = [];
+}
+
+function restartIfPlaying() {
+  if (state.playing) {
+    stopDrone();
+    startDrone();
+    updateDisplay();
+  }
+}
+
+// ── Beat canvas ────────────────────────────────────────────────────────────
+const canvas = document.getElementById('beat-canvas');
+const canvasCtx = canvas.getContext('2d');
+let animFrame = null;
+let phase = 0;
+
+function drawBeat(ts) {
+  animFrame = requestAnimationFrame(drawBeat);
+  const W = canvas.width, H = canvas.height;
+  canvasCtx.clearRect(0, 0, W, H);
+
+  if (!state.playing) return;
+
+  const freq = rootFreq();
+  const beatHz = state.beatCents > 0
+    ? Math.abs(freq * Math.pow(2, state.beatCents / 1200) - freq)
+    : 0;
+
+  const now = ts / 1000;
+  const midY = H / 2;
+  canvasCtx.strokeStyle = 'rgba(212,204,196,0.5)';
+  canvasCtx.lineWidth = 1.5;
+  canvasCtx.beginPath();
+
+  for (let x = 0; x < W; x++) {
+    const t = (x / W) * 0.5; // 0.5 second window
+    let y;
+    if (beatHz > 0) {
+      // sum of two close sine waves at display rate
+      const a1 = Math.sin(2 * Math.PI * 3 * t + now * beatHz * 2 * Math.PI);
+      const a2 = Math.sin(2 * Math.PI * 3 * t + now * beatHz * 2 * Math.PI + state.beatCents / 50);
+      y = midY - (a1 + 0.7 * a2) * midY * 0.38;
+    } else {
+      y = midY - Math.sin(2 * Math.PI * 3 * t + now * 2) * midY * 0.3;
+    }
+    x === 0 ? canvasCtx.moveTo(x, y) : canvasCtx.lineTo(x, y);
+  }
+  canvasCtx.stroke();
+}
+animFrame = requestAnimationFrame(drawBeat);
+
+// ── UI ─────────────────────────────────────────────────────────────────────
+const noteNameEl  = document.getElementById('note-name');
+const freqHzEl    = document.getElementById('freq-hz');
+const pitchWheel  = document.getElementById('pitch-wheel');
+const octaveSlider = document.getElementById('octave-slider');
+const octaveVal    = document.getElementById('octave-val');
+const beatSlider   = document.getElementById('beat-slider');
+const beatVal      = document.getElementById('beat-val');
+const volSlider    = document.getElementById('vol-slider');
+const volVal       = document.getElementById('vol-val');
+const partialRow   = document.getElementById('partial-row');
+const toggleBtn    = document.getElementById('toggle-btn');
+
+function updateDisplay() {
+  const f  = rootFreq();
+  const nl = noteLabel();
+  noteNameEl.textContent = NOTES[state.noteIdx].name;
+  freqHzEl.textContent   = f.toFixed(2) + ' Hz · ' + nl;
+
+  // pitch buttons
+  pitchWheel.querySelectorAll('.note-btn').forEach((b, i) => {
+    b.classList.toggle('selected', i === state.noteIdx);
+  });
+
+  // beat label
+  if (state.beatCents === 0) {
+    beatVal.textContent = 'off';
+  } else {
+    const beatHz = Math.abs(f * Math.pow(2, state.beatCents / 1200) - f);
+    beatVal.textContent = beatHz.toFixed(2) + ' Hz';
+  }
+}
+
+// Build pitch buttons
+NOTES.forEach((n, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'note-btn' + (i === state.noteIdx ? ' selected' : '');
+  btn.textContent = n.name;
+  btn.title = n.name + ' (' + n.ratio.toFixed(4) + ')';
+  btn.addEventListener('click', () => {
+    state.noteIdx = i;
+    restartIfPlaying();
+    updateDisplay();
+  });
+  pitchWheel.appendChild(btn);
+});
+
+// Build partial toggles
+PARTIALS.forEach((p, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'partial-btn';
+  btn.textContent = PARTIAL_LABELS[i];
+  btn.title = 'partial ' + p + ' (' + PARTIAL_NAMES[i] + ')';
+  btn.addEventListener('click', () => {
+    if (state.partials.has(p)) state.partials.delete(p);
+    else state.partials.add(p);
+    btn.classList.toggle('on', state.partials.has(p));
+    restartIfPlaying();
+  });
+  partialRow.appendChild(btn);
+});
+
+// Octave
+octaveSlider.addEventListener('input', () => {
+  state.octave = parseInt(octaveSlider.value, 10);
+  octaveVal.textContent = state.octave;
+  restartIfPlaying();
+  updateDisplay();
+});
+
+// Beating
+beatSlider.addEventListener('input', () => {
+  state.beatCents = parseFloat(beatSlider.value);
+  restartIfPlaying();
+  updateDisplay();
+});
+
+// Volume
+volSlider.addEventListener('input', () => {
+  state.volume = parseFloat(volSlider.value);
+  volVal.textContent = Math.round(state.volume * 100) + '%';
+  if (masterGain) masterGain.gain.setTargetAtTime(state.volume, ctx.currentTime, 0.05);
+});
+
+// Toggle
+toggleBtn.addEventListener('click', () => {
+  state.playing = !state.playing;
+  if (state.playing) {
+    startDrone();
+    toggleBtn.textContent = 'silence';
+    toggleBtn.classList.add('playing');
+    noteNameEl.classList.add('playing');
+    canvas.classList.add('active');
+  } else {
+    stopDrone();
+    toggleBtn.textContent = 'sound';
+    toggleBtn.classList.remove('playing');
+    noteNameEl.classList.remove('playing');
+    canvas.classList.remove('active');
+  }
+});
+
+// Keyboard shortcuts: note names, octave ±, space = toggle
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const noteKeys = { a:0, d:1, e:2, f:3, g:4, b:5, b:6 };
+  // Note: use letter keys mapped to CDEFGAB
+  const map = { c:0, d:1, e:2, f:3, g:4, a:5, b:6 };
+  const k = e.key.toLowerCase();
+  if (map[k] !== undefined) {
+    state.noteIdx = map[k];
+    restartIfPlaying(); updateDisplay();
+  } else if (e.key === 'ArrowUp') {
+    state.octave = Math.min(5, state.octave + 1);
+    octaveSlider.value = state.octave; octaveVal.textContent = state.octave;
+    restartIfPlaying(); updateDisplay();
+  } else if (e.key === 'ArrowDown') {
+    state.octave = Math.max(1, state.octave - 1);
+    octaveSlider.value = state.octave; octaveVal.textContent = state.octave;
+    restartIfPlaying(); updateDisplay();
+  } else if (e.key === ' ') {
+    e.preventDefault();
+    toggleBtn.click();
+  }
+});
+
+updateDisplay();
+</script>
+</body>
+</html>
