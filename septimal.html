@@ -431,7 +431,7 @@ function buildSVG() {
       nd._col = col;
 
       const g = svgEl('g', {
-        cursor: nd.isRoot ? 'default' : 'pointer',
+        cursor: 'pointer',
         role: 'button',
         'aria-label': `${nd.key}, ${nd.name}, ${nd.cents.toFixed(1)} cents`,
       });
@@ -477,12 +477,10 @@ function buildSVG() {
         g.appendChild(dt);
       }
 
-      if (!nd.isRoot) {
-        g.addEventListener('click',      () => toggleNode(nd));
-        g.addEventListener('mouseenter', () => showInfo(nd));
-        g.addEventListener('mouseleave', clearInfo);
-        g.addEventListener('touchstart', e => { e.preventDefault(); toggleNode(nd); }, { passive: false });
-      }
+      g.addEventListener('click',      () => toggleNode(nd));
+      g.addEventListener('mouseenter', () => showInfo(nd));
+      g.addEventListener('mouseleave', clearInfo);
+      g.addEventListener('touchstart', e => { e.preventDefault(); toggleNode(nd); }, { passive: false });
 
       layerG.appendChild(g);
     }
