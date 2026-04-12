@@ -295,17 +295,23 @@ const NAMES = {
 //   c (7/4s): direction (0.5, +√3/2)        → down-right
 
 const STEP   = 90;
-const NODE_R = 26;
+const NODE_R = 22;
 const SQ3_2  = Math.sqrt(3) / 2;   // 0.8660…
 
-const SVG_W  = 780;
+// Oblique-projection depth offset for the c (septimal) axis.
+// P5 → right (0°), M3 → upper-right (60°), sept → lower-right (cabinet oblique ~34°).
+// COFF=(45,30): min node separation ≈48px; 2·NODE_R=44 → no circle overlap.
+const COFF_X = 45;
+const COFF_Y = 30;
+
+const SVG_W  = 800;
 const SVG_H  = 460;
-const CX     = SVG_W / 2;          // 390
-const CY     = SVG_H / 2;          // 230
+const CX     = SVG_W / 2;   // 400
+const CY     = SVG_H / 2;   // 230
 
 function nodeXY(a, b, c) {
-  const x = CX + a * STEP + (b + c) * STEP * 0.5;
-  const y = CY + (c - b) * STEP * SQ3_2;
+  const x = CX + a * STEP + b * STEP * 0.5  + c * COFF_X;
+  const y = CY - b * STEP * SQ3_2            + c * COFF_Y;
   return [x, y];
 }
 
@@ -376,43 +382,115 @@ function buildSVG() {
 
   const lineBase = { 'stroke-linecap': 'round', 'stroke-width': '1.5', 'pointer-events': 'none' };
 
-  // ── a-edges: perfect fifths (horizontal) ─────────────
-  for (const b of B_VALS) {
-    for (const c of C_VALS) {
-      for (let i = 0; i < A_VALS.length - 1; i++) {
-        const [x1, y1] = nodeXY(A_VALS[i],     b, c);
-        const [x2, y2] = nodeXY(A_VALS[i + 1], b, c);
-        svg.appendChild(svgEl('line', { x1, y1, x2, y2,
-          stroke: 'rgba(110,165,200,0.20)', ...lineBase }));
-      }
-    }
-  }
-
-  // ── b-edges: major thirds (up-right) ─────────────────
-  for (const a of A_VALS) {
-    for (const c of C_VALS) {
-      for (let i = 0; i < B_VALS.length - 1; i++) {
-        const [x1, y1] = nodeXY(a, B_VALS[i],     c);
-        const [x2, y2] = nodeXY(a, B_VALS[i + 1], c);
-        svg.appendChild(svgEl('line', { x1, y1, x2, y2,
-          stroke: 'rgba(100,185,135,0.20)', ...lineBase }));
-      }
-    }
-  }
-
-  // ── c-edges: septimal sevenths (down-right) ───────────
+  // ── c-edges: septimal depth connectors (drawn first, behind all nodes) ───
   for (const a of A_VALS) {
     for (const b of B_VALS) {
       for (let i = 0; i < C_VALS.length - 1; i++) {
         const [x1, y1] = nodeXY(a, b, C_VALS[i]);
         const [x2, y2] = nodeXY(a, b, C_VALS[i + 1]);
         svg.appendChild(svgEl('line', { x1, y1, x2, y2,
-          stroke: 'rgba(205,165,70,0.20)', ...lineBase }));
+          stroke: 'rgba(205,165,70,0.18)',
+          'stroke-dasharray': '4 3',
+          ...lineBase }));
       }
     }
   }
 
-  // ── Axis direction labels (near 1/1) ──────────────────
+  // ── c-layers rendered back-to-front for natural depth ────────────────────
+  // c=-1 dimmed (behind), c=0 full (main plane), c=+1 slightly muted (in front)
+  const LAYERS = [[-1, 0.60], [0, 1.0], [1, 0.85]];
+
+  for (const [layerC, opacity] of LAYERS) {
+    const layerG = svgEl('g', { opacity });
+
+    // ── a-edges: perfect fifths in this layer ──────────
+    for (const b of B_VALS) {
+      for (let i = 0; i < A_VALS.length - 1; i++) {
+        const [x1, y1] = nodeXY(A_VALS[i],     b, layerC);
+        const [x2, y2] = nodeXY(A_VALS[i + 1], b, layerC);
+        layerG.appendChild(svgEl('line', { x1, y1, x2, y2,
+          stroke: 'rgba(110,165,200,0.22)', ...lineBase }));
+      }
+    }
+
+    // ── b-edges: major thirds in this layer ────────────
+    for (const a of A_VALS) {
+      for (let i = 0; i < B_VALS.length - 1; i++) {
+        const [x1, y1] = nodeXY(a, B_VALS[i],     layerC);
+        const [x2, y2] = nodeXY(a, B_VALS[i + 1], layerC);
+        layerG.appendChild(svgEl('line', { x1, y1, x2, y2,
+          stroke: 'rgba(100,185,135,0.22)', ...lineBase }));
+      }
+    }
+
+    // ── Nodes in this layer ────────────────────────────
+    for (const nd of nodes) {
+      if (nd.c !== layerC) continue;
+      const [cx, cy] = nodeXY(nd.a, nd.b, nd.c);
+      const col = nodeColors(nd);
+      nd._col = col;
+
+      const g = svgEl('g', {
+        cursor: nd.isRoot ? 'default' : 'pointer',
+        role: 'button',
+        'aria-label': `${nd.key}, ${nd.name}, ${nd.cents.toFixed(1)} cents`,
+      });
+
+      // Wide invisible hit target for easier touch
+      g.appendChild(svgEl('circle', {
+        cx, cy, r: NODE_R + 6, fill: 'transparent', stroke: 'none',
+      }));
+
+      // Visible circle
+      const circle = svgEl('circle', {
+        cx, cy, r: NODE_R,
+        fill:   col.bg,
+        stroke: col.br,
+        'stroke-width': nd.isRoot ? '2' : '1',
+      });
+      nd.circleEl = circle;
+      g.appendChild(circle);
+
+      // Ratio text — adaptive font size for long ratios
+      const fs = nd.key.length >= 7 ? 8.5 : nd.key.length >= 5 ? 10 : 12;
+      const yOffset = (!nd.isRoot && nd.dev !== 0) ? -3 : 1;
+      const rt = svgEl('text', {
+        x: cx, y: cy + yOffset,
+        'text-anchor': 'middle', 'dominant-baseline': 'middle',
+        'font-family': 'Georgia, serif', 'font-size': fs, 'font-style': 'italic',
+        fill: nd.isRoot ? 'rgba(216,208,200,0.95)' : 'rgba(216,208,200,0.65)',
+        'pointer-events': 'none',
+      });
+      rt.textContent = nd.key;
+      nd.ratioEl = rt;
+      g.appendChild(rt);
+
+      // Cents deviation (skip for 1/1 and exact 12-TET coincidences)
+      if (!nd.isRoot && nd.dev !== 0) {
+        const dt = svgEl('text', {
+          x: cx, y: cy + 12,
+          'text-anchor': 'middle', 'dominant-baseline': 'middle',
+          'font-family': 'Georgia, serif', 'font-size': '7.5', 'font-style': 'italic',
+          fill: devColor(nd.dev), 'pointer-events': 'none',
+        });
+        dt.textContent = fmtDev(nd.dev);
+        g.appendChild(dt);
+      }
+
+      if (!nd.isRoot) {
+        g.addEventListener('click',      () => toggleNode(nd));
+        g.addEventListener('mouseenter', () => showInfo(nd));
+        g.addEventListener('mouseleave', clearInfo);
+        g.addEventListener('touchstart', e => { e.preventDefault(); toggleNode(nd); }, { passive: false });
+      }
+
+      layerG.appendChild(g);
+    }
+
+    svg.appendChild(layerG);
+  }
+
+  // ── Axis direction labels (drawn on top of everything) ────────────────────
   const [ox, oy] = nodeXY(0, 0, 0);
   const capStyle = {
     'font-family': 'Georgia, serif', 'font-size': '9', 'font-style': 'italic',
@@ -425,76 +503,13 @@ function buildSVG() {
 
   svg.appendChild(makeLabel(
     ox + 1.8 * STEP, oy + 14, 'middle',
-    'rgba(110,165,200,0.28)', '← P4  ·  P5 →'));
+    'rgba(110,165,200,0.30)', '← P4  ·  P5 →'));
   svg.appendChild(makeLabel(
     ox + 0.65 * STEP, oy - 1.4 * STEP * SQ3_2 - 6, 'middle',
-    'rgba(100,185,135,0.28)', '↗  M3  (×5)'));
+    'rgba(100,185,135,0.30)', '↗  M3  (×5)'));
   svg.appendChild(makeLabel(
-    ox + 0.65 * STEP, oy + 1.4 * STEP * SQ3_2 + 16, 'middle',
-    'rgba(205,165,70,0.28)', '↘  7/4  (×7)'));
-
-  // ── Nodes ─────────────────────────────────────────────
-  for (const nd of nodes) {
-    const [cx, cy] = nodeXY(nd.a, nd.b, nd.c);
-    const col = nodeColors(nd);
-    nd._col = col;
-
-    const g = svgEl('g', {
-      cursor: nd.isRoot ? 'default' : 'pointer',
-      role: 'button',
-      'aria-label': `${nd.key}, ${nd.name}, ${nd.cents.toFixed(1)} cents`,
-    });
-
-    // Wide invisible hit target for easier touch
-    g.appendChild(svgEl('circle', {
-      cx, cy, r: NODE_R + 8, fill: 'transparent', stroke: 'none',
-    }));
-
-    // Visible circle
-    const circle = svgEl('circle', {
-      cx, cy, r: NODE_R,
-      fill:   col.bg,
-      stroke: col.br,
-      'stroke-width': nd.isRoot ? '2' : '1',
-    });
-    nd.circleEl = circle;
-    g.appendChild(circle);
-
-    // Ratio text — adaptive font size for long ratios
-    const fs = nd.key.length >= 7 ? 8.5 : nd.key.length >= 5 ? 10 : 12;
-    const yOffset = (!nd.isRoot && nd.dev !== 0) ? -3 : 1;
-    const rt = svgEl('text', {
-      x: cx, y: cy + yOffset,
-      'text-anchor': 'middle', 'dominant-baseline': 'middle',
-      'font-family': 'Georgia, serif', 'font-size': fs, 'font-style': 'italic',
-      fill: nd.isRoot ? 'rgba(216,208,200,0.95)' : 'rgba(216,208,200,0.65)',
-      'pointer-events': 'none',
-    });
-    rt.textContent = nd.key;
-    nd.ratioEl = rt;
-    g.appendChild(rt);
-
-    // Cents deviation (skip for 1/1 and exact 12-TET coincidences)
-    if (!nd.isRoot && nd.dev !== 0) {
-      const dt = svgEl('text', {
-        x: cx, y: cy + 12,
-        'text-anchor': 'middle', 'dominant-baseline': 'middle',
-        'font-family': 'Georgia, serif', 'font-size': '7.5', 'font-style': 'italic',
-        fill: devColor(nd.dev), 'pointer-events': 'none',
-      });
-      dt.textContent = fmtDev(nd.dev);
-      g.appendChild(dt);
-    }
-
-    if (!nd.isRoot) {
-      g.addEventListener('click',      () => toggleNode(nd));
-      g.addEventListener('mouseenter', () => showInfo(nd));
-      g.addEventListener('mouseleave', clearInfo);
-      g.addEventListener('touchstart', e => { e.preventDefault(); toggleNode(nd); }, { passive: false });
-    }
-
-    svg.appendChild(g);
-  }
+    ox + COFF_X * 2.2 + 8, oy + COFF_Y * 2.2 + 12, 'start',
+    'rgba(205,165,70,0.30)', '↘  7/4  (×7)'));
 }
 
 // ═══════════════════════════════════════════════════════
