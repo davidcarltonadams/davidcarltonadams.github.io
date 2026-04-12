@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>septimal lattice — david carlton adams</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #080808;
+      --bg2:    #111;
+      --text:   #d8d0c8;
+      --dim:    rgba(216,208,200,0.4);
+      --dimmer: rgba(216,208,200,0.18);
+      --accent: #8ab0c8;
+      --acc-bg: rgba(138,176,200,0.18);
+      --border: rgba(255,255,255,0.07);
+    }
+
+    body {
+      background: var(--bg); color: var(--text); font-family: Georgia, serif;
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; padding: 2.5rem 1rem 3.5rem; gap: 1.2rem;
+    }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      font-weight: normal; letter-spacing: 0.2em; text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.6rem; letter-spacing: 0.12em;
+      color: var(--dimmer); font-style: italic; margin-top: 0.3rem;
+    }
+
+    /* ── Controls ─────────────────────────────────────── */
+    .controls {
+      display: flex; flex-wrap: wrap;
+      gap: 0.8rem 1.5rem; align-items: center; justify-content: center;
+    }
+    .ctrl-group { display: flex; align-items: center; gap: 0.4rem; }
+    .ctrl-label { font-size: 0.58rem; letter-spacing: 0.13em; font-style: italic; color: var(--dim); }
+    .btn-row { display: flex; gap: 0.22rem; }
+    .tog {
+      background: none; border: 1px solid var(--border); border-radius: 2px;
+      color: var(--dim); font-family: Georgia, serif; font-size: 0.63rem;
+      letter-spacing: 0.07em; padding: 0.28rem 0.6rem; cursor: pointer;
+      transition: color 0.1s, border-color 0.1s, background 0.1s;
+    }
+    .tog:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .tog.on { color: var(--accent); border-color: var(--accent); background: var(--acc-bg); }
+    .fund-input {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 2px;
+      color: var(--text); font-family: Georgia, serif; font-size: 0.88rem;
+      text-align: center; width: 5rem; padding: 0.22rem 0.4rem; -moz-appearance: textfield;
+    }
+    .fund-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .fund-input:focus { outline: none; border-color: var(--accent); }
+    .oct-btn {
+      background: none; border: 1px solid var(--border); border-radius: 2px;
+      color: var(--dim); font-family: Georgia, serif; font-size: 0.6rem;
+      padding: 0.22rem 0.48rem; cursor: pointer;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .oct-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .tone-slider {
+      -webkit-appearance: none; appearance: none; width: 88px;
+      height: 2px; background: rgba(255,255,255,0.12); border-radius: 1px;
+      outline: none; cursor: pointer;
+    }
+    .tone-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 11px; height: 11px;
+      border-radius: 50%; background: var(--accent); cursor: pointer;
+    }
+    .tone-slider::-moz-range-thumb {
+      width: 11px; height: 11px; border-radius: 50%;
+      background: var(--accent); border: none; cursor: pointer;
+    }
+    .tone-endpoint {
+      font-size: 0.5rem; letter-spacing: 0.08em;
+      color: rgba(216,208,200,0.22); font-style: italic;
+    }
+
+    /* ── SVG wrapper ──────────────────────────────────── */
+    .lattice-wrap {
+      width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      display: flex; justify-content: center;
+    }
+
+    /* ── Chord / info ─────────────────────────────────── */
+    .chord-display {
+      min-height: 1.5rem; font-size: 0.7rem; letter-spacing: 0.12em;
+      color: var(--dim); font-style: italic; text-align: center;
+    }
+    .info-display {
+      min-height: 1.3rem; font-size: 0.58rem; letter-spacing: 0.1em;
+      color: var(--dimmer); font-style: italic; text-align: center;
+    }
+
+    /* ── Legend ───────────────────────────────────────── */
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 0.7rem 1.6rem;
+      align-items: center; justify-content: center;
+      font-size: 0.52rem; letter-spacing: 0.1em;
+      color: var(--dimmer); font-style: italic;
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.45rem; }
+
+    /* ── Scope ────────────────────────────────────────── */
+    .scope-wrap { width: 100%; max-width: 780px; }
+    canvas { display: block; width: 100%; border: 1px solid var(--border); border-radius: 2px; }
+
+    /* ── Hint ─────────────────────────────────────────── */
+    .hint {
+      font-size: 0.54rem; letter-spacing: 0.12em;
+      color: var(--dimmer); font-style: italic; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1 class="title">septimal lattice</h1>
+  <p class="sub">
+    7-limit pitch space &nbsp;&middot;&nbsp;
+    → perfect fifths &nbsp;&middot;&nbsp;
+    ↗ major thirds &nbsp;&middot;&nbsp;
+    ↘ septimal sevenths &nbsp;&middot;&nbsp;
+    click to play
+  </p>
+</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">root</span>
+    <button class="oct-btn" id="oct-dn">&minus;8va</button>
+    <input type="number" id="fund-input" class="fund-input" value="220" min="10" max="4000" step="0.01">
+    <span class="ctrl-label">Hz</span>
+    <button class="oct-btn" id="oct-up">+8va</button>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">wave</span>
+    <div class="btn-row" id="wave-btns">
+      <button class="tog on" data-w="sine">sine</button>
+      <button class="tog"    data-w="sawtooth">saw</button>
+      <button class="tog"    data-w="triangle">tri</button>
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">tone</span>
+    <span class="tone-endpoint">dark</span>
+    <input type="range" id="lpf-knob" class="tone-slider" min="0" max="100" value="82">
+    <span class="tone-endpoint">bright</span>
+  </div>
+  <div class="ctrl-group">
+    <button class="tog" id="clear-btn">clear</button>
+  </div>
+</div>
+
+<div class="lattice-wrap">
+  <svg id="lattice" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<div class="chord-display" id="chord-display">—</div>
+<div class="info-display"  id="info-display"></div>
+
+<div class="legend">
+  <span class="legend-item">
+    <svg width="26" height="6">
+      <line x1="0" y1="3" x2="26" y2="3" stroke="rgba(110,165,200,0.5)" stroke-width="1.5"/>
+    </svg>
+    perfect fifths (×3)
+  </span>
+  <span class="legend-item">
+    <svg width="26" height="14">
+      <line x1="0" y1="14" x2="26" y2="0" stroke="rgba(100,185,135,0.5)" stroke-width="1.5"/>
+    </svg>
+    major thirds (×5)
+  </span>
+  <span class="legend-item">
+    <svg width="26" height="14">
+      <line x1="0" y1="0" x2="26" y2="14" stroke="rgba(205,165,70,0.5)" stroke-width="1.5"/>
+    </svg>
+    septimal (×7/4)
+  </span>
+  <span class="legend-item">
+    <svg width="10" height="10">
+      <circle cx="5" cy="5" r="4" fill="rgba(205,165,70,0.18)" stroke="rgba(205,165,70,0.55)" stroke-width="1"/>
+    </svg>
+    7-limit territory
+  </span>
+</div>
+
+<div class="scope-wrap">
+  <canvas id="scope" height="60" aria-hidden="true"></canvas>
+</div>
+
+<p class="hint">
+  click to toggle &nbsp;&middot;&nbsp;
+  esc clears &nbsp;&middot;&nbsp;
+  hover for interval name &amp; cents
+</p>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// Math
+// ═══════════════════════════════════════════════════════
+
+function gcd(a, b) {
+  a = Math.abs(a); b = Math.abs(b);
+  while (b) { [a, b] = [b, a % b]; }
+  return a || 1;
+}
+
+function lattice7Ratio(a, b, c) {
+  let num = 1, den = 1;
+  if (a > 0) num *= Math.pow(3, a); else if (a < 0) den *= Math.pow(3, -a);
+  if (b > 0) num *= Math.pow(5, b); else if (b < 0) den *= Math.pow(5, -b);
+  if (c > 0) num *= Math.pow(7, c); else if (c < 0) den *= Math.pow(7, -c);
+  while (num / den >= 2) den *= 2;
+  while (num / den <  1) num *= 2;
+  const g = gcd(num, den);
+  return [num / g, den / g];
+}
+
+function ratioToCents(num, den) { return 1200 * Math.log2(num / den); }
+
+function deviationFromET(cents) {
+  const s = cents / 100;
+  return Math.round((s - Math.round(s)) * 100);
+}
+
+function fmtDev(d) {
+  return d === 0 ? '0¢' : (d > 0 ? '+' : '') + d + '¢';
+}
+
+function devColor(d) {
+  const a = Math.abs(d);
+  if (a === 0)  return 'rgba(138,210,160,0.85)';
+  if (a <= 7)   return 'rgba(155,210,165,0.80)';
+  if (a <= 18)  return 'rgba(205,195,110,0.80)';
+  if (a <= 35)  return 'rgba(210,160, 78,0.80)';
+  return              'rgba(205, 90, 78,0.80)';
+}
+
+// ── Interval names ──────────────────────────────────────
+const NAMES = {
+  '1/1':   'unison',
+  '3/2':   'P5',                  '4/3':   'P4',
+  '9/8':   'M2 (Pythagorean)',    '16/9':  'm7 (Pythagorean)',
+  '27/16': 'M6 (Pythagorean)',    '32/27': 'm3 (Pythagorean)',
+  '81/64': 'M3 (Pythagorean)',    '128/81':'m6 (Pythagorean)',
+  '5/4':   'M3 (just)',           '8/5':   'm6 (just)',
+  '6/5':   'm3 (just)',           '5/3':   'M6 (just)',
+  '15/8':  'M7 (just)',           '16/15': 'm2 (just)',
+  '10/9':  'minor whole tone',    '9/5':   'm7 (just)',
+  '45/32': 'aug. fourth',         '64/45': 'dim. fifth',
+  '25/16': 'aug. fifth',          '32/25': 'dim. fourth',
+  // 7-limit
+  '7/4':   'natural m7 — "blue seventh"',
+  '8/7':   'septimal M2',
+  '7/6':   'septimal m3',
+  '12/7':  'septimal M6',
+  '7/5':   'septimal tritone',
+  '10/7':  'septimal tritone (alt.)',
+  '9/7':   'septimal M3',
+  '14/9':  'septimal m6',
+  '21/16': 'septimal P4',
+  '32/21': 'septimal P5 (alt.)',
+  '35/32': 'septimal chromatic semitone',
+  '63/32': 'septimal M7',
+  '15/14': 'septimal diatonic semitone',
+  '21/20': 'septimal chromatic semitone (alt.)',
+  '35/24': 'septimal M6 (wide)',
+  '63/40': 'septimal aug. fifth',
+  '35/18': 'septimal m7 (wide)',
+  '45/28': 'septimal aug. fourth (wide)',
+  '28/15': 'septimal M7 (wide)',
+  '105/64':'septimal aug. sixth',
+  '63/64': 'septimal comma region',
+  '56/45': '—',
+  '28/27': 'septimal comma',
+  '7/3':   '—',
+  '21/11': '—',
+};
+
+// ═══════════════════════════════════════════════════════
+// Layout
+// ═══════════════════════════════════════════════════════
+
+// Three-axis isometric projection:
+//   a (P5s):  direction (1, 0)              → right
+//   b (M3s):  direction (0.5, −√3/2)        → up-right
+//   c (7/4s): direction (0.5, +√3/2)        → down-right
+
+const STEP   = 90;
+const NODE_R = 26;
+const SQ3_2  = Math.sqrt(3) / 2;   // 0.8660…
+
+const SVG_W  = 780;
+const SVG_H  = 460;
+const CX     = SVG_W / 2;          // 390
+const CY     = SVG_H / 2;          // 230
+
+function nodeXY(a, b, c) {
+  const x = CX + a * STEP + (b + c) * STEP * 0.5;
+  const y = CY + (c - b) * STEP * SQ3_2;
+  return [x, y];
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+// ═══════════════════════════════════════════════════════
+// Node data
+// ═══════════════════════════════════════════════════════
+
+const A_VALS = [-2, -1, 0, 1, 2];
+const B_VALS = [-1,  0, 1];
+const C_VALS = [-1,  0, 1];
+
+const nodes   = [];
+const nodeMap = {};
+
+for (const c of C_VALS) {
+  for (const b of B_VALS) {
+    for (const a of A_VALS) {
+      const [num, den] = lattice7Ratio(a, b, c);
+      const cents = ratioToCents(num, den);
+      const dev   = deviationFromET(cents);
+      const key   = `${num}/${den}`;
+      const name  = NAMES[key] || key;
+      const isRoot = (a === 0 && b === 0 && c === 0);
+      const nd = { a, b, c, num, den, key, cents, dev, name, isRoot,
+                   active: false, circleEl: null, ratioEl: null, _col: null };
+      nodes.push(nd);
+      nodeMap[`${a},${b},${c}`] = nd;
+    }
+  }
+}
+
+function nodeColors(nd) {
+  if (nd.isRoot) return {
+    bg: 'rgba(138,176,200,0.12)', br: 'rgba(138,176,200,0.55)',
+    act: 'rgba(138,176,200,0.30)', abr: 'rgba(138,176,200,0.92)',
+  };
+  if (nd.c !== 0) return {          // 7-limit
+    bg: 'rgba(205,165,70,0.06)',  br: 'rgba(205,165,70,0.28)',
+    act: 'rgba(205,165,70,0.26)', abr: 'rgba(205,165,70,0.90)',
+  };
+  if (nd.b !== 0) return {          // 5-limit
+    bg: 'rgba(100,185,135,0.06)', br: 'rgba(100,185,135,0.26)',
+    act: 'rgba(100,185,135,0.26)', abr: 'rgba(100,185,135,0.90)',
+  };
+  return {                          // 3-limit (Pythagorean)
+    bg: 'rgba(110,165,200,0.06)', br: 'rgba(110,165,200,0.26)',
+    act: 'rgba(110,165,200,0.26)', abr: 'rgba(110,165,200,0.90)',
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// Build SVG
+// ═══════════════════════════════════════════════════════
+
+function buildSVG() {
+  const svg = document.getElementById('lattice');
+  svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
+  svg.setAttribute('width',  SVG_W);
+  svg.setAttribute('height', SVG_H);
+  svg.style.cssText = 'display:block;max-width:100%;height:auto;';
+  svg.innerHTML = '';
+
+  const lineBase = { 'stroke-linecap': 'round', 'stroke-width': '1.5', 'pointer-events': 'none' };
+
+  // ── a-edges: perfect fifths (horizontal) ─────────────
+  for (const b of B_VALS) {
+    for (const c of C_VALS) {
+      for (let i = 0; i < A_VALS.length - 1; i++) {
+        const [x1, y1] = nodeXY(A_VALS[i],     b, c);
+        const [x2, y2] = nodeXY(A_VALS[i + 1], b, c);
+        svg.appendChild(svgEl('line', { x1, y1, x2, y2,
+          stroke: 'rgba(110,165,200,0.20)', ...lineBase }));
+      }
+    }
+  }
+
+  // ── b-edges: major thirds (up-right) ─────────────────
+  for (const a of A_VALS) {
+    for (const c of C_VALS) {
+      for (let i = 0; i < B_VALS.length - 1; i++) {
+        const [x1, y1] = nodeXY(a, B_VALS[i],     c);
+        const [x2, y2] = nodeXY(a, B_VALS[i + 1], c);
+        svg.appendChild(svgEl('line', { x1, y1, x2, y2,
+          stroke: 'rgba(100,185,135,0.20)', ...lineBase }));
+      }
+    }
+  }
+
+  // ── c-edges: septimal sevenths (down-right) ───────────
+  for (const a of A_VALS) {
+    for (const b of B_VALS) {
+      for (let i = 0; i < C_VALS.length - 1; i++) {
+        const [x1, y1] = nodeXY(a, b, C_VALS[i]);
+        const [x2, y2] = nodeXY(a, b, C_VALS[i + 1]);
+        svg.appendChild(svgEl('line', { x1, y1, x2, y2,
+          stroke: 'rgba(205,165,70,0.20)', ...lineBase }));
+      }
+    }
+  }
+
+  // ── Axis direction labels (near 1/1) ──────────────────
+  const [ox, oy] = nodeXY(0, 0, 0);
+  const capStyle = {
+    'font-family': 'Georgia, serif', 'font-size': '9', 'font-style': 'italic',
+    'pointer-events': 'none', 'letter-spacing': '0.5',
+  };
+  const makeLabel = (x, y, anchor, fill, text) => {
+    const t = svgEl('text', { ...capStyle, x, y, 'text-anchor': anchor, fill });
+    t.textContent = text; return t;
+  };
+
+  svg.appendChild(makeLabel(
+    ox + 1.8 * STEP, oy + 14, 'middle',
+    'rgba(110,165,200,0.28)', '← P4  ·  P5 →'));
+  svg.appendChild(makeLabel(
+    ox + 0.65 * STEP, oy - 1.4 * STEP * SQ3_2 - 6, 'middle',
+    'rgba(100,185,135,0.28)', '↗  M3  (×5)'));
+  svg.appendChild(makeLabel(
+    ox + 0.65 * STEP, oy + 1.4 * STEP * SQ3_2 + 16, 'middle',
+    'rgba(205,165,70,0.28)', '↘  7/4  (×7)'));
+
+  // ── Nodes ─────────────────────────────────────────────
+  for (const nd of nodes) {
+    const [cx, cy] = nodeXY(nd.a, nd.b, nd.c);
+    const col = nodeColors(nd);
+    nd._col = col;
+
+    const g = svgEl('g', {
+      cursor: nd.isRoot ? 'default' : 'pointer',
+      role: 'button',
+      'aria-label': `${nd.key}, ${nd.name}, ${nd.cents.toFixed(1)} cents`,
+    });
+
+    // Wide invisible hit target for easier touch
+    g.appendChild(svgEl('circle', {
+      cx, cy, r: NODE_R + 8, fill: 'transparent', stroke: 'none',
+    }));
+
+    // Visible circle
+    const circle = svgEl('circle', {
+      cx, cy, r: NODE_R,
+      fill:   col.bg,
+      stroke: col.br,
+      'stroke-width': nd.isRoot ? '2' : '1',
+    });
+    nd.circleEl = circle;
+    g.appendChild(circle);
+
+    // Ratio text — adaptive font size for long ratios
+    const fs = nd.key.length >= 7 ? 8.5 : nd.key.length >= 5 ? 10 : 12;
+    const yOffset = (!nd.isRoot && nd.dev !== 0) ? -3 : 1;
+    const rt = svgEl('text', {
+      x: cx, y: cy + yOffset,
+      'text-anchor': 'middle', 'dominant-baseline': 'middle',
+      'font-family': 'Georgia, serif', 'font-size': fs, 'font-style': 'italic',
+      fill: nd.isRoot ? 'rgba(216,208,200,0.95)' : 'rgba(216,208,200,0.65)',
+      'pointer-events': 'none',
+    });
+    rt.textContent = nd.key;
+    nd.ratioEl = rt;
+    g.appendChild(rt);
+
+    // Cents deviation (skip for 1/1 and exact 12-TET coincidences)
+    if (!nd.isRoot && nd.dev !== 0) {
+      const dt = svgEl('text', {
+        x: cx, y: cy + 12,
+        'text-anchor': 'middle', 'dominant-baseline': 'middle',
+        'font-family': 'Georgia, serif', 'font-size': '7.5', 'font-style': 'italic',
+        fill: devColor(nd.dev), 'pointer-events': 'none',
+      });
+      dt.textContent = fmtDev(nd.dev);
+      g.appendChild(dt);
+    }
+
+    if (!nd.isRoot) {
+      g.addEventListener('click',      () => toggleNode(nd));
+      g.addEventListener('mouseenter', () => showInfo(nd));
+      g.addEventListener('mouseleave', clearInfo);
+      g.addEventListener('touchstart', e => { e.preventDefault(); toggleNode(nd); }, { passive: false });
+    }
+
+    svg.appendChild(g);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// Interaction
+// ═══════════════════════════════════════════════════════
+
+function toggleNode(nd) {
+  nd.active = !nd.active;
+  if (nd.active) startVoice(nd.key, fundamental * nd.num / nd.den);
+  else if (ac)   stopVoice(nd.key);
+  updateVisual(nd);
+  updateChord();
+}
+
+function updateVisual(nd) {
+  if (!nd.circleEl) return;
+  const col = nd._col;
+  nd.circleEl.setAttribute('fill',         nd.active ? col.act : col.bg);
+  nd.circleEl.setAttribute('stroke',       nd.active ? col.abr : col.br);
+  nd.circleEl.setAttribute('stroke-width', (nd.active || nd.isRoot) ? '2' : '1');
+  if (nd.ratioEl) nd.ratioEl.setAttribute('fill',
+    nd.active ? 'rgba(216,208,200,0.96)'
+              : nd.isRoot ? 'rgba(216,208,200,0.95)' : 'rgba(216,208,200,0.65)');
+}
+
+function showInfo(nd) {
+  const layer = nd.c === 0 ? '5-limit plane'
+              : nd.c > 0   ? 'septimal (+7/4)' : 'septimal (÷7/4)';
+  document.getElementById('info-display').textContent =
+    `${nd.key}  ·  ${nd.name}  ·  ${nd.cents.toFixed(1)}¢ above root  ·  ${fmtDev(nd.dev)} from 12-TET  ·  ${layer}`;
+}
+
+function clearInfo() {
+  document.getElementById('info-display').textContent = '';
+}
+
+function updateChord() {
+  const active = nodes.filter(n => n.active);
+  document.getElementById('chord-display').textContent =
+    active.length === 0 ? '—' : active.map(n => n.key).join('   ');
+}
+
+function clearAll() {
+  nodes.forEach(nd => {
+    if (nd.active) { nd.active = false; if (ac) stopVoice(nd.key); updateVisual(nd); }
+  });
+  updateChord();
+}
+
+// ═══════════════════════════════════════════════════════
+// Audio
+// ═══════════════════════════════════════════════════════
+
+let ac = null, masterGain, lpf, compressor, analyser, scopeBuf;
+let rafId = null;
+const voices = {};
+let fundamental = 220, waveform = 'sine';
+
+function sliderToFreq(v) { return 200 * Math.pow(100, v / 100); }
+
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ac.createGain();
+  masterGain.gain.setValueAtTime(0.75, 0);
+  lpf = ac.createBiquadFilter();
+  lpf.type = 'lowpass';
+  lpf.Q.setValueAtTime(0.7, 0);
+  lpf.frequency.setValueAtTime(sliderToFreq(+document.getElementById('lpf-knob').value), 0);
+  compressor = ac.createDynamicsCompressor();
+  compressor.threshold.setValueAtTime(-14, 0);
+  compressor.knee.setValueAtTime(6, 0);
+  compressor.ratio.setValueAtTime(4, 0);
+  compressor.attack.setValueAtTime(0.004, 0);
+  compressor.release.setValueAtTime(0.12, 0);
+  analyser = ac.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.65;
+  scopeBuf = new Uint8Array(analyser.fftSize);
+  masterGain.connect(lpf);
+  lpf.connect(compressor);
+  compressor.connect(analyser);
+  analyser.connect(ac.destination);
+}
+
+function startVoice(key, freq) {
+  if (voices[key]) return;
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  const osc  = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = waveform;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, ac.currentTime);
+  gain.gain.setTargetAtTime(0.09, ac.currentTime, 0.015);
+  osc.connect(gain);
+  gain.connect(masterGain);
+  osc.start();
+  voices[key] = { osc, gain };
+  if (!rafId) drawScope();
+}
+
+function stopVoice(key) {
+  if (!voices[key]) return;
+  const { osc, gain } = voices[key];
+  gain.gain.setTargetAtTime(0, ac.currentTime, 0.06);
+  setTimeout(() => {
+    try { osc.stop(); } catch (_) {}
+    delete voices[key];
+    if (Object.keys(voices).length === 0 && rafId) {
+      cancelAnimationFrame(rafId); rafId = null; blankScope();
+    }
+  }, 420);
+}
+
+// ═══════════════════════════════════════════════════════
+// Controls
+// ═══════════════════════════════════════════════════════
+
+document.getElementById('wave-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.tog'); if (!btn) return;
+  document.querySelectorAll('#wave-btns .tog').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  waveform = btn.dataset.w;
+  for (const v of Object.values(voices)) v.osc.type = waveform;
+});
+
+const fundEl = document.getElementById('fund-input');
+fundEl.addEventListener('input', () => {
+  const v = parseFloat(fundEl.value); if (!isFinite(v) || v < 10) return;
+  fundamental = v; if (!ac) return;
+  const t = ac.currentTime;
+  nodes.forEach(nd => { if (nd.active && voices[nd.key])
+    voices[nd.key].osc.frequency.setTargetAtTime(fundamental * nd.num / nd.den, t, 0.02); });
+});
+
+function shiftOctave(dir) {
+  fundamental = Math.round(fundamental * Math.pow(2, dir) * 100) / 100;
+  fundEl.value = fundamental; if (!ac) return;
+  const t = ac.currentTime;
+  nodes.forEach(nd => { if (nd.active && voices[nd.key])
+    voices[nd.key].osc.frequency.setTargetAtTime(fundamental * nd.num / nd.den, t, 0.02); });
+}
+
+document.getElementById('oct-dn').addEventListener('click', () => shiftOctave(-1));
+document.getElementById('oct-up').addEventListener('click', () => shiftOctave(1));
+document.getElementById('clear-btn').addEventListener('click', clearAll);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
+document.getElementById('lpf-knob').addEventListener('input', function () {
+  if (lpf) lpf.frequency.setTargetAtTime(sliderToFreq(+this.value), ac.currentTime, 0.02);
+});
+
+// ═══════════════════════════════════════════════════════
+// Oscilloscope
+// ═══════════════════════════════════════════════════════
+
+function blankScope() {
+  const cv = document.getElementById('scope');
+  const g  = cv.getContext('2d');
+  g.fillStyle = '#0a0a0a'; g.fillRect(0, 0, cv.width, cv.height);
+}
+
+function drawScope() {
+  rafId = requestAnimationFrame(drawScope);
+  const cv  = document.getElementById('scope');
+  const dpr = devicePixelRatio || 1;
+  cv.width  = cv.offsetWidth * dpr;
+  cv.height = 60 * dpr;
+  const g = cv.getContext('2d');
+  const w = cv.width / dpr, h = cv.height / dpr;
+  g.scale(dpr, dpr);
+  g.fillStyle = '#0a0a0a'; g.fillRect(0, 0, w, h);
+  if (!analyser) return;
+  analyser.getByteTimeDomainData(scopeBuf);
+  g.strokeStyle = 'rgba(138,176,200,0.7)'; g.lineWidth = 1; g.beginPath();
+  const sw = w / scopeBuf.length;
+  for (let i = 0; i < scopeBuf.length; i++) {
+    const y = h / 2 + (scopeBuf[i] / 128 - 1) * h * 0.42;
+    i === 0 ? g.moveTo(0, y) : g.lineTo(i * sw, y);
+  }
+  g.stroke();
+}
+
+// ═══════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════
+
+buildSVG();
+blankScope();
+</script>
+</body>
+</html>
