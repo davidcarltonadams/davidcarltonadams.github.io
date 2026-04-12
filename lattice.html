@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ji lattice — david carlton adams</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #080808;
+      --bg2:      #111111;
+      --text:     #d8d0c8;
+      --dim:      rgba(216,208,200,0.4);
+      --dimmer:   rgba(216,208,200,0.18);
+      --accent:   #8ab0c8;
+      --acc-bg:   rgba(138,176,200,0.18);
+      --border:   rgba(255,255,255,0.07);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 3.5rem;
+      gap: 1.2rem;
+    }
+
+    /* ── Header ──────────────────────────────────────── */
+    .header { text-align: center; }
+
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      font-weight: normal;
+      letter-spacing: 0.2em;
+      text-transform: lowercase;
+    }
+
+    .sub {
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.3rem;
+    }
+
+    /* ── Controls ─────────────────────────────────────── */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem 1.5rem;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ctrl-group {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .ctrl-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.13em;
+      font-style: italic;
+      color: var(--dim);
+      text-transform: lowercase;
+    }
+
+    .btn-row { display: flex; gap: 0.22rem; }
+
+    .tog {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.63rem;
+      letter-spacing: 0.07em;
+      padding: 0.28rem 0.6rem;
+      cursor: pointer;
+      transition: color 0.1s, border-color 0.1s, background 0.1s;
+    }
+    .tog:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .tog.on { color: var(--accent); border-color: var(--accent); background: var(--acc-bg); }
+
+    .fund-input {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text);
+      font-family: Georgia, serif;
+      font-size: 0.88rem;
+      text-align: center;
+      width: 5rem;
+      padding: 0.22rem 0.4rem;
+      -moz-appearance: textfield;
+    }
+    .fund-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .fund-input:focus { outline: none; border-color: var(--accent); }
+
+    .oct-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.6rem;
+      padding: 0.22rem 0.48rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .oct-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    /* ── SVG wrapper ─────────────────────────────────── */
+    .lattice-wrap {
+      width: 100%;
+      max-width: 920px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Chord / info displays ───────────────────────── */
+    .chord-display {
+      min-height: 1.5rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      color: var(--dim);
+      font-style: italic;
+      text-align: center;
+    }
+
+    .info-display {
+      min-height: 1.3rem;
+      font-size: 0.58rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+      text-align: center;
+    }
+
+    /* ── Legend ──────────────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 1.6rem;
+      align-items: center;
+      font-size: 0.52rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.45rem; }
+
+    /* ── Scope ───────────────────────────────────────── */
+    .scope-wrap { width: 100%; max-width: 920px; }
+    canvas {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+    }
+
+    /* ── Hint ────────────────────────────────────────── */
+    .hint {
+      font-size: 0.54rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1 class="title">just intonation lattice</h1>
+  <p class="sub">5-limit pitch space &nbsp;&middot;&nbsp; x-axis: perfect fifths &nbsp;&middot;&nbsp; y-axis: major thirds &nbsp;&middot;&nbsp; click to play</p>
+</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">root</span>
+    <button class="oct-btn" id="oct-dn">&minus;8va</button>
+    <input type="number" id="fund-input" class="fund-input" value="220" min="10" max="4000" step="0.01">
+    <span class="ctrl-label">Hz</span>
+    <button class="oct-btn" id="oct-up">+8va</button>
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">wave</span>
+    <div class="btn-row" id="wave-btns">
+      <button class="tog on" data-w="sine">sine</button>
+      <button class="tog"    data-w="sawtooth">saw</button>
+      <button class="tog"    data-w="triangle">tri</button>
+    </div>
+  </div>
+
+  <div class="ctrl-group">
+    <button class="tog" id="clear-btn">clear</button>
+  </div>
+</div>
+
+<!-- SVG injected by JS -->
+<div class="lattice-wrap">
+  <svg id="lattice" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
+
+<div class="chord-display" id="chord-display">—</div>
+<div class="info-display"  id="info-display"></div>
+
+<div class="legend">
+  <span class="legend-item">
+    <svg width="26" height="6">
+      <line x1="0" y1="3" x2="26" y2="3"
+            stroke="rgba(138,176,200,0.5)" stroke-width="1.5"/>
+    </svg>
+    perfect fifths
+  </span>
+  <span class="legend-item">
+    <svg width="26" height="10">
+      <line x1="0" y1="9" x2="26" y2="0"
+            stroke="rgba(190,155,100,0.5)" stroke-width="1.5"/>
+    </svg>
+    major thirds
+  </span>
+</div>
+
+<div class="scope-wrap">
+  <canvas id="scope" height="60" aria-hidden="true"></canvas>
+</div>
+
+<p class="hint">click to toggle &nbsp;&middot;&nbsp; esc clears all &nbsp;&middot;&nbsp; hover to see interval name &amp; cents</p>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// Utilities
+// ═══════════════════════════════════════════════════════
+
+function gcd(a, b) {
+  a = Math.abs(a); b = Math.abs(b);
+  while (b) { [a, b] = [b, a % b]; }
+  return a || 1;
+}
+
+// Exact rational for lattice position (p, q):
+// p = powers of 3 (fifths axis), q = powers of 5 (thirds axis)
+// Result reduced to octave [1, 2)
+function latticeRatio(p, q) {
+  let num = 1, den = 1;
+  if (p > 0)      num *= Math.pow(3, p);
+  else if (p < 0) den *= Math.pow(3, -p);
+  if (q > 0)      num *= Math.pow(5, q);
+  else if (q < 0) den *= Math.pow(5, -q);
+  // Reduce to [1, 2)
+  while (num / den >= 2) den *= 2;
+  while (num / den <  1) num *= 2;
+  const g = gcd(num, den);
+  return [num / g, den / g];
+}
+
+function ratioToCents(num, den) {
+  return 1200 * Math.log2(num / den);
+}
+
+function deviationFromET(cents) {
+  const semis   = cents / 100;
+  const nearest = Math.round(semis);
+  return Math.round((semis - nearest) * 100);   // cents × 100 → integer ¢
+}
+
+function fmtDev(d) {
+  if (d === 0) return '0¢';
+  return (d > 0 ? '+' : '') + d + '¢';
+}
+
+// ── Interval catalogue ──────────────────────────────────
+const INTERVAL_NAMES = {
+  '1/1':   'unison (1/1)',
+  '3/2':   'perfect fifth (P5)',
+  '4/3':   'perfect fourth (P4)',
+  '9/8':   'major whole tone (M2)',
+  '16/9':  'minor seventh (m7)',
+  '27/16': 'Pythagorean major sixth',
+  '32/27': 'Pythagorean minor third',
+  '81/64': 'Pythagorean major third',
+  '128/81':'Pythagorean minor sixth',
+  '5/4':   'just major third (5/4)',
+  '8/5':   'just minor sixth (8/5)',
+  '6/5':   'just minor third (6/5)',
+  '5/3':   'just major sixth (5/3)',
+  '15/8':  'just major seventh (15/8)',
+  '16/15': 'just minor second (16/15)',
+  '9/5':   'just minor seventh (9/5)',
+  '10/9':  'minor whole tone (10/9)',
+  '25/24': 'chromatic semitone (25/24)',
+  '25/16': 'augmented fifth (25/16)',
+  '32/25': 'diminished fourth (32/25)',
+  '45/32': 'augmented fourth (45/32)',
+  '64/45': 'diminished fifth (64/45)',
+  '75/64': 'augmented second (75/64)',
+  '128/75':'diminished seventh (128/75)',
+  '135/128':'augmented unison (135/128)',
+  '256/135':'diminished octave',
+  '50/27': 'narrow minor seventh',
+  '27/25': 'large semitone / acute unison',
+  '250/243':'maximal diesis',
+  '243/250':'—',
+};
+
+// ── Row color palette (inactive) ───────────────────────
+// q-axis: q=0 = fifths chain (cool blue), ±1 one-third away (warm), ±2 two-thirds (warmer)
+const ROW_COLOR = {
+  2:  { fill: 'rgba(165,115, 80,0.07)', stroke: 'rgba(165,115, 80,0.28)' },
+  1:  { fill: 'rgba(185,155,100,0.07)', stroke: 'rgba(185,155,100,0.28)' },
+  0:  { fill: 'rgba(138,176,200,0.07)', stroke: 'rgba(138,176,200,0.28)' },
+ '-1':{ fill: 'rgba(185,155,100,0.07)', stroke: 'rgba(185,155,100,0.28)' },
+ '-2':{ fill: 'rgba(165,115, 80,0.07)', stroke: 'rgba(165,115, 80,0.28)' },
+};
+
+// ═══════════════════════════════════════════════════════
+// Build node data
+// ═══════════════════════════════════════════════════════
+
+const P_VALS = [-3,-2,-1,0,1,2,3];
+const Q_VALS = [-2,-1,0,1,2];
+
+const nodes   = [];   // ordered array
+const nodeMap = {};   // "p,q" → node
+
+for (const q of [...Q_VALS].reverse()) {   // top (q=2) first so SVG z-order is correct
+  for (const p of P_VALS) {
+    const [num, den] = latticeRatio(p, q);
+    const cents = ratioToCents(num, den);
+    const dev   = deviationFromET(cents);
+    const key   = `${num}/${den}`;
+    const name  = INTERVAL_NAMES[key] || key;
+    const nd    = { p, q, num, den, cents, dev, key, name, active: false };
+    nodes.push(nd);
+    nodeMap[`${p},${q}`] = nd;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SVG layout constants
+// ═══════════════════════════════════════════════════════
+
+const COL_DX  = 92;   // horizontal step (fifths)
+const ROW_DY  = 88;   // vertical step (thirds)
+const ROW_OX  = 46;   // x-shift per row going up (lattice slant)
+const PAD_X   = 58;
+const PAD_Y   = 48;
+const NODE_R  = 26;   // circle radius
+
+// Total SVG dimensions
+const NPCOLS  = P_VALS.length;   // 7
+const NQROWS  = Q_VALS.length;   // 5
+const SVG_W   = PAD_X + (NPCOLS - 1) * COL_DX + (NQROWS - 1) * ROW_OX + PAD_X;
+const SVG_H   = PAD_Y + (NQROWS - 1) * ROW_DY + PAD_Y + 24;
+
+function nodeXY(p, q) {
+  const xi = p + 3;                        // 0..6
+  const qi = q + 2;                        // 0..4 (qi=0 bottom, qi=4 top)
+  const cx = PAD_X + xi * COL_DX + qi * ROW_OX;
+  const cy = PAD_Y + (4 - qi) * ROW_DY;
+  return [cx, cy];
+}
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+// ═══════════════════════════════════════════════════════
+// Build SVG
+// ═══════════════════════════════════════════════════════
+
+function buildSVG() {
+  const svg = document.getElementById('lattice');
+  svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
+  svg.setAttribute('width',  SVG_W);
+  svg.setAttribute('height', SVG_H);
+  svg.style.cssText = 'display:block;max-width:100%;height:auto;';
+  svg.innerHTML = '';
+
+  // ── Grid lines ────────────────────────────────────────
+
+  const lineStyle = {
+    'stroke-linecap': 'round',
+    'stroke-width':   '1.5',
+    'pointer-events': 'none',
+  };
+
+  // Perfect-fifth edges (horizontal: p→p+1, same q)
+  for (const q of Q_VALS) {
+    for (let i = 0; i < P_VALS.length - 1; i++) {
+      const [x1, y1] = nodeXY(P_VALS[i],     q);
+      const [x2, y2] = nodeXY(P_VALS[i + 1], q);
+      svg.appendChild(svgEl('line', {
+        x1, y1, x2, y2,
+        stroke: 'rgba(138,176,200,0.2)',
+        ...lineStyle,
+      }));
+    }
+  }
+
+  // Major-third edges (diagonal: q→q+1, same p)
+  for (const p of P_VALS) {
+    for (let i = 0; i < Q_VALS.length - 1; i++) {
+      const [x1, y1] = nodeXY(p, Q_VALS[i]);
+      const [x2, y2] = nodeXY(p, Q_VALS[i + 1]);
+      svg.appendChild(svgEl('line', {
+        x1, y1, x2, y2,
+        stroke: 'rgba(190,155,100,0.2)',
+        ...lineStyle,
+      }));
+    }
+  }
+
+  // ── Nodes ─────────────────────────────────────────────
+  for (const nd of nodes) {
+    const [cx, cy] = nodeXY(nd.p, nd.q);
+    const isRoot   = nd.p === 0 && nd.q === 0;
+    const rc       = ROW_COLOR[nd.q] || ROW_COLOR[0];
+
+    const g = svgEl('g', { cursor: 'pointer', role: 'button',
+      'aria-label': `${nd.key}, ${nd.name}, ${nd.cents.toFixed(1)} cents` });
+
+    // Invisible wider hit target (easier touch)
+    g.appendChild(svgEl('circle', {
+      cx, cy,
+      r: NODE_R + 8,
+      fill: 'transparent',
+      stroke: 'none',
+    }));
+
+    // Visible circle
+    const circle = svgEl('circle', {
+      cx, cy,
+      r: NODE_R,
+      fill:   isRoot ? 'rgba(138,176,200,0.11)' : rc.fill,
+      stroke: isRoot ? 'rgba(138,176,200,0.50)' : rc.stroke,
+      'stroke-width': isRoot ? '1.8' : '1',
+      id: `c-${nd.p}-${nd.q}`,
+    });
+    nd.circleEl = circle;
+    g.appendChild(circle);
+
+    // Ratio text (centered in circle, upper half)
+    const fs = nd.key.length > 6 ? 8.5 : nd.key.length > 4 ? 10 : 12;
+    const rt = svgEl('text', {
+      x: cx,
+      y: cy + (nd.dev !== 0 ? -3 : 1),   // shift up if cents shown below
+      'text-anchor':      'middle',
+      'dominant-baseline':'middle',
+      'font-family':      'Georgia, serif',
+      'font-size':        fs,
+      'font-style':       'italic',
+      fill: isRoot ? 'rgba(216,208,200,0.92)' : 'rgba(216,208,200,0.60)',
+      'pointer-events':   'none',
+    });
+    rt.textContent = nd.key;
+    nd.ratioTextEl = rt;
+    g.appendChild(rt);
+
+    // Cents deviation (inside circle, lower; skip if 0)
+    if (nd.dev !== 0) {
+      const dt = svgEl('text', {
+        x: cx,
+        y: cy + 11,
+        'text-anchor':      'middle',
+        'dominant-baseline':'middle',
+        'font-family':      'Georgia, serif',
+        'font-size':        7.5,
+        'font-style':       'italic',
+        fill: devColor(nd.dev),
+        'pointer-events':   'none',
+      });
+      dt.textContent = fmtDev(nd.dev);
+      nd.devTextEl = dt;
+      g.appendChild(dt);
+    }
+
+    // Events
+    g.addEventListener('click',       () => toggleNode(nd));
+    g.addEventListener('mouseenter',  () => showInfo(nd));
+    g.addEventListener('mouseleave',  clearInfo);
+    g.addEventListener('touchstart',  e => { e.preventDefault(); toggleNode(nd); }, { passive: false });
+
+    svg.appendChild(g);
+    nd.groupEl = g;
+  }
+
+  // ── Axis captions ─────────────────────────────────────
+  const capStyle = {
+    'font-family':  'Georgia, serif',
+    'font-size':    '9',
+    'font-style':   'italic',
+    fill:           'rgba(216,208,200,0.15)',
+    'pointer-events':'none',
+    'letter-spacing':'0.5',
+  };
+
+  // Fifths axis (bottom center)
+  const fc = svgEl('text', { ...capStyle,
+    x: PAD_X + 3 * COL_DX + 0 * ROW_OX,
+    y: SVG_H - 6,
+    'text-anchor': 'middle',
+  });
+  fc.textContent = '← perfect fourths   ·   perfect fifths →';
+  svg.appendChild(fc);
+
+  // Thirds axis (right edge, rotated)
+  const tm = svgEl('text', { ...capStyle,
+    x: SVG_W - 8,
+    y: PAD_Y + 2 * ROW_DY,
+    'text-anchor': 'middle',
+    transform: `rotate(-90 ${SVG_W - 8} ${PAD_Y + 2 * ROW_DY})`,
+  });
+  tm.textContent = '↑ major thirds   ·   minor thirds ↓';
+  svg.appendChild(tm);
+}
+
+// Cents color (green→amber→red)
+function devColor(d) {
+  const a = Math.abs(d);
+  if (a === 0)  return 'rgba(138,210,160,0.9)';
+  if (a <= 5)   return 'rgba(155,210,165,0.85)';
+  if (a <= 14)  return 'rgba(205,195,115,0.85)';
+  if (a <= 25)  return 'rgba(210,162, 82,0.85)';
+  return              'rgba(205, 95, 82,0.85)';
+}
+
+// ═══════════════════════════════════════════════════════
+// Audio engine
+// ═══════════════════════════════════════════════════════
+
+let ac = null, masterGain, compressor, analyser, scopeBuf;
+let rafId = null;
+const voices  = {};     // ratio-key → { osc, gain }
+let fundamental = 220;
+let waveform    = 'sine';
+
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ac.createGain();  masterGain.gain.value = 0.78;
+  compressor = ac.createDynamicsCompressor();
+  Object.assign(compressor, {
+    threshold: { value: -14 }, knee: { value: 6 },
+    ratio: { value: 4 }, attack: { value: 0.004 }, release: { value: 0.12 },
+  });
+  // Safari can't set directly; use param.setValueAtTime
+  compressor.threshold.setValueAtTime(-14, 0);
+  compressor.knee.setValueAtTime(6, 0);
+  compressor.ratio.setValueAtTime(4, 0);
+  compressor.attack.setValueAtTime(0.004, 0);
+  compressor.release.setValueAtTime(0.12, 0);
+  analyser = ac.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.65;
+  scopeBuf = new Uint8Array(analyser.fftSize);
+  masterGain.connect(compressor);
+  compressor.connect(analyser);
+  analyser.connect(ac.destination);
+}
+
+function startVoice(key, freq) {
+  if (voices[key]) return;
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  const osc  = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = waveform;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, ac.currentTime);
+  gain.gain.setTargetAtTime(0.1, ac.currentTime, 0.015);
+  osc.connect(gain);
+  gain.connect(masterGain);
+  osc.start();
+  voices[key] = { osc, gain };
+  if (!rafId) drawScope();
+}
+
+function stopVoice(key) {
+  if (!voices[key]) return;
+  const { osc, gain } = voices[key];
+  const t = ac.currentTime;
+  gain.gain.setTargetAtTime(0, t, 0.06);
+  setTimeout(() => {
+    try { osc.stop(); } catch (_) {}
+    delete voices[key];
+    if (Object.keys(voices).length === 0 && rafId) {
+      cancelAnimationFrame(rafId); rafId = null; blankScope();
+    }
+  }, 400);
+}
+
+function clearAll() {
+  for (const nd of nodes) {
+    if (nd.active) { nd.active = false; if (ac) stopVoice(nd.key); updateVisual(nd); }
+  }
+  updateChord();
+}
+
+// ═══════════════════════════════════════════════════════
+// Node interaction
+// ═══════════════════════════════════════════════════════
+
+function toggleNode(nd) {
+  nd.active = !nd.active;
+  if (nd.active) {
+    startVoice(nd.key, fundamental * (nd.num / nd.den));
+  } else {
+    if (ac) stopVoice(nd.key);
+  }
+  updateVisual(nd);
+  updateChord();
+}
+
+function updateVisual(nd) {
+  if (!nd.circleEl) return;
+  const isRoot = nd.p === 0 && nd.q === 0;
+  const rc = ROW_COLOR[nd.q] || ROW_COLOR[0];
+
+  if (nd.active) {
+    nd.circleEl.setAttribute('fill',         'rgba(138,176,200,0.24)');
+    nd.circleEl.setAttribute('stroke',       'rgba(138,176,200,0.85)');
+    nd.circleEl.setAttribute('stroke-width', '2');
+    if (nd.ratioTextEl) nd.ratioTextEl.setAttribute('fill', 'rgba(216,208,200,0.95)');
+  } else {
+    nd.circleEl.setAttribute('fill',         isRoot ? 'rgba(138,176,200,0.11)' : rc.fill);
+    nd.circleEl.setAttribute('stroke',       isRoot ? 'rgba(138,176,200,0.50)' : rc.stroke);
+    nd.circleEl.setAttribute('stroke-width', isRoot ? '1.8' : '1');
+    if (nd.ratioTextEl) nd.ratioTextEl.setAttribute('fill',
+      isRoot ? 'rgba(216,208,200,0.92)' : 'rgba(216,208,200,0.60)');
+  }
+}
+
+function showInfo(nd) {
+  const cStr  = nd.cents.toFixed(1) + '¢ above root';
+  const devStr = nd.dev !== 0
+    ? ' · ' + fmtDev(nd.dev) + ' from 12-TET'
+    : ' · pure (0¢ deviation from 12-TET)';
+  document.getElementById('info-display').textContent =
+    nd.name + '  ·  ' + cStr + devStr;
+}
+
+function clearInfo() {
+  document.getElementById('info-display').textContent = '';
+}
+
+function updateChord() {
+  const active = nodes.filter(n => n.active);
+  document.getElementById('chord-display').textContent =
+    active.length === 0 ? '—' : active.map(n => n.key).join('   ');
+}
+
+// ═══════════════════════════════════════════════════════
+// Controls
+// ═══════════════════════════════════════════════════════
+
+document.getElementById('wave-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.tog');
+  if (!btn) return;
+  document.querySelectorAll('#wave-btns .tog').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  waveform = btn.dataset.w;
+  for (const v of Object.values(voices)) v.osc.type = waveform;
+});
+
+const fundEl = document.getElementById('fund-input');
+fundEl.addEventListener('input', () => {
+  const v = parseFloat(fundEl.value);
+  if (!isFinite(v) || v < 10) return;
+  fundamental = v;
+  if (!ac) return;
+  const t = ac.currentTime;
+  for (const nd of nodes) {
+    if (nd.active && voices[nd.key])
+      voices[nd.key].osc.frequency.setTargetAtTime(fundamental * (nd.num / nd.den), t, 0.02);
+  }
+});
+
+function shiftOctave(dir) {
+  fundamental = Math.round(fundamental * Math.pow(2, dir) * 100) / 100;
+  fundEl.value = fundamental;
+  if (!ac) return;
+  const t = ac.currentTime;
+  for (const nd of nodes) {
+    if (nd.active && voices[nd.key])
+      voices[nd.key].osc.frequency.setTargetAtTime(fundamental * (nd.num / nd.den), t, 0.02);
+  }
+}
+
+document.getElementById('oct-dn').addEventListener('click', () => shiftOctave(-1));
+document.getElementById('oct-up').addEventListener('click', () => shiftOctave(1));
+document.getElementById('clear-btn').addEventListener('click', clearAll);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') clearAll();
+});
+
+// ═══════════════════════════════════════════════════════
+// Oscilloscope
+// ═══════════════════════════════════════════════════════
+
+function blankScope() {
+  const cv = document.getElementById('scope');
+  const g  = cv.getContext('2d');
+  g.fillStyle = '#0a0a0a';
+  g.fillRect(0, 0, cv.width, cv.height);
+}
+
+function drawScope() {
+  rafId = requestAnimationFrame(drawScope);
+  const cv = document.getElementById('scope');
+  const dpr = devicePixelRatio || 1;
+  cv.width  = cv.offsetWidth * dpr;
+  cv.height = 60 * dpr;
+  const g = cv.getContext('2d');
+  const w = cv.width / dpr, h = cv.height / dpr;
+  g.scale(dpr, dpr);
+  g.fillStyle = '#0a0a0a';
+  g.fillRect(0, 0, w, h);
+  if (!analyser) return;
+  analyser.getByteTimeDomainData(scopeBuf);
+  g.strokeStyle = 'rgba(138,176,200,0.7)';
+  g.lineWidth = 1;
+  g.beginPath();
+  const sw = w / scopeBuf.length;
+  for (let i = 0; i < scopeBuf.length; i++) {
+    const y = h / 2 + (scopeBuf[i] / 128 - 1) * h * 0.42;
+    i === 0 ? g.moveTo(0, y) : g.lineTo(i * sw, y);
+  }
+  g.stroke();
+}
+
+// ═══════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════
+
+buildSVG();
+blankScope();
+</script>
+</body>
+</html>
