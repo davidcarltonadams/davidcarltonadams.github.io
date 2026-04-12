@@ -226,6 +226,36 @@
       border: 1px solid; border-radius: 1px; flex-shrink: 0;
     }
 
+    /* ── Tone slider ─────────────────────────────────── */
+    .tone-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 88px;
+      height: 2px;
+      background: rgba(255,255,255,0.12);
+      border-radius: 1px;
+      outline: none;
+      cursor: pointer;
+    }
+    .tone-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    .tone-slider::-moz-range-thumb {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+    }
+    .tone-endpoint {
+      font-size: 0.5rem; letter-spacing: 0.08em;
+      color: rgba(216,208,200,0.22); font-style: italic;
+    }
+
     /* ── Scope ───────────────────────────────────────── */
     .scope-wrap { width: 100%; max-width: 680px; }
     canvas { display: block; width: 100%; border: 1px solid var(--border); border-radius: 2px; }
@@ -265,6 +295,13 @@
       <button class="tog"    data-w="triangle">tri</button>
     </div>
   </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">tone</span>
+    <span class="tone-endpoint">dark</span>
+    <input type="range" id="lpf-knob" class="tone-slider" min="0" max="100" value="82">
+    <span class="tone-endpoint">bright</span>
+  </div>
+
   <div class="ctrl-group">
     <button class="tog" id="clear-btn">clear</button>
   </div>
@@ -638,16 +675,25 @@ function clearAll() {
 // Audio engine
 // ═══════════════════════════════════════════════════════
 
-let ac = null, masterGain, compressor, analyser, scopeBuf;
+let ac = null, masterGain, lpf, compressor, analyser, scopeBuf;
 let rafId = null;
 const voices = {};
 let fundamental = 220;
 let waveform    = 'sine';
 
+function sliderToFreq(v) {
+  // Logarithmic: 200 Hz (dark) → 20 kHz (bright)
+  return 200 * Math.pow(100, v / 100);
+}
+
 function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
   masterGain = ac.createGain(); masterGain.gain.value = 0.72;
+  lpf = ac.createBiquadFilter();
+  lpf.type = 'lowpass';
+  lpf.Q.value = 0.7;   // gentle rolloff, no resonance
+  lpf.frequency.value = sliderToFreq(document.getElementById('lpf-knob').value);
   compressor = ac.createDynamicsCompressor();
   compressor.threshold.setValueAtTime(-14, 0);
   compressor.knee.setValueAtTime(6, 0);
@@ -658,7 +704,8 @@ function initAudio() {
   analyser.fftSize = 1024;
   analyser.smoothingTimeConstant = 0.65;
   scopeBuf = new Uint8Array(analyser.fftSize);
-  masterGain.connect(compressor);
+  masterGain.connect(lpf);
+  lpf.connect(compressor);
   compressor.connect(analyser);
   analyser.connect(ac.destination);
 }
@@ -732,6 +779,9 @@ document.getElementById('oct-dn').addEventListener('click', () => shiftOctave(-1
 document.getElementById('oct-up').addEventListener('click', () => shiftOctave(1));
 document.getElementById('clear-btn').addEventListener('click', clearAll);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
+document.getElementById('lpf-knob').addEventListener('input', function () {
+  if (lpf) lpf.frequency.setTargetAtTime(sliderToFreq(+this.value), ac.currentTime, 0.02);
+});
 
 // ═══════════════════════════════════════════════════════
 // Oscilloscope
