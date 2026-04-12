@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tonality diamond — david carlton adams</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #080808;
+      --bg2:    #111;
+      --text:   #d8d0c8;
+      --dim:    rgba(216,208,200,0.4);
+      --dimmer: rgba(216,208,200,0.18);
+      --accent: #8ab0c8;
+      --acc-bg: rgba(138,176,200,0.18);
+      --border: rgba(255,255,255,0.07);
+
+      /* prime-limit cell colors (inactive) */
+      --c1-bg:  rgba(216,208,200,0.04);  --c1-br:  rgba(216,208,200,0.14);
+      --c3-bg:  rgba(110,165,200,0.05);  --c3-br:  rgba(110,165,200,0.18);
+      --c5-bg:  rgba(100,185,135,0.05);  --c5-br:  rgba(100,185,135,0.18);
+      --c7-bg:  rgba(205,165, 70,0.05);  --c7-br:  rgba(205,165, 70,0.20);
+      --c11-bg: rgba(160,115,195,0.05);  --c11-br: rgba(160,115,195,0.20);
+      --c13-bg: rgba(195, 85, 95,0.05);  --c13-br: rgba(195, 85, 95,0.20);
+
+      /* prime-limit cell colors (active) */
+      --c1-act:  rgba(216,208,200,0.22);  --c1-abr:  rgba(216,208,200,0.75);
+      --c3-act:  rgba(110,165,200,0.22);  --c3-abr:  rgba(110,165,200,0.80);
+      --c5-act:  rgba(100,185,135,0.22);  --c5-abr:  rgba(100,185,135,0.80);
+      --c7-act:  rgba(205,165, 70,0.22);  --c7-abr:  rgba(205,165, 70,0.80);
+      --c11-act: rgba(160,115,195,0.22);  --c11-abr: rgba(160,115,195,0.80);
+      --c13-act: rgba(195, 85, 95,0.22);  --c13-abr: rgba(195, 85, 95,0.80);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 3.5rem;
+      gap: 1.2rem;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      font-weight: normal;
+      letter-spacing: 0.2em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.3rem;
+    }
+
+    /* ── Controls ────────────────────────────────────── */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem 1.5rem;
+      align-items: center;
+      justify-content: center;
+    }
+    .ctrl-group { display: flex; align-items: center; gap: 0.4rem; }
+    .ctrl-label {
+      font-size: 0.58rem; letter-spacing: 0.13em;
+      font-style: italic; color: var(--dim);
+    }
+    .btn-row { display: flex; gap: 0.22rem; }
+    .tog {
+      background: none; border: 1px solid var(--border);
+      border-radius: 2px; color: var(--dim);
+      font-family: Georgia, serif; font-size: 0.63rem;
+      letter-spacing: 0.07em; padding: 0.28rem 0.6rem;
+      cursor: pointer;
+      transition: color 0.1s, border-color 0.1s, background 0.1s;
+    }
+    .tog:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .tog.on    { color: var(--accent); border-color: var(--accent); background: var(--acc-bg); }
+    .fund-input {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 2px; color: var(--text);
+      font-family: Georgia, serif; font-size: 0.88rem;
+      text-align: center; width: 5rem; padding: 0.22rem 0.4rem;
+      -moz-appearance: textfield;
+    }
+    .fund-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .fund-input:focus { outline: none; border-color: var(--accent); }
+    .oct-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 2px; color: var(--dim);
+      font-family: Georgia, serif; font-size: 0.6rem;
+      padding: 0.22rem 0.48rem; cursor: pointer;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .oct-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    /* ── Diamond grid wrapper ────────────────────────── */
+    .diamond-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* CSS grid: 1 header col + 7 data cols; 1 header row + 7 data rows */
+    .diamond-grid {
+      display: grid;
+      grid-template-columns: 52px repeat(7, 76px);
+      grid-template-rows: auto repeat(7, 66px);
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    /* corner cell (top-left) */
+    .corner-cell {
+      grid-row: 1; grid-column: 1;
+      display: flex; align-items: flex-end; justify-content: flex-end;
+      padding: 0 0.3rem 0.3rem 0;
+    }
+    .corner-label {
+      font-size: 0.45rem; letter-spacing: 0.1em;
+      color: var(--dimmer); font-style: italic;
+      writing-mode: vertical-rl; transform: rotate(180deg);
+      line-height: 1.3;
+    }
+
+    /* O-tonality column headers (row 1, cols 2–8) */
+    .col-header {
+      grid-row: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-end;
+      padding-bottom: 0.45rem; gap: 0.2rem;
+      cursor: pointer;
+      user-select: none; -webkit-user-select: none;
+    }
+    .col-header:hover .hdr-num { color: var(--text); }
+
+    /* U-tonality row headers (col 1, rows 2–8) */
+    .row-header {
+      grid-column: 1;
+      display: flex; flex-direction: column;
+      align-items: flex-end; justify-content: center;
+      padding-right: 0.45rem; gap: 0.15rem;
+      cursor: pointer;
+      user-select: none; -webkit-user-select: none;
+    }
+    .row-header:hover .hdr-num { color: var(--text); }
+
+    .hdr-tag {
+      font-size: 0.38rem; letter-spacing: 0.12em;
+      color: var(--dimmer); font-style: italic;
+    }
+    .hdr-num {
+      font-size: 0.75rem; color: var(--dim);
+      font-style: italic; letter-spacing: 0.04em;
+      transition: color 0.12s;
+    }
+    .hdr-num.active { color: var(--accent); }
+
+    /* Data cells */
+    .cell {
+      position: relative;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0.15rem;
+      border: 1px solid;
+      border-radius: 2px;
+      cursor: pointer;
+      user-select: none; -webkit-user-select: none;
+      transition: background 0.1s, border-color 0.1s, opacity 0.1s;
+    }
+
+    /* Diagonal cells (i === j, always 1/1) */
+    .cell.diagonal { opacity: 0.55; cursor: default; }
+
+    .cell-ratio {
+      font-size: 0.72rem; font-style: italic;
+      letter-spacing: 0.02em;
+      pointer-events: none;
+    }
+    .cell-ratio.long { font-size: 0.60rem; }
+
+    .cell-dev {
+      font-size: 0.43rem; letter-spacing: 0.06em;
+      font-style: italic;
+      pointer-events: none;
+    }
+
+    /* Row/column context highlighting */
+    .cell.row-lit   { filter: brightness(1.25); }
+    .cell.col-lit   { filter: brightness(1.25); }
+
+    /* ── Chord / info displays ───────────────────────── */
+    .chord-display {
+      min-height: 1.5rem;
+      font-size: 0.7rem; letter-spacing: 0.12em;
+      color: var(--dim); font-style: italic; text-align: center;
+    }
+    .info-display {
+      min-height: 1.3rem;
+      font-size: 0.58rem; letter-spacing: 0.1em;
+      color: var(--dimmer); font-style: italic; text-align: center;
+    }
+
+    /* ── Legend ──────────────────────────────────────── */
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 0.7rem 1.4rem;
+      align-items: center; justify-content: center;
+      font-size: 0.5rem; letter-spacing: 0.1em;
+      color: var(--dimmer); font-style: italic;
+    }
+    .legend-item { display: flex; align-items: center; gap: 0.35rem; }
+    .legend-swatch {
+      width: 10px; height: 10px;
+      border: 1px solid; border-radius: 1px; flex-shrink: 0;
+    }
+
+    /* ── Scope ───────────────────────────────────────── */
+    .scope-wrap { width: 100%; max-width: 680px; }
+    canvas { display: block; width: 100%; border: 1px solid var(--border); border-radius: 2px; }
+
+    /* ── Hint ────────────────────────────────────────── */
+    .hint {
+      font-size: 0.54rem; letter-spacing: 0.12em;
+      color: var(--dimmer); font-style: italic; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1 class="title">tonality diamond</h1>
+  <p class="sub">
+    13-limit just intonation &nbsp;&middot;&nbsp;
+    columns: O-tonalities (overtone chords) &nbsp;&middot;&nbsp;
+    rows: U-tonalities (undertone chords) &nbsp;&middot;&nbsp;
+    after Partch
+  </p>
+</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">root</span>
+    <button class="oct-btn" id="oct-dn">&minus;8va</button>
+    <input type="number" id="fund-input" class="fund-input" value="220" min="10" max="4000" step="0.01">
+    <span class="ctrl-label">Hz</span>
+    <button class="oct-btn" id="oct-up">+8va</button>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">wave</span>
+    <div class="btn-row" id="wave-btns">
+      <button class="tog on" data-w="sine">sine</button>
+      <button class="tog"    data-w="sawtooth">saw</button>
+      <button class="tog"    data-w="triangle">tri</button>
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <button class="tog" id="clear-btn">clear</button>
+  </div>
+</div>
+
+<div class="diamond-wrap">
+  <div class="diamond-grid" id="grid"></div>
+</div>
+
+<div class="chord-display" id="chord-display">—</div>
+<div class="info-display"  id="info-display"></div>
+
+<div class="legend">
+  <span class="legend-item">
+    <span class="legend-swatch" style="background:var(--c1-bg);border-color:var(--c1-br)"></span>unison
+  </span>
+  <span class="legend-item">
+    <span class="legend-swatch" style="background:var(--c3-bg);border-color:var(--c3-br)"></span>3-limit (Pythagorean)
+  </span>
+  <span class="legend-item">
+    <span class="legend-swatch" style="background:var(--c5-bg);border-color:var(--c5-br)"></span>5-limit
+  </span>
+  <span class="legend-item">
+    <span class="legend-swatch" style="background:var(--c7-bg);border-color:var(--c7-br)"></span>7-limit
+  </span>
+  <span class="legend-item">
+    <span class="legend-swatch" style="background:var(--c11-bg);border-color:var(--c11-br)"></span>11-limit
+  </span>
+  <span class="legend-item">
+    <span class="legend-swatch" style="background:var(--c13-bg);border-color:var(--c13-br)"></span>13-limit
+  </span>
+</div>
+
+<div class="scope-wrap">
+  <canvas id="scope" height="60" aria-hidden="true"></canvas>
+</div>
+
+<p class="hint">
+  click cell to toggle &nbsp;&middot;&nbsp;
+  click column header for full O-tonality &nbsp;&middot;&nbsp;
+  click row header for full U-tonality &nbsp;&middot;&nbsp;
+  esc clears all
+</p>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// Math
+// ═══════════════════════════════════════════════════════
+
+const ODDS = [1, 3, 5, 7, 9, 11, 13];
+
+function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a || 1; }
+
+function reduceToOctave(num, den) {
+  while (num / den >= 2) den *= 2;
+  while (num / den <  1) num *= 2;
+  const g = gcd(num, den);
+  return [num / g, den / g];
+}
+
+function highestPrime(n) {
+  // n is one of [1,3,5,7,9,11,13]
+  if (n === 9) return 3;
+  return n;
+}
+
+function cellHighestPrime(rawNum, rawDen) {
+  return Math.max(highestPrime(rawNum), highestPrime(rawDen));
+}
+
+function ratioToCents(num, den) { return 1200 * Math.log2(num / den); }
+
+function deviationFromET(cents) {
+  const s = cents / 100;
+  return Math.round((s - Math.round(s)) * 100);
+}
+
+function fmtDev(d) {
+  if (d === 0) return '0¢';
+  return (d > 0 ? '+' : '') + d + '¢';
+}
+
+function devTextColor(d) {
+  const a = Math.abs(d);
+  if (a === 0)  return 'rgba(138,210,160,0.85)';
+  if (a <= 7)   return 'rgba(160,210,165,0.80)';
+  if (a <= 18)  return 'rgba(205,195,110,0.80)';
+  if (a <= 35)  return 'rgba(210,160, 78,0.80)';
+  return              'rgba(205, 90, 78,0.80)';
+}
+
+// ── Interval name catalogue ─────────────────────────────
+const NAMES = {
+  '1/1':   'unison',
+  '3/2':   'perfect fifth',         '4/3':   'perfect fourth',
+  '9/8':   'major whole tone',      '16/9':  'Pythagorean minor seventh',
+  '27/16': 'Pythagorean major sixth','32/27': 'Pythagorean minor third',
+  '81/64': 'Pythagorean major third','128/81':'Pythagorean minor sixth',
+  '5/4':   'just major third',      '8/5':   'just minor sixth',
+  '6/5':   'just minor third',      '5/3':   'just major sixth',
+  '15/8':  'just major seventh',    '16/15': 'just minor second',
+  '10/9':  'minor whole tone',      '9/5':   'just minor seventh',
+  '25/24': 'chromatic semitone',    '45/32': 'aug. fourth',
+  '64/45': 'dim. fifth',            '25/16': 'aug. fifth',
+  '32/25': 'dim. fourth',
+  // 7-limit
+  '7/4':   'natural minor seventh', '8/7':   'septimal whole tone',
+  '7/6':   'septimal minor third',  '12/7':  'septimal major sixth',
+  '7/5':   'septimal tritone',      '10/7':  'septimal tritone (alt.)',
+  '9/7':   'septimal major third',  '14/9':  'septimal minor sixth',
+  '21/16': 'septimal fourth',       '32/21': 'septimal fifth (alt.)',
+  '14/13': 'septimal-tridecimal second',
+  '28/27': 'septimal third-tone',
+  // 9-based (still 3-limit)
+  '16/9':  'Pythagorean minor seventh',
+  '18/11': 'undecimal minor sixth', '11/9':  'neutral third',
+  // 11-limit
+  '11/8':  'undecimal tritone',     '16/11': 'undecimal fifth (alt.)',
+  '11/6':  'undecimal major seventh','12/11': 'undecimal second',
+  '11/10': 'undecimal small tone',  '20/11': 'undecimal minor seventh (alt.)',
+  '22/13': 'undecimal-tridecimal interval',
+  '33/32': 'undecimal diesis',
+  // 13-limit
+  '13/8':  'tridecimal minor sixth','16/13': 'tridecimal major third',
+  '13/7':  'tridecimal major seventh','14/13':'tridecimal second',
+  '13/9':  'tridecimal acute fifth','18/13': 'tridecimal minor sixth (alt.)',
+  '13/10': 'tridecimal major third (alt.)','20/13':'tridecimal minor sixth',
+  '13/11': 'tridecimal minor third','22/13': 'tridecimal major sixth (alt.)',
+  '13/12': 'tridecimal second',     '24/13': 'tridecimal neutral seventh',
+  '26/27': 'tridecimal comma region',
+};
+
+// ── Prime-limit CSS variable names ──────────────────────
+const PRIME_VAR = {
+  1: '1', 3: '3', 5: '5', 7: '7', 11: '11', 13: '13',
+};
+
+// ═══════════════════════════════════════════════════════
+// Cell data
+// ═══════════════════════════════════════════════════════
+
+// cells[j][i] = data for row j (U-ton. on ODDS[j]), column i (O-ton. on ODDS[i])
+const cells = [];
+for (let j = 0; j < 7; j++) {
+  cells[j] = [];
+  for (let i = 0; i < 7; i++) {
+    const [num, den] = reduceToOctave(ODDS[i], ODDS[j]);
+    const cents = ratioToCents(num, den);
+    const dev   = deviationFromET(cents);
+    const key   = `${num}/${den}`;
+    const hp    = cellHighestPrime(ODDS[i], ODDS[j]);
+    cells[j][i] = {
+      num, den, key, cents, dev, hp,
+      rawNum: ODDS[i], rawDen: ODDS[j],
+      i, j,
+      isDiag: i === j,
+      active: false,
+      el: null,
+    };
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// DOM / grid construction
+// ═══════════════════════════════════════════════════════
+
+function cellColors(nd) {
+  const p = PRIME_VAR[nd.hp];
+  return {
+    bg:  `var(--c${p}-bg)`,
+    br:  `var(--c${p}-br)`,
+    abg: `var(--c${p}-act)`,
+    abr: `var(--c${p}-abr)`,
+  };
+}
+
+function buildGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  // Corner cell
+  const corner = document.createElement('div');
+  corner.className = 'corner-cell';
+  corner.style.gridRow = '1'; corner.style.gridColumn = '1';
+  corner.innerHTML = `<span class="corner-label">U-ton.↓&nbsp;&nbsp;O-ton.→</span>`;
+  grid.appendChild(corner);
+
+  // Column headers (O-tonalities)
+  for (let i = 0; i < 7; i++) {
+    const h = document.createElement('div');
+    h.className = 'col-header';
+    h.style.gridRow = '1';
+    h.style.gridColumn = String(i + 2);
+    h.innerHTML = `
+      <span class="hdr-tag">O·ton.</span>
+      <span class="hdr-num" id="col-hdr-${i}">${ODDS[i]}</span>`;
+    h.title = `O-tonality on ${ODDS[i]}: activate all ${ODDS[i]}-limit overtone chord members`;
+    h.addEventListener('click', () => toggleOtonality(i));
+    grid.appendChild(h);
+  }
+
+  // Row headers + cells
+  for (let j = 0; j < 7; j++) {
+    // Row header (U-tonality)
+    const rh = document.createElement('div');
+    rh.className = 'row-header';
+    rh.style.gridColumn = '1';
+    rh.style.gridRow = String(j + 2);
+    rh.innerHTML = `
+      <span class="hdr-num" id="row-hdr-${j}">${ODDS[j]}</span>
+      <span class="hdr-tag">U·ton.</span>`;
+    rh.title = `U-tonality on ${ODDS[j]}: activate all ${ODDS[j]}-limit undertone chord members`;
+    rh.addEventListener('click', () => toggleUtonality(j));
+    grid.appendChild(rh);
+
+    // Data cells
+    for (let i = 0; i < 7; i++) {
+      const nd = cells[j][i];
+      const c  = cellColors(nd);
+
+      const el = document.createElement('div');
+      el.className = 'cell' + (nd.isDiag ? ' diagonal' : '');
+      el.style.gridColumn = String(i + 2);
+      el.style.gridRow    = String(j + 2);
+      el.style.background   = c.bg;
+      el.style.borderColor  = c.br;
+      el.style.color = 'rgba(216,208,200,0.65)';
+
+      const long = nd.key.length > 5;
+      el.innerHTML = `
+        <span class="cell-ratio${long ? ' long' : ''}">${nd.key}</span>
+        ${nd.isDiag ? '' : `<span class="cell-dev" style="color:${devTextColor(nd.dev)}">${fmtDev(nd.dev)}</span>`}`;
+
+      if (!nd.isDiag) {
+        el.addEventListener('click',      () => toggleCell(nd));
+        el.addEventListener('mouseenter', () => showInfo(nd));
+        el.addEventListener('mouseleave', clearInfo);
+        el.addEventListener('touchstart', e => { e.preventDefault(); toggleCell(nd); }, { passive: false });
+      }
+
+      nd.el = el;
+      nd._colors = c;
+      grid.appendChild(el);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// Tonality group toggle
+// ═══════════════════════════════════════════════════════
+
+// O-tonality: all cells in column i (same rawNum)
+function toggleOtonality(i) {
+  const col     = cells.map(row => row[i]).filter(nd => !nd.isDiag);
+  const allOn   = col.every(nd => nd.active);
+  col.forEach(nd => {
+    if (allOn) { if (nd.active) { nd.active = false; if (ac) stopVoice(nd.key); } }
+    else        { if (!nd.active) { nd.active = true; startVoice(nd.key, fundamental * nd.num / nd.den); } }
+    updateVisual(nd);
+  });
+  updateHeaders();
+  updateChord();
+}
+
+// U-tonality: all cells in row j (same rawDen)
+function toggleUtonality(j) {
+  const row   = cells[j].filter(nd => !nd.isDiag);
+  const allOn = row.every(nd => nd.active);
+  row.forEach(nd => {
+    if (allOn) { if (nd.active) { nd.active = false; if (ac) stopVoice(nd.key); } }
+    else        { if (!nd.active) { nd.active = true; startVoice(nd.key, fundamental * nd.num / nd.den); } }
+    updateVisual(nd);
+  });
+  updateHeaders();
+  updateChord();
+}
+
+// ═══════════════════════════════════════════════════════
+// Cell interaction
+// ═══════════════════════════════════════════════════════
+
+function toggleCell(nd) {
+  nd.active = !nd.active;
+  if (nd.active) startVoice(nd.key, fundamental * nd.num / nd.den);
+  else if (ac)   stopVoice(nd.key);
+  updateVisual(nd);
+  updateRowColHighlight();
+  updateHeaders();
+  updateChord();
+}
+
+function updateVisual(nd) {
+  if (!nd.el) return;
+  const c = nd._colors;
+  if (nd.active) {
+    nd.el.style.background  = c.abg;
+    nd.el.style.borderColor = c.abr;
+    nd.el.style.color = 'rgba(216,208,200,0.95)';
+  } else {
+    nd.el.style.background  = c.bg;
+    nd.el.style.borderColor = c.br;
+    nd.el.style.color = 'rgba(216,208,200,0.65)';
+  }
+}
+
+function updateRowColHighlight() {
+  // Clear all highlights first
+  document.querySelectorAll('.cell.row-lit, .cell.col-lit').forEach(el => {
+    el.classList.remove('row-lit', 'col-lit');
+  });
+  // For each active cell, highlight its row and column
+  for (let j = 0; j < 7; j++) {
+    for (let i = 0; i < 7; i++) {
+      if (!cells[j][i].active) continue;
+      // Highlight other cells in same column (O-tonality)
+      for (let jj = 0; jj < 7; jj++) {
+        if (jj !== j && cells[jj][i].el) cells[jj][i].el.classList.add('col-lit');
+      }
+      // Highlight other cells in same row (U-tonality)
+      for (let ii = 0; ii < 7; ii++) {
+        if (ii !== i && cells[j][ii].el) cells[j][ii].el.classList.add('row-lit');
+      }
+    }
+  }
+}
+
+function updateHeaders() {
+  for (let i = 0; i < 7; i++) {
+    const anyColActive = cells.some(row => row[i].active);
+    const hdr = document.getElementById(`col-hdr-${i}`);
+    if (hdr) hdr.classList.toggle('active', anyColActive);
+  }
+  for (let j = 0; j < 7; j++) {
+    const anyRowActive = cells[j].some(nd => nd.active);
+    const hdr = document.getElementById(`row-hdr-${j}`);
+    if (hdr) hdr.classList.toggle('active', anyRowActive);
+  }
+}
+
+function showInfo(nd) {
+  const name  = NAMES[nd.key] || nd.key;
+  const cStr  = nd.cents.toFixed(1) + '¢ above root';
+  const devStr = nd.dev !== 0 ? `${fmtDev(nd.dev)} from 12-TET` : '0¢ deviation (12-TET coincidence)';
+  const oStr  = `O-ton. on ${nd.rawNum}`;
+  const uStr  = `U-ton. on ${nd.rawDen}`;
+  document.getElementById('info-display').textContent =
+    `${nd.key}  ·  ${name}  ·  ${cStr}  ·  ${devStr}  ·  ${oStr} × ${uStr}`;
+}
+
+function clearInfo() {
+  document.getElementById('info-display').textContent = '';
+}
+
+function updateChord() {
+  const flat  = cells.flat().filter(nd => nd.active);
+  const el    = document.getElementById('chord-display');
+  el.textContent = flat.length === 0 ? '—' : flat.map(nd => nd.key).join('   ');
+}
+
+function clearAll() {
+  cells.flat().forEach(nd => {
+    if (nd.active) { nd.active = false; if (ac) stopVoice(nd.key); updateVisual(nd); }
+  });
+  document.querySelectorAll('.cell.row-lit, .cell.col-lit')
+    .forEach(el => el.classList.remove('row-lit', 'col-lit'));
+  updateHeaders();
+  updateChord();
+}
+
+// ═══════════════════════════════════════════════════════
+// Audio engine
+// ═══════════════════════════════════════════════════════
+
+let ac = null, masterGain, compressor, analyser, scopeBuf;
+let rafId = null;
+const voices = {};
+let fundamental = 220;
+let waveform    = 'sine';
+
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = ac.createGain(); masterGain.gain.value = 0.72;
+  compressor = ac.createDynamicsCompressor();
+  compressor.threshold.setValueAtTime(-14, 0);
+  compressor.knee.setValueAtTime(6, 0);
+  compressor.ratio.setValueAtTime(4, 0);
+  compressor.attack.setValueAtTime(0.004, 0);
+  compressor.release.setValueAtTime(0.12, 0);
+  analyser = ac.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.65;
+  scopeBuf = new Uint8Array(analyser.fftSize);
+  masterGain.connect(compressor);
+  compressor.connect(analyser);
+  analyser.connect(ac.destination);
+}
+
+function startVoice(key, freq) {
+  if (voices[key]) return;
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  const osc  = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = waveform;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, ac.currentTime);
+  gain.gain.setTargetAtTime(0.09, ac.currentTime, 0.015);
+  osc.connect(gain); gain.connect(masterGain); osc.start();
+  voices[key] = { osc, gain };
+  if (!rafId) drawScope();
+}
+
+function stopVoice(key) {
+  if (!voices[key]) return;
+  const { osc, gain } = voices[key];
+  gain.gain.setTargetAtTime(0, ac.currentTime, 0.06);
+  setTimeout(() => {
+    try { osc.stop(); } catch (_) {}
+    delete voices[key];
+    if (Object.keys(voices).length === 0 && rafId) {
+      cancelAnimationFrame(rafId); rafId = null; blankScope();
+    }
+  }, 420);
+}
+
+// ═══════════════════════════════════════════════════════
+// Controls
+// ═══════════════════════════════════════════════════════
+
+document.getElementById('wave-btns').addEventListener('click', e => {
+  const btn = e.target.closest('.tog');
+  if (!btn) return;
+  document.querySelectorAll('#wave-btns .tog').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  waveform = btn.dataset.w;
+  for (const v of Object.values(voices)) v.osc.type = waveform;
+});
+
+const fundEl = document.getElementById('fund-input');
+fundEl.addEventListener('input', () => {
+  const v = parseFloat(fundEl.value);
+  if (!isFinite(v) || v < 10) return;
+  fundamental = v;
+  if (!ac) return;
+  const t = ac.currentTime;
+  cells.flat().forEach(nd => {
+    if (nd.active && voices[nd.key])
+      voices[nd.key].osc.frequency.setTargetAtTime(fundamental * nd.num / nd.den, t, 0.02);
+  });
+});
+
+function shiftOctave(dir) {
+  fundamental = Math.round(fundamental * Math.pow(2, dir) * 100) / 100;
+  fundEl.value = fundamental;
+  if (!ac) return;
+  const t = ac.currentTime;
+  cells.flat().forEach(nd => {
+    if (nd.active && voices[nd.key])
+      voices[nd.key].osc.frequency.setTargetAtTime(fundamental * nd.num / nd.den, t, 0.02);
+  });
+}
+
+document.getElementById('oct-dn').addEventListener('click', () => shiftOctave(-1));
+document.getElementById('oct-up').addEventListener('click', () => shiftOctave(1));
+document.getElementById('clear-btn').addEventListener('click', clearAll);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
+
+// ═══════════════════════════════════════════════════════
+// Oscilloscope
+// ═══════════════════════════════════════════════════════
+
+function blankScope() {
+  const cv = document.getElementById('scope');
+  const g  = cv.getContext('2d');
+  g.fillStyle = '#0a0a0a';
+  g.fillRect(0, 0, cv.width, cv.height);
+}
+
+function drawScope() {
+  rafId = requestAnimationFrame(drawScope);
+  const cv  = document.getElementById('scope');
+  const dpr = devicePixelRatio || 1;
+  cv.width  = cv.offsetWidth * dpr;
+  cv.height = 60 * dpr;
+  const g = cv.getContext('2d');
+  const w = cv.width / dpr, h = cv.height / dpr;
+  g.scale(dpr, dpr);
+  g.fillStyle = '#0a0a0a'; g.fillRect(0, 0, w, h);
+  if (!analyser) return;
+  analyser.getByteTimeDomainData(scopeBuf);
+  g.strokeStyle = 'rgba(138,176,200,0.7)'; g.lineWidth = 1; g.beginPath();
+  const sw = w / scopeBuf.length;
+  for (let i = 0; i < scopeBuf.length; i++) {
+    const y = h / 2 + (scopeBuf[i] / 128 - 1) * h * 0.42;
+    i === 0 ? g.moveTo(0, y) : g.lineTo(i * sw, y);
+  }
+  g.stroke();
+}
+
+// ═══════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════
+
+buildGrid();
+blankScope();
+</script>
+</body>
+</html>
