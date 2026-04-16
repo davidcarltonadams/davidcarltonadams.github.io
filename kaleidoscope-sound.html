@@ -117,12 +117,13 @@
       cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
     .cf-btn:active { background: var(--border); }
-    #cf-toggle {
+    #cf-toggle, #autoplay-toggle {
       background: var(--bg3); border: 1px solid var(--border);
       color: var(--muted); border-radius: 6px;
       padding: 4px 10px; font-size: 0.75rem; cursor: pointer;
     }
     #cf-toggle.on { border-color: var(--accent); color: var(--accent); }
+    #autoplay-toggle.on { border-color: var(--green); color: var(--green); }
 
     /* Previous panel */
     #prev-panel {
@@ -182,13 +183,27 @@
     }
     #progress-track {
       width: 100%; max-width: 360px; height: 4px;
-      background: var(--bg3); border-radius: 2px; overflow: hidden;
+      background: var(--bg3); border-radius: 2px; overflow: visible;
+      cursor: pointer; position: relative;
+      /* expand touch target without changing visual size */
+      padding: 10px 0; margin: -10px 0; box-sizing: content-box;
+      touch-action: none;
     }
     #progress-fill {
-      height: 100%; background: var(--accent);
+      height: 4px; background: var(--accent);
       border-radius: 2px; width: 0%;
-      transition: width 0.5s linear;
+      position: relative; pointer-events: none;
+      transition: width 0.25s linear;
     }
+    #progress-thumb {
+      position: absolute; right: -7px; top: -5px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: white; pointer-events: none;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    #progress-track:hover #progress-thumb,
+    #progress-track.scrubbing #progress-thumb { opacity: 1; }
+    #progress-track.scrubbing #progress-fill { transition: none; }
 
     /* Next button */
     #next-btn {
@@ -312,6 +327,8 @@
       <span class="cf-val" id="cf-val">3s</span>
       <button class="cf-btn" id="cf-plus">+</button>
       <button id="cf-toggle" class="on">ON</button>
+      <span class="cf-label" style="margin-left:8px">auto</span>
+      <button id="autoplay-toggle">OFF</button>
     </div>
   </div>
 
@@ -334,7 +351,9 @@
     <span class="placeholder-badge" id="placeholder-badge">⚠ placeholder</span>
     <div id="timer-display">0:00 / 0:00</div>
     <div id="progress-track">
-      <div id="progress-fill"></div>
+      <div id="progress-fill">
+        <div id="progress-thumb"></div>
+      </div>
     </div>
   </div>
 
@@ -394,6 +413,10 @@ function initAudio() {
 
   current = { el: elA, gain: gainA };
   next    = { el: elB, gain: gainB };
+
+  // Set up autoplay ended listeners on both elements
+  setupAutoplay(elA);
+  setupAutoplay(elB);
 
   // Load first event into current slot, preload second
   loadInto(current.el, 0);
@@ -706,6 +729,63 @@ document.getElementById('btn-restart').addEventListener('click', restartCurrent)
 // Scene overlay
 document.getElementById('scenes-btn').addEventListener('click', openOverlay);
 document.getElementById('overlay-close').addEventListener('click', closeOverlay);
+
+// ── Scrubbing ────────────────────────────────────────────────
+let isScrubbing = false;
+
+function scrubTo(clientX) {
+  const track = document.getElementById('progress-track');
+  const rect = track.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const dur = current.el.duration;
+  if (dur && !isNaN(dur) && isFinite(dur)) {
+    current.el.currentTime = ratio * dur;
+  }
+}
+
+function startScrub(clientX) {
+  if (isCrossfading) return;
+  isScrubbing = true;
+  document.getElementById('progress-track').classList.add('scrubbing');
+  scrubTo(clientX);
+}
+
+function endScrub() {
+  isScrubbing = false;
+  document.getElementById('progress-track').classList.remove('scrubbing');
+}
+
+const pt = document.getElementById('progress-track');
+pt.addEventListener('mousedown', e => { startScrub(e.clientX); });
+document.addEventListener('mousemove', e => { if (isScrubbing) scrubTo(e.clientX); });
+document.addEventListener('mouseup', endScrub);
+
+pt.addEventListener('touchstart', e => {
+  startScrub(e.touches[0].clientX);
+  e.preventDefault();
+}, { passive: false });
+document.addEventListener('touchmove', e => {
+  if (isScrubbing) { scrubTo(e.touches[0].clientX); e.preventDefault(); }
+}, { passive: false });
+document.addEventListener('touchend', endScrub);
+
+// ── Autoplay ─────────────────────────────────────────────────
+let autoplay = false;
+
+function setupAutoplay(el) {
+  el.addEventListener('ended', () => {
+    if (el === current.el && autoplay && !isCrossfading) {
+      if (currentIdx + 1 < SEQUENCE.length) goNext();
+    }
+  });
+}
+
+document.getElementById('autoplay-toggle').addEventListener('click', () => {
+  autoplay = !autoplay;
+  const btn = document.getElementById('autoplay-toggle');
+  btn.textContent = autoplay ? 'ON' : 'OFF';
+  btn.classList.toggle('on', autoplay);
+});
 
 // Crossfade controls
 document.getElementById('cf-minus').addEventListener('click', () => {
