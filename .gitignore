@@ -1,2 +1,5 @@
 .DS_Store
 **/.DS_Store
+# Exclude large source audio — only ccf/ MP3s go to GitHub Pages
+audio/kaleidoscope/Kaleidoscope audio/
+audio/kaleidoscope/*.wav
