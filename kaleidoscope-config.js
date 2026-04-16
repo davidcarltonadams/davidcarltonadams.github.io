@@ -54,9 +54,9 @@ const SEQUENCE = [
     id: 'interlude-3-4',
     label: 'Interlude 3→4: Naming',
     type: 'interlude',
-    duration: 120,
+    duration: 217,
     src: 'audio/kaleidoscope/ccf/interlude-3-4-naming.mp3',
-    placeholder: true,
+    poetryNeeded: true,
   },
   {
     id: 'scene-4',
@@ -69,9 +69,9 @@ const SEQUENCE = [
     id: 'interlude-4-5',
     label: 'Interlude 4→5: Spectrum',
     type: 'interlude',
-    duration: 120,
+    duration: 174,
     src: 'audio/kaleidoscope/ccf/interlude-4-5-spectrum.mp3',
-    placeholder: true,
+    poetryNeeded: true,
   },
   {
     id: 'scene-5',
@@ -82,11 +82,10 @@ const SEQUENCE = [
   },
   {
     id: 'scene-6',
-    label: 'Scene 6: Breath',
+    label: 'Scene 6: Breath / Shape & Space',
     type: 'scene',
-    duration: 180,
+    duration: 240,   // truncated to 4:00; full 7:08 pending update
     src: 'audio/kaleidoscope/ccf/scene-6-breath.mp3',
-    placeholder: true,
   },
   {
     id: 'scene-7',
