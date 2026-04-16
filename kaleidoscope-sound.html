@@ -205,6 +205,21 @@
     #progress-track.scrubbing #progress-thumb { opacity: 1; }
     #progress-track.scrubbing #progress-fill { transition: none; }
 
+    #transport {
+      display: flex; gap: 8px; justify-content: center; align-items: center;
+      width: 100%; max-width: 360px;
+    }
+    .t-btn {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px;
+      padding: 8px 0; font-size: 0.8rem; cursor: pointer;
+      flex: 1; text-align: center; min-width: 0;
+      transition: background 0.1s, opacity 0.1s;
+    }
+    .t-btn:active:not(:disabled) { background: #333; }
+    .t-btn:disabled { opacity: 0.3; cursor: default; }
+    #btn-playpause { flex: 1.4; font-size: 1.1rem; }
+
     /* Next button */
     #next-btn {
       position: relative; overflow: hidden;
@@ -354,6 +369,13 @@
       <div id="progress-fill">
         <div id="progress-thumb"></div>
       </div>
+    </div>
+    <div id="transport">
+      <button class="t-btn" id="btn-back15"  title="Back 15s">⏮ 15s</button>
+      <button class="t-btn" id="btn-rewind"  title="Restart track">⏮</button>
+      <button class="t-btn" id="btn-playpause" title="Play / Pause">⏸</button>
+      <button class="t-btn" id="btn-ff"      title="Forward 30s">⏭</button>
+      <button class="t-btn" id="btn-fwd15"   title="Forward 15s">15s ⏭</button>
     </div>
   </div>
 
@@ -563,6 +585,9 @@ function tick() {
   const pct = dur > 0 ? Math.min(1, ct / dur) * 100 : 0;
   document.getElementById('progress-fill').style.width = pct + '%';
 
+  // Keep play/pause button in sync with actual audio state
+  document.getElementById('btn-playpause').textContent = el.paused ? '▶' : '⏸';
+
   rafId = requestAnimationFrame(tick);
 }
 
@@ -729,6 +754,19 @@ document.getElementById('btn-restart').addEventListener('click', restartCurrent)
 // Scene overlay
 document.getElementById('scenes-btn').addEventListener('click', openOverlay);
 document.getElementById('overlay-close').addEventListener('click', closeOverlay);
+
+// ── Transport controls ───────────────────────────────────────
+document.getElementById('btn-playpause').addEventListener('click', () => {
+  if (current.el.paused) {
+    audioCtx.resume().then(() => current.el.play().catch(() => {}));
+  } else {
+    current.el.pause();
+  }
+});
+document.getElementById('btn-rewind').addEventListener('click', restartCurrent);
+document.getElementById('btn-back15').addEventListener('click', () => seekBy(-15));
+document.getElementById('btn-ff').addEventListener('click', () => seekBy(30));
+document.getElementById('btn-fwd15').addEventListener('click', () => seekBy(15));
 
 // ── Scrubbing ────────────────────────────────────────────────
 let isScrubbing = false;
