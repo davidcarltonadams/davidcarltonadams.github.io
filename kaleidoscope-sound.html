@@ -460,7 +460,9 @@ function advance(targetIdx) {
   if (isCrossfading) return;
   if (targetIdx < 0 || targetIdx >= SEQUENCE.length) return;
 
-  const cf = crossfadeEnabled ? crossfadeSecs : 0;
+  const cf = crossfadeEnabled
+    ? (SEQUENCE[currentIdx].crossfadeOut ?? crossfadeSecs)
+    : 0;
   isCrossfading = true;
 
   // next slot should already be preloaded for normal forward advance

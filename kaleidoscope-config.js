@@ -12,8 +12,9 @@ const SEQUENCE = [
     id: 'scene-0',
     label: 'Scene 0',
     type: 'scene',
-    duration: 532,
+    duration: 489,
     src: 'audio/kaleidoscope/ccf/scene-0.mp3',
+    crossfadeOut: 7,   // long fade into first interlude
   },
   {
     id: 'scene-1',
