@@ -371,11 +371,11 @@
       </div>
     </div>
     <div id="transport">
-      <button class="t-btn" id="btn-back15"  title="Back 15s">⏮ 15s</button>
-      <button class="t-btn" id="btn-rewind"  title="Restart track">⏮</button>
+      <button class="t-btn" id="btn-rewind"    title="Restart (or prev if <4s in)">⏮</button>
+      <button class="t-btn" id="btn-back15"    title="Back 15s">⏪ 15s</button>
       <button class="t-btn" id="btn-playpause" title="Play / Pause">⏸</button>
-      <button class="t-btn" id="btn-ff"      title="Forward 30s">⏭</button>
-      <button class="t-btn" id="btn-fwd15"   title="Forward 15s">15s ⏭</button>
+      <button class="t-btn" id="btn-fwd15"     title="Forward 15s">15s ⏩</button>
+      <button class="t-btn" id="btn-next-track" title="Next event">⏭</button>
     </div>
   </div>
 
@@ -763,10 +763,19 @@ document.getElementById('btn-playpause').addEventListener('click', () => {
     current.el.pause();
   }
 });
-document.getElementById('btn-rewind').addEventListener('click', restartCurrent);
+
+// ⏮ smart: if <4s in (or at start) → go to previous; else → restart current
+document.getElementById('btn-rewind').addEventListener('click', () => {
+  if (current.el.currentTime < 4 && history.length > 0) {
+    goUndo();
+  } else {
+    restartCurrent();
+  }
+});
+
 document.getElementById('btn-back15').addEventListener('click', () => seekBy(-15));
-document.getElementById('btn-ff').addEventListener('click', () => seekBy(30));
 document.getElementById('btn-fwd15').addEventListener('click', () => seekBy(15));
+document.getElementById('btn-next-track').addEventListener('click', goNext);
 
 // ── Scrubbing ────────────────────────────────────────────────
 let isScrubbing = false;
