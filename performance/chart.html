@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Chart — Le Mondo</title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #070707;
+      --text:      #e8e2dc;
+      --dim:       rgba(232,226,220,0.45);
+      --dimmer:    rgba(232,226,220,0.18);
+      --border:    rgba(232,226,220,0.1);
+      --green:     #4caf6e;
+      --yellow:    #e0b840;
+      --red:       #c84040;
+      --accent:    #7a9cbf;
+    }
+
+    html, body {
+      height: 100%; height: 100dvh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, 'Times New Roman', serif;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ── CONNECT VIEW ───────────────────────────────── */
+    #connect-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100dvh;
+      padding: 2rem;
+      gap: 2rem;
+    }
+
+    .cv-title {
+      font-size: clamp(1.2rem, 5vw, 2rem);
+      font-style: italic;
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+
+    .cv-sub {
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+      text-align: center;
+    }
+
+    .cv-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%;
+      max-width: 22rem;
+    }
+
+    .cv-label {
+      font-size: 0.55rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 0.2rem;
+    }
+
+    .cv-input {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'SF Mono', 'Courier New', monospace;
+      font-size: 1.4rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      padding: 0.6rem 0.8rem;
+      width: 100%;
+      outline: none;
+      text-align: center;
+      border-radius: 2px;
+    }
+    .cv-input:focus { border-color: var(--accent); }
+
+    .cv-role-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      justify-content: center;
+    }
+
+    .cv-role-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .cv-role-btn:hover,
+    .cv-role-btn.selected {
+      border-color: var(--accent);
+      color: var(--text);
+      background: rgba(122,156,191,0.1);
+    }
+
+    .cv-connect-btn {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--text);
+      font-family: Georgia, serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 0.8rem 2rem;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .cv-connect-btn:hover { background: rgba(232,226,220,0.07); }
+    .cv-connect-btn:disabled { opacity: 0.4; cursor: default; }
+
+    .cv-status {
+      font-size: 0.55rem;
+      color: var(--dimmer);
+      text-align: center;
+      min-height: 1em;
+    }
+
+    /* ── CHART VIEW ─────────────────────────────────── */
+    #chart-view {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    /* Status bar */
+    .ch-statusbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .ch-title {
+      font-size: 0.6rem;
+      font-style: italic;
+      color: var(--dim);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 60%;
+    }
+    .ch-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .ch-room {
+      font-size: 0.5rem;
+      letter-spacing: 0.15em;
+      color: var(--dimmer);
+      font-family: 'SF Mono', monospace;
+    }
+    .ch-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--dimmer);
+      flex-shrink: 0;
+      transition: background 0.4s;
+    }
+    .ch-dot.connected { background: var(--green); }
+    .ch-dot.late { background: var(--yellow); }
+
+    /* Main content */
+    .ch-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem 1.5rem;
+      gap: 0;
+      position: relative;
+    }
+
+    /* Previous chord */
+    .ch-prev {
+      font-size: clamp(0.9rem, 4vw, 1.4rem);
+      color: var(--dimmer);
+      font-style: italic;
+      min-height: 2em;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      transition: opacity 0.4s;
+      margin-bottom: 0.5rem;
+    }
+    .ch-prev-label {
+      font-size: 0.5em;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* Current chord — the hero */
+    .ch-current-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      width: 100%;
+    }
+
+    .ch-section-label {
+      font-size: clamp(0.55rem, 2vw, 0.75rem);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 0.5rem;
+    }
+
+    .ch-chord {
+      font-size: clamp(3.5rem, 22vw, 9rem);
+      font-weight: normal;
+      font-style: normal;
+      color: var(--text);
+      line-height: 1;
+      text-align: center;
+      letter-spacing: -0.02em;
+      transition: color 0.5s;
+    }
+    .ch-chord.fresh { color: #fff; }
+
+    .ch-time {
+      font-size: clamp(0.8rem, 3vw, 1.1rem);
+      font-family: 'SF Mono', 'Courier New', monospace;
+      color: var(--dim);
+      margin-top: 0.6rem;
+      letter-spacing: 0.08em;
+    }
+
+    /* Next chord */
+    .ch-next {
+      font-size: clamp(0.9rem, 4vw, 1.4rem);
+      color: var(--dim);
+      min-height: 2em;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      margin-top: 0.5rem;
+    }
+    .ch-next-label {
+      font-size: 0.5em;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+    }
+    .ch-next-in {
+      font-size: 0.5em;
+      font-family: 'SF Mono', monospace;
+      color: var(--dimmer);
+    }
+
+    /* Countdown bar */
+    .ch-countdown-wrap {
+      width: 100%;
+      padding: 0 0 0.2rem;
+      flex-shrink: 0;
+    }
+    .ch-countdown-bar {
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .ch-countdown-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.1s linear;
+    }
+
+    /* Performer note */
+    .ch-note {
+      width: 100%;
+      border-top: 1px solid var(--border);
+      padding: 0.6rem 1rem;
+      font-size: clamp(0.6rem, 2.5vw, 0.8rem);
+      color: var(--dim);
+      font-style: italic;
+      flex-shrink: 0;
+      min-height: 2.5rem;
+      display: flex;
+      align-items: center;
+    }
+
+    /* PAUSED overlay */
+    .ch-paused-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(7,7,7,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .ch-paused-overlay.visible { opacity: 1; }
+
+    /* WAITING (no conductor) */
+    .ch-waiting-msg {
+      position: absolute;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.55rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      text-align: center;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     CONNECT VIEW
+══════════════════════════════════════════════════════ -->
+<div id="connect-view">
+  <div class="cv-title">Le Mondo Performance</div>
+  <div class="cv-sub">performer chart</div>
+
+  <div class="cv-form">
+    <div>
+      <div class="cv-label">Room code</div>
+      <input id="cv-room" class="cv-input" type="text" maxlength="6"
+             placeholder="XXXX" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+
+    <div>
+      <div class="cv-label">Your role</div>
+      <div class="cv-role-row">
+        <button class="cv-role-btn selected" data-role="all">all</button>
+        <button class="cv-role-btn" data-role="bass">bass</button>
+        <button class="cv-role-btn" data-role="guitar">guitar</button>
+        <button class="cv-role-btn" data-role="vocals">vocals</button>
+        <button class="cv-role-btn" data-role="keys">keys</button>
+        <button class="cv-role-btn" data-role="drums">drums</button>
+      </div>
+    </div>
+
+    <button id="cv-connect-btn" class="cv-connect-btn">Connect</button>
+    <div id="cv-status" class="cv-status"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     CHART VIEW
+══════════════════════════════════════════════════════ -->
+<div id="chart-view" class="hidden">
+  <div class="ch-statusbar">
+    <div id="ch-title" class="ch-title">—</div>
+    <div class="ch-meta">
+      <div id="ch-room-label" class="ch-room"></div>
+      <div id="ch-dot" class="ch-dot"></div>
+    </div>
+  </div>
+
+  <div class="ch-content">
+    <div class="ch-prev">
+      <span class="ch-prev-label">was</span>
+      <span id="ch-prev-chord">—</span>
+    </div>
+
+    <div class="ch-current-wrap">
+      <div id="ch-section-label" class="ch-section-label"></div>
+      <div id="ch-chord" class="ch-chord">—</div>
+      <div id="ch-time" class="ch-time">—</div>
+    </div>
+
+    <div class="ch-next">
+      <span class="ch-next-label">next</span>
+      <span id="ch-next-chord">—</span>
+      <span id="ch-next-in" class="ch-next-in"></span>
+    </div>
+
+    <div id="ch-paused" class="ch-paused-overlay">paused</div>
+    <div id="ch-waiting" class="ch-waiting-msg">waiting for conductor…</div>
+  </div>
+
+  <div class="ch-countdown-wrap">
+    <div class="ch-countdown-bar">
+      <div id="ch-countdown-fill" class="ch-countdown-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div id="ch-note" class="ch-note"></div>
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════
+//  URL PARAMS
+// ════════════════════════════════════════════════════════════
+const params  = new URLSearchParams(location.search);
+const urlRoom = (params.get('room') || '').toUpperCase();
+const urlRole = params.get('role') || 'all';
+const urlSpec = params.get('spec') || null;
+
+const PEER_NS = 'lm-perf-2026-';
+
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let spec       = null;
+let role       = urlRole;
+let baseElapsed  = 0;
+let playStartTime = null;   // null = paused/stopped
+let rafId      = null;
+let peer       = null;
+let clientConn = null;
+let lastSectionIdx = -1;
+let hasEverPlayed = false;
+
+function getElapsed() {
+  if (!playStartTime) return baseElapsed;
+  return baseElapsed + (Date.now() - playStartTime) / 1000;
+}
+
+// ════════════════════════════════════════════════════════════
+//  SPEC LOADING
+// ════════════════════════════════════════════════════════════
+async function loadSpec(specId) {
+  try {
+    const r = await fetch('specs/' + specId + '.json');
+    spec = await r.json();
+    return true;
+  } catch (e) {
+    console.warn('spec load failed', e);
+    return false;
+  }
+}
+
+function getSectionAt(t) {
+  if (!spec) return null;
+  let s = spec.sections[0];
+  for (const sec of spec.sections) {
+    if (sec.t <= t) s = sec;
+    else break;
+  }
+  return s;
+}
+
+function getSectionIdx(t) {
+  if (!spec) return 0;
+  let idx = 0;
+  for (let i = 0; i < spec.sections.length; i++) {
+    if (spec.sections[i].t <= t) idx = i;
+    else break;
+  }
+  return idx;
+}
+
+function getNextSection(idx) {
+  if (!spec || idx >= spec.sections.length - 1) return null;
+  return spec.sections[idx + 1];
+}
+
+function fmtTime(s) {
+  s = Math.max(0, Math.floor(s));
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return m + ':' + String(ss).padStart(2, '0');
+}
+
+// ════════════════════════════════════════════════════════════
+//  PEERJS
+// ════════════════════════════════════════════════════════════
+function applyMsg(msg) {
+  switch (msg.type) {
+    case 'sync':
+      if (msg.specId && (!spec || spec.id !== msg.specId)) loadSpec(msg.specId).then(ok => {
+        if (ok) updateChart(getElapsed());
+      });
+      if (msg.playing && msg.startTime) {
+        playStartTime = msg.startTime;
+        baseElapsed   = msg.baseElapsed || 0;
+      } else {
+        playStartTime = null;
+        baseElapsed   = msg.elapsed || 0;
+      }
+      hasEverPlayed = msg.playing;
+      break;
+
+    case 'play':
+      playStartTime = msg.startTime;
+      baseElapsed   = msg.baseElapsed || 0;
+      hasEverPlayed = true;
+      scheduleRAF();
+      break;
+
+    case 'pause':
+      baseElapsed   = msg.elapsed || getElapsed();
+      playStartTime = null;
+      break;
+
+    case 'jump':
+      baseElapsed   = msg.elapsed || 0;
+      if (msg.playing && msg.startTime) {
+        playStartTime = msg.startTime;
+        hasEverPlayed = true;
+        scheduleRAF();
+      } else {
+        playStartTime = null;
+      }
+      lastSectionIdx = -1;
+      break;
+
+    case 'load':
+      if (msg.specId) loadSpec(msg.specId).then(ok => {
+        if (ok) { baseElapsed = 0; playStartTime = null; lastSectionIdx = -1; updateChart(0); }
+      });
+      break;
+
+    case 'heartbeat':
+      // Resync clock drift
+      if (msg.playing && msg.startTime) {
+        playStartTime = msg.startTime;
+        baseElapsed   = msg.baseElapsed || 0;
+      }
+      break;
+  }
+  updateWaiting();
+}
+
+function connect(roomCode) {
+  setStatus('connecting…');
+  peer = new Peer({ debug: 0 });
+  peer.on('open', () => {
+    clientConn = peer.connect(PEER_NS + roomCode, { reliable: true });
+    clientConn.on('open', () => {
+      setDot('connected');
+      setStatus('');
+      document.getElementById('ch-room-label').textContent = roomCode;
+    });
+    clientConn.on('data', msg => applyMsg(msg));
+    clientConn.on('close', () => {
+      setDot('');
+      document.getElementById('ch-room-label').textContent = roomCode + ' ✗';
+      setStatus('disconnected — reload to reconnect');
+    });
+    clientConn.on('error', () => setStatus('connection error'));
+  });
+  peer.on('error', err => setStatus('peer error: ' + err.type));
+}
+
+function setDot(state) {
+  const d = document.getElementById('ch-dot');
+  d.className = 'ch-dot' + (state ? ' ' + state : '');
+}
+function setStatus(msg) {
+  document.getElementById('cv-status').textContent = msg;
+}
+
+// ════════════════════════════════════════════════════════════
+//  CHART UPDATE
+// ════════════════════════════════════════════════════════════
+function scheduleRAF() {
+  if (rafId) return;
+  rafId = requestAnimationFrame(tick);
+}
+
+function tick() {
+  rafId = null;
+  const elapsed = getElapsed();
+  updateChart(elapsed);
+  if (playStartTime) rafId = requestAnimationFrame(tick);
+}
+
+let chordFlashTimer = null;
+
+function updateChart(elapsed) {
+  if (!spec) {
+    document.getElementById('ch-chord').textContent = '—';
+    return;
+  }
+
+  document.getElementById('ch-title').textContent = spec.title;
+
+  const idx = getSectionIdx(elapsed);
+  const sec = spec.sections[idx];
+  const next = getNextSection(idx);
+
+  // Flash on section change
+  if (idx !== lastSectionIdx) {
+    const chordEl = document.getElementById('ch-chord');
+    chordEl.classList.add('fresh');
+    clearTimeout(chordFlashTimer);
+    chordFlashTimer = setTimeout(() => chordEl.classList.remove('fresh'), 600);
+    lastSectionIdx = idx;
+  }
+
+  // Previous chord
+  const prevSec = idx > 0 ? spec.sections[idx - 1] : null;
+  document.getElementById('ch-prev-chord').textContent = prevSec ? prevSec.chord : '—';
+
+  // Current chord
+  document.getElementById('ch-section-label').textContent = sec.label;
+  document.getElementById('ch-chord').textContent = sec.chord;
+  document.getElementById('ch-time').textContent = fmtTime(elapsed) + (spec.duration ? ' / ' + fmtTime(spec.duration) : '');
+
+  // Next chord
+  if (next) {
+    const timeLeft = next.t - elapsed;
+    document.getElementById('ch-next-chord').textContent = next.chord;
+    document.getElementById('ch-next-in').textContent =
+      timeLeft > 0 ? 'in ' + fmtTime(timeLeft) : 'now';
+
+    // Countdown bar: fills as we approach next section
+    const sectionDuration = next.t - sec.t;
+    const progress = sectionDuration > 0 ? (elapsed - sec.t) / sectionDuration : 1;
+    document.getElementById('ch-countdown-fill').style.width = (Math.min(progress, 1) * 100) + '%';
+  } else {
+    document.getElementById('ch-next-chord').textContent = 'end';
+    document.getElementById('ch-next-in').textContent = '';
+    document.getElementById('ch-countdown-fill').style.width = '100%';
+  }
+
+  // Performer note (role-specific, or fallback to 'all')
+  const performNote = sec.perform?.[role] || sec.perform?.['all'] || sec.note || '';
+  document.getElementById('ch-note').textContent = performNote;
+
+  // Paused overlay
+  const paused = !playStartTime && hasEverPlayed;
+  document.getElementById('ch-paused').classList.toggle('visible', paused);
+}
+
+function updateWaiting() {
+  const waiting = !hasEverPlayed;
+  document.getElementById('ch-waiting').style.display = waiting ? '' : 'none';
+}
+
+// ════════════════════════════════════════════════════════════
+//  CONNECT VIEW LOGIC
+// ════════════════════════════════════════════════════════════
+function initConnectView() {
+  const roomInput = document.getElementById('cv-room');
+  const connectBtn = document.getElementById('cv-connect-btn');
+
+  // Pre-fill from URL
+  if (urlRoom) roomInput.value = urlRoom;
+  if (urlRole) {
+    document.querySelectorAll('.cv-role-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.role === urlRole);
+    });
+    role = urlRole;
+  }
+
+  // Role selector
+  document.querySelectorAll('.cv-role-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cv-role-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      role = btn.dataset.role;
+    });
+  });
+
+  // Room input
+  roomInput.addEventListener('input', () => {
+    roomInput.value = roomInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  });
+  roomInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') connectBtn.click();
+  });
+
+  connectBtn.addEventListener('click', () => {
+    const room = roomInput.value.trim().toUpperCase();
+    if (!room) { setStatus('enter a room code'); return; }
+
+    connectBtn.disabled = true;
+    setStatus('connecting…');
+
+    // If spec provided in URL, pre-load it
+    const specId = urlSpec || null;
+    const doConnect = () => {
+      connect(room);
+      document.getElementById('connect-view').classList.add('hidden');
+      document.getElementById('chart-view').classList.remove('hidden');
+      document.getElementById('ch-room-label').textContent = room;
+      updateWaiting();
+    };
+
+    if (specId) {
+      loadSpec(specId).then(() => doConnect());
+    } else {
+      doConnect();
+    }
+  });
+
+  // If URL has both room and spec, auto-connect
+  if (urlRoom && urlSpec) {
+    loadSpec(urlSpec).then(() => {
+      connect(urlRoom);
+      document.getElementById('connect-view').classList.add('hidden');
+      document.getElementById('chart-view').classList.remove('hidden');
+      document.getElementById('ch-room-label').textContent = urlRoom;
+      updateWaiting();
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+initConnectView();
+updateWaiting();
+</script>
+</body>
+</html>
