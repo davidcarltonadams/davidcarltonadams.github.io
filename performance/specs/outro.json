@@ -1,0 +1,24 @@
+{
+  "id": "outro",
+  "title": "Outro",
+  "duration": 300,
+  "key": "C~",
+  "tempo": null,
+  "notes": "C microtonal. 'Stop perfectionism — commit to choices and engrave.' PLACEHOLDER — needs chord chart from David.",
+  "performers": ["bass", "all"],
+  "sections": [
+    {
+      "t": 0,
+      "label": "PLACEHOLDER",
+      "chord": "C~",
+      "bass": "C2",
+      "perform": { "all": "PLACEHOLDER — fill in with David" },
+      "synth": {
+        "bass": ["C2"],
+        "pads": ["C3", "G3", "E4"],
+        "filter": { "freq": 700, "Q": 3 },
+        "wave": "sawtooth"
+      }
+    }
+  ]
+}

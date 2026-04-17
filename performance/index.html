@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Le Mondo — Performance System</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #070707; --text: #e8e2dc;
+      --dim: rgba(232,226,220,0.45); --dimmer: rgba(232,226,220,0.18);
+      --border: rgba(232,226,220,0.1); --accent: #7a9cbf;
+    }
+    html, body {
+      min-height: 100dvh; background: var(--bg); color: var(--text);
+      font-family: Georgia, 'Times New Roman', serif;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .hub {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 2.5rem; padding: 2rem; max-width: 28rem; width: 100%;
+      text-align: center;
+    }
+    .hub-title {
+      font-size: clamp(1.3rem, 5vw, 2.2rem);
+      font-style: italic; letter-spacing: 0.04em;
+    }
+    .hub-sub {
+      font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--dimmer); margin-top: -1.8rem;
+    }
+
+    .room-section { width: 100%; }
+    .room-label {
+      font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--dim); margin-bottom: 0.5rem;
+    }
+    .room-row {
+      display: flex; gap: 0.5rem;
+    }
+    #room-input {
+      flex: 1; background: transparent; border: 1px solid var(--border);
+      color: var(--text); font-family: 'SF Mono', monospace;
+      font-size: 1.4rem; letter-spacing: 0.3em; text-transform: uppercase;
+      padding: 0.5rem 0.8rem; text-align: center;
+      border-radius: 2px; outline: none;
+    }
+    #room-input:focus { border-color: var(--accent); }
+    #gen-room-btn {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      font-family: Georgia, serif; font-size: 0.6rem; padding: 0 0.8rem;
+      border-radius: 2px; cursor: pointer; transition: all 0.12s; white-space: nowrap;
+    }
+    #gen-room-btn:hover { border-color: var(--text); color: var(--text); }
+
+    .buttons {
+      display: flex; flex-direction: column; gap: 0.7rem; width: 100%;
+    }
+    .hub-btn {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      font-family: Georgia, serif; font-size: 0.7rem; letter-spacing: 0.08em;
+      padding: 0.7rem 1.5rem; border-radius: 2px; cursor: pointer;
+      transition: all 0.12s; display: flex; align-items: center; justify-content: space-between;
+      text-decoration: none;
+    }
+    .hub-btn:hover { border-color: var(--accent); color: var(--text); background: rgba(122,156,191,0.05); }
+    .hub-btn-label { font-size: 0.75rem; }
+    .hub-btn-sub { font-size: 0.5rem; color: var(--dimmer); font-style: italic; }
+
+    .divider {
+      width: 100%; height: 1px; background: var(--border);
+    }
+
+    .roles-title {
+      font-size: 0.55rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--dimmer);
+    }
+    .role-links {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;
+    }
+    .role-link {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      font-family: Georgia, serif; font-size: 0.62rem;
+      padding: 0.35rem 0.9rem; border-radius: 20px;
+      cursor: pointer; transition: all 0.12s; text-decoration: none;
+    }
+    .role-link:hover { border-color: var(--accent); color: var(--text); }
+
+    .hub-note {
+      font-size: 0.5rem; color: var(--dimmer); font-style: italic;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+<div class="hub">
+  <div>
+    <div class="hub-title">Le Mondo Performance</div>
+    <div class="hub-sub">April 26, 2026 · Baltimore</div>
+  </div>
+
+  <div class="room-section">
+    <div class="room-label">Room code</div>
+    <div class="room-row">
+      <input id="room-input" type="text" maxlength="6"
+             placeholder="XXXX" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button id="gen-room-btn">random</button>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <a id="conductor-link" class="hub-btn" href="conductor.html">
+      <span class="hub-btn-label">Conductor</span>
+      <span class="hub-btn-sub">timeline · sync · demo render</span>
+    </a>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="roles-title">Performer charts</div>
+  <div class="role-links">
+    <a id="chart-bass" class="role-link" href="#">bass</a>
+    <a id="chart-guitar" class="role-link" href="#">guitar</a>
+    <a id="chart-vocals" class="role-link" href="#">vocals</a>
+    <a id="chart-keys" class="role-link" href="#">keys</a>
+    <a id="chart-all" class="role-link" href="#">all parts</a>
+  </div>
+
+  <div class="hub-note">
+    Enter a room code, then send performer links to bandmates.<br>
+    Conductor stays on David's device — charts sync in real time.
+  </div>
+</div>
+
+<script>
+'use strict';
+
+function rndCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length: 4}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function updateLinks() {
+  const room = document.getElementById('room-input').value.trim().toUpperCase() || 'XXXX';
+  const base = location.href.split('/').slice(0, -1).join('/');
+  document.getElementById('conductor-link').href = base + '/conductor.html?room=' + room;
+  ['bass','guitar','vocals','keys','all'].forEach(role => {
+    document.getElementById('chart-' + role).href =
+      base + '/chart.html?room=' + room + '&role=' + role;
+  });
+}
+
+const input = document.getElementById('room-input');
+input.addEventListener('input', () => {
+  input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  updateLinks();
+});
+document.getElementById('gen-room-btn').addEventListener('click', () => {
+  input.value = rndCode();
+  updateLinks();
+});
+
+// Auto-generate on load
+input.value = rndCode();
+updateLinks();
+</script>
+</body>
+</html>

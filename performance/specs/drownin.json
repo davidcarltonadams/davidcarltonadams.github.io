@@ -1,0 +1,24 @@
+{
+  "id": "drownin",
+  "title": "And We're Drownin' in It",
+  "duration": 300,
+  "key": "a",
+  "tempo": null,
+  "notes": "A minor. Lyrics done 2026-03-17. PLACEHOLDER — needs full chord chart from David.",
+  "performers": ["bass", "all"],
+  "sections": [
+    {
+      "t": 0,
+      "label": "PLACEHOLDER",
+      "chord": "Am",
+      "bass": "A2",
+      "perform": { "all": "PLACEHOLDER — fill in with David" },
+      "synth": {
+        "bass": ["A2"],
+        "pads": ["A3", "C4", "E4"],
+        "filter": { "freq": 800, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    }
+  ]
+}

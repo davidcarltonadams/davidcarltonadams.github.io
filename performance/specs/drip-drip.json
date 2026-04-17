@@ -1,0 +1,24 @@
+{
+  "id": "drip-drip",
+  "title": "Drip Drip Addicted",
+  "duration": 180,
+  "key": "PLACEHOLDER",
+  "tempo": null,
+  "notes": "Lyrics done 2026-03-17. Needs notation/chords from David. PLACEHOLDER.",
+  "performers": ["bass", "all"],
+  "sections": [
+    {
+      "t": 0,
+      "label": "PLACEHOLDER",
+      "chord": "PLACEHOLDER",
+      "bass": "PLACEHOLDER",
+      "perform": { "all": "PLACEHOLDER — fill in chord chart with David" },
+      "synth": {
+        "bass": ["A2"],
+        "pads": ["A3", "C4", "E4"],
+        "filter": { "freq": 800, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    }
+  ]
+}

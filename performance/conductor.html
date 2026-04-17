@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Conductor — Le Mondo</title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #070707;
+      --bg2:      #0f0f0f;
+      --bg3:      #161616;
+      --text:     #e8e2dc;
+      --dim:      rgba(232,226,220,0.45);
+      --dimmer:   rgba(232,226,220,0.18);
+      --border:   rgba(232,226,220,0.1);
+      --accent:   #7a9cbf;
+      --green:    #4caf6e;
+      --yellow:   #e0b840;
+      --red:      #c84040;
+      --current:  rgba(122,156,191,0.15);
+    }
+    html, body {
+      height: 100%; background: var(--bg); color: var(--text);
+      font-family: Georgia, 'Times New Roman', serif;
+      overflow: hidden;
+    }
+    .hidden { display: none !important; }
+    button { font-family: Georgia, serif; cursor: pointer; }
+    input[type=range] { accent-color: var(--accent); }
+
+    /* ── TOP BAR ───────────────────────────────────── */
+    #topbar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0; flex-wrap: wrap;
+    }
+    #track-select {
+      background: var(--bg2); border: 1px solid var(--border);
+      color: var(--text); font-family: Georgia, serif;
+      font-size: 0.75rem; padding: 0.3rem 0.5rem;
+      border-radius: 2px; flex: 1; min-width: 0;
+    }
+    #room-input {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text); font-family: 'SF Mono','Courier New',monospace;
+      font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase;
+      padding: 0.3rem 0.5rem; width: 5.5rem; text-align: center;
+      border-radius: 2px;
+    }
+    #room-input:focus { outline: none; border-color: var(--accent); }
+    #connect-btn {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      font-size: 0.6rem; letter-spacing: 0.1em; padding: 0.3rem 0.7rem;
+      border-radius: 2px;
+    }
+    #connect-btn:hover { border-color: var(--accent); color: var(--text); }
+    #connect-btn.live { border-color: var(--green); color: var(--green); }
+    #peer-count {
+      font-size: 0.55rem; color: var(--dimmer); white-space: nowrap;
+      min-width: 4rem;
+    }
+
+    /* ── TRANSPORT ─────────────────────────────────── */
+    #transport {
+      display: flex; flex-direction: column; gap: 0.4rem;
+      padding: 0.6rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #scrubber-wrap {
+      position: relative; height: 18px;
+      background: var(--bg3); border-radius: 3px;
+      cursor: pointer;
+    }
+    #scrubber-fill {
+      height: 100%; background: var(--accent);
+      border-radius: 3px; pointer-events: none;
+      transition: width 0.08s linear;
+    }
+    #scrubber-thumb {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--text); pointer-events: none;
+      margin-left: -6px;
+    }
+    #scrubber-time {
+      position: absolute; right: 0.4rem; top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.5rem; font-family: 'SF Mono', monospace;
+      color: var(--dim); pointer-events: none;
+    }
+    .transport-row {
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .t-btn {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      font-size: 0.9rem; width: 2.2rem; height: 2.2rem;
+      border-radius: 2px; display: flex; align-items: center; justify-content: center;
+      transition: all 0.1s;
+    }
+    .t-btn:hover { border-color: var(--text); color: var(--text); }
+    #play-btn { border-color: var(--accent); color: var(--accent); font-size: 1rem; }
+    #play-btn:hover { background: rgba(122,156,191,0.15); color: var(--text); }
+    #play-btn.playing { background: rgba(122,156,191,0.12); }
+    #cur-time {
+      font-size: 0.7rem; font-family: 'SF Mono', monospace;
+      color: var(--dim); margin-left: 0.3rem;
+    }
+
+    /* ── SECTION LIST ──────────────────────────────── */
+    #section-list {
+      flex: 1; overflow-y: auto; overflow-x: hidden;
+      padding: 0.3rem 0;
+    }
+    .section-item {
+      display: flex; align-items: baseline; gap: 0.5rem;
+      padding: 0.4rem 0.8rem; cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: background 0.1s;
+      user-select: none;
+    }
+    .section-item:hover { background: rgba(232,226,220,0.04); }
+    .section-item.current {
+      background: var(--current);
+      border-left-color: var(--accent);
+    }
+    .si-time {
+      font-family: 'SF Mono', monospace; font-size: 0.6rem;
+      color: var(--dimmer); width: 2.8rem; flex-shrink: 0;
+    }
+    .si-chord {
+      font-size: 0.9rem; color: var(--text); flex: 1;
+    }
+    .si-label {
+      font-size: 0.6rem; color: var(--dim); font-style: italic;
+    }
+    .si-note-badge {
+      font-size: 0.45rem; letter-spacing: 0.08em;
+      background: rgba(122,156,191,0.2); color: var(--accent);
+      padding: 0.1rem 0.3rem; border-radius: 2px;
+    }
+
+    /* ── BOTTOM CONTROLS ────────────────────────────── */
+    #bottom-controls {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+      padding: 0.5rem 0.8rem;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .c-btn {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      font-family: Georgia, serif; font-size: 0.6rem;
+      letter-spacing: 0.08em; padding: 0.35rem 0.8rem;
+      border-radius: 2px; transition: all 0.12s;
+    }
+    .c-btn:hover { border-color: var(--text); color: var(--text); }
+    .c-btn.active { border-color: var(--accent); color: var(--accent); }
+    #synth-gain {
+      width: 5rem; height: 3px;
+    }
+    #render-status {
+      font-size: 0.55rem; color: var(--dim);
+      font-style: italic; flex: 1;
+    }
+
+    /* ── QR PANEL ──────────────────────────────────── */
+    #qr-panel {
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+      padding: 0.8rem;
+      flex-shrink: 0;
+      max-height: 40dvh;
+      overflow-y: auto;
+    }
+    .qr-grid {
+      display: flex; flex-wrap: wrap; gap: 0.8rem;
+      justify-content: center; margin-top: 0.5rem;
+    }
+    .qr-card {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 0.3rem;
+    }
+    .qr-role {
+      font-size: 0.5rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--dim);
+    }
+    .qr-box { background: #fff; padding: 3px; border-radius: 2px; }
+    .qr-url {
+      font-size: 0.4rem; color: var(--dimmer);
+      font-family: 'SF Mono', monospace;
+      max-width: 90px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    /* ── LAYOUT WRAPPER ────────────────────────────── */
+    #app {
+      display: flex; flex-direction: column; height: 100dvh;
+    }
+
+    /* ── RENDER PROGRESS OVERLAY ────────────────────── */
+    #render-overlay {
+      position: fixed; inset: 0;
+      background: rgba(7,7,7,0.85);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1rem; z-index: 100;
+    }
+    .ro-title {
+      font-size: 0.8rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--dim);
+    }
+    #ro-bar-wrap {
+      width: 16rem; height: 4px;
+      background: var(--border); border-radius: 2px;
+    }
+    #ro-bar { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; }
+    .ro-sub { font-size: 0.55rem; color: var(--dimmer); }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <select id="track-select"></select>
+    <input id="room-input" type="text" maxlength="6" placeholder="ROOM"
+           autocomplete="off" autocorrect="off" spellcheck="false">
+    <button id="connect-btn">connect</button>
+    <div id="peer-count">0 connected</div>
+  </div>
+
+  <!-- TRANSPORT -->
+  <div id="transport">
+    <div id="scrubber-wrap">
+      <div id="scrubber-fill" style="width:0%"></div>
+      <div id="scrubber-thumb" style="left:0%"></div>
+      <div id="scrubber-time">0:00 / 0:00</div>
+    </div>
+    <div class="transport-row">
+      <button class="t-btn" id="prev-btn" title="Prev section">◀</button>
+      <button class="t-btn" id="play-btn" title="Play / Pause">▶</button>
+      <button class="t-btn" id="next-btn" title="Next section">▶</button>
+      <button class="t-btn" id="reset-btn" title="Reset">↺</button>
+      <div id="cur-time">0:00</div>
+    </div>
+  </div>
+
+  <!-- SECTION LIST -->
+  <div id="section-list"></div>
+
+  <!-- QR PANEL (hidden until toggled) -->
+  <div id="qr-panel" class="hidden">
+    <div style="font-size:0.55rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--dimmer)">
+      performer links
+    </div>
+    <div id="qr-grid" class="qr-grid"></div>
+  </div>
+
+  <!-- BOTTOM CONTROLS -->
+  <div id="bottom-controls">
+    <button class="c-btn" id="synth-btn">♪ synth off</button>
+    <input type="range" id="synth-gain" min="0" max="1" step="0.05" value="0.65" title="Synth volume">
+    <button class="c-btn" id="render-btn">⬇ render WAV</button>
+    <button class="c-btn" id="qr-btn">QR ↓</button>
+    <div id="render-status"></div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- RENDER OVERLAY -->
+<div id="render-overlay" class="hidden">
+  <div class="ro-title">rendering demo…</div>
+  <div id="ro-bar-wrap"><div id="ro-bar"></div></div>
+  <div id="ro-sub" class="ro-sub">this takes a moment</div>
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════════════════════
+const SPEC_LIST = [
+  { id: 'riff-rock-e',    label: "Riff Rock in E (5')" },
+  { id: 'overture',       label: "Overture (8')" },
+  { id: 'drip-drip',      label: "Drip Drip Addicted (3')" },
+  { id: 'the-times-they', label: "The Times They (8')" },
+  { id: 'drownin',        label: "And We're Drownin' in It (5')" },
+  { id: 'outro',          label: "Outro (5')" },
+];
+
+const PEER_NS = 'lm-perf-2026-';
+
+const NOTES = {
+  'C2':65.41,'Db2':69.30,'D2':73.42,'Eb2':77.78,'E2':82.41,'F2':87.31,
+  'F#2':92.50,'Gb2':92.50,'G2':98.00,'Ab2':103.83,'G#2':103.83,'A2':110.00,
+  'Bb2':116.54,'B2':123.47,
+  'C3':130.81,'Db3':138.59,'C#3':138.59,'D3':146.83,'Eb3':155.56,'D#3':155.56,
+  'E3':164.81,'F3':174.61,'F#3':185.00,'G3':196.00,'Ab3':207.65,'G#3':207.65,
+  'A3':220.00,'Bb3':233.08,'B3':246.94,
+  'C4':261.63,'Db4':277.18,'C#4':277.18,'D4':293.66,'Eb4':311.13,'D#4':311.13,
+  'E4':329.63,'F4':349.23,'F#4':369.99,'G4':392.00,'Ab4':415.30,'G#4':415.30,
+  'A4':440.00,'Bb4':466.16,'B4':493.88,
+  'C5':523.25,'D5':587.33,'E5':659.25,'F5':698.46,'F#5':739.99,'G5':783.99,
+  'A5':880.00,'B5':987.77,'C6':1046.50,
+};
+
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let spec         = null;
+let playing      = false;
+let baseElapsed  = 0;
+let playStartTime = null;
+let rafId        = null;
+let lastSectionIdx = -1;
+let lastLoopItemIdx = -1;
+
+// PeerJS
+let peer         = null;
+let hostConns    = new Map();
+let roomCode     = '';
+
+// Audio (live synthesis)
+let audioCtx     = null;
+let bassOsc      = null;
+let chordNodes   = [];
+let microNodes   = [];
+let mainFilter   = null;
+let masterGain   = null;
+let synthActive  = false;
+
+// ════════════════════════════════════════════════════════════
+//  TIMING HELPERS
+// ════════════════════════════════════════════════════════════
+function getElapsed() {
+  if (!playing || !playStartTime) return baseElapsed;
+  return baseElapsed + (Date.now() - playStartTime) / 1000;
+}
+
+function getSectionIdx(t) {
+  if (!spec) return 0;
+  let idx = 0;
+  for (let i = 0; i < spec.sections.length; i++) {
+    if (spec.sections[i].t <= t) idx = i;
+    else break;
+  }
+  return idx;
+}
+
+function fmtTime(s) {
+  s = Math.max(0, Math.floor(s));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+// ════════════════════════════════════════════════════════════
+//  SPEC LOADING
+// ════════════════════════════════════════════════════════════
+async function loadSpec(specId) {
+  try {
+    const r = await fetch('specs/' + specId + '.json');
+    spec = await r.json();
+    baseElapsed = 0;
+    playing = false;
+    playStartTime = null;
+    lastSectionIdx = -1;
+    lastLoopItemIdx = -1;
+    renderSectionList();
+    updateTransportUI();
+    broadcastLoad();
+    return true;
+  } catch (e) {
+    console.warn('spec load failed', specId, e);
+    document.getElementById('render-status').textContent = 'spec not found: ' + specId;
+    return false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  TRANSPORT
+// ════════════════════════════════════════════════════════════
+function play() {
+  if (!spec) return;
+  initAudio();
+  playStartTime = Date.now();
+  baseElapsed = getElapsed();
+  playing = true;
+  if (synthActive) resumeSynth();
+  scheduleRAF();
+  broadcast({ type: 'play', startTime: playStartTime, baseElapsed });
+  updateTransportUI();
+}
+
+function pause() {
+  baseElapsed = getElapsed();
+  playing = false;
+  playStartTime = null;
+  if (synthActive) pauseSynth();
+  cancelAnimationFrame(rafId);
+  broadcast({ type: 'pause', elapsed: baseElapsed });
+  updateTransportUI();
+}
+
+function seekTo(seconds) {
+  const was = playing;
+  baseElapsed = Math.max(0, Math.min(seconds, spec?.duration || 0));
+  if (was) { playStartTime = Date.now(); }
+  lastSectionIdx = -1;
+  lastLoopItemIdx = -1;
+  if (synthActive) applyCurrentSection(baseElapsed, true);
+  broadcast({
+    type: 'jump', elapsed: baseElapsed, playing: was,
+    startTime: was ? playStartTime : null, baseElapsed
+  });
+  updateTransportUI();
+}
+
+function seekSection(delta) {
+  if (!spec) return;
+  const idx = getSectionIdx(getElapsed());
+  const newIdx = Math.max(0, Math.min(spec.sections.length - 1, idx + delta));
+  seekTo(spec.sections[newIdx].t);
+}
+
+function togglePlay() {
+  if (playing) pause(); else play();
+}
+
+// ════════════════════════════════════════════════════════════
+//  RAF LOOP
+// ════════════════════════════════════════════════════════════
+function scheduleRAF() {
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(tick);
+}
+
+let heartbeatTimer = null;
+function tick() {
+  rafId = null;
+  const elapsed = getElapsed();
+
+  if (spec && elapsed >= spec.duration) {
+    pause(); seekTo(0); return;
+  }
+
+  updateTransportUI(elapsed);
+  if (synthActive) synthTick(elapsed);
+  if (playing) rafId = requestAnimationFrame(tick);
+}
+
+// ════════════════════════════════════════════════════════════
+//  UI UPDATES
+// ════════════════════════════════════════════════════════════
+function updateTransportUI(elapsed) {
+  if (elapsed === undefined) elapsed = getElapsed();
+  const dur = spec?.duration || 1;
+
+  const pct = Math.min(elapsed / dur * 100, 100);
+  document.getElementById('scrubber-fill').style.width = pct + '%';
+  document.getElementById('scrubber-thumb').style.left = pct + '%';
+  document.getElementById('scrubber-time').textContent = fmtTime(elapsed) + ' / ' + fmtTime(dur);
+  document.getElementById('cur-time').textContent = fmtTime(elapsed);
+
+  document.getElementById('play-btn').textContent = playing ? '⏸' : '▶';
+  document.getElementById('play-btn').classList.toggle('playing', playing);
+
+  // Highlight current section
+  const idx = getSectionIdx(elapsed);
+  if (idx !== lastSectionIdx) {
+    document.querySelectorAll('.section-item').forEach((el, i) => {
+      el.classList.toggle('current', i === idx);
+    });
+    const currentEl = document.querySelector('.section-item.current');
+    if (currentEl) currentEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    lastSectionIdx = idx;
+  }
+}
+
+function renderSectionList() {
+  const list = document.getElementById('section-list');
+  list.innerHTML = '';
+  if (!spec) return;
+
+  spec.sections.forEach((sec, i) => {
+    const item = document.createElement('div');
+    item.className = 'section-item';
+    item.dataset.idx = i;
+
+    const timeEl = document.createElement('div');
+    timeEl.className = 'si-time';
+    timeEl.textContent = fmtTime(sec.t);
+
+    const chordEl = document.createElement('div');
+    chordEl.className = 'si-chord';
+    chordEl.textContent = sec.chord;
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'si-label';
+    labelEl.textContent = sec.label;
+
+    item.appendChild(timeEl);
+    item.appendChild(chordEl);
+    item.appendChild(labelEl);
+
+    if (sec.note || sec.synth?.silence || sec.synth?.placeholder) {
+      const badge = document.createElement('div');
+      badge.className = 'si-note-badge';
+      badge.textContent = sec.synth?.silence ? 'mp3' : sec.synth?.placeholder ? 'TBD' : '…';
+      item.appendChild(badge);
+    }
+
+    item.addEventListener('click', () => seekTo(sec.t));
+    list.appendChild(item);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  PEERJS
+// ════════════════════════════════════════════════════════════
+function startHost(room) {
+  roomCode = room.toUpperCase();
+  if (peer) { peer.destroy(); peer = null; }
+  peer = new Peer(PEER_NS + roomCode, { debug: 0 });
+  peer.on('open', () => {
+    document.getElementById('connect-btn').classList.add('live');
+    document.getElementById('connect-btn').textContent = 'live';
+    updateQRCodes();
+    startHeartbeat();
+  });
+  peer.on('connection', conn => {
+    conn.on('open', () => {
+      hostConns.set(conn.peer, conn);
+      updatePeerCount();
+      // Sync new client
+      conn.send({
+        type: 'sync',
+        specId: spec?.id,
+        elapsed: getElapsed(),
+        playing,
+        startTime: playing ? playStartTime : null,
+        baseElapsed
+      });
+    });
+    conn.on('close', () => { hostConns.delete(conn.peer); updatePeerCount(); });
+  });
+  peer.on('error', err => {
+    document.getElementById('connect-btn').textContent = 'error: ' + err.type;
+  });
+}
+
+function broadcast(msg) {
+  if (!spec) return;
+  msg.specId = spec.id;
+  hostConns.forEach(conn => { try { conn.send(msg); } catch(e) {} });
+}
+
+function broadcastLoad() {
+  hostConns.forEach(conn => {
+    try { conn.send({ type: 'load', specId: spec?.id }); } catch(e) {}
+  });
+}
+
+function startHeartbeat() {
+  clearInterval(heartbeatTimer);
+  heartbeatTimer = setInterval(() => {
+    broadcast({ type: 'heartbeat', elapsed: getElapsed(), playing, startTime: playStartTime, baseElapsed });
+  }, 3000);
+}
+
+function updatePeerCount() {
+  document.getElementById('peer-count').textContent = hostConns.size + ' connected';
+}
+
+function updateQRCodes() {
+  const grid = document.getElementById('qr-grid');
+  grid.innerHTML = '';
+  if (!spec || !roomCode) return;
+
+  const base = location.href.split('/').slice(0, -1).join('/') + '/chart.html';
+  const roles = ['bass', 'guitar', 'vocals', 'keys', 'all'];
+
+  roles.forEach(role => {
+    const url = base + '?room=' + roomCode + '&role=' + role + '&spec=' + spec.id;
+    const card = document.createElement('div');
+    card.className = 'qr-card';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'qr-role';
+    lbl.textContent = role;
+
+    const box = document.createElement('div');
+    box.className = 'qr-box';
+    new QRCode(box, { text: url, width: 90, height: 90,
+      colorDark: '#000000', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M });
+
+    const urlEl = document.createElement('div');
+    urlEl.className = 'qr-url';
+    urlEl.textContent = url.replace(location.origin, '');
+
+    card.appendChild(lbl); card.appendChild(box); card.appendChild(urlEl);
+    grid.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  AUDIO — LIVE SYNTHESIS
+// ════════════════════════════════════════════════════════════
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = parseFloat(document.getElementById('synth-gain').value);
+
+  mainFilter = audioCtx.createBiquadFilter();
+  mainFilter.type = 'lowpass';
+  mainFilter.frequency.value = 200;
+  mainFilter.Q.value = 3;
+
+  // Reverb (programmatic IR)
+  const reverb = audioCtx.createConvolver();
+  reverb.buffer = makeIR(audioCtx, 2.5, 4);
+  const reverbGain = audioCtx.createGain();
+  reverbGain.gain.value = 0.18;
+
+  // Signal path: filter → dry master + reverb → master → destination
+  mainFilter.connect(masterGain);
+  mainFilter.connect(reverb);
+  reverb.connect(reverbGain);
+  reverbGain.connect(masterGain);
+  masterGain.connect(audioCtx.destination);
+
+  // Bass oscillator
+  bassOsc = audioCtx.createOscillator();
+  bassOsc.type = 'sawtooth';
+  bassOsc.frequency.value = 82.41;
+  const bassGain = audioCtx.createGain();
+  bassGain.gain.value = 0.45;
+  bassOsc.connect(bassGain); bassGain.connect(mainFilter);
+  bassOsc.start();
+
+  // 4 chord oscillators (triangle, slight detune)
+  const detune = [0, 8, -8, 14];
+  chordNodes = [];
+  for (let i = 0; i < 4; i++) {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'triangle';
+    osc.detune.value = detune[i];
+    const g = audioCtx.createGain();
+    g.gain.value = 0;
+    osc.connect(g); g.connect(mainFilter);
+    osc.start();
+    chordNodes.push({ osc, gain: g });
+  }
+
+  // 2 microtonal/overtone sine oscillators (bypass filter)
+  microNodes = [];
+  for (let i = 0; i < 2; i++) {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    const g = audioCtx.createGain();
+    g.gain.value = 0;
+    osc.connect(g); g.connect(masterGain);
+    osc.start();
+    microNodes.push({ osc, gain: g });
+  }
+}
+
+function resumeSynth() {
+  if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  applyCurrentSection(getElapsed(), true);
+}
+
+function pauseSynth() {
+  // Nothing to do — oscillators keep running, just no new scheduling
+}
+
+function applyCurrentSection(elapsed, instant) {
+  if (!spec || !audioCtx) return;
+  const idx = getSectionIdx(elapsed);
+  const sec = spec.sections[idx];
+  if (!sec.synth) return;
+
+  const now = audioCtx.currentTime;
+  const xf = instant ? 0.05 : 1.5;
+
+  if (sec.synth.silence || sec.synth.placeholder) {
+    masterGain.gain.setTargetAtTime(0.05, now, xf * 0.3);
+    return;
+  }
+
+  masterGain.gain.setTargetAtTime(
+    parseFloat(document.getElementById('synth-gain').value),
+    now, xf * 0.3
+  );
+
+  // Bass
+  const bassNote = sec.synth.bass?.[0];
+  if (bassNote && NOTES[bassNote]) {
+    if (instant) bassOsc.frequency.setValueAtTime(NOTES[bassNote], now);
+    else bassOsc.frequency.exponentialRampToValueAtTime(NOTES[bassNote], now + xf * 0.5);
+  }
+
+  // Chords
+  const pads = sec.synth.loop ? [] : (sec.synth.pads || []);
+  chordNodes.forEach((c, i) => {
+    if (pads[i] && NOTES[pads[i]]) {
+      if (instant) c.osc.frequency.setValueAtTime(NOTES[pads[i]], now);
+      else c.osc.frequency.exponentialRampToValueAtTime(NOTES[pads[i]], now + xf * 0.5);
+      c.gain.gain.setTargetAtTime(0.09, now, xf * 0.4);
+    } else if (i >= pads.length && !sec.synth.loop) {
+      c.gain.gain.setTargetAtTime(0, now, xf * 0.3);
+    }
+  });
+
+  // Filter
+  const flt = sec.synth.filter;
+  if (flt) {
+    const freq = flt.sweepTo ? flt.freq : flt.freq;
+    mainFilter.frequency.setValueAtTime(freq, now);
+    if (flt.Q) mainFilter.Q.setValueAtTime(flt.Q, now);
+  }
+}
+
+let lastSynthSectionIdx = -1;
+let lastSynthLoopIdx = -1;
+
+function synthTick(elapsed) {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const idx = getSectionIdx(elapsed);
+  const sec = spec.sections[idx];
+
+  // Section change
+  if (idx !== lastSynthSectionIdx) {
+    applyCurrentSection(elapsed, false);
+    lastSynthSectionIdx = idx;
+    lastSynthLoopIdx = -1;
+
+    // Filter sweep (intro)
+    const flt = sec.synth?.filter;
+    if (flt?.sweepTo && !sec.synth?.loop) {
+      const sectionElapsed = elapsed - sec.t;
+      const remaining = Math.max(0, flt.sweepDuration - sectionElapsed);
+      if (remaining > 0) {
+        mainFilter.frequency.cancelScheduledValues(now);
+        mainFilter.frequency.setValueAtTime(
+          flt.freq + (flt.sweepTo - flt.freq) * (sectionElapsed / flt.sweepDuration),
+          now
+        );
+        mainFilter.frequency.linearRampToValueAtTime(flt.sweepTo, now + remaining);
+      }
+    }
+  }
+
+  // Loop section
+  if (sec.synth?.loop) {
+    const sectionElapsed = elapsed - sec.t;
+    const loopItems = sec.synth.loop;
+    const loopTotal = loopItems.reduce((s, x) => s + x.duration, 0);
+    const loopPos = sectionElapsed % loopTotal;
+    let cumT = 0, loopIdx = 0;
+    for (let i = 0; i < loopItems.length; i++) {
+      if (loopPos < cumT + loopItems[i].duration) { loopIdx = i; break; }
+      cumT += loopItems[i].duration;
+    }
+    if (loopIdx !== lastSynthLoopIdx) {
+      const item = loopItems[loopIdx];
+      if (item.bass?.[0] && NOTES[item.bass[0]]) {
+        bassOsc.frequency.exponentialRampToValueAtTime(NOTES[item.bass[0]], now + 0.2);
+      }
+      const ipads = item.pads || [];
+      chordNodes.forEach((c, i) => {
+        if (ipads[i] && NOTES[ipads[i]]) {
+          c.osc.frequency.exponentialRampToValueAtTime(NOTES[ipads[i]], now + 0.2);
+          c.gain.gain.setTargetAtTime(0.09, now, 0.3);
+        }
+      });
+      if (item.filter?.freq) mainFilter.frequency.setTargetAtTime(item.filter.freq, now, 0.3);
+      lastSynthLoopIdx = loopIdx;
+    }
+  }
+}
+
+function makeIR(ctx, dur, decay) {
+  const n = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(2, n, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < n; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, decay);
+    }
+  }
+  return buf;
+}
+
+// ════════════════════════════════════════════════════════════
+//  DEMO RENDER (OfflineAudioContext → WAV)
+// ════════════════════════════════════════════════════════════
+async function renderDemo() {
+  if (!spec) return;
+  const statusEl = document.getElementById('render-status');
+  const overlay = document.getElementById('render-overlay');
+  const bar = document.getElementById('ro-bar');
+  const sub = document.getElementById('ro-sub');
+
+  overlay.classList.remove('hidden');
+  bar.style.width = '5%';
+  sub.textContent = 'building synthesis graph…';
+
+  await new Promise(r => setTimeout(r, 50)); // yield to paint
+
+  try {
+    const SR = 44100;
+    const dur = spec.duration;
+    const offCtx = new OfflineAudioContext(2, SR * dur, SR);
+
+    await scheduleSynthOffline(offCtx, spec);
+    bar.style.width = '20%';
+    sub.textContent = 'rendering ' + fmtTime(dur) + ' of audio…';
+
+    await new Promise(r => setTimeout(r, 50));
+    const buffer = await offCtx.startRendering();
+
+    bar.style.width = '80%';
+    sub.textContent = 'encoding WAV…';
+    await new Promise(r => setTimeout(r, 50));
+
+    const blob = bufferToWav(buffer);
+    bar.style.width = '100%';
+    sub.textContent = 'done — downloading';
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = spec.id + '-demo-' + new Date().toISOString().slice(0, 10) + '.wav';
+    a.click();
+
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      statusEl.textContent = 'WAV downloaded: ' + spec.id + '-demo';
+    }, 800);
+  } catch (err) {
+    overlay.classList.add('hidden');
+    statusEl.textContent = 'render failed: ' + err.message;
+    console.error(err);
+  }
+}
+
+async function scheduleSynthOffline(ctx, spec) {
+  const SR = ctx.sampleRate;
+  const dur = spec.duration;
+
+  const master = ctx.createGain(); master.gain.value = 0.65;
+  const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
+  filt.frequency.value = 80; filt.Q.value = 3;
+
+  // Reverb
+  const irBuf = makeIR(ctx, 2.5, 4);
+  const reverb = ctx.createConvolver(); reverb.buffer = irBuf;
+  const revGain = ctx.createGain(); revGain.gain.value = 0.18;
+
+  filt.connect(master); filt.connect(reverb);
+  reverb.connect(revGain); revGain.connect(master);
+  master.connect(ctx.destination);
+
+  // Bass
+  const bassOscO = ctx.createOscillator(); bassOscO.type = 'sawtooth';
+  const bassGainO = ctx.createGain(); bassGainO.gain.value = 0.45;
+  bassOscO.connect(bassGainO); bassGainO.connect(filt);
+  bassOscO.start(0); bassOscO.stop(dur);
+
+  // Chord oscillators
+  const chords = [];
+  const detune = [0, 8, -8, 14];
+  for (let i = 0; i < 4; i++) {
+    const o = ctx.createOscillator(); o.type = 'triangle'; o.detune.value = detune[i];
+    const g = ctx.createGain(); g.gain.value = 0;
+    o.connect(g); g.connect(filt);
+    o.start(0); o.stop(dur);
+    chords.push({ osc: o, gain: g });
+  }
+
+  // Microtonal/overtone oscillators
+  const micros = [];
+  for (let i = 0; i < 2; i++) {
+    const o = ctx.createOscillator(); o.type = 'sine';
+    const g = ctx.createGain(); g.gain.value = 0;
+    o.connect(g); g.connect(master);
+    o.start(0); o.stop(dur);
+    micros.push({ osc: o, gain: g });
+  }
+
+  // Schedule all sections
+  const xf = 1.2;
+  for (let i = 0; i < spec.sections.length; i++) {
+    const sec = spec.sections[i];
+    const t = sec.t;
+    const nextT = i + 1 < spec.sections.length ? spec.sections[i + 1].t : dur;
+
+    // Fade silence sections
+    if (sec.synth?.silence || sec.synth?.placeholder) {
+      master.gain.setValueAtTime(0.65, t);
+      master.gain.linearRampToValueAtTime(0.08, t + xf);
+      if (i + 1 < spec.sections.length && !spec.sections[i + 1].synth?.silence) {
+        master.gain.setValueAtTime(0.08, nextT - xf);
+        master.gain.linearRampToValueAtTime(0.65, nextT);
+      }
+      // Zero out chord gains
+      chords.forEach(c => {
+        c.gain.gain.setValueAtTime(c.gain.gain.value, t);
+        c.gain.gain.linearRampToValueAtTime(0, t + xf);
+      });
+      micros.forEach(m => {
+        m.gain.gain.setValueAtTime(m.gain.gain.value, t);
+        m.gain.gain.linearRampToValueAtTime(0, t + xf * 0.5);
+      });
+      continue;
+    }
+
+    if (!sec.synth) continue;
+
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(0.65, t + xf);
+
+    // Bass note
+    const bn = sec.synth.bass?.[0];
+    if (bn && NOTES[bn]) bassOscO.frequency.setValueAtTime(NOTES[bn], t);
+
+    // Filter
+    const flt2 = sec.synth.filter;
+    if (flt2) {
+      if (flt2.sweepTo) {
+        filt.frequency.setValueAtTime(flt2.freq, t);
+        filt.frequency.linearRampToValueAtTime(
+          flt2.sweepTo, t + (flt2.sweepDuration || nextT - t)
+        );
+      } else {
+        filt.frequency.setValueAtTime(flt2.freq, t);
+      }
+      if (flt2.Q) filt.Q.setValueAtTime(flt2.Q, t);
+    }
+
+    // Chord pads (non-loop sections)
+    if (!sec.synth.loop) {
+      const pads = sec.synth.pads || [];
+      chords.forEach((c, idx) => {
+        if (pads[idx] && NOTES[pads[idx]]) {
+          c.osc.frequency.setValueAtTime(NOTES[pads[idx]], t);
+          c.gain.gain.setValueAtTime(c.gain.gain.value, t);
+          c.gain.gain.linearRampToValueAtTime(0.09, t + xf);
+        } else if (idx >= pads.length) {
+          c.gain.gain.setValueAtTime(c.gain.gain.value, t);
+          c.gain.gain.linearRampToValueAtTime(0, t + xf * 0.6);
+        }
+      });
+    }
+
+    // Microtonal overtones
+    if (sec.synth.overtone) {
+      const { fundamental, partials, glissTo } = sec.synth.overtone;
+      const f0 = NOTES[fundamental] || 65.41;
+      partials.forEach((p, idx) => {
+        if (idx >= micros.length) return;
+        const startFreq = f0 * p;
+        const endFreq = glissTo?.[idx] ? f0 * glissTo[idx] : startFreq;
+        micros[idx].osc.frequency.setValueAtTime(startFreq, t + 1);
+        micros[idx].gain.gain.setValueAtTime(0, t);
+        micros[idx].gain.gain.linearRampToValueAtTime(0.055, t + 3);
+        micros[idx].osc.frequency.linearRampToValueAtTime(endFreq, nextT - 2);
+        micros[idx].gain.gain.setValueAtTime(0.055, nextT - 2);
+        micros[idx].gain.gain.linearRampToValueAtTime(0, nextT);
+      });
+    } else if (sec.synth.microtonal) {
+      sec.synth.microtonal.forEach((item, idx) => {
+        if (idx >= micros.length) return;
+        const base = NOTES[item.note] || 440;
+        const cents = item.centsSharp || item.centsBeta || 0;
+        const sharpFreq = base * Math.pow(2, cents / 1200);
+        micros[idx].osc.frequency.setValueAtTime(sharpFreq, t + 1);
+        micros[idx].gain.gain.setValueAtTime(0, t);
+        micros[idx].gain.gain.linearRampToValueAtTime(0.05, t + 3);
+        micros[idx].osc.frequency.linearRampToValueAtTime(base, Math.min(t + 20, nextT - 1));
+        micros[idx].gain.gain.setValueAtTime(0.05, nextT - 2);
+        micros[idx].gain.gain.linearRampToValueAtTime(0, nextT);
+      });
+    } else {
+      micros.forEach(m => {
+        m.gain.gain.setValueAtTime(m.gain.gain.value, t);
+        m.gain.gain.linearRampToValueAtTime(0, t + xf * 0.5);
+      });
+    }
+
+    // Loop sections
+    if (sec.synth.loop) {
+      const items = sec.synth.loop;
+      const loopDur = items.reduce((s, x) => s + x.duration, 0);
+      let lt = t;
+      while (lt < nextT) {
+        for (const item of items) {
+          if (lt >= nextT) break;
+          const bn2 = item.bass?.[0];
+          if (bn2 && NOTES[bn2]) bassOscO.frequency.setValueAtTime(NOTES[bn2], lt);
+          const ipads = item.pads || [];
+          chords.forEach((c, idx) => {
+            if (ipads[idx] && NOTES[ipads[idx]]) {
+              c.osc.frequency.setValueAtTime(NOTES[ipads[idx]], lt);
+              c.gain.gain.setValueAtTime(0.09, lt);
+            }
+          });
+          if (item.filter?.freq) filt.frequency.setValueAtTime(item.filter.freq, lt);
+          lt += item.duration;
+        }
+      }
+    }
+  }
+}
+
+function bufferToWav(buffer) {
+  const nCh = buffer.numberOfChannels;
+  const nSamples = buffer.length;
+  const SR = buffer.sampleRate;
+  const bitsPerSample = 16;
+  const blockAlign = nCh * bitsPerSample / 8;
+  const dataBytes = nSamples * blockAlign;
+
+  const ab = new ArrayBuffer(44 + dataBytes);
+  const dv = new DataView(ab);
+  const enc = (off, str) => { for (let i = 0; i < str.length; i++) dv.setUint8(off + i, str.charCodeAt(i)); };
+
+  enc(0, 'RIFF'); dv.setUint32(4, 36 + dataBytes, true);
+  enc(8, 'WAVE'); enc(12, 'fmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true);
+  dv.setUint16(22, nCh, true); dv.setUint32(24, SR, true);
+  dv.setUint32(28, SR * blockAlign, true); dv.setUint16(32, blockAlign, true);
+  dv.setUint16(34, bitsPerSample, true); enc(36, 'data');
+  dv.setUint32(40, dataBytes, true);
+
+  const out = new Int16Array(ab, 44);
+  for (let i = 0; i < nSamples; i++) {
+    for (let c = 0; c < nCh; c++) {
+      const s = Math.max(-1, Math.min(1, buffer.getChannelData(c)[i]));
+      out[i * nCh + c] = s < 0 ? s * 32768 : s * 32767;
+    }
+  }
+  return new Blob([ab], { type: 'audio/wav' });
+}
+
+// ════════════════════════════════════════════════════════════
+//  UI SETUP
+// ════════════════════════════════════════════════════════════
+function init() {
+  // Populate track selector
+  const sel = document.getElementById('track-select');
+  SPEC_LIST.forEach(item => {
+    const opt = document.createElement('option');
+    opt.value = item.id;
+    opt.textContent = item.label;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', () => loadSpec(sel.value));
+
+  // Room input
+  const roomInput = document.getElementById('room-input');
+  roomInput.addEventListener('input', () => {
+    roomInput.value = roomInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  });
+
+  // Connect button
+  document.getElementById('connect-btn').addEventListener('click', () => {
+    const room = roomInput.value.trim();
+    if (!room) { roomInput.focus(); return; }
+    startHost(room);
+  });
+
+  // Transport
+  document.getElementById('play-btn').addEventListener('click', () => {
+    initAudio(); togglePlay();
+  });
+  document.getElementById('prev-btn').addEventListener('click', () => seekSection(-1));
+  document.getElementById('next-btn').addEventListener('click', () => seekSection(1));
+  document.getElementById('reset-btn').addEventListener('click', () => { pause(); seekTo(0); });
+
+  // Scrubber
+  const scrubWrap = document.getElementById('scrubber-wrap');
+  let scrubbing = false;
+  function doScrub(e) {
+    const rect = scrubWrap.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const pct = Math.max(0, Math.min(1, x / rect.width));
+    seekTo(pct * (spec?.duration || 0));
+  }
+  scrubWrap.addEventListener('mousedown', e => { scrubbing = true; doScrub(e); });
+  scrubWrap.addEventListener('touchstart', e => { scrubbing = true; doScrub(e); e.preventDefault(); }, { passive: false });
+  window.addEventListener('mousemove', e => { if (scrubbing) doScrub(e); });
+  window.addEventListener('touchmove', e => { if (scrubbing) doScrub(e); }, { passive: false });
+  window.addEventListener('mouseup', () => scrubbing = false);
+  window.addEventListener('touchend', () => scrubbing = false);
+
+  // Synth toggle
+  document.getElementById('synth-btn').addEventListener('click', () => {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    synthActive = !synthActive;
+    document.getElementById('synth-btn').textContent = synthActive ? '♪ synth on' : '♪ synth off';
+    document.getElementById('synth-btn').classList.toggle('active', synthActive);
+    if (synthActive && playing) applyCurrentSection(getElapsed(), true);
+    else if (!synthActive) masterGain?.gain.setTargetAtTime(0, audioCtx.currentTime, 0.5);
+  });
+
+  document.getElementById('synth-gain').addEventListener('input', function() {
+    if (masterGain) masterGain.gain.setTargetAtTime(parseFloat(this.value), audioCtx.currentTime, 0.1);
+  });
+
+  // Render button
+  document.getElementById('render-btn').addEventListener('click', renderDemo);
+
+  // QR toggle
+  document.getElementById('qr-btn').addEventListener('click', () => {
+    const p = document.getElementById('qr-panel');
+    p.classList.toggle('hidden');
+    if (!p.classList.contains('hidden')) updateQRCodes();
+  });
+
+  // Load first spec
+  loadSpec(SPEC_LIST[0].id);
+
+  // Default room code from URL
+  const params = new URLSearchParams(location.search);
+  const urlRoom = params.get('room');
+  if (urlRoom) document.getElementById('room-input').value = urlRoom.toUpperCase();
+  const urlSpec2 = params.get('spec');
+  if (urlSpec2) {
+    sel.value = urlSpec2;
+    loadSpec(urlSpec2);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
