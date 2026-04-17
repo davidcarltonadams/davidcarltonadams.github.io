@@ -1,0 +1,229 @@
+{
+  "id": "in-my-mind",
+  "title": "In My Mind (no voice)",
+  "duration": 300,
+  "key": "E / Am",
+  "tempo": null,
+  "notes": "DCA original. Demo: ~/projects/assets/audio/demo-inmymind_rough_mix2.mp3. Harmonic language: 11th/13th partials of C (= fqts8/aqtf8). JI slides: fqts→E, aqtf→G in Am context.",
+  "performers": ["bass", "all"],
+  "demo_audio": "demo-inmymind_rough_mix2.mp3",
+  "sections": [
+    {
+      "t": 0,
+      "label": "Intro — E drone",
+      "chord": "E",
+      "bass": "E2",
+      "perform": {
+        "bass": "E2 drone — minimal, hold",
+        "all": "David solo synthesis — band waits"
+      },
+      "synth": {
+        "bass": ["E2"],
+        "pads": [],
+        "filter": { "freq": 80, "sweepTo": 165, "sweepDuration": 16, "Q": 5 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 16,
+      "label": "Em",
+      "chord": "Em",
+      "bass": "E2",
+      "perform": {
+        "bass": "E2 — stay low, sustained",
+        "all": "Em — light entrance"
+      },
+      "synth": {
+        "bass": ["E2"],
+        "pads": ["E3", "G3", "B3"],
+        "filter": { "freq": 800, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 26,
+      "label": "Bm7",
+      "chord": "Bm7",
+      "bass": "B2",
+      "perform": {
+        "bass": "B2 — switch from E",
+        "all": "Bm7"
+      },
+      "synth": {
+        "bass": ["B2"],
+        "pads": ["B3", "D4", "F#4", "A4"],
+        "filter": { "freq": 900, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 42,
+      "label": "C△7 (11th+13th)",
+      "chord": "C△7 ♯11",
+      "bass": "C3",
+      "perform": {
+        "bass": "C3 — gentle move from B",
+        "all": "C maj7 — microtonal melody: 11th+13th partials of C, gliss to 10th+12th"
+      },
+      "synth": {
+        "bass": ["C3"],
+        "pads": ["C4", "E4", "G4", "B4"],
+        "overtone": {
+          "fundamental": "C1",
+          "fundamental_hz": 32.70,
+          "partials": [11, 13],
+          "partial_hz": [359.7, 425.1],
+          "glissTo": [10, 12],
+          "glissTo_hz": [327.0, 392.4]
+        },
+        "filter": { "freq": 1200, "Q": 1.5 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 69,
+      "label": "Am (fqts + aqtf)",
+      "chord": "Am",
+      "bass": "A2",
+      "perform": {
+        "bass": "A2 — move from C",
+        "all": "Am — Fqt# (359.44Hz) + Aqtb (425.12Hz); slide down to 5th (E4) + min7 (G4)"
+      },
+      "synth": {
+        "bass": ["A2"],
+        "pads": ["A3", "C4", "E4"],
+        "microtonal": [
+          { "note": "fqts8", "hz": 359.44, "slideTo": "E4", "slideTo_hz": 329.63 },
+          { "note": "aqtf8", "hz": 425.12, "slideTo": "G4", "slideTo_hz": 392.0 }
+        ],
+        "filter": { "freq": 1000, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 111,
+      "label": "Em (fqts + aqtf)",
+      "chord": "Em",
+      "bass": "E2",
+      "perform": {
+        "bass": "E2 — return from A",
+        "all": "Em — same microtonal inflections"
+      },
+      "synth": {
+        "bass": ["E2"],
+        "pads": ["E3", "G3", "B3"],
+        "microtonal": [
+          { "note": "fqts8", "hz": 359.44, "slideTo": "B3", "slideTo_hz": 246.94 },
+          { "note": "aqtf8", "hz": 425.12, "slideTo": "D4", "slideTo_hz": 293.66 }
+        ],
+        "filter": { "freq": 900, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 140,
+      "label": "Em / Am loop",
+      "chord": "Em → Am",
+      "bass": "E2 / A2",
+      "perform": {
+        "bass": "Alternating: ~16s on E2, ~16s on A2, repeat"
+      },
+      "synth": {
+        "loop": [
+          {
+            "duration": 16,
+            "bass": ["E2"],
+            "pads": ["E3", "G3", "B3"],
+            "filter": { "freq": 900 }
+          },
+          {
+            "duration": 16,
+            "bass": ["A2"],
+            "pads": ["A3", "C4", "E4"],
+            "filter": { "freq": 1000 }
+          }
+        ],
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 180,
+      "label": "E7",
+      "chord": "E7",
+      "bass": "E2",
+      "perform": {
+        "bass": "E2 — assertive move",
+        "all": "E7 — full band"
+      },
+      "synth": {
+        "bass": ["E2"],
+        "pads": ["E3", "G#3", "B3", "D4"],
+        "filter": { "freq": 1400, "Q": 1 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 195,
+      "label": "mp3 I [TBD]",
+      "chord": "—",
+      "bass": "hold E",
+      "perform": {
+        "all": "Recorded playback — hold position"
+      },
+      "synth": { "silence": true },
+      "note": "mp3 section — file TBD"
+    },
+    {
+      "t": 225,
+      "label": "Microtonal counterpoint",
+      "chord": "—",
+      "bass": "—",
+      "perform": {
+        "all": "From score — MusicXML TBD. Follow David."
+      },
+      "synth": { "placeholder": true }
+    },
+    {
+      "t": 255,
+      "label": "E7 reprise",
+      "chord": "E7",
+      "bass": "E2",
+      "perform": {
+        "bass": "E2 — reprise",
+        "all": "E7"
+      },
+      "synth": {
+        "bass": ["E2"],
+        "pads": ["E3", "G#3", "B3", "D4"],
+        "filter": { "freq": 1400, "Q": 1 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 265,
+      "label": "mp3 II [TBD]",
+      "chord": "—",
+      "bass": "hold E",
+      "perform": {
+        "all": "Recorded playback II — TBD"
+      },
+      "synth": { "silence": true }
+    },
+    {
+      "t": 285,
+      "label": "Outro synthesis",
+      "chord": "Em",
+      "bass": "E2",
+      "perform": {
+        "bass": "E2 — back to opening texture",
+        "all": "Fade with David's synthesis"
+      },
+      "synth": {
+        "bass": ["E2"],
+        "pads": ["E3", "G3", "B3"],
+        "filter": { "freq": 400, "Q": 4 },
+        "wave": "sawtooth"
+      }
+    }
+  ]
+}

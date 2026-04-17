@@ -285,12 +285,13 @@
 //  CONSTANTS
 // ════════════════════════════════════════════════════════════
 const SPEC_LIST = [
-  { id: 'riff-rock-e',    label: "Riff Rock in E (5')" },
+  { id: 'in-my-mind',     label: "In My Mind (5')" },
   { id: 'overture',       label: "Overture (8')" },
   { id: 'drip-drip',      label: "Drip Drip Addicted (3')" },
   { id: 'the-times-they', label: "The Times They (8')" },
   { id: 'drownin',        label: "And We're Drownin' in It (5')" },
   { id: 'outro',          label: "Outro (5')" },
+  { id: 'riff-rock-e',    label: "Riff Rock in E (5') [placeholder]" },
 ];
 
 const PEER_NS = 'lm-perf-2026-';
@@ -307,6 +308,12 @@ const NOTES = {
   'A4':440.00,'Bb4':466.16,'B4':493.88,
   'C5':523.25,'D5':587.33,'E5':659.25,'F5':698.46,'F#5':739.99,'G5':783.99,
   'A5':880.00,'B5':987.77,'C6':1046.50,
+  // Extended low register
+  'C1':32.70,'D1':36.71,'E1':41.20,'G1':49.00,'A1':55.00,'B1':61.74,
+  // DCA JI microtonal: fqts = F quarter-sharp (44.93*n), aqtf = A quarter-flat (53.14*n)
+  // n=4 → register 3, n=8 → register 4, n=16 → register 5
+  'fqts4':179.72,'fqts8':359.44,'fqts16':718.88,
+  'aqtf4':212.56,'aqtf8':425.12,'aqtf16':850.24,
 };
 
 // ════════════════════════════════════════════════════════════
@@ -408,9 +415,18 @@ function pause() {
 function seekTo(seconds) {
   const was = playing;
   baseElapsed = Math.max(0, Math.min(seconds, spec?.duration || 0));
-  if (was) { playStartTime = Date.now(); }
+  // Reset all section-tracking state so synth + UI both update immediately
   lastSectionIdx = -1;
   lastLoopItemIdx = -1;
+  lastSynthSectionIdx = -1;
+  lastSynthLoopIdx = -1;
+  if (was) {
+    playStartTime = Date.now();
+    // Restart RAF so the new position takes effect on the very next frame
+    cancelAnimationFrame(rafId);
+    rafId = null;
+    scheduleRAF();
+  }
   if (synthActive) applyCurrentSection(baseElapsed, true);
   broadcast({
     type: 'jump', elapsed: baseElapsed, playing: was,
@@ -962,14 +978,15 @@ async function scheduleSynthOffline(ctx, spec) {
       });
     }
 
-    // Microtonal overtones
+    // Microtonal overtones (harmonic series)
     if (sec.synth.overtone) {
-      const { fundamental, partials, glissTo } = sec.synth.overtone;
-      const f0 = NOTES[fundamental] || 65.41;
-      partials.forEach((p, idx) => {
+      const ov = sec.synth.overtone;
+      const f0 = ov.fundamental_hz || NOTES[ov.fundamental] || 65.41;
+      ov.partials.forEach((p, idx) => {
         if (idx >= micros.length) return;
-        const startFreq = f0 * p;
-        const endFreq = glissTo?.[idx] ? f0 * glissTo[idx] : startFreq;
+        // Prefer pre-computed hz fields from spec for JI precision
+        const startFreq = ov.partial_hz?.[idx] ?? (f0 * p);
+        const endFreq   = ov.glissTo_hz?.[idx] ?? (ov.glissTo?.[idx] ? f0 * ov.glissTo[idx] : startFreq);
         micros[idx].osc.frequency.setValueAtTime(startFreq, t + 1);
         micros[idx].gain.gain.setValueAtTime(0, t);
         micros[idx].gain.gain.linearRampToValueAtTime(0.055, t + 3);
@@ -980,13 +997,13 @@ async function scheduleSynthOffline(ctx, spec) {
     } else if (sec.synth.microtonal) {
       sec.synth.microtonal.forEach((item, idx) => {
         if (idx >= micros.length) return;
-        const base = NOTES[item.note] || 440;
-        const cents = item.centsSharp || item.centsBeta || 0;
-        const sharpFreq = base * Math.pow(2, cents / 1200);
-        micros[idx].osc.frequency.setValueAtTime(sharpFreq, t + 1);
+        // Prefer exact hz from spec, fall back to NOTES lookup + cents offset
+        const startFreq = item.hz ?? NOTES[item.note] ?? 440;
+        const slideTo   = item.slideTo_hz ?? NOTES[item.slideTo] ?? startFreq;
+        micros[idx].osc.frequency.setValueAtTime(startFreq, t + 1);
         micros[idx].gain.gain.setValueAtTime(0, t);
         micros[idx].gain.gain.linearRampToValueAtTime(0.05, t + 3);
-        micros[idx].osc.frequency.linearRampToValueAtTime(base, Math.min(t + 20, nextT - 1));
+        micros[idx].osc.frequency.linearRampToValueAtTime(slideTo, Math.min(t + 20, nextT - 2));
         micros[idx].gain.gain.setValueAtTime(0.05, nextT - 2);
         micros[idx].gain.gain.linearRampToValueAtTime(0, nextT);
       });
