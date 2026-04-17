@@ -1,0 +1,24 @@
+{
+  "id": "the-times-they",
+  "title": "The Times They",
+  "duration": 480,
+  "key": "G",
+  "tempo": null,
+  "notes": "DCA original, written by Claude Code. Key G. PLACEHOLDER — needs full chord chart from David.",
+  "performers": ["bass", "all"],
+  "sections": [
+    {
+      "t": 0,
+      "label": "PLACEHOLDER",
+      "chord": "G",
+      "bass": "G2",
+      "perform": { "all": "PLACEHOLDER — fill in with David" },
+      "synth": {
+        "bass": ["G2"],
+        "pads": ["G3", "B3", "D4"],
+        "filter": { "freq": 900, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    }
+  ]
+}

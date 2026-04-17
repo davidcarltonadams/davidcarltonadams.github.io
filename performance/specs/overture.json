@@ -1,0 +1,89 @@
+{
+  "id": "overture",
+  "title": "Overture",
+  "duration": 480,
+  "key": "C~",
+  "tempo": null,
+  "notes": "Multi-part. Structure: build ambience → WGOIMM v1c1 → overture for riffs → WGOIMM v2c2 → overture coda → WGOIMM v3c3. PLACEHOLDER — needs chord details from David.",
+  "performers": ["bass", "all"],
+  "sections": [
+    {
+      "t": 0,
+      "label": "Ambience / build",
+      "chord": "C~",
+      "bass": "C2",
+      "perform": { "all": "PLACEHOLDER — confirm with David" },
+      "synth": {
+        "bass": ["C2"],
+        "pads": ["C3", "G3", "E4"],
+        "filter": { "freq": 300, "sweepTo": 900, "sweepDuration": 40, "Q": 3 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 40,
+      "label": "WGOIMM v1c1",
+      "chord": "PLACEHOLDER",
+      "bass": "PLACEHOLDER",
+      "perform": { "all": "PLACEHOLDER — confirm with David" },
+      "synth": {
+        "bass": ["C2"],
+        "pads": ["C3", "G3", "Bb3", "E4"],
+        "filter": { "freq": 900, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 120,
+      "label": "Overture for riffs",
+      "chord": "PLACEHOLDER",
+      "bass": "PLACEHOLDER",
+      "perform": { "all": "PLACEHOLDER — confirm with David" },
+      "synth": {
+        "bass": ["G2"],
+        "pads": ["G3", "B3", "D4"],
+        "filter": { "freq": 1200, "Q": 1.5 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 220,
+      "label": "WGOIMM v2c2",
+      "chord": "PLACEHOLDER",
+      "bass": "PLACEHOLDER",
+      "perform": { "all": "PLACEHOLDER — confirm with David" },
+      "synth": {
+        "bass": ["A2"],
+        "pads": ["A3", "C4", "E4"],
+        "filter": { "freq": 1000, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 320,
+      "label": "Overture coda",
+      "chord": "PLACEHOLDER",
+      "bass": "PLACEHOLDER",
+      "perform": { "all": "PLACEHOLDER — confirm with David" },
+      "synth": {
+        "bass": ["F2"],
+        "pads": ["F3", "A3", "C4"],
+        "filter": { "freq": 800, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 400,
+      "label": "WGOIMM v3c3",
+      "chord": "PLACEHOLDER",
+      "bass": "PLACEHOLDER",
+      "perform": { "all": "PLACEHOLDER — confirm with David" },
+      "synth": {
+        "bass": ["C2"],
+        "pads": ["C3", "G3", "E4"],
+        "filter": { "freq": 600, "Q": 3 },
+        "wave": "sawtooth"
+      }
+    }
+  ]
+}
