@@ -1,0 +1,74 @@
+{
+  "_comment": "DCA JI tuning system. Derived from harmonic series of C. fqts = 11th partial / octave, aqtf = 13th partial / octave. Multipliers n = 1, 2, 4, 8, 16 (octave doublings). David's working approx: fqts_n = 45*n, aqtf_n = 53.2*n",
+
+  "system": "dca-ji-1",
+  "description": "DCA Just Intonation System — harmonic series of C, primary microtonal inflections",
+
+  "fundamental_series": {
+    "C0": 16.35,
+    "C1": 32.70,
+    "C2": 65.41,
+    "C3": 130.81
+  },
+
+  "microtonal_notes": {
+    "fqts": {
+      "name": "F quarter-tone sharp",
+      "derivation": "11th partial of C / octave reduction",
+      "exact_fundamental_hz": 44.96,
+      "approx_hz": 45,
+      "david_formula": "44.93 * n  (n = 1, 2, 4, 8, 16...)",
+      "registers": {
+        "n1":  44.96,
+        "n2":  89.92,
+        "n4":  179.84,
+        "n8":  359.68,
+        "n16": 719.36
+      },
+      "nearest_ET": "F#",
+      "cents_from_F": 50,
+      "cents_from_F#": -50
+    },
+    "aqtf": {
+      "name": "A quarter-tone flat",
+      "derivation": "13th partial of C / octave reduction",
+      "exact_fundamental_hz": 53.19,
+      "approx_hz": 53.2,
+      "david_formula": "53.14 * n  (n = 1, 2, 4, 8, 16...)",
+      "registers": {
+        "n1":  53.14,
+        "n2":  106.28,
+        "n4":  212.56,
+        "n8":  425.12,
+        "n16": 850.24
+      },
+      "nearest_ET": "Ab",
+      "cents_from_A": -50,
+      "cents_from_Ab": 50
+    }
+  },
+
+  "harmonic_series_landmarks": {
+    "C1_partial_10": { "hz": 327.0,  "nearest_ET": "E4",  "role": "gliss target from fqts in Am" },
+    "C1_partial_11": { "hz": 359.7,  "nearest_ET": "F#4", "role": "= fqts (n8), 11th partial" },
+    "C1_partial_12": { "hz": 392.4,  "nearest_ET": "G4",  "role": "gliss target from aqtf in Am" },
+    "C1_partial_13": { "hz": 425.1,  "nearest_ET": "Ab4", "role": "= aqtf (n8), 13th partial" }
+  },
+
+  "synthesis_lookup": {
+    "fqts8":  359.44,
+    "fqts4":  179.72,
+    "fqts16": 718.88,
+    "aqtf8":  425.12,
+    "aqtf4":  212.56,
+    "aqtf16": 850.24
+  },
+
+  "relationships": [
+    "fqts_n8 (359.44) ≈ C1 * 11 (359.7) — same pitch, different derivations",
+    "aqtf_n8 (425.12) ≈ C1 * 13 (425.1) — same pitch",
+    "In Am: fqts glisses DOWN to E4 (5th), aqtf glisses DOWN to G4 (min 7th)",
+    "In Em: fqts glisses DOWN to B3 (5th), aqtf glisses DOWN to D4 (min 7th)",
+    "The gliss from partial 11→10 (fqts→E) and 13→12 (aqtf→G) mirrors Cmaj7 section overtone motion"
+  ]
+}
