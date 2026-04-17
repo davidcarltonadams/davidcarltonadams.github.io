@@ -339,6 +339,45 @@
       text-align: center;
       white-space: nowrap;
     }
+
+    /* ── PRACTICE BAR ───────────────────────────────── */
+    #practice-bar {
+      border-top: 1px solid var(--border);
+      padding: 0.45rem 0.8rem 0.6rem;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+    #practice-bar.conductor-live { opacity: 0.35; }
+
+    .prac-scrubber {
+      position: relative; height: 12px;
+      background: var(--bg3, #161616); border-radius: 2px;
+      cursor: pointer; margin-bottom: 0.35rem; overflow: hidden;
+    }
+    #prac-fill {
+      height: 100%; background: rgba(122,156,191,0.45);
+      border-radius: 2px; pointer-events: none;
+      width: 0%;
+    }
+    .prac-row {
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .prac-btn {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      font-size: 0.65rem; width: 1.9rem; height: 1.9rem;
+      border-radius: 2px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.1s;
+    }
+    .prac-btn:hover { border-color: var(--accent); color: var(--text); }
+    .prac-btn.playing { border-color: var(--accent); color: var(--accent); }
+    #prac-time {
+      font-size: 0.6rem; font-family: 'SF Mono', 'Courier New', monospace;
+      color: var(--dim); margin-left: 0.3rem;
+    }
+    #prac-label {
+      font-size: 0.45rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--dimmer); margin-left: auto;
+    }
   </style>
 </head>
 <body>
@@ -415,6 +454,20 @@
   </div>
 
   <div id="ch-note" class="ch-note"></div>
+
+  <!-- ── PRACTICE BAR ─────────────────────────────── -->
+  <div id="practice-bar">
+    <div class="prac-scrubber" id="prac-scrubber">
+      <div id="prac-fill"></div>
+    </div>
+    <div class="prac-row">
+      <button class="prac-btn" id="prac-prev" title="Prev section">⏮</button>
+      <button class="prac-btn" id="prac-play" title="Play / Pause">▶</button>
+      <button class="prac-btn" id="prac-next" title="Next section">⏭</button>
+      <span id="prac-time">0:00</span>
+      <span id="prac-label">practice</span>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -442,6 +495,7 @@ let peer       = null;
 let clientConn = null;
 let lastSectionIdx = -1;
 let hasEverPlayed = false;
+let conductorConnected = false;  // true while live conductor is connected
 
 function getElapsed() {
   if (!playStartTime) return baseElapsed;
@@ -560,12 +614,16 @@ function connect(roomCode) {
   peer.on('open', () => {
     clientConn = peer.connect(PEER_NS + roomCode, { reliable: true });
     clientConn.on('open', () => {
+      conductorConnected = true;
+      document.getElementById('practice-bar')._updateDim?.();
       setDot('connected');
       setStatus('');
       document.getElementById('ch-room-label').textContent = roomCode;
     });
     clientConn.on('data', msg => applyMsg(msg));
     clientConn.on('close', () => {
+      conductorConnected = false;
+      document.getElementById('practice-bar')._updateDim?.();
       setDot('');
       document.getElementById('ch-room-label').textContent = roomCode + ' ✗';
       setStatus('disconnected — reload to reconnect');
@@ -654,11 +712,92 @@ function updateChart(elapsed) {
   // Paused overlay
   const paused = !playStartTime && hasEverPlayed;
   document.getElementById('ch-paused').classList.toggle('visible', paused);
+
+  // Practice bar scrubber position
+  if (spec?.duration) {
+    const pct = Math.min(elapsed / spec.duration * 100, 100);
+    document.getElementById('prac-fill').style.width = pct + '%';
+  }
+  document.getElementById('prac-time').textContent = fmtTime(elapsed);
+  const playBtn = document.getElementById('prac-play');
+  playBtn.textContent = playStartTime ? '⏸' : '▶';
+  playBtn.classList.toggle('playing', !!playStartTime);
 }
 
 function updateWaiting() {
-  const waiting = !hasEverPlayed;
+  const waiting = !hasEverPlayed && !conductorConnected;
   document.getElementById('ch-waiting').style.display = waiting ? '' : 'none';
+}
+
+// ════════════════════════════════════════════════════════════
+//  PRACTICE MODE (local transport, no conductor needed)
+// ════════════════════════════════════════════════════════════
+function initPractice() {
+  const bar = document.getElementById('practice-bar');
+
+  // Play/pause
+  document.getElementById('prac-play').addEventListener('click', () => {
+    if (!spec) return;
+    hasEverPlayed = true;
+    if (playStartTime) {
+      // pause
+      baseElapsed = getElapsed();
+      playStartTime = null;
+    } else {
+      // play
+      playStartTime = Date.now();
+      scheduleRAF();
+    }
+    updateChart(getElapsed());
+    updateWaiting();
+  });
+
+  // Prev/next section
+  document.getElementById('prac-prev').addEventListener('click', () => {
+    if (!spec) return;
+    const idx = getSectionIdx(getElapsed());
+    const newIdx = Math.max(0, idx - 1);
+    pracSeekTo(spec.sections[newIdx].t);
+  });
+  document.getElementById('prac-next').addEventListener('click', () => {
+    if (!spec) return;
+    const idx = getSectionIdx(getElapsed());
+    const newIdx = Math.min(spec.sections.length - 1, idx + 1);
+    pracSeekTo(spec.sections[newIdx].t);
+  });
+
+  // Scrubber
+  const scrub = document.getElementById('prac-scrubber');
+  let scrubbing = false;
+  function doScrub(e) {
+    const rect = scrub.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const pct = Math.max(0, Math.min(1, x / rect.width));
+    pracSeekTo(pct * (spec?.duration || 0));
+  }
+  scrub.addEventListener('mousedown', e => { scrubbing = true; doScrub(e); });
+  scrub.addEventListener('touchstart', e => { scrubbing = true; doScrub(e); e.preventDefault(); }, { passive: false });
+  window.addEventListener('mousemove', e => { if (scrubbing) doScrub(e); });
+  window.addEventListener('touchmove', e => { if (scrubbing) doScrub(e); }, { passive: false });
+  window.addEventListener('mouseup', () => scrubbing = false);
+  window.addEventListener('touchend', () => scrubbing = false);
+
+  function pracSeekTo(seconds) {
+    baseElapsed = Math.max(0, Math.min(seconds, spec?.duration || 0));
+    if (playStartTime) playStartTime = Date.now();
+    lastSectionIdx = -1;
+    hasEverPlayed = true;
+    updateChart(getElapsed());
+    updateWaiting();
+    if (playStartTime) scheduleRAF();
+  }
+
+  // Dim practice bar when conductor is live (conductor takes precedence)
+  function updatePracticeLiveDim() {
+    bar.classList.toggle('conductor-live', conductorConnected);
+  }
+  // Call whenever conductorConnected changes — we'll call from connect/disconnect
+  bar._updateDim = updatePracticeLiveDim;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -728,12 +867,25 @@ function initConnectView() {
       updateWaiting();
     });
   }
+
+  // If spec provided but NO room — go straight to practice mode
+  if (urlSpec && !urlRoom) {
+    loadSpec(urlSpec).then(() => {
+      document.getElementById('connect-view').classList.add('hidden');
+      document.getElementById('chart-view').classList.remove('hidden');
+      document.getElementById('ch-room-label').textContent = 'practice';
+      setDot('');
+      updateChart(0);
+      updateWaiting();
+    });
+  }
 }
 
 // ════════════════════════════════════════════════════════════
 //  INIT
 // ════════════════════════════════════════════════════════════
 initConnectView();
+initPractice();
 updateWaiting();
 </script>
 </body>
