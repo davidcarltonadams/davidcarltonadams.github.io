@@ -1,87 +1,97 @@
 {
   "id": "overture",
-  "title": "Overture",
-  "duration": 480,
-  "key": "C~",
-  "tempo": null,
-  "notes": "Multi-part. Structure: build ambience → WGOIMM v1c1 → overture for riffs → WGOIMM v2c2 → overture coda → WGOIMM v3c3. PLACEHOLDER — needs chord details from David.",
-  "performers": ["bass", "all"],
+  "title": "Ouverture / Let's Hang Out",
+  "duration": 160,
+  "key": "A major / E7",
+  "tempo": 52,
+  "notes": "DCA original. Score: overture-inmymind.musicxml (MusicXML 4.0, Dorico 6, 2026-04-18). Follows In My Mind. Parts: Baritone (David), Electric Guitar, Grand staff (keys), Bass Guitar. Tempo: 52 BPM for verse/chorus, 60 BPM for Am riff section.",
+  "performers": ["all"],
+  "score": "overture-inmymind.musicxml",
   "sections": [
     {
       "t": 0,
-      "label": "Ambience / build",
-      "chord": "C~",
-      "bass": "C2",
-      "perform": { "all": "PLACEHOLDER — confirm with David" },
+      "label": "Verse 1 — 'Let's hang out'",
+      "chord": "E7 → A",
+      "bass": "E2",
+      "tempo_bpm": 52,
+      "perform": {
+        "bass": "E2 — hold through verse, assertive",
+        "guitar": "E7 chord (E-G#-D voicing). Single-note riff F#5 through measures.",
+        "keys": "E7 — E2/E3/G#3/D4 voicing",
+        "all": "Verse 1: 'Let's hang out for a bit and we'll tell you some shit that goes on in our minds'"
+      },
       "synth": {
-        "bass": ["C2"],
-        "pads": ["C3", "G3", "E4"],
-        "filter": { "freq": 300, "sweepTo": 900, "sweepDuration": 40, "Q": 3 },
-        "wave": "sawtooth"
-      }
-    },
-    {
-      "t": 40,
-      "label": "WGOIMM v1c1",
-      "chord": "PLACEHOLDER",
-      "bass": "PLACEHOLDER",
-      "perform": { "all": "PLACEHOLDER — confirm with David" },
-      "synth": {
-        "bass": ["C2"],
-        "pads": ["C3", "G3", "Bb3", "E4"],
-        "filter": { "freq": 900, "Q": 2 },
-        "wave": "sawtooth"
-      }
-    },
-    {
-      "t": 120,
-      "label": "Overture for riffs",
-      "chord": "PLACEHOLDER",
-      "bass": "PLACEHOLDER",
-      "perform": { "all": "PLACEHOLDER — confirm with David" },
-      "synth": {
-        "bass": ["G2"],
-        "pads": ["G3", "B3", "D4"],
+        "bass": ["E2"],
+        "pads": ["E3", "G#3", "B3", "D4"],
         "filter": { "freq": 1200, "Q": 1.5 },
         "wave": "sawtooth"
       }
     },
     {
-      "t": 220,
-      "label": "WGOIMM v2c2",
-      "chord": "PLACEHOLDER",
-      "bass": "PLACEHOLDER",
-      "perform": { "all": "PLACEHOLDER — confirm with David" },
+      "t": 36,
+      "label": "Bridge — 'can't quite comprehend'",
+      "chord": "A → F#m → E",
+      "bass": "A2 → F#2 → E2",
+      "tempo_bpm": 52,
+      "perform": {
+        "bass": "Move: A2 → F#2 → E2, following phrase",
+        "all": "'We can't quite comprehend that our era may end / is it ending, is it already gone?'"
+      },
       "synth": {
         "bass": ["A2"],
-        "pads": ["A3", "C4", "E4"],
+        "pads": ["A3", "C#4", "E4"],
         "filter": { "freq": 1000, "Q": 2 },
         "wave": "sawtooth"
       }
     },
     {
-      "t": 320,
-      "label": "Overture coda",
-      "chord": "PLACEHOLDER",
-      "bass": "PLACEHOLDER",
-      "perform": { "all": "PLACEHOLDER — confirm with David" },
+      "t": 74,
+      "label": "Riff — Am blues",
+      "chord": "Am",
+      "bass": "A2",
+      "tempo_bpm": 60,
+      "perform": {
+        "bass": "A2 — lock in with the riff",
+        "guitar": "Am blues riff — A/G/Bb pentatonic (score M64-71)",
+        "all": "Riff section — instrumental. Tempo up to 60."
+      },
       "synth": {
-        "bass": ["F2"],
-        "pads": ["F3", "A3", "C4"],
-        "filter": { "freq": 800, "Q": 2 },
+        "bass": ["A2"],
+        "pads": ["A3", "C4", "E4"],
+        "filter": { "freq": 1400, "Q": 1 },
         "wave": "sawtooth"
       }
     },
     {
-      "t": 400,
-      "label": "WGOIMM v3c3",
-      "chord": "PLACEHOLDER",
-      "bass": "PLACEHOLDER",
-      "perform": { "all": "PLACEHOLDER — confirm with David" },
+      "t": 106,
+      "label": "Verse 2 / Chorus 2",
+      "chord": "E7 → A",
+      "bass": "E2",
+      "tempo_bpm": 52,
+      "perform": {
+        "bass": "E2 — same as verse 1",
+        "all": "'What's the best way to fight for what I think and feel is right without doing wrong?'"
+      },
       "synth": {
-        "bass": ["C2"],
-        "pads": ["C3", "G3", "E4"],
-        "filter": { "freq": 600, "Q": 3 },
+        "bass": ["E2"],
+        "pads": ["E3", "G#3", "B3", "D4"],
+        "filter": { "freq": 1200, "Q": 1.5 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 152,
+      "label": "Outro / end",
+      "chord": "A",
+      "bass": "A2",
+      "tempo_bpm": 52,
+      "perform": {
+        "all": "Follow David to the end. See score M80-82."
+      },
+      "synth": {
+        "bass": ["A2"],
+        "pads": ["A3", "C#4", "E4"],
+        "filter": { "freq": 800, "Q": 2 },
         "wave": "sawtooth"
       }
     }
