@@ -1,12 +1,12 @@
 {
   "id": "in-my-mind",
   "title": "In My Mind (no voice)",
-  "duration": 300,
+  "duration": 380,
   "key": "E / Am",
   "tempo": null,
-  "notes": "DCA original. Demo: ~/projects/assets/audio/demo-inmymind_rough_mix2.mp3. Harmonic language: 11th/13th partials of C (= fqts8/aqtf8). JI slides: fqts→E, aqtf→G in Am context.",
+  "notes": "DCA original. Demo: audio/demo-inmymind_rough_mix2.mp3 (165s total). Harmonic language: 11th/13th partials of C (= fqts8/aqtf8). JI slides: fqts→E, aqtf→G in Am context. Flows into Overture.",
   "performers": ["bass", "all"],
-  "demo_audio": "demo-inmymind_rough_mix2.mp3",
+  "demo_audio": "audio/demo-inmymind_rough_mix2.mp3",
   "sections": [
     {
       "t": 0,
@@ -164,59 +164,52 @@
     },
     {
       "t": 195,
-      "label": "mp3 I [TBD]",
+      "label": "mp3 I — demo 0:00-1:15",
       "chord": "—",
       "bass": "hold E",
       "perform": {
         "all": "Recorded playback — hold position"
       },
       "synth": { "silence": true },
-      "note": "mp3 section — file TBD"
+      "audio": {
+        "src": "audio/demo-inmymind_rough_mix2.mp3",
+        "offsetSec": 0,
+        "duration": 75
+      }
     },
     {
-      "t": 225,
+      "t": 270,
       "label": "Microtonal counterpoint",
       "chord": "—",
       "bass": "—",
       "perform": {
-        "all": "From score — MusicXML TBD. Follow David."
+        "all": "From score — follow David. MusicXML: overture-inmymind.musicxml ~M65-71"
       },
       "synth": { "placeholder": true }
     },
     {
-      "t": 255,
-      "label": "E7 reprise",
-      "chord": "E7",
-      "bass": "E2",
-      "perform": {
-        "bass": "E2 — reprise",
-        "all": "E7"
-      },
-      "synth": {
-        "bass": ["E2"],
-        "pads": ["E3", "G#3", "B3", "D4"],
-        "filter": { "freq": 1400, "Q": 1 },
-        "wave": "sawtooth"
-      }
-    },
-    {
-      "t": 265,
-      "label": "mp3 II [TBD]",
+      "t": 300,
+      "label": "mp3 II — demo 1:15-end",
       "chord": "—",
       "bass": "hold E",
       "perform": {
-        "all": "Recorded playback II — TBD"
+        "all": "Recorded playback II — hold position"
       },
-      "synth": { "silence": true }
+      "synth": { "silence": true },
+      "audio": {
+        "src": "audio/demo-inmymind_rough_mix2.mp3",
+        "offsetSec": 75,
+        "duration": 90
+      }
     },
     {
-      "t": 285,
+      "t": 370,
       "label": "Outro synthesis",
       "chord": "Em",
       "bass": "E2",
       "perform": {
         "bass": "E2 — back to opening texture",
-        "all": "Fade with David's synthesis"
+        "all": "Fade with David's synthesis — leads into Overture"
       },
       "synth": {
         "bass": ["E2"],

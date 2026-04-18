@@ -341,6 +341,33 @@ let mainFilter   = null;
 let masterGain   = null;
 let synthActive  = false;
 
+// Mp3 playback
+let mp3El        = null;   // <audio> element, created lazily
+let mp3SecIdx    = -1;     // which section index is currently loaded
+
+function getOrCreateMp3() {
+  if (!mp3El) {
+    mp3El = document.createElement('audio');
+    mp3El.preload = 'auto';
+    document.body.appendChild(mp3El);
+  }
+  return mp3El;
+}
+
+function applyMp3Section(sec, elapsed) {
+  const a = getOrCreateMp3();
+  const offset = sec.audio.offsetSec + (elapsed - sec.t);
+  if (a.src !== new URL(sec.audio.src, location.href).href) {
+    a.src = sec.audio.src;
+  }
+  a.currentTime = Math.max(0, offset);
+  if (playing) a.play().catch(() => {});
+}
+
+function stopMp3() {
+  if (mp3El) { mp3El.pause(); }
+}
+
 // ════════════════════════════════════════════════════════════
 //  TIMING HELPERS
 // ════════════════════════════════════════════════════════════
@@ -397,6 +424,9 @@ function play() {
   baseElapsed = getElapsed();
   playing = true;
   if (synthActive) resumeSynth();
+  // Resume mp3 if current section is an audio section
+  const curSec = spec.sections[getSectionIdx(baseElapsed)];
+  if (curSec?.audio?.src) applyMp3Section(curSec, baseElapsed);
   scheduleRAF();
   broadcast({ type: 'play', startTime: playStartTime, baseElapsed });
   updateTransportUI();
@@ -407,6 +437,7 @@ function pause() {
   playing = false;
   playStartTime = null;
   if (synthActive) pauseSynth();
+  stopMp3();
   cancelAnimationFrame(rafId);
   broadcast({ type: 'pause', elapsed: baseElapsed });
   updateTransportUI();
@@ -427,7 +458,13 @@ function seekTo(seconds) {
     rafId = null;
     scheduleRAF();
   }
+  stopMp3();
   if (synthActive) applyCurrentSection(baseElapsed, true);
+  // Resume mp3 at seeked position if current section is audio
+  if (was) {
+    const curSec = spec?.sections[getSectionIdx(baseElapsed)];
+    if (curSec?.audio?.src) applyMp3Section(curSec, baseElapsed);
+  }
   broadcast({
     type: 'jump', elapsed: baseElapsed, playing: was,
     startTime: was ? playStartTime : null, baseElapsed
@@ -522,10 +559,10 @@ function renderSectionList() {
     item.appendChild(chordEl);
     item.appendChild(labelEl);
 
-    if (sec.note || sec.synth?.silence || sec.synth?.placeholder) {
+    if (sec.note || sec.audio?.src || sec.synth?.silence || sec.synth?.placeholder) {
       const badge = document.createElement('div');
       badge.className = 'si-note-badge';
-      badge.textContent = sec.synth?.silence ? 'mp3' : sec.synth?.placeholder ? 'TBD' : '…';
+      badge.textContent = sec.audio?.src ? '▶ mp3' : sec.synth?.silence ? 'mp3' : sec.synth?.placeholder ? 'TBD' : '…';
       item.appendChild(badge);
     }
 
@@ -708,6 +745,8 @@ function applyCurrentSection(elapsed, instant) {
 
   if (sec.synth.silence || sec.synth.placeholder) {
     masterGain.gain.setTargetAtTime(0.05, now, xf * 0.3);
+    // Audio section — start/seek mp3 if spec has audio field
+    if (sec.audio?.src) applyMp3Section(sec, elapsed);
     return;
   }
 
@@ -755,6 +794,10 @@ function synthTick(elapsed) {
 
   // Section change
   if (idx !== lastSynthSectionIdx) {
+    // Stop mp3 if leaving an audio section
+    const oldSec = lastSynthSectionIdx >= 0 ? spec.sections[lastSynthSectionIdx] : null;
+    if (oldSec?.audio?.src && !sec.audio?.src) stopMp3();
+
     applyCurrentSection(elapsed, false);
     lastSynthSectionIdx = idx;
     lastSynthLoopIdx = -1;
