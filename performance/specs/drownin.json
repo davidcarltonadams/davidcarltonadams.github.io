@@ -2,21 +2,38 @@
   "id": "drownin",
   "title": "And We're Drownin' in It",
   "duration": 300,
-  "key": "a",
+  "key": "Am / riff rock",
   "tempo": null,
-  "notes": "A minor. Lyrics done 2026-03-17. PLACEHOLDER — needs full chord chart from David.",
-  "performers": ["bass", "all"],
+  "notes": "DCA original. Score excerpt: ~/projects/assets/scores/15 - excerpt - Adams - Drownin in it - microtonal riff rock (late chorus).pdf. Lyrics: 'it's always / and we're drownin' in it / it comes at us all the time / and we can't breathe'. Jan 18 Le Mondo version had viola (RAK) — confirm if viola on Apr 26. Full structure + chord chart TBD from David. MusicXML incoming.",
+  "performers": ["all"],
   "sections": [
     {
       "t": 0,
-      "label": "PLACEHOLDER",
+      "label": "PLACEHOLDER — structure TBD",
       "chord": "Am",
       "bass": "A2",
-      "perform": { "all": "PLACEHOLDER — fill in with David" },
+      "perform": {
+        "all": "PLACEHOLDER — await full chart from David. Lyric: 'it's always / and we're drownin' in it / it comes at us all the time / and we can't breathe'"
+      },
       "synth": {
         "bass": ["A2"],
         "pads": ["A3", "C4", "E4"],
         "filter": { "freq": 800, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 200,
+      "label": "Late chorus — riff rock",
+      "chord": "Am (riff rock)",
+      "bass": "A2",
+      "perform": {
+        "all": "Riff rock section. See excerpt score. A + B sections. Full band."
+      },
+      "synth": {
+        "bass": ["A2"],
+        "pads": ["A3", "C4", "E4"],
+        "filter": { "freq": 1200, "Q": 1.5 },
         "wave": "sawtooth"
       }
     }

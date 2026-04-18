@@ -1,22 +1,133 @@
 {
   "id": "the-times-they",
-  "title": "The Times They",
+  "title": "The Times They Are A-Changin' (Fragmented)",
   "duration": 480,
-  "key": "G",
+  "key": "G major (modal, microtonal bends ~1/4 tone throughout)",
   "tempo": null,
-  "notes": "DCA original, written by Claude Code. Key G. PLACEHOLDER — needs full chord chart from David.",
-  "performers": ["bass", "all"],
+  "notes": "DCA arr. after Bob Dylan. Score: ~/projects/assets/scores/Claude-Adams_The-Times-They.pdf. Five continuous sections. Timings approximate — follow energy. Microtonal bends consistently 'off' in same direction (1/4 tone-ish). The Void (IV) is a HARD STOP — DCA nods, all cut simultaneously, 4 beats silence ~60 BPM.",
+  "performers": ["all"],
+  "score": "Claude-Adams_The-Times-They.pdf",
   "sections": [
     {
       "t": 0,
-      "label": "PLACEHOLDER",
-      "chord": "G",
-      "bass": "G2",
-      "perform": { "all": "PLACEHOLDER — fill in with David" },
+      "label": "I. Gathering",
+      "chord": "G (free)",
+      "bass": "G2 / D2",
+      "tempo_bpm": null,
+      "perform": {
+        "bass": "Long tones with volume swells — bowed quality. Start G2, sustain/fade, re-enter D2. No rhythm, no pulse. By 1:00: G–D–B fragments, 4–8s each. Gentle 1/4-tone scoops into notes from below.",
+        "guitar": "DCA: clean tremolo on natural harmonics (12th/7th/5th fret). Single note, add gradually. Open-string drones by 1:00. DETUNE G string ~10 cents flat if possible. | AIDAN: enter at 1:00 — single notes widely spaced, modal G fragments, pointillistic. Occasional 1/4-tone bends on harmonics.",
+        "all": "Texture, not time. ppp → p. DCA whispers fragments: 'come' ... 'round you' ... 'grown' ... 'admit' ... 'soon'. Transition to II is organic — Zach introduces pulse, others follow."
+      },
+      "synth": {
+        "bass": ["G2"],
+        "pads": [],
+        "filter": { "freq": 200, "sweepTo": 600, "sweepDuration": 90, "Q": 4 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 90,
+      "label": "II. Water Cycle",
+      "chord": "G (modular loops)",
+      "bass": "G2 descending gliss",
+      "tempo_bpm": 70,
+      "perform": {
+        "bass": "Descending glissandi. Start G2, gliss down. Next rep start F#2, etc. Molto vibrato → non-vibrato at bottom. Getting lower each rep by 3:00. TEXT (low register): 'Sink like a stone' — repeat with descending pitch each time.",
+        "guitar": "DCA: sustained tones via looper/sustain pedal. One note at a time, bloom. TEXT: scatter 'the • times • they • are • a • chan • gin'' syllabically OUT OF ORDER. Density increases toward 3:00. | AIDAN: persistent pattern in perfect 4ths, ~60 BPM eigths → ~100 by end. 4ths go slightly wide (~1/4 tone) as tempo increases.",
+        "drums": "PULSE BEGINS HERE. Hi-hat only, quarter notes, ~70 BPM, very light. Add: kick on 1 → snare ghosts → fuller. By 3:00: full kit, moderate energy. Feel: slightly behind the beat, heavy, gravitational (Portishead).",
+        "all": "p → mf. Modules introduced one by one 1:30–2:30, all four simultaneously 2:30–3:30. Energy keeps building → Collision. No break."
+      },
+      "synth": {
+        "bass": ["G2"],
+        "pads": ["G3", "D4", "B3"],
+        "filter": { "freq": 600, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 210,
+      "label": "III. Collision",
+      "chord": "G (chaotic, all modules)",
+      "bass": "G2 low rumble",
+      "tempo_bpm": 100,
+      "perform": {
+        "bass": "Low register rumble. Fast repeated notes. Growl. Distortion welcome.",
+        "guitar": "DCA: distortion (Gray Channel). Riff fragments, noise. Voice: shout syllable fragments — step on each other. | AIDAN: 4ths at max speed, 1/4-tone wide, tremolo picking, edge into noise.",
+        "drums": "Full blast. Fills. Build toward the cliff. Loudest and most intense moment.",
+        "all": "mf → fff. Maximum density — WATCH DCA for the nod. On nod: everyone stops SIMULTANEOUSLY."
+      },
+      "synth": {
+        "bass": ["G2"],
+        "pads": ["G3", "B3", "D4"],
+        "filter": { "freq": 1600, "Q": 1 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 285,
+      "label": "IV. The Void — HARD STOP",
+      "chord": "—",
+      "bass": "SILENCE",
+      "perform": {
+        "all": "EVERYONE STOPS SIMULTANEOUSLY on DCA nod. Count 4 beats internally at ~60 BPM. DO NOT RUSH BACK IN. The silence is the point. After 4th beat: DCA begins Section V alone."
+      },
+      "synth": { "silence": true }
+    },
+    {
+      "t": 300,
+      "label": "V-A. Emergence — DCA alone",
+      "chord": "G (arpegg)",
+      "bass": "wait",
+      "tempo_bpm": 52,
+      "perform": {
+        "bass": "WAIT. Enter only when verse reaches 'the order is rapidly fadin'' OR DCA gives visual cue (nod/look). Then: gently — single bass note, build from there.",
+        "guitar": "DCA: whispered then sung, one verse Dylan — tender, open. Clean arpegg G–C–D. Simple open voicings. Very slow strum or fingerpick. | AIDAN: WAIT for cue.",
+        "drums": "WAIT for cue. Enter with: single cymbal swell.",
+        "all": "pp. DCA alone until V-B cue. Band enters gently at 'the order is rapidly fadin''."
+      },
+      "synth": {
+        "bass": ["G2"],
+        "pads": ["G3", "B3", "D4"],
+        "filter": { "freq": 400, "Q": 3 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 345,
+      "label": "V-B. The Verse (full band)",
+      "chord": "G – Am – C – D",
+      "bass": "G2 → A2 → C2 → D2",
+      "tempo_bpm": 52,
+      "perform": {
+        "bass": "Root–5th pattern. Lock with kick drum. Foundation, solid, relentless. Follow chord chart.",
+        "guitar": "DCA: G–C–D arpegg/strum. Chord chart below. BENDS: on 'grown' and 'bone' bend 3rd of D up ~1/4 tone; on 'changin'' add wide vibrato wobble. | AIDAN: same chords, lock with DCA — two guitars = one wall.",
+        "drums": "Driving but not loud. Build through the verse.",
+        "all": "Chord chart: G Am C D / G Am C D / Am C G D / Am D G / D/F# G C D / G C D G. BENDS: 'grown'/'bone' = D chord 3rd up ~1/4 tone. 'changin'' = bass bends G root up slightly."
+      },
       "synth": {
         "bass": ["G2"],
         "pads": ["G3", "B3", "D4"],
         "filter": { "freq": 900, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    },
+    {
+      "t": 420,
+      "label": "V-C. Build & Exit vamp",
+      "chord": "G – C – D – G (vamp)",
+      "bass": "G2 – C2 – D2 – G2",
+      "tempo_bpm": 60,
+      "perform": {
+        "bass": "Driving root–5th. Lock with kick. Relentless.",
+        "guitar": "DCA: power chords, riff emerges. Voice: 'For the times they are a-changin'' full voice, repeated, increasingly free and intense. | AIDAN: power chords, 1/4-tone bends on 3rd. Lock with DCA — wall of sound.",
+        "drums": "Stadium energy. Crashes. Driving quarter notes on floor tom. Fills into each vamp repeat. CLIMAX of the whole piece.",
+        "all": "ff. Vamp repeats. END CUE: DCA raises guitar neck = LAST TIME THROUGH. Tag final G. Let it ring. Breathe. → Next piece."
+      },
+      "synth": {
+        "bass": ["G2"],
+        "pads": ["G3", "B3", "D4"],
+        "filter": { "freq": 1400, "Q": 1 },
         "wave": "sawtooth"
       }
     }
