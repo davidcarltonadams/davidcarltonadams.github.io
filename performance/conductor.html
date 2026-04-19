@@ -493,14 +493,12 @@ function scheduleRAF() {
 let heartbeatTimer = null;
 function tick() {
   rafId = null;
-  const elapsed = getElapsed();
-
-  if (spec && elapsed >= spec.duration) {
-    pause(); seekTo(0); return;
-  }
-
-  updateTransportUI(elapsed);
-  if (synthActive) synthTick(elapsed);
+  try {
+    const elapsed = getElapsed();
+    if (spec && elapsed >= spec.duration) { pause(); seekTo(0); return; }
+    updateTransportUI(elapsed);
+    if (synthActive) synthTick(elapsed);
+  } catch(e) { console.error('tick error', e); }
   if (playing) rafId = requestAnimationFrame(tick);
 }
 

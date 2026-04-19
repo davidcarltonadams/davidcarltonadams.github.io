@@ -1,0 +1,147 @@
+LE MONDO APRIL 26 — CHORD CHARTS
+Generated 2026-04-19
+═══════════════════════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────
+1. IN MY MIND / LET'S HANG OUT  (medley, ~9 min)
+   Key: E / Am → A major
+──────────────────────────────────────────────────────────────────
+
+PART 1: IN MY MIND (no voice)
+
+  0:00  E            Intro drone — David solo synthesis, band waits
+  0:16  Em           Light entrance
+  0:26  Bm7          Bass to B2
+  0:42  C△7♯11       JI overtones (11th+13th partials of C)
+                     microtonal melody glisses to 10th+12th partials
+  1:09  Am           fqts8 (359.44Hz) → E4; aqtf8 (425.12Hz) → G4
+  1:51  Em           same microtonal inflections → B3, D4
+  2:20  Em → Am      loop, ~16s each, repeat
+  3:00  E7           full band, assertive
+  3:15  — mp3 I —   recorded playback 0:00–1:15 of demo
+  4:30  Counterpoint from score (MusicXML M65–71), follow David
+  5:00  — mp3 II —  demo 1:15–2:45 (end)
+  6:10  Em           fade + synthesis, lead into Overture
+
+PART 2: LET'S HANG OUT (Overture)  [score: overture-inmymind.musicxml]
+
+  6:20  E7 → A      Verse 1 — ♩=52
+                    "Let's hang out for a bit and we'll tell you
+                     some shit that goes on in our minds"
+                    guitar: E7 voicing (E–G#–D), riff on F#5
+  6:56  A → F#m → E  Bridge
+                    "We can't quite comprehend that our era may end /
+                     is it ending, is it already gone?"
+  7:34  Am           Am blues riff, instrumental — ♩=60
+                    guitar: A/G/Bb pentatonic
+  8:06  E7 → A      Verse 2 / Chorus 2 — ♩=52
+                    "What's the best way to fight for what I think
+                     and feel is right without doing wrong?"
+  8:52  A            Outro — follow David, see score M80–82
+
+
+──────────────────────────────────────────────────────────────────
+2. DRIP DRIP ADDICTED                [TBD — MusicXML/demo coming]
+──────────────────────────────────────────────────────────────────
+
+  [full chart pending recording session]
+
+
+──────────────────────────────────────────────────────────────────
+3. THE TIMES THEY ARE A-CHANGIN' (Fragmented)  (~8 min)
+   Key: G major (modal) — microtonal bends ~¼ tone throughout
+   arr. DCA after Bob Dylan   [score: Claude-Adams_The-Times-They.pdf]
+──────────────────────────────────────────────────────────────────
+
+  0:00  I. GATHERING     free time, ppp → p
+        G (open)         no pulse — texture only
+        DCA: harmonic tremolo, open drones; whisper fragments:
+             "come" ... "round you" ... "grown" ... "admit" ... "soon"
+        Jude: long G2/D2 tones with swells, no rhythm, ¼-tone scoops
+        Zach: mallets on suspended cymbal; NO PULSE yet
+        Aidan: enters 1:00 — pointillistic modal G fragments,
+               each note rings fully before the next
+        → Zach introduces pulse, others follow (no hard cue)
+
+  1:30  II. WATER CYCLE  pulse begins, p → mf
+        G (modular)      ♩≈70 BPM, builds to ≈100
+        Zach: hi-hat quarter notes → kick on 1 → snare ghosts → full kit
+              feel: behind the beat, heavy (Portishead)
+        Jude: descending glissandi G2 → F#2 → lower each rep
+              TEXT: "Sink like a stone" (descending pitch each time)
+        DCA: looped sustained tones; TEXT: scatter syllables of
+             "the • times • they • are • a • chan • gin'" OUT OF ORDER
+        Aidan: 4ths pattern 60→100 BPM; bends go wider as tempo rises
+        1:30–2:30: modules introduced one by one
+        2:30–3:30: all four simultaneously → Collision (no break)
+
+  3:30  III. COLLISION   maximum density, mf → fff
+        G               all modules, chaotic crescendo
+        DCA: distortion (Gray Channel), shout fragments
+        Aidan: 4ths at max speed, ¼-tone wide, tremolo
+        Jude: low rumble, fast repeats, growl
+        Zach: full blast, fills, build to the cliff
+        *** WATCH DCA FOR THE NOD — everyone stops SIMULTANEOUSLY ***
+
+  4:45  IV. THE VOID     HARD STOP
+        SILENCE          count 4 beats internally at ♩≈60 BPM
+                         DO NOT RUSH BACK IN
+                         after 4th beat: DCA begins V alone
+
+  5:00  V-A. EMERGENCE  DCA solo, pp
+        G (arpegg)       DCA: whispered → sung, tender / open
+                         clean arpegg G–C–D
+        BAND WAITS until "the order is rapidly fadin'" OR DCA nods
+
+  5:45  V-B. THE VERSE  full band, pp → mf  ♩≈52
+        Chord chart:
+          G   Am  C   D   "Come gather 'round people wherever you roam"
+          G   Am  C   D   "And admit that the waters around you have grown"
+          Am  C   G   D   "And accept it that soon you'll be drenched to the bone"
+          Am  D   G       "If your time to you is worth savin'"
+          D/F# G  C   D   "Then you better start swimmin' or you'll sink like a stone"
+          G   C   D   G   "For the times they are a-changin'"
+        BENDS: on "grown"/"bone" — bend 3rd of D up ~¼ tone
+               on "changin'" — bass bends G root up; guitars wide vibrato
+
+  7:00  V-C. BUILD & EXIT  ff
+        G – C – D – G (vamp, repeat)
+        DCA: full voice "For the times they are a-changin'" — free, intense
+        Aidan: power chords, ¼-tone bends on 3rd
+        Jude: root–5th, lock with kick, relentless
+        Zach: stadium energy, crashes, floor tom quarters, fills
+        END CUE: DCA raises guitar neck = LAST TIME THROUGH
+                 Tag final G. Let it ring. → Next piece
+
+
+──────────────────────────────────────────────────────────────────
+4. AND WE'RE DROWNIN' IN IT          [TBD — full chart pending]
+   Key: Am
+──────────────────────────────────────────────────────────────────
+
+  Lyric:  "it's always / and we're drownin' in it /
+           it comes at us all the time / and we can't breathe"
+  [late chorus excerpt in assets/scores/ — full structure TBD]
+
+
+──────────────────────────────────────────────────────────────────
+5. OUTRO                             [TBD]
+──────────────────────────────────────────────────────────────────
+
+  [structure TBD from David]
+
+
+──────────────────────────────────────────────────────────────────
+RIFF ROCK IN E                       [on chopping block, Apr 26]
+──────────────────────────────────────────────────────────────────
+
+  Placeholder — confirm with David if keeping.
+
+
+═══════════════════════════════════════════════════════════════════
+TUNING REFERENCE (DCA JI system)
+  fqts8  = 359.44 Hz  (11th partial of C / F quarter-sharp)
+  aqtf8  = 425.12 Hz  (13th partial of C / A quarter-flat)
+  In Am:  fqts8 → E4 (329.63Hz),  aqtf8 → G4 (392.0Hz)
+  In Em:  fqts8 → B3 (246.94Hz),  aqtf8 → D4 (293.66Hz)
+═══════════════════════════════════════════════════════════════════
