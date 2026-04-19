@@ -1,0 +1,24 @@
+{
+  "id": "bot",
+  "title": "Break On Through",
+  "duration": 300,
+  "key": "TBD",
+  "tempo": null,
+  "notes": "DCA original, rewritten for flute, bassoon, viola (WCH on viola). Apr 26 setlist. Structure TBD from David.",
+  "performers": ["all"],
+  "sections": [
+    {
+      "t": 0,
+      "label": "PLACEHOLDER — structure TBD",
+      "chord": "—",
+      "bass": "—",
+      "perform": { "all": "PLACEHOLDER — fill in with David" },
+      "synth": {
+        "bass": ["C2"],
+        "pads": [],
+        "filter": { "freq": 600, "Q": 2 },
+        "wave": "sawtooth"
+      }
+    }
+  ]
+}
