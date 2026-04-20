@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>existential crisis</title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #070707;
+      --text:     #d4ccc4;
+      --dim:      rgba(212,204,196,0.4);
+      --dimmer:   rgba(212,204,196,0.18);
+      --border:   rgba(212,204,196,0.1);
+      --accent1:  #7a9cbf;   /* Part 1 — blue */
+      --accent2:  #b07ab0;   /* Part 2 — violet */
+      --accent3:  #b09a5a;   /* Part 3 — gold */
+      --crisis:   #c84040;   /* chorus / crisis red */
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: hidden;
+    }
+
+    .hidden { display: none !important; }
+    button {
+      font-family: Georgia, serif;
+      cursor: pointer;
+    }
+
+    /* ════════════════════════════════════════════
+       HUB (landing / QR page)
+    ════════════════════════════════════════════ */
+    #hub-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      gap: 2.5rem;
+    }
+
+    .hub-title {
+      font-size: clamp(1.4rem, 4vw, 2.2rem);
+      font-style: italic;
+      letter-spacing: 0.06em;
+      text-align: center;
+      color: var(--text);
+    }
+
+    .hub-subtitle {
+      font-size: 0.6rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+      text-align: center;
+      margin-top: -1.5rem;
+    }
+
+    .hub-room-row {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    .hub-room-row input {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'SF Mono', monospace;
+      font-size: 0.8rem;
+      padding: 0.4rem 0.7rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      width: 9rem;
+      outline: none;
+      border-radius: 2px;
+    }
+
+    .hub-btn {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--text);
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      padding: 0.4rem 1rem;
+      border-radius: 2px;
+      transition: all 0.15s;
+    }
+    .hub-btn:hover { background: rgba(212,204,196,0.06); }
+
+    .hub-qr-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .hub-qr-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+    }
+
+    .hub-qr-card .qr-label {
+      font-size: 0.52rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+    }
+
+    .hub-qr-card .qr-box {
+      width: 120px;
+      height: 120px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 2px;
+    }
+
+    .hub-qr-card a {
+      font-size: 0.48rem;
+      color: var(--dimmer);
+      text-decoration: none;
+      word-break: break-all;
+      text-align: center;
+    }
+
+    .hub-cond-link {
+      font-size: 0.55rem;
+      color: var(--dimmer);
+      letter-spacing: 0.1em;
+    }
+    .hub-cond-link a { color: var(--dim); }
+
+    /* ════════════════════════════════════════════
+       CONDUCTOR VIEW
+    ════════════════════════════════════════════ */
+    #cond-view {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 1.5rem;
+      gap: 1.2rem;
+    }
+
+    .cond-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .cond-title {
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+    }
+
+    #cond-meta {
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+    }
+
+    #cond-clock {
+      font-size: clamp(2.5rem, 8vw, 5rem);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .cond-controls {
+      display: flex;
+      gap: 0.7rem;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .cond-btn {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--text);
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      padding: 0.5rem 1.2rem;
+      border-radius: 2px;
+      transition: all 0.15s;
+      min-width: 5rem;
+    }
+    .cond-btn:hover { background: rgba(212,204,196,0.07); }
+    .cond-btn.primary {
+      border-color: var(--text);
+      font-size: 0.75rem;
+      padding: 0.6rem 2rem;
+    }
+    .cond-btn.danger { border-color: var(--crisis); color: var(--crisis); }
+    .cond-btn:disabled { opacity: 0.3; pointer-events: none; }
+
+    .cond-dur-row {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      justify-content: center;
+      font-size: 0.55rem;
+      color: var(--dimmer);
+    }
+    .cond-dur-row input[type=range] { width: 10rem; accent-color: var(--dim); }
+
+    .cond-timeline {
+      display: flex;
+      gap: 0.4rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .sec-chip {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dimmer);
+      font-size: 0.5rem;
+      letter-spacing: 0.12em;
+      padding: 0.3rem 0.6rem;
+      border-radius: 1px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: Georgia, serif;
+    }
+    .sec-chip:hover { border-color: var(--dim); color: var(--dim); }
+    .sec-chip.active { border-color: var(--text); color: var(--text); background: rgba(212,204,196,0.06); }
+    .sec-chip.past { opacity: 0.4; }
+    .sec-chip.chorus { border-color: rgba(200,64,64,0.4); color: rgba(200,64,64,0.7); }
+    .sec-chip.chorus.active { border-color: var(--crisis); color: var(--crisis); background: rgba(200,64,64,0.08); }
+
+    .cond-progress {
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .cond-progress-fill {
+      height: 100%;
+      background: var(--dim);
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    .cond-bottom {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* Room setup overlay */
+    #cond-setup {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.2rem;
+      z-index: 100;
+    }
+
+    #cond-setup .setup-title {
+      font-size: 0.55rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+    }
+
+    #cond-setup input {
+      background: transparent;
+      border: 1px solid var(--dim);
+      color: var(--text);
+      font-family: 'SF Mono', monospace;
+      font-size: 1.2rem;
+      padding: 0.5rem 1rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      text-align: center;
+      width: 14rem;
+      outline: none;
+      border-radius: 2px;
+    }
+
+    /* ════════════════════════════════════════════
+       PERFORMER VIEW
+    ════════════════════════════════════════════ */
+    #part-view {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    .part-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.8rem 1.2rem 0.4rem;
+      flex-shrink: 0;
+    }
+
+    .part-name {
+      font-size: 0.5rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+    }
+
+    #part-status {
+      font-size: 0.48rem;
+      color: var(--dimmer);
+      letter-spacing: 0.08em;
+    }
+
+    #part-clock {
+      font-size: 0.65rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--dimmer);
+      letter-spacing: 0.1em;
+    }
+
+    .part-cue-zone {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem 2rem;
+      position: relative;
+      min-height: 0;
+    }
+
+    #part-section-label {
+      font-size: 0.5rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+      margin-bottom: 1.2rem;
+    }
+
+    #part-verbal-cue {
+      font-size: clamp(1.4rem, 5.5vw, 3rem);
+      font-style: italic;
+      line-height: 1.3;
+      text-align: center;
+      color: var(--text);
+      max-width: 18ch;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    #part-verbal-cue.crisis {
+      color: var(--crisis);
+      font-size: clamp(1.6rem, 6.5vw, 3.6rem);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    #part-verbal-cue.agitato {
+      color: rgba(200,64,64,0.55);
+      font-size: clamp(1.2rem, 4vw, 2.4rem);
+      font-style: italic;
+      letter-spacing: 0.02em;
+      animation: tremble 0.12s infinite alternate;
+    }
+    @keyframes tremble {
+      from { transform: translateX(-1px) rotate(-0.3deg); }
+      to   { transform: translateX(1px)  rotate(0.3deg); }
+    }
+
+    #part-param-label {
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      color: var(--dimmer);
+      margin-top: 1.2rem;
+    }
+
+    /* Next cue preview */
+    #part-next-cue {
+      position: absolute;
+      bottom: 0.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.6rem;
+      color: var(--dimmer);
+      font-style: italic;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.5s;
+      pointer-events: none;
+    }
+    #part-next-cue.visible { opacity: 1; }
+
+    /* Playbar canvas */
+    #part-playbar {
+      flex-shrink: 0;
+      width: 100%;
+      height: 100px;
+    }
+
+    /* ════════════════════════════════════════════
+       AUDIENCE VIEW
+    ════════════════════════════════════════════ */
+    #aud-view {
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Onboarding */
+    #aud-onboard {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1.5rem;
+      padding: 2rem;
+    }
+
+    .aud-onboard-title {
+      font-size: clamp(1rem, 4vw, 1.6rem);
+      font-style: italic;
+      text-align: center;
+    }
+    .aud-onboard-sub {
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--dimmer);
+      text-align: center;
+    }
+
+    .crisis-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      max-width: 22rem;
+    }
+
+    .crisis-chip {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.65rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .crisis-chip:hover,
+    .crisis-chip.selected { border-color: var(--text); color: var(--text); background: rgba(212,204,196,0.08); }
+
+    #aud-crisis-input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      font-family: Georgia, serif;
+      font-size: 0.9rem;
+      font-style: italic;
+      padding: 0.3rem 0.2rem;
+      width: 100%;
+      max-width: 22rem;
+      outline: none;
+      text-align: center;
+    }
+    #aud-crisis-input::placeholder { color: var(--dimmer); font-style: italic; }
+
+    .aud-ready-btn {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--text);
+      font-family: Georgia, serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      padding: 0.6rem 2rem;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .aud-ready-btn:hover { background: rgba(212,204,196,0.07); }
+
+    /* Tracker */
+    #aud-tracker {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .aud-tracker-header {
+      padding: 0.8rem 1rem 0.4rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .aud-crisis-label {
+      font-size: 0.6rem;
+      font-style: italic;
+      color: var(--dim);
+      max-width: 60%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #aud-status {
+      font-size: 0.45rem;
+      color: var(--dimmer);
+      letter-spacing: 0.1em;
+    }
+
+    #aud-canvas {
+      flex: 1;
+      width: 100%;
+      touch-action: none;
+      cursor: crosshair;
+    }
+
+    .aud-crisis-btn {
+      flex-shrink: 0;
+      width: 100%;
+      padding: 1.2rem;
+      background: none;
+      border: none;
+      border-top: 1px solid var(--border);
+      color: var(--dimmer);
+      font-family: Georgia, serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .aud-crisis-btn.active {
+      background: var(--crisis);
+      color: #fff;
+      border-color: var(--crisis);
+      font-size: 0.85rem;
+    }
+
+    /* Chorus pulse overlay */
+    #chorus-flash {
+      position: fixed;
+      inset: 0;
+      background: var(--crisis);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 200;
+      transition: opacity 0.15s;
+    }
+
+    /* Waiting overlay */
+    #aud-waiting {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+      padding: 2rem;
+      text-align: center;
+    }
+    #aud-waiting p { color: var(--dimmer); font-size: 0.75rem; font-style: italic; }
+    #aud-room-input {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'SF Mono', monospace;
+      font-size: 1rem;
+      padding: 0.4rem 0.8rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-align: center;
+      width: 11rem;
+      outline: none;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     HUB VIEW
+══════════════════════════════════════════ -->
+<div id="hub-view" class="hidden">
+  <div>
+    <div class="hub-title">existential crisis</div>
+    <div class="hub-subtitle">performance surface · david carlton adams</div>
+  </div>
+
+  <div class="hub-room-row">
+    <input type="text" id="hub-room-input" placeholder="ROOM CODE" maxlength="8" spellcheck="false">
+    <button class="hub-btn" id="hub-go-btn">generate QR codes</button>
+  </div>
+
+  <div id="hub-qr-grid" class="hub-qr-grid hidden"></div>
+
+  <div class="hub-cond-link hidden" id="hub-cond-link">
+    conductor: <a id="hub-cond-a" href="#">open conductor view</a>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     CONDUCTOR VIEW
+══════════════════════════════════════════ -->
+<div id="cond-view" class="hidden">
+
+  <!-- Room setup overlay -->
+  <div id="cond-setup">
+    <div class="setup-title">conductor — existential crisis</div>
+    <input type="text" id="cond-room-input" placeholder="ROOM CODE" maxlength="8" spellcheck="false" autocomplete="off">
+    <button class="hub-btn" id="cond-start-btn">open room</button>
+  </div>
+
+  <div class="cond-header">
+    <span class="cond-title">conductor · existential crisis</span>
+    <span id="cond-meta">not connected</span>
+  </div>
+
+  <div id="cond-clock">00:00</div>
+
+  <div class="cond-dur-row">
+    <span>total duration:</span>
+    <input type="range" id="cond-dur" min="3" max="20" value="5.5" step="0.5">
+    <span id="cond-dur-label"></span>
+  </div>
+
+  <div class="cond-controls">
+    <button class="cond-btn primary" id="cond-play-btn" disabled>play</button>
+    <button class="cond-btn" id="cond-reset-btn" disabled>reset</button>
+  </div>
+
+  <div class="cond-progress"><div class="cond-progress-fill" id="cond-fill"></div></div>
+
+  <div class="cond-timeline" id="cond-timeline"></div>
+
+  <div class="cond-bottom" id="cond-qr-bottom"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PERFORMER VIEW
+══════════════════════════════════════════ -->
+<div id="part-view" class="hidden">
+  <div class="part-header">
+    <span class="part-name" id="part-name-label">part —</span>
+    <span id="part-clock">00:00</span>
+    <span id="part-status">waiting for conductor…</span>
+  </div>
+
+  <div class="part-cue-zone">
+    <div id="part-section-label">—</div>
+    <div id="part-verbal-cue">—</div>
+    <div id="part-param-label"></div>
+    <div id="part-next-cue"></div>
+  </div>
+
+  <canvas id="part-playbar"></canvas>
+</div>
+
+<!-- ══════════════════════════════════════════
+     AUDIENCE VIEW
+══════════════════════════════════════════ -->
+<div id="aud-view" class="hidden">
+
+  <!-- Step 1: Enter room code -->
+  <div id="aud-waiting">
+    <p style="font-size:0.9rem; font-style:italic; color:var(--text)">existential crisis</p>
+    <p>enter the room code from the screen</p>
+    <input type="text" id="aud-room-input" placeholder="ROOM CODE" maxlength="8" spellcheck="false" autocomplete="off">
+    <button class="aud-ready-btn" id="aud-connect-btn">connect</button>
+    <p id="aud-connect-status" style="font-size:0.5rem; opacity:0.5;"></p>
+  </div>
+
+  <!-- Step 2: Choose crisis type (onboarding, shown during bridge) -->
+  <div id="aud-onboard" class="hidden">
+    <div class="aud-onboard-title">what freaks you out the most?</div>
+    <div class="aud-onboard-sub">choose one, or type your own</div>
+    <div class="crisis-chips">
+      <button class="crisis-chip" data-val="climate">climate</button>
+      <button class="crisis-chip" data-val="health">health</button>
+      <button class="crisis-chip" data-val="money">money</button>
+      <button class="crisis-chip" data-val="relationships">relationships</button>
+      <button class="crisis-chip" data-val="work">work</button>
+      <button class="crisis-chip" data-val="time">time running out</button>
+      <button class="crisis-chip" data-val="death">death</button>
+      <button class="crisis-chip" data-val="identity">identity</button>
+    </div>
+    <input type="text" id="aud-crisis-input" placeholder="or type it here…" maxlength="60" autocomplete="off">
+    <button class="aud-ready-btn" id="aud-ready-btn">I'm ready</button>
+  </div>
+
+  <!-- Step 3: Active tracker -->
+  <div id="aud-tracker" class="hidden">
+    <div class="aud-tracker-header">
+      <span class="aud-crisis-label" id="aud-crisis-display"></span>
+      <span id="aud-status">—</span>
+    </div>
+    <canvas id="aud-canvas"></canvas>
+    <button class="aud-crisis-btn" id="aud-crisis-btn">I am having an existential crisis</button>
+  </div>
+</div>
+
+<!-- Chorus flash overlay -->
+<div id="chorus-flash"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+//  DATA
+// ════════════════════════════════════════════════════════════════════
+
+// CH1 = ~5s (0.015 of 330s). Other sections scaled proportionally to fill remaining 325s.
+const SECTIONS = [
+  { id: 'V1',  label: 'Verse 1',   t0: 0.000, t1: 0.136, chorus: false },
+  { id: 'CH1', label: 'Chorus 1',  t0: 0.136, t1: 0.152, chorus: true  },
+  { id: 'V2',  label: 'Verse 2',   t0: 0.152, t1: 0.322, chorus: false },
+  { id: 'CH2', label: 'Chorus 2',  t0: 0.322, t1: 0.425, chorus: true  },
+  { id: 'BR',  label: 'Bridge',    t0: 0.425, t1: 0.629, chorus: false, bridge: true },
+  { id: 'V3',  label: 'Verse 3',   t0: 0.629, t1: 0.800, chorus: false },
+  { id: 'CH3', label: 'Chorus 3',  t0: 0.800, t1: 1.000, chorus: true  },
+];
+
+// paramCurve: defines the expected parameter level at each section boundary
+// 'shape' is used to interpolate within a section: 'linear' or 'expo'
+const PARTS = [
+  {
+    id: 1,
+    name: 'Part 1',
+    subtitle: 'Speaker / Fretless Strat',
+    param: 'pitch',
+    color: getComputedStyle(document.documentElement).getPropertyValue('--accent1').trim() || '#7a9cbf',
+    cues: {
+      V1:  { verbal: 'reasonable',                          paramLabel: 'pp',  paramLevel: 0.10, shape: 'linear'  },
+      CH1: { verbal: 'I am having an existential crisis',   paramLabel: 'pp agitato', paramLevel: 0.25, agitato: true },
+      V2:  { verbal: 'a little worse',                      paramLabel: 'p',   paramLevel: 0.28, shape: 'expo'    },
+      CH2: { verbal: 'I AM HAVING AN EXISTENTIAL CRISIS',   paramLabel: 'fff', paramLevel: 1.00, crisis: true     },
+      BR:  { verbal: 'oh, I didn\'t see that coming',       paramLabel: 'mf',  paramLevel: 0.50, shape: 'hold'    },
+      V3:  { verbal: 'verging on catastrophe',              paramLabel: 'ff',  paramLevel: 0.82, shape: 'expo'    },
+      CH3: { verbal: 'I AM HAVING AN EXISTENTIAL CRISIS',   paramLabel: 'fff', paramLevel: 1.00, crisis: true     },
+    }
+  },
+  {
+    id: 2,
+    name: 'Part 2',
+    subtitle: 'Aiden',
+    param: 'loudness / frequency',
+    color: '#b07ab0',
+    cues: {
+      V1:  { verbal: 'long time before that becomes an issue', paramLabel: 'ppp', paramLevel: 0.05, shape: 'linear' },
+      CH1: { verbal: 'I too am having an existential crisis',  paramLabel: 'pp agitato', paramLevel: 0.25, agitato: true },
+      V2:  { verbal: 'moved up the timeline',                  paramLabel: 'pp',  paramLevel: 0.22, shape: 'expo'   },
+      CH2: { verbal: 'I AM HAVING AN EXISTENTIAL CRISIS',      paramLabel: 'fff', paramLevel: 1.00, crisis: true    },
+      BR:  { verbal: 'a little sooner than I expected',        paramLabel: 'mp',  paramLevel: 0.40, shape: 'hold'   },
+      V3:  { verbal: 'accelerating',                           paramLabel: 'ff',  paramLevel: 0.88, shape: 'expo'   },
+      CH3: { verbal: 'I AM HAVING AN EXISTENTIAL CRISIS',      paramLabel: 'fff', paramLevel: 1.00, crisis: true    },
+    }
+  },
+  {
+    id: 3,
+    name: 'Part 3',
+    subtitle: '',
+    param: 'timbre (smooth → rough)',
+    color: '#b09a5a',
+    cues: {
+      V1:  { verbal: 'something to pay attention to',     paramLabel: 'smooth',        paramLevel: 0.08, shape: 'linear' },
+      CH1: { verbal: 'I am having an existential crisis', paramLabel: 'pp agitato',    paramLevel: 0.25, agitato: true   },
+      V2:  { verbal: 'I\'m busy — not on my radar',       paramLabel: 'slightly rough', paramLevel: 0.25, shape: 'expo' },
+      CH2: { verbal: 'I AM HAVING AN EXISTENTIAL CRISIS', paramLabel: 'full agitation', paramLevel: 1.00, crisis: true  },
+      BR:  { verbal: 'I don\'t have the capacity',        paramLabel: 'moderate rough', paramLevel: 0.42, shape: 'hold' },
+      V3:  { verbal: 'out of my control — nothing I can do', paramLabel: 'very rough', paramLevel: 0.90, shape: 'expo'  },
+      CH3: { verbal: 'I AM HAVING AN EXISTENTIAL CRISIS', paramLabel: 'maximum',      paramLevel: 1.00, crisis: true    },
+    }
+  }
+];
+
+// ════════════════════════════════════════════════════════════════════
+//  ROUTING
+// ════════════════════════════════════════════════════════════════════
+
+const urlParams = new URLSearchParams(location.search);
+const MODE   = urlParams.get('mode') || 'hub';
+const PART_N = parseInt(urlParams.get('p') || '1');
+const ROOM   = (urlParams.get('room') || '').toUpperCase();
+
+const PEER_NS = 'ec-2026-';
+const DEFAULT_DURATION_MINS = 5.5;
+
+// ════════════════════════════════════════════════════════════════════
+//  SHARED SYNC STATE
+// ════════════════════════════════════════════════════════════════════
+
+let peer = null;
+let hostConns = new Map();
+let clientConn = null;
+let state = { startTime: null, paused: false, pausedAt: null };
+let totalMs = DEFAULT_DURATION_MINS * 60 * 1000;
+
+function getElapsed() {
+  if (!state.startTime) return 0;
+  if (state.paused) return state.pausedAt;
+  return Date.now() - state.startTime;
+}
+
+function getSectionAt(elapsed) {
+  const t = Math.min(elapsed / totalMs, 1);
+  for (let i = SECTIONS.length - 1; i >= 0; i--) {
+    if (t >= SECTIONS[i].t0) return SECTIONS[i];
+  }
+  return SECTIONS[0];
+}
+
+function getNextSection(elapsed) {
+  const t = elapsed / totalMs;
+  for (const s of SECTIONS) {
+    if (s.t0 > t) return s;
+  }
+  return null;
+}
+
+function tToMs(t) { return t * totalMs; }
+
+function fmtClock(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return String(m).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
+}
+
+function broadcast(msg) {
+  hostConns.forEach(conn => { try { conn.send(msg); } catch(e) {} });
+}
+
+function applyMsg(msg) {
+  if (msg.type === 'start') {
+    state.startTime = msg.startTime;
+    state.paused = false;
+    state.pausedAt = null;
+    if (msg.totalMs) totalMs = msg.totalMs;
+  } else if (msg.type === 'pause') {
+    state.paused = true;
+    state.pausedAt = msg.elapsed;
+  } else if (msg.type === 'resume') {
+    state.startTime = Date.now() - state.pausedAt;
+    state.paused = false;
+    state.pausedAt = null;
+  } else if (msg.type === 'reset') {
+    state.startTime = null;
+    state.paused = false;
+    state.pausedAt = null;
+  } else if (msg.type === 'jump') {
+    // Jump to a section: recalculate startTime so elapsed = tToMs(section.t0)
+    const targetMs = tToMs(msg.t0);
+    state.startTime = Date.now() - targetMs;
+    state.paused = false;
+    state.pausedAt = null;
+  } else if (msg.type === 'sync') {
+    state = msg.state;
+    if (msg.totalMs) totalMs = msg.totalMs;
+  }
+}
+
+function startPeerHost(roomCode) {
+  peer = new Peer(PEER_NS + roomCode, { debug: 0 });
+  peer.on('open', () => updateCondMeta());
+  peer.on('connection', conn => {
+    conn.on('open', () => {
+      hostConns.set(conn.peer, conn);
+      updateCondMeta();
+      conn.send({ type: 'sync', state, totalMs });
+    });
+    conn.on('close', () => { hostConns.delete(conn.peer); updateCondMeta(); });
+    conn.on('error', err => console.warn('conn error', err));
+  });
+  peer.on('error', err => {
+    const el = document.getElementById('cond-meta');
+    if (el) el.textContent = 'peer error: ' + err.type;
+  });
+}
+
+function startPeerClient(roomCode, statusEl) {
+  peer = new Peer({ debug: 0 });
+  peer.on('open', () => {
+    if (statusEl) statusEl.textContent = 'connecting…';
+    clientConn = peer.connect(PEER_NS + roomCode, { reliable: true });
+    clientConn.on('open', () => {
+      if (statusEl) statusEl.textContent = roomCode + ' · connected';
+    });
+    clientConn.on('data', msg => applyMsg(msg));
+    clientConn.on('close', () => {
+      if (statusEl) statusEl.textContent = 'disconnected — reload to reconnect';
+    });
+    clientConn.on('error', () => {
+      if (statusEl) statusEl.textContent = 'connection error';
+    });
+  });
+  peer.on('error', err => {
+    if (statusEl) statusEl.textContent = 'peer error: ' + err.type;
+  });
+}
+
+function updateCondMeta() {
+  const el = document.getElementById('cond-meta');
+  const roomInput = document.getElementById('cond-room-input');
+  const room = roomInput ? roomInput.value.toUpperCase() : '';
+  if (el) el.textContent = room + ' · ' + hostConns.size + ' connected';
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  HUB VIEW
+// ════════════════════════════════════════════════════════════════════
+
+function initHub() {
+  document.getElementById('hub-view').classList.remove('hidden');
+
+  document.getElementById('hub-go-btn').addEventListener('click', () => {
+    const room = document.getElementById('hub-room-input').value.trim().toUpperCase();
+    if (!room) return;
+    buildHubQR(room);
+  });
+
+  document.getElementById('hub-room-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('hub-go-btn').click();
+  });
+}
+
+function buildHubQR(room) {
+  const base = location.href.split('?')[0];
+  const links = [
+    { label: 'Part 1', url: base + '?mode=part&p=1&room=' + room },
+    { label: 'Part 2', url: base + '?mode=part&p=2&room=' + room },
+    { label: 'Part 3', url: base + '?mode=part&p=3&room=' + room },
+    { label: 'Audience', url: base + '?mode=audience' },
+  ];
+
+  const grid = document.getElementById('hub-qr-grid');
+  grid.innerHTML = '';
+  links.forEach(lnk => {
+    const card = document.createElement('div');
+    card.className = 'hub-qr-card';
+    const lbl = document.createElement('div');
+    lbl.className = 'qr-label';
+    lbl.textContent = lnk.label;
+    const box = document.createElement('div');
+    box.className = 'qr-box';
+    new QRCode(box, { text: lnk.url, width: 116, height: 116, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+    const a = document.createElement('a');
+    a.href = lnk.url;
+    a.target = '_blank';
+    a.textContent = lnk.url.replace(location.origin, '');
+    card.appendChild(lbl);
+    card.appendChild(box);
+    card.appendChild(a);
+    grid.appendChild(card);
+  });
+  grid.classList.remove('hidden');
+
+  const condLink = document.getElementById('hub-cond-link');
+  const condA = document.getElementById('hub-cond-a');
+  condA.href = base + '?mode=conductor&room=' + room;
+  condLink.classList.remove('hidden');
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  CONDUCTOR VIEW
+// ════════════════════════════════════════════════════════════════════
+
+let condAnimId = null;
+
+function initConductor() {
+  document.getElementById('cond-view').classList.remove('hidden');
+
+  const setup = document.getElementById('cond-setup');
+  const roomInput = document.getElementById('cond-room-input');
+  const startBtn = document.getElementById('cond-start-btn');
+  const playBtn = document.getElementById('cond-play-btn');
+  const resetBtn = document.getElementById('cond-reset-btn');
+  const durSlider = document.getElementById('cond-dur');
+  const durLabel = document.getElementById('cond-dur-label');
+  const timeline = document.getElementById('cond-timeline');
+
+  // Pre-fill room if passed in URL
+  if (ROOM) roomInput.value = ROOM;
+
+  function syncDur() {
+    totalMs = parseFloat(durSlider.value) * 60 * 1000;
+    durLabel.textContent = fmtClock(totalMs);
+  }
+  syncDur(); // initialize from slider default
+  durSlider.addEventListener('input', syncDur);
+
+  startBtn.addEventListener('click', () => {
+    const room = roomInput.value.trim().toUpperCase();
+    if (!room) return;
+    setup.classList.add('hidden');
+    startPeerHost(room);
+    playBtn.disabled = false;
+    resetBtn.disabled = false;
+    buildCondTimeline(timeline);
+    buildCondQR(room);
+    condAnimId = requestAnimationFrame(condTick);
+  });
+
+  roomInput.addEventListener('keydown', e => { if (e.key === 'Enter') startBtn.click(); });
+
+  playBtn.addEventListener('click', () => {
+    if (!state.startTime) {
+      state.startTime = Date.now();
+      state.paused = false;
+      playBtn.textContent = 'pause';
+      broadcast({ type: 'start', startTime: state.startTime, totalMs });
+    } else if (state.paused) {
+      state.startTime = Date.now() - state.pausedAt;
+      state.paused = false;
+      playBtn.textContent = 'pause';
+      broadcast({ type: 'resume' });
+    } else {
+      state.pausedAt = getElapsed();
+      state.paused = true;
+      playBtn.textContent = 'resume';
+      broadcast({ type: 'pause', elapsed: state.pausedAt });
+    }
+  });
+
+  resetBtn.addEventListener('click', () => {
+    state = { startTime: null, paused: false, pausedAt: null };
+    playBtn.textContent = 'play';
+    broadcast({ type: 'reset' });
+  });
+}
+
+function buildCondTimeline(container) {
+  container.innerHTML = '';
+  SECTIONS.forEach(sec => {
+    const btn = document.createElement('button');
+    btn.className = 'sec-chip' + (sec.chorus ? ' chorus' : '');
+    btn.dataset.id = sec.id;
+    btn.textContent = sec.label;
+    btn.addEventListener('click', () => {
+      state.startTime = Date.now() - tToMs(sec.t0);
+      state.paused = false;
+      broadcast({ type: 'jump', t0: sec.t0, totalMs });
+      document.getElementById('cond-play-btn').textContent = 'pause';
+    });
+    container.appendChild(btn);
+  });
+}
+
+function buildCondQR(room) {
+  const base = location.href.split('?')[0];
+  const bottom = document.getElementById('cond-qr-bottom');
+  [
+    { label: 'Part 1', url: base + '?mode=part&p=1&room=' + room },
+    { label: 'Part 2', url: base + '?mode=part&p=2&room=' + room },
+    { label: 'Part 3', url: base + '?mode=part&p=3&room=' + room },
+    { label: 'Audience', url: base + '?mode=audience' },
+  ].forEach(lnk => {
+    const card = document.createElement('div');
+    card.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0.3rem;';
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:0.45rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--dimmer);';
+    lbl.textContent = lnk.label;
+    const box = document.createElement('div');
+    box.style.cssText = 'width:70px;height:70px;background:#fff;';
+    new QRCode(box, { text: lnk.url, width: 68, height: 68, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+    card.appendChild(lbl);
+    card.appendChild(box);
+    bottom.appendChild(card);
+  });
+}
+
+function condTick() {
+  const elapsed = getElapsed();
+  document.getElementById('cond-clock').textContent = fmtClock(elapsed);
+
+  const t = elapsed / totalMs;
+  document.getElementById('cond-fill').style.width = (Math.min(t, 1) * 100) + '%';
+
+  const cur = getSectionAt(elapsed);
+  document.querySelectorAll('.sec-chip').forEach(chip => {
+    const sec = SECTIONS.find(s => s.id === chip.dataset.id);
+    if (!sec) return;
+    const isActive = cur && cur.id === sec.id;
+    const isPast = t > sec.t1;
+    chip.classList.toggle('active', isActive);
+    chip.classList.toggle('past', isPast && !isActive);
+  });
+
+  condAnimId = requestAnimationFrame(condTick);
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  PERFORMER VIEW
+// ════════════════════════════════════════════════════════════════════
+
+let partAnimId = null;
+let lastSectionId = null;
+let nextCueTimer = null;
+
+function initPart(partNum) {
+  const part = PARTS.find(p => p.id === partNum) || PARTS[0];
+  document.getElementById('part-view').classList.remove('hidden');
+  document.getElementById('part-name-label').textContent = part.name + (part.subtitle ? ' · ' + part.subtitle : '');
+
+  const statusEl = document.getElementById('part-status');
+  const canvas = document.getElementById('part-playbar');
+
+  if (ROOM) {
+    startPeerClient(ROOM, statusEl);
+  } else {
+    statusEl.textContent = 'no room — add ?room=CODE to URL';
+  }
+
+  // Size canvas
+  function resizeCanvas() {
+    canvas.width = canvas.offsetWidth * devicePixelRatio;
+    canvas.height = canvas.offsetHeight * devicePixelRatio;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  partAnimId = requestAnimationFrame(() => partTick(part, canvas));
+}
+
+function partTick(part, canvas) {
+  const elapsed = getElapsed();
+  document.getElementById('part-clock').textContent = fmtClock(elapsed);
+
+  const cur = getSectionAt(elapsed);
+  const next = getNextSection(elapsed);
+  const cue = cur ? part.cues[cur.id] : null;
+
+  // Update verbal cue when section changes
+  if (cur && cur.id !== lastSectionId) {
+    lastSectionId = cur.id;
+    const verbalEl = document.getElementById('part-verbal-cue');
+    const sectionLabelEl = document.getElementById('part-section-label');
+    const paramEl = document.getElementById('part-param-label');
+
+    sectionLabelEl.textContent = cur.label;
+
+    if (cue) {
+      verbalEl.style.opacity = '0';
+      verbalEl.style.transform = 'translateY(6px)';
+      setTimeout(() => {
+        verbalEl.textContent = cue.verbal;
+        verbalEl.classList.toggle('crisis', !!cue.crisis);
+        verbalEl.classList.toggle('agitato', !!cue.agitato);
+        paramEl.textContent = cue.paramLabel ? part.param + ' · ' + cue.paramLabel : '';
+        verbalEl.style.opacity = '1';
+        verbalEl.style.transform = 'translateY(0)';
+      }, 200);
+    }
+  }
+
+  // Next cue preview — show 8s before next section
+  if (next && cue) {
+    const nextCue = part.cues[next.id];
+    const timeToNext = tToMs(next.t0) - elapsed;
+    const nextEl = document.getElementById('part-next-cue');
+    if (timeToNext > 0 && timeToNext < 8000 && nextCue) {
+      nextEl.textContent = 'next: ' + (nextCue.crisis ? 'CRISIS' : nextCue.verbal.slice(0, 40));
+      nextEl.classList.add('visible');
+    } else {
+      nextEl.classList.remove('visible');
+    }
+  }
+
+  // Draw playbar
+  drawPlaybar(part, canvas, elapsed);
+
+  partAnimId = requestAnimationFrame(() => partTick(part, canvas));
+}
+
+function drawPlaybar(part, canvas, elapsed) {
+  const ctx = canvas.getContext('2d');
+  const dpr = devicePixelRatio;
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const PAD_L = 14 * dpr;
+  const PAD_R = 14 * dpr;
+  const TRACK_Y = H * 0.42;
+  const TRACK_H = 2 * dpr;
+  const CURVE_MAX_Y = H * 0.12;
+  const LABEL_Y = H * 0.78;
+
+  const trackW = W - PAD_L - PAD_R;
+  const t = Math.min(elapsed / totalMs, 1);
+
+  // Draw parameter curve (background)
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(212,204,196,0.12)';
+  ctx.lineWidth = 1.5 * dpr;
+  let firstPoint = true;
+  for (let i = 0; i <= 200; i++) {
+    const tt = i / 200;
+    const py = TRACK_Y - paramCurveY(part, tt) * (TRACK_Y - CURVE_MAX_Y);
+    const px = PAD_L + tt * trackW;
+    if (firstPoint) { ctx.moveTo(px, py); firstPoint = false; }
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // Draw section ticks + labels
+  ctx.fillStyle = 'rgba(212,204,196,0.22)';
+  ctx.font = (9 * dpr) + 'px Georgia, serif';
+  ctx.textAlign = 'center';
+  SECTIONS.forEach(sec => {
+    const x = PAD_L + sec.t0 * trackW;
+    ctx.fillRect(x, TRACK_Y - 6 * dpr, 1 * dpr, 12 * dpr);
+    if (sec.t0 > 0) {
+      ctx.fillStyle = 'rgba(212,204,196,0.2)';
+      ctx.fillText(sec.id, x, LABEL_Y);
+      ctx.fillStyle = 'rgba(212,204,196,0.22)';
+    }
+  });
+
+  // Draw track line
+  ctx.fillStyle = 'rgba(212,204,196,0.15)';
+  ctx.fillRect(PAD_L, TRACK_Y, trackW, TRACK_H);
+
+  // Draw played portion
+  ctx.fillStyle = part.color;
+  ctx.globalAlpha = 0.35;
+  ctx.fillRect(PAD_L, TRACK_Y, t * trackW, TRACK_H);
+  ctx.globalAlpha = 1;
+
+  // Draw playhead dot
+  const px = PAD_L + t * trackW;
+  const paramLevel = paramCurveY(part, t);
+  const dotY = TRACK_Y - paramLevel * (TRACK_Y - CURVE_MAX_Y);
+  ctx.beginPath();
+  ctx.arc(px, dotY, 5 * dpr, 0, Math.PI * 2);
+  ctx.fillStyle = part.color;
+  ctx.fill();
+
+  // Draw playhead vertical line
+  ctx.strokeStyle = part.color;
+  ctx.globalAlpha = 0.4;
+  ctx.lineWidth = 1 * dpr;
+  ctx.beginPath();
+  ctx.moveTo(px, TRACK_Y + TRACK_H + 2 * dpr);
+  ctx.lineTo(px, TRACK_Y - 2 * dpr);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+// Returns param level [0,1] at normalized time t for a given part
+function paramCurveY(part, t) {
+  // Find current section and next section
+  let curSec = SECTIONS[0], nextSec = SECTIONS[1];
+  for (let i = 0; i < SECTIONS.length; i++) {
+    if (t >= SECTIONS[i].t0) {
+      curSec = SECTIONS[i];
+      nextSec = SECTIONS[i + 1] || null;
+    }
+  }
+
+  const cue = part.cues[curSec.id];
+  const startLevel = cue ? cue.paramLevel : 0;
+
+  if (!nextSec || !part.cues[nextSec.id]) return startLevel;
+
+  const endLevel = part.cues[nextSec.id].paramLevel;
+  const sectionDur = curSec.t1 - curSec.t0;
+  const progress = sectionDur > 0 ? (t - curSec.t0) / sectionDur : 0;
+
+  if (cue.shape === 'expo') {
+    // exponential: slow start, fast finish
+    return startLevel + (endLevel - startLevel) * Math.pow(progress, 2.5);
+  } else if (cue.shape === 'hold') {
+    return startLevel;
+  } else {
+    // linear
+    return startLevel + (endLevel - startLevel) * progress;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  AUDIENCE VIEW
+// ════════════════════════════════════════════════════════════════════
+
+let audAnimId = null;
+let crisisType = '';
+let audPoints = []; // {t, level} drawn path
+let currentTouchY = 0.5; // 0=bottom, 1=top
+let inCrisis = false;
+let lastAudSectionId = null;
+let audOnboarded = false;
+
+function initAudience() {
+  document.getElementById('aud-view').classList.remove('hidden');
+
+  const waitDiv = document.getElementById('aud-waiting');
+  const onboardDiv = document.getElementById('aud-onboard');
+  const trackerDiv = document.getElementById('aud-tracker');
+  const roomInput = document.getElementById('aud-room-input');
+  const connectBtn = document.getElementById('aud-connect-btn');
+  const connectStatus = document.getElementById('aud-connect-status');
+  const crisisInput = document.getElementById('aud-crisis-input');
+  const readyBtn = document.getElementById('aud-ready-btn');
+  const crisisBtn = document.getElementById('aud-crisis-btn');
+  const audCanvas = document.getElementById('aud-canvas');
+
+  // Crisis type chips
+  document.querySelectorAll('.crisis-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.crisis-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+      crisisInput.value = chip.dataset.val;
+      crisisType = chip.dataset.val;
+    });
+  });
+  crisisInput.addEventListener('input', () => {
+    crisisType = crisisInput.value;
+    document.querySelectorAll('.crisis-chip').forEach(c => c.classList.remove('selected'));
+  });
+
+  connectBtn.addEventListener('click', () => {
+    const room = roomInput.value.trim().toUpperCase();
+    if (!room) return;
+    startPeerClient(room, connectStatus);
+    connectBtn.disabled = true;
+    connectBtn.textContent = 'connecting…';
+
+    // After connection, hide waiting. The bridge section will trigger onboarding.
+    // For now: wait a moment then show waiting message with status
+    setTimeout(() => {
+      connectBtn.textContent = 'connected';
+    }, 3000);
+  });
+
+  roomInput.addEventListener('keydown', e => { if (e.key === 'Enter') connectBtn.click(); });
+
+  readyBtn.addEventListener('click', () => {
+    crisisType = crisisInput.value.trim() || 'everything';
+    document.getElementById('aud-crisis-display').textContent = crisisType;
+    onboardDiv.classList.add('hidden');
+    trackerDiv.classList.remove('hidden');
+    audOnboarded = true;
+    audPoints = [];
+    currentTouchY = 0.5;
+    resizeAudCanvas();
+    audAnimId = requestAnimationFrame(audTick);
+  });
+
+  // Touch/mouse tracking on canvas
+  function audTouchLevel(e) {
+    const rect = audCanvas.getBoundingClientRect();
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const y = (clientY - rect.top) / rect.height;
+    currentTouchY = Math.max(0, Math.min(1, 1 - y)); // invert: top = high crisis
+  }
+
+  audCanvas.addEventListener('touchstart', e => { e.preventDefault(); audTouchLevel(e); }, { passive: false });
+  audCanvas.addEventListener('touchmove', e => { e.preventDefault(); audTouchLevel(e); }, { passive: false });
+  audCanvas.addEventListener('mousemove', e => audTouchLevel(e));
+
+  // Crisis button
+  crisisBtn.addEventListener('click', () => {
+    inCrisis = !inCrisis;
+    crisisBtn.classList.toggle('active', inCrisis);
+  });
+
+  function resizeAudCanvas() {
+    audCanvas.width = audCanvas.offsetWidth * devicePixelRatio;
+    audCanvas.height = audCanvas.offsetHeight * devicePixelRatio;
+  }
+  resizeAudCanvas();
+  window.addEventListener('resize', resizeAudCanvas);
+
+  // Start the loop even before onboarding so we can detect bridge
+  audAnimId = requestAnimationFrame(audScan);
+}
+
+// Pre-onboarding scan: detect bridge section to trigger onboarding
+function audScan() {
+  if (audOnboarded) { audAnimId = requestAnimationFrame(audTick); return; }
+
+  const elapsed = getElapsed();
+  const cur = getSectionAt(elapsed);
+
+  const waitDiv = document.getElementById('aud-waiting');
+  const onboardDiv = document.getElementById('aud-onboard');
+
+  if (cur && cur.bridge && !audOnboarded) {
+    waitDiv.classList.add('hidden');
+    onboardDiv.classList.remove('hidden');
+  }
+
+  audAnimId = requestAnimationFrame(audScan);
+}
+
+function audTick() {
+  const elapsed = getElapsed();
+  const t = Math.min(elapsed / totalMs, 1);
+  const cur = getSectionAt(elapsed);
+
+  // Record point at current time
+  audPoints.push({ t, level: currentTouchY });
+  if (audPoints.length > 2000) audPoints.shift();
+
+  // Section label
+  const statusEl = document.getElementById('aud-status');
+  if (cur) {
+    statusEl.textContent = cur.label;
+    // Chorus: flash
+    if (cur.id !== lastAudSectionId) {
+      lastAudSectionId = cur.id;
+      if (cur.chorus) triggerChorusFlash();
+    }
+  }
+
+  // Auto-trigger crisis button during chorus
+  const crisisBtn = document.getElementById('aud-crisis-btn');
+  if (cur && cur.chorus) {
+    crisisBtn.classList.add('active');
+  } else {
+    crisisBtn.classList.remove('active');
+    inCrisis = false;
+  }
+
+  drawAudCanvas(t);
+  audAnimId = requestAnimationFrame(audTick);
+}
+
+function drawAudCanvas(currentT) {
+  const canvas = document.getElementById('aud-canvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = devicePixelRatio;
+  const W = canvas.width;
+  const H = canvas.height;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background grid lines (subtle)
+  ctx.strokeStyle = 'rgba(212,204,196,0.05)';
+  ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    const y = H * (i / 4);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // "I AM HAVING AN EXISTENTIAL CRISIS" line at top
+  ctx.strokeStyle = 'rgba(200,64,64,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 6]);
+  ctx.beginPath(); ctx.moveTo(0, H * 0.06); ctx.lineTo(W, H * 0.06); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(200,64,64,0.2)';
+  ctx.font = (8 * dpr) + 'px Georgia, serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('crisis', 4 * dpr, H * 0.06 - 3 * dpr);
+
+  if (audPoints.length < 2) return;
+
+  // Draw path
+  const tMin = Math.max(0, currentT - 1); // show last 100% of piece
+  const tRange = Math.max(currentT, 0.001);
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#7a9cbf';
+  ctx.lineWidth = 2 * dpr;
+  ctx.lineJoin = 'round';
+
+  let first = true;
+  for (const pt of audPoints) {
+    if (pt.t < tMin) continue;
+    const px = ((pt.t - tMin) / (tRange - tMin)) * W;
+    const py = H - pt.level * H * 0.88 - H * 0.06;
+    if (first) { ctx.moveTo(px, py); first = false; }
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // Draw current position dot
+  const lastPt = audPoints[audPoints.length - 1];
+  const dotX = ((lastPt.t - tMin) / (tRange - tMin)) * W;
+  const dotY = H - lastPt.level * H * 0.88 - H * 0.06;
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, 5 * dpr, 0, Math.PI * 2);
+  ctx.fillStyle = '#7a9cbf';
+  ctx.fill();
+
+  // Current level label
+  ctx.fillStyle = 'rgba(212,204,196,0.5)';
+  ctx.font = (10 * dpr) + 'px Georgia, serif';
+  ctx.textAlign = 'right';
+  const pct = Math.round(lastPt.level * 100);
+  ctx.fillText(pct + '%', W - 6 * dpr, dotY - 8 * dpr);
+}
+
+function triggerChorusFlash() {
+  const flash = document.getElementById('chorus-flash');
+  flash.style.opacity = '0.18';
+  setTimeout(() => { flash.style.opacity = '0'; }, 400);
+}
+
+// ════════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════════
+
+switch (MODE) {
+  case 'conductor': initConductor(); break;
+  case 'part':      initPart(PART_N); break;
+  case 'audience':  initAudience(); break;
+  default:          initHub(); break;
+}
+</script>
+</body>
+</html>
