@@ -125,6 +125,28 @@
     #cf-toggle.on { border-color: var(--accent); color: var(--accent); }
     #autoplay-toggle.on { border-color: var(--green); color: var(--green); }
 
+    /* Time-Pad */
+    #time-pad-wrap {
+      display: flex; justify-content: center;
+      padding: 6px 0 2px; flex-shrink: 0;
+    }
+    #time-pad-btn {
+      background: #1a1a2e; color: #a78bfa;
+      border: 1px solid #a78bfa44; border-radius: 8px;
+      padding: 6px 20px; font-size: 0.8rem;
+      letter-spacing: 0.08em; cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    #time-pad-btn.active {
+      background: var(--accent); color: #fff;
+      border-color: var(--accent);
+      animation: pulse-pad 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-pad {
+      0%, 100% { box-shadow: 0 0 0 0 #7c3aed66; }
+      50%       { box-shadow: 0 0 0 8px #7c3aed00; }
+    }
+
     /* Previous panel */
     #prev-panel {
       background: var(--bg2);
@@ -343,7 +365,7 @@
       <button class="cf-btn" id="cf-plus">+</button>
       <button id="cf-toggle" class="on">ON</button>
       <span class="cf-label" style="margin-left:8px">auto</span>
-      <button id="autoplay-toggle">OFF</button>
+      <button id="autoplay-toggle" class="on">ON</button>
     </div>
   </div>
 
@@ -357,6 +379,11 @@
       <button class="oh-btn" id="btn-back60">↩ 1 min</button>
       <button class="oh-btn" id="btn-restart">↺ Restart</button>
     </div>
+  </div>
+
+  <!-- Time-Pad -->
+  <div id="time-pad-wrap">
+    <button id="time-pad-btn">Time-Pad</button>
   </div>
 
   <!-- Current panel -->
@@ -411,6 +438,12 @@ let crossfadeEnabled = true;
 let rafId = null;
 let crossfadeTimeout = null;
 let wakeLock = null;
+
+// ── Time-Pad state ───────────────────────────────────────────
+let timePadActive = false;
+let timePadPausedTime = 0;    // currentTime in show to restore on exit
+let lastInterludeIdx = null;  // most recently played interlude index
+let timePadLoopPending = false; // prevents double-trigger in RAF tick
 
 // ── Audio ────────────────────────────────────────────────────
 let audioCtx = null;
@@ -491,6 +524,7 @@ function advance(targetIdx) {
   // Update state before timeout so UI reflects incoming event
   history.push(currentIdx);
   currentIdx = targetIdx;
+  if (SEQUENCE[currentIdx].type === 'interlude') lastInterludeIdx = currentIdx;
   updateUI();
   startCrossfadeVisual(cf);
 
@@ -577,6 +611,15 @@ function endCrossfadeVisual() {
 
 // ── Timer loop ───────────────────────────────────────────────
 function tick() {
+  // Time-Pad loop trigger — crossfade to fresh copy before end
+  if (timePadActive && !isCrossfading && !timePadLoopPending) {
+    const tpEl = current.el;
+    if (tpEl.duration && (tpEl.duration - tpEl.currentTime) <= crossfadeSecs + 0.1) {
+      timePadLoopPending = true;
+      timePadLoopSelf();
+    }
+  }
+
   const el = current.el;
   const ct = el.currentTime || 0;
   const dur = el.duration || SEQUENCE[currentIdx].duration;
@@ -819,7 +862,7 @@ document.addEventListener('touchmove', e => {
 document.addEventListener('touchend', endScrub);
 
 // ── Autoplay ─────────────────────────────────────────────────
-let autoplay = false;
+let autoplay = true;
 
 function setupAutoplay(el) {
   el.addEventListener('ended', () => {
@@ -834,6 +877,85 @@ document.getElementById('autoplay-toggle').addEventListener('click', () => {
   const btn = document.getElementById('autoplay-toggle');
   btn.textContent = autoplay ? 'ON' : 'OFF';
   btn.classList.toggle('on', autoplay);
+});
+
+// ── Time-Pad ─────────────────────────────────────────────────
+function getTimePadIdx() {
+  if (lastInterludeIdx !== null) return lastInterludeIdx;
+  return SEQUENCE.findIndex(e => e.type === 'interlude'); // Threshold fallback
+}
+
+function getTimePadSrc(idx) {
+  const item = SEQUENCE[idx];
+  return item.srcClean || item.src;
+}
+
+function doTimePadCrossfade(src, startTime, onComplete) {
+  next.el.src = absUrl(src);
+  next.el.currentTime = startTime;
+  next.el.play().catch(() => {});
+  const cf = crossfadeEnabled ? crossfadeSecs : 0;
+  isCrossfading = true;
+  const now = audioCtx.currentTime;
+  current.gain.gain.cancelScheduledValues(now);
+  next.gain.gain.cancelScheduledValues(now);
+  if (cf > 0) {
+    current.gain.gain.setValueAtTime(current.gain.gain.value, now);
+    current.gain.gain.linearRampToValueAtTime(0, now + cf);
+    next.gain.gain.setValueAtTime(0, now);
+    next.gain.gain.linearRampToValueAtTime(1, now + cf);
+  } else {
+    current.gain.gain.setValueAtTime(0, now);
+    next.gain.gain.setValueAtTime(1, now);
+  }
+  clearTimeout(crossfadeTimeout);
+  crossfadeTimeout = setTimeout(() => {
+    current.el.pause();
+    swap();
+    isCrossfading = false;
+    onComplete();
+  }, (cf + 0.05) * 1000);
+}
+
+function updateTimePadBtn() {
+  const btn = document.getElementById('time-pad-btn');
+  btn.textContent = timePadActive ? 'Time-Pad ACTIVE' : 'Time-Pad';
+  btn.classList.toggle('active', timePadActive);
+}
+
+function enterTimePad() {
+  if (isCrossfading) return;
+  timePadActive = true;
+  timePadPausedTime = current.el.currentTime;
+  timePadLoopPending = false;
+  const src = getTimePadSrc(getTimePadIdx());
+  doTimePadCrossfade(src, 0, () => {
+    timePadLoopPending = false;
+  });
+  updateTimePadBtn();
+}
+
+function timePadLoopSelf() {
+  if (!timePadActive || isCrossfading) return;
+  const src = getTimePadSrc(getTimePadIdx());
+  doTimePadCrossfade(src, 0, () => {
+    timePadLoopPending = false;
+  });
+}
+
+function exitTimePad() {
+  if (isCrossfading) return;
+  timePadActive = false;
+  timePadLoopPending = false;
+  const resumeSrc = SEQUENCE[currentIdx].src;
+  doTimePadCrossfade(resumeSrc, timePadPausedTime, () => {
+    loadInto(next.el, currentIdx + 1);
+  });
+  updateTimePadBtn();
+}
+
+document.getElementById('time-pad-btn').addEventListener('click', () => {
+  if (timePadActive) exitTimePad(); else enterTimePad();
 });
 
 // Crossfade controls
