@@ -27,7 +27,7 @@ const SEQUENCE = [
     label: 'Interlude 1→2: Threshold',
     type: 'interlude',
     duration: 283,
-    src: 'audio/kaleidoscope/ccf/Interlude-1-2-Threshold-with-poetry-kaleidoscope.mp3',
+    src: 'audio/kaleidoscope/ccf/Interlude-1-2-threshold-with-poetry-kaleidoscope.mp3',
   },
   {
     id: 'scene-2',
@@ -41,7 +41,7 @@ const SEQUENCE = [
     label: 'Interlude 2→3: First Light',
     type: 'interlude',
     duration: 271,
-    src: 'audio/kaleidoscope/ccf/Interlude-2-3-First-Light-with-poetry-kaleidoscope.mp3',
+    src: 'audio/kaleidoscope/ccf/Interlude-2-3-first-light-with-poetry-kaleidoscope.mp3',
   },
   {
     id: 'scene-3',
@@ -55,7 +55,7 @@ const SEQUENCE = [
     label: 'Interlude 3→4: Naming',
     type: 'interlude',
     duration: 217,
-    src: 'audio/kaleidoscope/ccf/Interlude-3-4-Naming-with-poetry-kaleidoscope.mp3',
+    src: 'audio/kaleidoscope/ccf/Interlude-3-4-naming-with-poetry-kaleidoscope.mp3',
   },
   {
     id: 'scene-4',
@@ -69,7 +69,7 @@ const SEQUENCE = [
     label: 'Interlude 4→5: Spectrum',
     type: 'interlude',
     duration: 174,
-    src: 'audio/kaleidoscope/ccf/Interlude-4-5-Spectrum-with-poetry-kaleidoscope.mp3',
+    src: 'audio/kaleidoscope/ccf/Interlude-4-5-spectrum-with-poetry-kaleidoscope.mp3',
   },
   {
     id: 'scene-5',
