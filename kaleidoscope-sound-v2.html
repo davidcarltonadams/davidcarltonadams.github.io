@@ -127,8 +127,8 @@
 
     /* Time-Pad */
     #time-pad-wrap {
-      display: flex; justify-content: center;
-      padding: 6px 0 2px; flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 6px 0 2px; flex-shrink: 0; gap: 5px;
     }
     #time-pad-btn {
       background: #1a1a2e; color: #a78bfa;
@@ -145,6 +145,17 @@
     @keyframes pulse-pad {
       0%, 100% { box-shadow: 0 0 0 0 #7c3aed66; }
       50%       { box-shadow: 0 0 0 8px #7c3aed00; }
+    }
+    #time-pad-bar-wrap {
+      width: 60%; height: 3px;
+      background: #ffffff0a; border-radius: 2px;
+      opacity: 0; transition: opacity 0.4s;
+    }
+    #time-pad-bar-wrap.visible { opacity: 1; }
+    #time-pad-bar-fill {
+      height: 100%; width: 0%;
+      background: #a78bfa55; border-radius: 2px;
+      transition: none;
     }
 
     /* Previous panel */
@@ -384,6 +395,9 @@
   <!-- Time-Pad -->
   <div id="time-pad-wrap">
     <button id="time-pad-btn">Time-Pad</button>
+    <div id="time-pad-bar-wrap">
+      <div id="time-pad-bar-fill"></div>
+    </div>
   </div>
 
   <!-- Current panel -->
@@ -620,9 +634,16 @@ function tick() {
     }
   }
 
-  const el = current.el;
-  const ct = el.currentTime || 0;
-  const dur = el.duration || SEQUENCE[currentIdx].duration;
+  // Secondary Time-Pad bar (loop progress, resets each iteration)
+  if (timePadActive) {
+    const tpEl = current.el;
+    const tpPct = tpEl.duration ? Math.min(1, tpEl.currentTime / tpEl.duration) * 100 : 0;
+    document.getElementById('time-pad-bar-fill').style.width = tpPct + '%';
+  }
+
+  // Main bar: freeze at paused show position while Time-Pad is active
+  const ct = timePadActive ? timePadPausedTime : (current.el.currentTime || 0);
+  const dur = SEQUENCE[currentIdx].duration;
 
   document.getElementById('timer-display').textContent =
     `${fmt(ct)} / ${fmt(dur)}`;
@@ -631,7 +652,7 @@ function tick() {
   document.getElementById('progress-fill').style.width = pct + '%';
 
   // Keep play/pause button in sync with actual audio state
-  document.getElementById('btn-playpause').textContent = el.paused ? '▶' : '⏸';
+  document.getElementById('btn-playpause').textContent = current.el.paused ? '▶' : '⏸';
 
   rafId = requestAnimationFrame(tick);
 }
@@ -880,6 +901,14 @@ document.getElementById('autoplay-toggle').addEventListener('click', () => {
 });
 
 // ── Time-Pad ─────────────────────────────────────────────────
+// Hardcoded instrumental (no-poetry) srcs — never reads from config
+const TIME_PAD_CLEAN = {
+  'interlude-1-2': 'audio/kaleidoscope/ccf/interlude-1-2-threshold.mp3',
+  'interlude-2-3': 'audio/kaleidoscope/ccf/interlude-2-3-first-light.mp3',
+  'interlude-3-4': 'audio/kaleidoscope/ccf/interlude-3-4-naming.mp3',
+  'interlude-4-5': 'audio/kaleidoscope/ccf/interlude-4-5-spectrum.mp3',
+};
+
 function getTimePadIdx() {
   if (lastInterludeIdx !== null) return lastInterludeIdx;
   return SEQUENCE.findIndex(e => e.type === 'interlude'); // Threshold fallback
@@ -887,7 +916,7 @@ function getTimePadIdx() {
 
 function getTimePadSrc(idx) {
   const item = SEQUENCE[idx];
-  return item.srcClean || item.src;
+  return TIME_PAD_CLEAN[item.id] || item.src;
 }
 
 function doTimePadCrossfade(src, startTime, onComplete) {
@@ -921,6 +950,8 @@ function updateTimePadBtn() {
   const btn = document.getElementById('time-pad-btn');
   btn.textContent = timePadActive ? 'Time-Pad ACTIVE' : 'Time-Pad';
   btn.classList.toggle('active', timePadActive);
+  document.getElementById('time-pad-bar-wrap').classList.toggle('visible', timePadActive);
+  if (!timePadActive) document.getElementById('time-pad-bar-fill').style.width = '0%';
 }
 
 function enterTimePad() {
