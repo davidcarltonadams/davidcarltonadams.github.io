@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>Kaleidoscope — Sound (with Poetry)</title>
+  <script src="kaleidoscope-config-v2.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080808;
+      --bg2: #121212;
+      --bg3: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --muted: #666;
+      --accent: #7c3aed;
+      --accent2: #5b21b6;
+      --green: #22c55e;
+      --warn: #f59e0b;
+      --red: #ef4444;
+      --next-bg: #1e1040;
+      --next-active: #2d1a6e;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* ── SPLASH ─────────────────────────────────── */
+    #splash {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 24px; padding: 32px;
+      background: var(--bg);
+      z-index: 100;
+    }
+    #splash h1 { font-size: 1.8rem; font-weight: 300; letter-spacing: 0.2em; text-transform: uppercase; }
+    #splash .subtitle { color: var(--muted); font-size: 0.85rem; letter-spacing: 0.1em; }
+    #splash .warn-box {
+      background: #1a1200; border: 1px solid #5a3a00;
+      border-radius: 10px; padding: 16px 20px;
+      font-size: 0.85rem; line-height: 1.6; color: var(--warn);
+      max-width: 360px; text-align: center;
+    }
+    #splash .warn-box strong { display: block; margin-bottom: 4px; font-size: 0.95rem; }
+    #pw-input {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); border-radius: 10px;
+      padding: 14px 20px; font-size: 1.1rem;
+      text-align: center; width: 100%; max-width: 280px;
+      outline: none; letter-spacing: 0.05em;
+    }
+    #pw-input:focus { border-color: var(--accent); }
+    #pw-error { color: var(--red); font-size: 0.85rem; height: 1em; }
+    #start-btn {
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 12px;
+      padding: 16px 40px; font-size: 1.1rem; font-weight: 600;
+      cursor: pointer; width: 100%; max-width: 280px;
+      transition: background 0.15s;
+    }
+    #start-btn:active { background: var(--accent2); }
+
+    /* ── RESUME BANNER ──────────────────────────── */
+    #resume-banner {
+      position: fixed; top: 0; left: 0; right: 0;
+      background: var(--red); color: #fff;
+      padding: 12px 20px; font-size: 0.9rem;
+      text-align: center; z-index: 50;
+      display: none; cursor: pointer;
+    }
+
+    /* ── MAIN UI ────────────────────────────────── */
+    #main {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      height: 100dvh;
+    }
+
+    /* Top bar */
+    #top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #scenes-btn {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px;
+      padding: 8px 14px; font-size: 0.85rem; cursor: pointer;
+    }
+    #scenes-btn:active { background: var(--border); }
+    .cf-controls {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .cf-label { color: var(--muted); font-size: 0.75rem; }
+    .cf-val {
+      font-size: 0.9rem; font-weight: 600; min-width: 2.5em; text-align: center;
+    }
+    .cf-btn {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px;
+      width: 32px; height: 32px; font-size: 1rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .cf-btn:active { background: var(--border); }
+    #cf-toggle, #autoplay-toggle {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 6px;
+      padding: 4px 10px; font-size: 0.75rem; cursor: pointer;
+    }
+    #cf-toggle.on { border-color: var(--accent); color: var(--accent); }
+    #autoplay-toggle.on { border-color: var(--green); color: var(--green); }
+
+    /* Previous panel */
+    #prev-panel {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      flex-shrink: 0;
+    }
+    #prev-label {
+      font-size: 0.7rem; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px;
+    }
+    #prev-name {
+      font-size: 0.9rem; color: var(--muted); margin-bottom: 10px;
+      min-height: 1.2em;
+    }
+    .oh-shit-row {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .oh-btn {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px;
+      padding: 8px 12px; font-size: 0.8rem; cursor: pointer;
+      flex: 1; min-width: 0; text-align: center;
+      transition: background 0.1s, opacity 0.1s;
+    }
+    .oh-btn:active:not(:disabled) { background: #333; }
+    .oh-btn:disabled { opacity: 0.3; cursor: default; }
+
+    /* Current panel */
+    #current-panel {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 16px; gap: 10px;
+      min-height: 0;
+    }
+    #current-type {
+      font-size: 0.7rem; text-transform: uppercase;
+      letter-spacing: 0.15em; color: var(--muted);
+    }
+    #current-name {
+      font-size: clamp(1.2rem, 5vw, 1.8rem);
+      font-weight: 600; text-align: center;
+      line-height: 1.2;
+    }
+    .placeholder-badge {
+      font-size: 0.65rem; background: #3a2000;
+      border: 1px solid var(--warn); color: var(--warn);
+      border-radius: 4px; padding: 2px 6px;
+      display: none;
+    }
+    .placeholder-badge.visible { display: inline-block; }
+    #timer-display {
+      font-size: 1.4rem; font-variant-numeric: tabular-nums;
+      font-weight: 300; color: var(--text); letter-spacing: 0.05em;
+    }
+    #progress-track {
+      width: 100%; max-width: 360px; height: 4px;
+      background: var(--bg3); border-radius: 2px; overflow: visible;
+      cursor: pointer; position: relative;
+      /* expand touch target without changing visual size */
+      padding: 10px 0; margin: -10px 0; box-sizing: content-box;
+      touch-action: none;
+    }
+    #progress-fill {
+      height: 4px; background: var(--accent);
+      border-radius: 2px; width: 0%;
+      position: relative; pointer-events: none;
+      transition: width 0.25s linear;
+    }
+    #progress-thumb {
+      position: absolute; right: -7px; top: -5px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: white; pointer-events: none;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    #progress-track:hover #progress-thumb,
+    #progress-track.scrubbing #progress-thumb { opacity: 1; }
+    #progress-track.scrubbing #progress-fill { transition: none; }
+
+    #transport {
+      display: flex; gap: 8px; justify-content: center; align-items: center;
+      width: 100%; max-width: 360px;
+    }
+    .t-btn {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px;
+      padding: 8px 0; font-size: 0.8rem; cursor: pointer;
+      flex: 1; text-align: center; min-width: 0;
+      transition: background 0.1s, opacity 0.1s;
+    }
+    .t-btn:active:not(:disabled) { background: #333; }
+    .t-btn:disabled { opacity: 0.3; cursor: default; }
+    #btn-playpause { flex: 1.4; font-size: 1.1rem; }
+
+    /* Next button */
+    #next-btn {
+      position: relative; overflow: hidden;
+      background: var(--next-bg);
+      border: none; border-top: 1px solid var(--border);
+      color: var(--text); cursor: pointer;
+      padding: 0 20px;
+      flex-shrink: 0; min-height: 90px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 2px;
+      transition: background 0.15s, opacity 0.15s;
+      width: 100%;
+    }
+    #next-btn:active:not(:disabled) { background: var(--next-active); }
+    #next-btn:disabled { opacity: 0.35; cursor: default; }
+    #next-btn .cf-fill {
+      position: absolute; inset: 0;
+      background: rgba(124, 58, 237, 0.18);
+      transform: scaleX(0); transform-origin: left;
+    }
+    #next-btn.crossfading .cf-fill {
+      transform: scaleX(1);
+      transition: transform var(--cf-dur, 3s) linear;
+    }
+    #next-label-top {
+      font-size: 0.65rem; text-transform: uppercase;
+      letter-spacing: 0.15em; color: var(--muted); position: relative;
+    }
+    #next-name {
+      font-size: 1rem; font-weight: 600; position: relative; text-align: center;
+    }
+    #next-dur {
+      font-size: 0.8rem; color: var(--muted); position: relative;
+    }
+    #next-arrow {
+      font-size: 1.4rem; position: relative; color: var(--accent);
+    }
+
+    /* ── SCENE OVERLAY ──────────────────────────── */
+    #overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      z-index: 40; display: none;
+      flex-direction: column;
+    }
+    #overlay.open { display: flex; }
+    #overlay-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #overlay-header h2 { font-size: 1rem; font-weight: 600; }
+    #overlay-close {
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px;
+      padding: 8px 14px; font-size: 0.85rem; cursor: pointer;
+    }
+    #scene-list {
+      overflow-y: auto; flex: 1; padding: 10px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .scene-item {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px;
+      cursor: pointer; transition: background 0.1s, border-color 0.1s;
+    }
+    .scene-item:active { background: var(--border); }
+    .scene-item.current { border-color: var(--accent); background: #1a0d40; }
+    .scene-item.current .scene-item-name { color: #a78bfa; }
+    .scene-type-chip {
+      font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em;
+      border-radius: 4px; padding: 2px 6px; flex-shrink: 0;
+    }
+    .chip-scene { background: #1e3a5f; color: #60a5fa; }
+    .chip-interlude { background: #1a2e1a; color: #4ade80; }
+    .scene-item-name { font-size: 0.9rem; flex: 1; }
+    .scene-item-dur { font-size: 0.75rem; color: var(--muted); flex-shrink: 0; }
+    .scene-placeholder-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--warn); flex-shrink: 0;
+      title: 'Placeholder';
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── SPLASH ──────────────────────────────── -->
+<div id="splash">
+  <h1>Kaleidoscope</h1>
+  <p class="subtitle">CCF Sound Sequencer</p>
+
+  <div class="warn-box">
+    <strong>⚠ Before you start</strong>
+    Set your device to <em>Never Sleep</em> before tapping START.<br>
+    Settings → Display & Brightness → Auto-Lock → Never
+  </div>
+
+  <input id="pw-input" type="password" placeholder="password" autocomplete="off" autocorrect="off">
+  <p id="pw-error"></p>
+  <button id="start-btn">START SHOW</button>
+</div>
+
+<!-- ── RESUME BANNER ───────────────────────── -->
+<div id="resume-banner">
+  ⚠ Audio may have paused — tap here to resume
+</div>
+
+<!-- ── MAIN UI ─────────────────────────────── -->
+<div id="main">
+
+  <!-- Top bar -->
+  <div id="top-bar">
+    <button id="scenes-btn">☰ Scenes</button>
+    <div class="cf-controls">
+      <span class="cf-label">fade</span>
+      <button class="cf-btn" id="cf-minus">−</button>
+      <span class="cf-val" id="cf-val">3s</span>
+      <button class="cf-btn" id="cf-plus">+</button>
+      <button id="cf-toggle" class="on">ON</button>
+      <span class="cf-label" style="margin-left:8px">auto</span>
+      <button id="autoplay-toggle">OFF</button>
+    </div>
+  </div>
+
+  <!-- Previous panel -->
+  <div id="prev-panel">
+    <div id="prev-label">Previous</div>
+    <div id="prev-name">—</div>
+    <div class="oh-shit-row">
+      <button class="oh-btn" id="btn-undo" disabled>↩ Undo</button>
+      <button class="oh-btn" id="btn-back10">↩ 10s</button>
+      <button class="oh-btn" id="btn-back60">↩ 1 min</button>
+      <button class="oh-btn" id="btn-restart">↺ Restart</button>
+    </div>
+  </div>
+
+  <!-- Current panel -->
+  <div id="current-panel">
+    <div id="current-type">Scene</div>
+    <div id="current-name">—</div>
+    <span class="placeholder-badge" id="placeholder-badge">⚠ placeholder</span>
+    <div id="timer-display">0:00 / 0:00</div>
+    <div id="progress-track">
+      <div id="progress-fill">
+        <div id="progress-thumb"></div>
+      </div>
+    </div>
+    <div id="transport">
+      <button class="t-btn" id="btn-rewind"    title="Restart (or prev if <4s in)">⏮</button>
+      <button class="t-btn" id="btn-back15"    title="Back 15s">⏪ 15s</button>
+      <button class="t-btn" id="btn-playpause" title="Play / Pause">⏸</button>
+      <button class="t-btn" id="btn-fwd15"     title="Forward 15s">15s ⏩</button>
+      <button class="t-btn" id="btn-next-track" title="Next event">⏭</button>
+    </div>
+  </div>
+
+  <!-- Next button -->
+  <button id="next-btn">
+    <div class="cf-fill"></div>
+    <div id="next-label-top">Next →</div>
+    <div id="next-name">—</div>
+    <div id="next-dur"></div>
+    <div id="next-arrow">▶</div>
+  </button>
+
+</div>
+
+<!-- ── SCENE OVERLAY ───────────────────────── -->
+<div id="overlay">
+  <div id="overlay-header">
+    <h2>Jump to Scene</h2>
+    <button id="overlay-close">Close</button>
+  </div>
+  <div id="scene-list"></div>
+</div>
+
+<script>
+'use strict';
+
+// ── State ────────────────────────────────────────────────────
+let currentIdx = 0;
+let history = [];       // stack of departed event indices for Undo
+let isCrossfading = false;
+let crossfadeSecs = SHOW_CONFIG.crossfadeDefault;
+let crossfadeEnabled = true;
+let rafId = null;
+let crossfadeTimeout = null;
+let wakeLock = null;
+
+// ── Audio ────────────────────────────────────────────────────
+let audioCtx = null;
+let elA, elB;       // HTMLAudioElement pair
+let gainA, gainB;   // GainNode pair
+let current, next;  // { el, gain } refs — swapped after each transition
+
+function initAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  elA = new Audio(); elA.preload = 'auto';
+  elB = new Audio(); elB.preload = 'auto';
+
+  const nodeA = audioCtx.createMediaElementSource(elA);
+  const nodeB = audioCtx.createMediaElementSource(elB);
+
+  gainA = audioCtx.createGain(); gainA.gain.value = 1;
+  gainB = audioCtx.createGain(); gainB.gain.value = 0;
+
+  nodeA.connect(gainA); gainA.connect(audioCtx.destination);
+  nodeB.connect(gainB); gainB.connect(audioCtx.destination);
+
+  current = { el: elA, gain: gainA };
+  next    = { el: elB, gain: gainB };
+
+  // Set up autoplay ended listeners on both elements
+  setupAutoplay(elA);
+  setupAutoplay(elB);
+
+  // Load first event into current slot, preload second
+  loadInto(current.el, 0);
+  if (SEQUENCE.length > 1) loadInto(next.el, 1);
+}
+
+function loadInto(el, idx) {
+  if (idx < 0 || idx >= SEQUENCE.length) return;
+  el.src = SEQUENCE[idx].src;
+  el.load();
+}
+
+function swap() {
+  [current, next] = [next, current];
+}
+
+// ── Crossfade engine ─────────────────────────────────────────
+function advance(targetIdx) {
+  if (isCrossfading) return;
+  if (targetIdx < 0 || targetIdx >= SEQUENCE.length) return;
+
+  const cf = crossfadeEnabled
+    ? (SEQUENCE[currentIdx].crossfadeOut ?? crossfadeSecs)
+    : 0;
+  isCrossfading = true;
+
+  // next slot should already be preloaded for normal forward advance
+  // but handle jump-to: reload if needed
+  if (next.el.src !== absUrl(SEQUENCE[targetIdx].src)) {
+    loadInto(next.el, targetIdx);
+  }
+
+  const now = audioCtx.currentTime;
+  next.gain.gain.cancelScheduledValues(now);
+  current.gain.gain.cancelScheduledValues(now);
+
+  next.gain.gain.setValueAtTime(0, now);
+  next.el.currentTime = 0;
+  next.el.play().catch(() => {});
+
+  if (cf > 0) {
+    current.gain.gain.setValueAtTime(current.gain.gain.value, now);
+    current.gain.gain.linearRampToValueAtTime(0, now + cf);
+    next.gain.gain.linearRampToValueAtTime(1, now + cf);
+  } else {
+    current.gain.gain.setValueAtTime(0, now);
+    next.gain.gain.setValueAtTime(1, now);
+  }
+
+  // Update state before timeout so UI reflects incoming event
+  history.push(currentIdx);
+  currentIdx = targetIdx;
+  updateUI();
+  startCrossfadeVisual(cf);
+
+  crossfadeTimeout = setTimeout(() => {
+    current.el.pause();
+    current.el.currentTime = 0;
+    swap();
+    // Preload next+1 into what is now the idle slot
+    loadInto(next.el, currentIdx + 1);
+    isCrossfading = false;
+    updateUI();
+  }, (cf + 0.05) * 1000);
+}
+
+function absUrl(rel) {
+  return new URL(rel, location.href).href;
+}
+
+function goNext() { advance(currentIdx + 1); }
+
+function goUndo() {
+  if (history.length === 0 || isCrossfading) return;
+  const target = history.pop();
+
+  const cf = crossfadeEnabled ? crossfadeSecs : 0;
+  isCrossfading = true;
+
+  loadInto(next.el, target);
+
+  const now = audioCtx.currentTime;
+  next.gain.gain.cancelScheduledValues(now);
+  current.gain.gain.cancelScheduledValues(now);
+  next.gain.gain.setValueAtTime(0, now);
+  next.el.currentTime = 0;
+  next.el.play().catch(() => {});
+
+  if (cf > 0) {
+    current.gain.gain.setValueAtTime(current.gain.gain.value, now);
+    current.gain.gain.linearRampToValueAtTime(0, now + cf);
+    next.gain.gain.linearRampToValueAtTime(1, now + cf);
+  } else {
+    current.gain.gain.setValueAtTime(0, now);
+    next.gain.gain.setValueAtTime(1, now);
+  }
+
+  currentIdx = target;
+  updateUI();
+  startCrossfadeVisual(cf);
+
+  crossfadeTimeout = setTimeout(() => {
+    current.el.pause();
+    current.el.currentTime = 0;
+    swap();
+    loadInto(next.el, currentIdx + 1);
+    isCrossfading = false;
+    updateUI();
+  }, (cf + 0.05) * 1000);
+}
+
+function seekBy(seconds) {
+  current.el.currentTime = Math.max(0, current.el.currentTime + seconds);
+}
+
+function restartCurrent() {
+  current.el.currentTime = 0;
+}
+
+// ── Crossfade visual ─────────────────────────────────────────
+function startCrossfadeVisual(cf) {
+  const btn = document.getElementById('next-btn');
+  btn.style.setProperty('--cf-dur', cf + 's');
+  btn.classList.remove('crossfading');
+  void btn.offsetWidth; // force reflow so transition fires from 0
+  if (cf > 0) btn.classList.add('crossfading');
+  // Disable all interactive buttons during crossfade
+  ['next-btn','btn-undo','btn-back10','btn-back60','btn-restart'].forEach(id => {
+    document.getElementById(id).disabled = true;
+  });
+}
+
+function endCrossfadeVisual() {
+  document.getElementById('next-btn').classList.remove('crossfading');
+}
+
+// ── Timer loop ───────────────────────────────────────────────
+function tick() {
+  const el = current.el;
+  const ct = el.currentTime || 0;
+  const dur = el.duration || SEQUENCE[currentIdx].duration;
+
+  document.getElementById('timer-display').textContent =
+    `${fmt(ct)} / ${fmt(dur)}`;
+
+  const pct = dur > 0 ? Math.min(1, ct / dur) * 100 : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+
+  // Keep play/pause button in sync with actual audio state
+  document.getElementById('btn-playpause').textContent = el.paused ? '▶' : '⏸';
+
+  rafId = requestAnimationFrame(tick);
+}
+
+function fmt(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+// ── UI update ────────────────────────────────────────────────
+function updateUI() {
+  const ev = SEQUENCE[currentIdx];
+  const prevEv = history.length > 0 ? SEQUENCE[history[history.length - 1]] : null;
+  const nextEv = currentIdx + 1 < SEQUENCE.length ? SEQUENCE[currentIdx + 1] : null;
+
+  // Current
+  document.getElementById('current-type').textContent =
+    ev.type === 'interlude' ? 'Interlude' : 'Scene';
+  document.getElementById('current-name').textContent = ev.label;
+  const badge = document.getElementById('placeholder-badge');
+  badge.classList.toggle('visible', !!ev.placeholder);
+
+  // Previous
+  document.getElementById('prev-name').textContent = prevEv ? prevEv.label : '—';
+
+  // Next button labels
+  if (nextEv) {
+    document.getElementById('next-name').textContent = nextEv.label;
+    document.getElementById('next-dur').textContent = '(' + fmt(nextEv.duration) + ')';
+    document.getElementById('next-arrow').style.display = '';
+    document.getElementById('next-label-top').style.display = '';
+  } else {
+    document.getElementById('next-label-top').style.display = 'none';
+    document.getElementById('next-name').textContent = 'END OF SHOW';
+    document.getElementById('next-dur').textContent = '';
+    document.getElementById('next-arrow').style.display = 'none';
+  }
+
+  // Overlay if open — refresh current highlight
+  if (document.getElementById('overlay').classList.contains('open')) {
+    buildOverlay();
+  }
+
+  // Button states (set after all conditions evaluated)
+  const busy = isCrossfading;
+  document.getElementById('btn-undo').disabled    = history.length === 0 || busy;
+  document.getElementById('btn-back10').disabled  = busy;
+  document.getElementById('btn-back60').disabled  = busy;
+  document.getElementById('btn-restart').disabled = busy;
+  document.getElementById('next-btn').disabled    = (!nextEv) || busy;
+
+  if (!busy) endCrossfadeVisual();
+}
+
+// ── Crossfade controls ───────────────────────────────────────
+function setCf(val) {
+  crossfadeSecs = Math.max(
+    SHOW_CONFIG.crossfadeMin,
+    Math.min(SHOW_CONFIG.crossfadeMax, Math.round(val * 2) / 2)
+  );
+  const display = crossfadeEnabled
+    ? crossfadeSecs + 's'
+    : '0s';
+  document.getElementById('cf-val').textContent = display;
+}
+
+// ── Scene overlay ────────────────────────────────────────────
+function buildOverlay() {
+  const list = document.getElementById('scene-list');
+  list.innerHTML = '';
+  SEQUENCE.forEach((ev, i) => {
+    const item = document.createElement('div');
+    item.className = 'scene-item' + (i === currentIdx ? ' current' : '');
+    item.innerHTML = `
+      <span class="scene-type-chip ${ev.type === 'interlude' ? 'chip-interlude' : 'chip-scene'}">
+        ${ev.type === 'interlude' ? 'ILUDE' : 'SCENE'}
+      </span>
+      <span class="scene-item-name">${ev.label}</span>
+      ${ev.placeholder ? '<span class="scene-placeholder-dot" title="placeholder"></span>' : ''}
+      <span class="scene-item-dur">${fmt(ev.duration)}</span>
+    `;
+    item.addEventListener('click', () => {
+      if (i === currentIdx) { closeOverlay(); return; }
+      closeOverlay();
+      advance(i);
+    });
+    list.appendChild(item);
+  });
+}
+
+function openOverlay() {
+  buildOverlay();
+  document.getElementById('overlay').classList.add('open');
+}
+function closeOverlay() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+// ── Wake Lock ────────────────────────────────────────────────
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch (e) { /* ignore — splash already warned user */ }
+}
+
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'hidden') {
+    document.getElementById('resume-banner').style.display = 'block';
+  } else {
+    // Try to re-acquire wake lock
+    if (wakeLock && wakeLock.released) requestWakeLock();
+    // Check if AudioContext needs resuming
+    if (audioCtx && audioCtx.state === 'suspended') {
+      document.getElementById('resume-banner').style.display = 'block';
+    }
+  }
+});
+
+document.getElementById('resume-banner').addEventListener('click', async () => {
+  if (audioCtx) await audioCtx.resume();
+  if (current && current.el.paused) current.el.play().catch(() => {});
+  document.getElementById('resume-banner').style.display = 'none';
+});
+
+// ── Boot ─────────────────────────────────────────────────────
+function startShow() {
+  initAudio();
+  requestWakeLock();
+
+  document.getElementById('splash').style.display = 'none';
+  const mainEl = document.getElementById('main');
+  mainEl.style.display = 'flex';
+
+  current.el.play().catch(() => {});
+  updateUI();
+  rafId = requestAnimationFrame(tick);
+}
+
+// Splash logic
+document.getElementById('start-btn').addEventListener('click', () => {
+  const pw = document.getElementById('pw-input').value.trim();
+  if (pw !== SHOW_CONFIG.password) {
+    document.getElementById('pw-error').textContent = 'incorrect password';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+    return;
+  }
+  startShow();
+});
+
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('start-btn').click();
+});
+
+// Main buttons
+document.getElementById('next-btn').addEventListener('click', goNext);
+document.getElementById('btn-undo').addEventListener('click', goUndo);
+document.getElementById('btn-back10').addEventListener('click', () => seekBy(-10));
+document.getElementById('btn-back60').addEventListener('click', () => seekBy(-60));
+document.getElementById('btn-restart').addEventListener('click', restartCurrent);
+
+// Scene overlay
+document.getElementById('scenes-btn').addEventListener('click', openOverlay);
+document.getElementById('overlay-close').addEventListener('click', closeOverlay);
+
+// ── Transport controls ───────────────────────────────────────
+document.getElementById('btn-playpause').addEventListener('click', () => {
+  if (current.el.paused) {
+    audioCtx.resume().then(() => current.el.play().catch(() => {}));
+  } else {
+    current.el.pause();
+  }
+});
+
+// ⏮ smart: if <4s in (or at start) → go to previous; else → restart current
+document.getElementById('btn-rewind').addEventListener('click', () => {
+  if (current.el.currentTime < 4 && history.length > 0) {
+    goUndo();
+  } else {
+    restartCurrent();
+  }
+});
+
+document.getElementById('btn-back15').addEventListener('click', () => seekBy(-15));
+document.getElementById('btn-fwd15').addEventListener('click', () => seekBy(15));
+document.getElementById('btn-next-track').addEventListener('click', goNext);
+
+// ── Scrubbing ────────────────────────────────────────────────
+let isScrubbing = false;
+
+function scrubTo(clientX) {
+  const track = document.getElementById('progress-track');
+  const rect = track.getBoundingClientRect();
+  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const dur = current.el.duration;
+  if (dur && !isNaN(dur) && isFinite(dur)) {
+    current.el.currentTime = ratio * dur;
+  }
+}
+
+function startScrub(clientX) {
+  if (isCrossfading) return;
+  isScrubbing = true;
+  document.getElementById('progress-track').classList.add('scrubbing');
+  scrubTo(clientX);
+}
+
+function endScrub() {
+  isScrubbing = false;
+  document.getElementById('progress-track').classList.remove('scrubbing');
+}
+
+const pt = document.getElementById('progress-track');
+pt.addEventListener('mousedown', e => { startScrub(e.clientX); });
+document.addEventListener('mousemove', e => { if (isScrubbing) scrubTo(e.clientX); });
+document.addEventListener('mouseup', endScrub);
+
+pt.addEventListener('touchstart', e => {
+  startScrub(e.touches[0].clientX);
+  e.preventDefault();
+}, { passive: false });
+document.addEventListener('touchmove', e => {
+  if (isScrubbing) { scrubTo(e.touches[0].clientX); e.preventDefault(); }
+}, { passive: false });
+document.addEventListener('touchend', endScrub);
+
+// ── Autoplay ─────────────────────────────────────────────────
+let autoplay = false;
+
+function setupAutoplay(el) {
+  el.addEventListener('ended', () => {
+    if (el === current.el && autoplay && !isCrossfading) {
+      if (currentIdx + 1 < SEQUENCE.length) goNext();
+    }
+  });
+}
+
+document.getElementById('autoplay-toggle').addEventListener('click', () => {
+  autoplay = !autoplay;
+  const btn = document.getElementById('autoplay-toggle');
+  btn.textContent = autoplay ? 'ON' : 'OFF';
+  btn.classList.toggle('on', autoplay);
+});
+
+// Crossfade controls
+document.getElementById('cf-minus').addEventListener('click', () => {
+  if (crossfadeEnabled) setCf(crossfadeSecs - SHOW_CONFIG.crossfadeStep);
+});
+document.getElementById('cf-plus').addEventListener('click', () => {
+  if (crossfadeEnabled) setCf(crossfadeSecs + SHOW_CONFIG.crossfadeStep);
+});
+document.getElementById('cf-toggle').addEventListener('click', () => {
+  crossfadeEnabled = !crossfadeEnabled;
+  const btn = document.getElementById('cf-toggle');
+  btn.textContent = crossfadeEnabled ? 'ON' : 'OFF';
+  btn.classList.toggle('on', crossfadeEnabled);
+  document.getElementById('cf-val').textContent =
+    crossfadeEnabled ? crossfadeSecs + 's' : '0s';
+});
+</script>
+</body>
+</html>
