@@ -21,7 +21,7 @@ const SEQUENCE = [
     label: 'Scene 1: Very Bad Day',
     type: 'scene',
     duration: 148,
-    src: 'audio/kaleidoscope/ccf/scene-1-very-bad-day.mp3',
+    src: 'audio/kaleidoscope/ccf/scene-1-very-bad-day-v3.mp3',
   },
   {
     id: 'interlude-1-2',
