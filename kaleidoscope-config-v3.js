@@ -1,18 +1,18 @@
 'use strict';
 
 // ─────────────────────────────────────────────────────────────
-// KALEIDOSCOPE — Show Sequencer Config v2 (INTRO_OUTRO bookends + trimmed poetry interludes)
+// KALEIDOSCOPE — Show Sequencer Config v3 (Outro:Home bookends + trimmed poetry interludes)
 // Edit this file to update sequence, durations, or password.
 // Durations are in seconds — cosmetic only (timer display).
 // ─────────────────────────────────────────────────────────────
 
 const SEQUENCE = [
   {
-    id: 'intro-outro-open',
-    label: 'INTRO/OUTRO',
+    id: 'intro-home',
+    label: 'Intro: Home',
     type: 'scene',
-    duration: 412,
-    src: 'audio/kaleidoscope/ccf/intro-outro.mp3',
+    duration: 654,
+    src: 'audio/kaleidoscope/ccf/outro-home.mp3',
   },
   {
     id: 'scene-0',
@@ -104,11 +104,11 @@ const SEQUENCE = [
     src: 'audio/kaleidoscope/ccf/scene-7-pizzicato.mp3',
   },
   {
-    id: 'intro-outro-close',
-    label: 'INTRO/OUTRO',
+    id: 'outro',
+    label: 'Outro: Home',
     type: 'scene',
-    duration: 412,
-    src: 'audio/kaleidoscope/ccf/intro-outro.mp3',
+    duration: 654,
+    src: 'audio/kaleidoscope/ccf/outro-home.mp3',
   },
 ];
 
