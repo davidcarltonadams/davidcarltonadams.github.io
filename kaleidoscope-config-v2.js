@@ -1,12 +1,19 @@
 'use strict';
 
 // ─────────────────────────────────────────────────────────────
-// KALEIDOSCOPE — Show Sequencer Config v2 (with-poetry interludes)
+// KALEIDOSCOPE — Show Sequencer Config v2 (INTRO_OUTRO bookends + trimmed poetry interludes)
 // Edit this file to update sequence, durations, or password.
 // Durations are in seconds — cosmetic only (timer display).
 // ─────────────────────────────────────────────────────────────
 
 const SEQUENCE = [
+  {
+    id: 'intro-outro-open',
+    label: 'INTRO/OUTRO',
+    type: 'scene',
+    duration: 412,
+    src: 'audio/kaleidoscope/ccf/intro-outro.mp3',
+  },
   {
     id: 'scene-0',
     label: 'Scene 0',
@@ -26,8 +33,8 @@ const SEQUENCE = [
     id: 'interlude-1-2',
     label: 'Interlude 1→2: Threshold',
     type: 'interlude',
-    duration: 283,
-    src: 'audio/kaleidoscope/ccf/Interlude-1-2-threshold-with-poetry-kaleidoscope.mp3',
+    duration: 120,
+    src: 'audio/kaleidoscope/ccf/interlude-1-2-threshold-with-poetry-v2.mp3',
     srcClean: 'audio/kaleidoscope/ccf/interlude-1-2-threshold.mp3',
   },
   {
@@ -41,8 +48,8 @@ const SEQUENCE = [
     id: 'interlude-2-3',
     label: 'Interlude 2→3: First Light',
     type: 'interlude',
-    duration: 271,
-    src: 'audio/kaleidoscope/ccf/Interlude-2-3-first-light-with-poetry-kaleidoscope.mp3',
+    duration: 120,
+    src: 'audio/kaleidoscope/ccf/interlude-2-3-first-light-with-poetry-v2.mp3',
     srcClean: 'audio/kaleidoscope/ccf/interlude-2-3-first-light.mp3',
   },
   {
@@ -56,8 +63,8 @@ const SEQUENCE = [
     id: 'interlude-3-4',
     label: 'Interlude 3→4: Naming',
     type: 'interlude',
-    duration: 217,
-    src: 'audio/kaleidoscope/ccf/Interlude-3-4-naming-with-poetry-kaleidoscope.mp3',
+    duration: 135,
+    src: 'audio/kaleidoscope/ccf/interlude-3-4-naming-with-poetry-v2.mp3',
     srcClean: 'audio/kaleidoscope/ccf/interlude-3-4-naming.mp3',
   },
   {
@@ -72,7 +79,7 @@ const SEQUENCE = [
     label: 'Interlude 4→5: Spectrum',
     type: 'interlude',
     duration: 174,
-    src: 'audio/kaleidoscope/ccf/Interlude-4-5-spectrum-with-poetry-kaleidoscope.mp3',
+    src: 'audio/kaleidoscope/ccf/interlude-4-5-spectrum-with-poetry-v2.mp3',
     srcClean: 'audio/kaleidoscope/ccf/interlude-4-5-spectrum.mp3',
   },
   {
@@ -86,7 +93,7 @@ const SEQUENCE = [
     id: 'scene-6',
     label: 'Scene 6: Breath / Shape & Space',
     type: 'scene',
-    duration: 240,   // truncated to 4:00; full 7:08 pending update
+    duration: 240,
     src: 'audio/kaleidoscope/ccf/scene-6-breath.mp3',
   },
   {
@@ -97,11 +104,11 @@ const SEQUENCE = [
     src: 'audio/kaleidoscope/ccf/scene-7-pizzicato.mp3',
   },
   {
-    id: 'outro',
-    label: 'Outro: Home',
+    id: 'intro-outro-close',
+    label: 'INTRO/OUTRO',
     type: 'scene',
-    duration: 654,
-    src: 'audio/kaleidoscope/ccf/outro-home.mp3',
+    duration: 412,
+    src: 'audio/kaleidoscope/ccf/intro-outro.mp3',
   },
 ];
 
