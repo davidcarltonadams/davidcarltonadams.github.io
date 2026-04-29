@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>the undertone series</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #080808;
+      --bg2:     #111010;
+      --text:    #d8d0c8;
+      --dim:     rgba(216,208,200,0.35);
+      --dimmer:  rgba(216,208,200,0.18);
+      --accent:  #c8a08a;
+      --on:      #ddccaa;
+      --on-bg:   rgba(200,160,138,0.12);
+      --border:  rgba(255,255,255,0.07);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.5rem 4rem;
+    }
+
+    .header { text-align: center; margin-bottom: 2.5rem; }
+
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      font-weight: normal;
+      letter-spacing: 0.2em;
+      text-transform: lowercase;
+      color: var(--text);
+      margin-bottom: 0.35rem;
+    }
+
+    .sub {
+      font-size: 0.6rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      line-height: 1.7;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .control {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .control label {
+      font-size: 0.62rem;
+      letter-spacing: 0.14em;
+      text-transform: lowercase;
+      color: var(--dim);
+      font-style: italic;
+    }
+
+    .freq-input {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text);
+      font-family: Georgia, serif;
+      font-size: 1.1rem;
+      text-align: center;
+      width: 5.5rem;
+      padding: 0.3rem 0.5rem;
+      -moz-appearance: textfield;
+    }
+    .freq-input::-webkit-inner-spin-button,
+    .freq-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .freq-input:focus { outline: none; border-color: var(--accent); }
+
+    .hz-label { font-size: 0.7rem; color: var(--dim); letter-spacing: 0.06em; }
+
+    .presets { display: flex; gap: 0.4rem; }
+
+    .preset-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      padding: 0.25rem 0.55rem;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .preset-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    .clear-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: lowercase;
+      padding: 0.25rem 0.6rem;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .clear-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    .partials {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .partial-row {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr 5.5rem 5rem 5rem 1.5rem;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      border-radius: 2px;
+      transition: background 0.12s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .partial-row:hover { background: rgba(255,255,255,0.03); }
+    .partial-row.active { background: var(--on-bg); }
+
+    .p-num {
+      font-size: 0.62rem;
+      color: var(--dimmer);
+      letter-spacing: 0.06em;
+      text-align: right;
+      font-style: italic;
+    }
+    .partial-row.active .p-num { color: var(--accent); }
+
+    .p-bar-wrap {
+      height: 2px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+    .p-bar {
+      height: 100%;
+      background: rgba(216,208,200,0.2);
+      border-radius: 1px;
+      transition: background 0.15s;
+    }
+    .partial-row.active .p-bar { background: var(--on); }
+
+    .p-freq {
+      font-size: 0.72rem;
+      color: var(--dim);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+    .partial-row.active .p-freq { color: var(--text); }
+
+    .p-note {
+      font-size: 0.72rem;
+      color: var(--dim);
+      text-align: center;
+      letter-spacing: 0.06em;
+    }
+    .partial-row.active .p-note { color: var(--on); }
+
+    .p-interval {
+      font-size: 0.65rem;
+      color: var(--dim);
+      text-align: right;
+      font-style: italic;
+      letter-spacing: 0.04em;
+    }
+    .partial-row.active .p-interval { color: var(--dim); }
+
+    .p-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: transparent;
+      border: 1px solid var(--border);
+      margin: 0 auto;
+      transition: background 0.12s, border-color 0.12s;
+      flex-shrink: 0;
+    }
+    .partial-row.active .p-dot { background: var(--on); border-color: var(--on); }
+
+    .partials-header {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr 5.5rem 5rem 5rem 1.5rem;
+      gap: 0.5rem;
+      padding: 0 0.75rem 0.5rem;
+      font-size: 0.56rem;
+      letter-spacing: 0.12em;
+      text-transform: lowercase;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+
+    .scope-wrap { margin-top: 2rem; width: 100%; max-width: 680px; }
+    canvas { display: block; width: 100%; border: 1px solid var(--border); border-radius: 2px; }
+
+    .hint {
+      margin-top: 1.5rem;
+      font-size: 0.57rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      text-align: center;
+    }
+
+    @media (max-width: 480px) {
+      .partial-row { grid-template-columns: 1.8rem 1fr 4.5rem 4rem 4rem 1rem; }
+      .partials-header { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1 class="title">the undertone series</h1>
+  <p class="sub">
+    each partial sounds <em>below</em> the root &mdash; the mirror image of the harmonic series<br>
+    where overtones give you major, undertones give you minor
+  </p>
+</div>
+
+<div class="control">
+  <label for="fund-input">root</label>
+  <input type="number" id="fund-input" class="freq-input"
+         value="880" min="40" max="2000" step="0.01"
+         aria-label="Root frequency in Hz">
+  <span class="hz-label">Hz</span>
+
+  <div class="presets" role="group" aria-label="Preset roots">
+    <button class="preset-btn" data-f="440"  title="A4">A4</button>
+    <button class="preset-btn" data-f="880"  title="A5">A5</button>
+    <button class="preset-btn" data-f="523.25" title="C5">C5</button>
+    <button class="preset-btn" data-f="660"  title="E5">E5</button>
+  </div>
+
+  <button class="clear-btn" id="clear-btn">clear all</button>
+</div>
+
+<div class="partials-header" aria-hidden="true">
+  <span style="text-align:right">1/n</span>
+  <span></span>
+  <span style="text-align:right">freq</span>
+  <span style="text-align:center">note</span>
+  <span style="text-align:right">interval ↓</span>
+  <span></span>
+</div>
+
+<div class="partials" id="partials-list" role="list" aria-label="Undertone partials"></div>
+
+<div class="scope-wrap">
+  <canvas id="scope" height="60" aria-hidden="true"></canvas>
+</div>
+
+<p class="hint">esc clears &mdash; try partials 3&ndash;6 together for a subharmonic minor chord</p>
+
+<script>
+const NOTE_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+
+function freqToNote(freq) {
+  const midi = 69 + 12 * Math.log2(freq / 440);
+  const rnd  = Math.round(midi);
+  const name = NOTE_NAMES[((rnd % 12) + 12) % 12];
+  const oct  = Math.floor(rnd / 12) - 1;
+  const cents = Math.round((midi - rnd) * 100);
+  const sign = cents >= 0 ? '+' : '';
+  return { name: name + oct, cents, centsStr: cents === 0 ? '' : `${sign}${cents}¢` };
+}
+
+function intervalName(n) {
+  const c = [
+    '', 'unison', 'octave ↓', 'P12 ↓', '2 oct ↓', 'M17 ↓',
+    'P19 ↓', 'B♭21 ↓', '3 oct ↓', 'M23 ↓', 'M24 ↓',
+    '↓', '4 oct ↓', '↓', '↓', '↓', '4 oct ↓'
+  ];
+  // Calculate actual interval in cents below root
+  const centsBelow = 1200 * Math.log2(n);
+  const octaves = Math.floor(centsBelow / 1200);
+  const rem = centsBelow % 1200;
+  if (n === 1) return 'root';
+  if (n === 2) return 'P8 below';
+  if (n === 3) return 'P5 + P8 below';
+  if (n === 4) return '2 oct below';
+  if (n === 5) return 'M3 + 2 oct below';
+  if (n === 6) return 'P5 + 2 oct below';
+  if (n === 7) return '7th + 2 oct below';
+  if (n === 8) return '3 oct below';
+  if (n === 9) return 'M2 + 3 oct below';
+  if (n === 10) return 'M3 + 3 oct below';
+  if (n === 11) return '11th harm. + 3 oct';
+  if (n === 12) return 'P5 + 3 oct below';
+  if (n === 13) return '13th + 3 oct below';
+  if (n === 14) return '7th + 3 oct below';
+  if (n === 15) return 'M7 + 3 oct below';
+  if (n === 16) return '4 oct below';
+  return `${octaves} oct + ${Math.round(rem)}¢ below`;
+}
+
+// ── Audio ─────────────────────────────────────────────────
+let ac = null, analyser = null, scopeBuf = null;
+const voices = {};
+const activeSet = new Set();
+let rafId = null;
+
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = ac.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.6;
+  analyser.connect(ac.destination);
+}
+
+function getRoot() {
+  const v = parseFloat(document.getElementById('fund-input').value);
+  return isFinite(v) && v > 0 ? v : 880;
+}
+
+function togglePartial(n) {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+
+  if (activeSet.has(n)) {
+    const { osc, gain } = voices[n];
+    gain.gain.setTargetAtTime(0, ac.currentTime, 0.04);
+    setTimeout(() => { try { osc.stop(); } catch(e){} delete voices[n]; }, 300);
+    activeSet.delete(n);
+    if (activeSet.size === 0) stopScope();
+  } else {
+    const root = getRoot();
+    const freq  = root / n;
+    const amp   = 0.38 / Math.pow(n, 0.6);
+    const osc   = ac.createOscillator();
+    const gain  = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, ac.currentTime);
+    gain.gain.setTargetAtTime(amp, ac.currentTime, 0.025);
+    osc.connect(gain);
+    gain.connect(analyser);
+    osc.start();
+    voices[n] = { osc, gain };
+    activeSet.add(n);
+    if (!rafId) drawScope();
+  }
+
+  updateRows();
+}
+
+function clearAll() {
+  for (const n of [...activeSet]) togglePartial(n);
+}
+
+function updateRoot(newRoot) {
+  if (!ac) return;
+  const t = ac.currentTime;
+  for (const n of activeSet) {
+    if (voices[n]) voices[n].osc.frequency.setTargetAtTime(newRoot / n, t, 0.02);
+  }
+}
+
+// ── Scope ─────────────────────────────────────────────────
+function stopScope() {
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  blankScope();
+}
+
+function blankScope() {
+  const cv = document.getElementById('scope');
+  const g = cv.getContext('2d');
+  g.fillStyle = '#0a0a0a';
+  g.fillRect(0, 0, cv.width, cv.height);
+}
+
+function drawScope() {
+  rafId = requestAnimationFrame(drawScope);
+  const cv  = document.getElementById('scope');
+  const dpr = devicePixelRatio || 1;
+  cv.width  = cv.offsetWidth * dpr;
+  cv.height = 60 * dpr;
+  const g = cv.getContext('2d');
+  const w = cv.width / dpr, h = cv.height / dpr;
+  g.scale(dpr, dpr);
+  g.fillStyle = '#0a0a0a';
+  g.fillRect(0, 0, w, h);
+  if (!analyser) return;
+  analyser.getByteTimeDomainData(scopeBuf);
+  g.strokeStyle = 'rgba(200,160,138,0.7)';
+  g.lineWidth = 1;
+  g.beginPath();
+  const sw = w / scopeBuf.length;
+  for (let i = 0; i < scopeBuf.length; i++) {
+    const y = h / 2 + (scopeBuf[i] / 128 - 1) * h * 0.42;
+    i === 0 ? g.moveTo(0, y) : g.lineTo(i * sw, y);
+  }
+  g.stroke();
+}
+
+// ── Build rows ────────────────────────────────────────────
+const N = 16;
+const rows = [];
+
+function buildRows() {
+  const root = getRoot();
+  const list = document.getElementById('partials-list');
+  list.innerHTML = '';
+
+  for (let n = 1; n <= N; n++) {
+    const freq = root / n;
+    const { name, centsStr } = freqToNote(freq);
+    const interval = intervalName(n);
+    const barPct   = Math.round(100 / Math.pow(n, 0.6));
+
+    const row = document.createElement('div');
+    row.className = 'partial-row';
+    row.setAttribute('role', 'listitem');
+    row.setAttribute('aria-label', `1/${n}, ${freq.toFixed(1)} Hz, ${name}`);
+    row.dataset.n = n;
+
+    const cLabel = centsStr ? `<span style="font-size:0.58rem;color:rgba(216,208,200,0.3);margin-left:2px">${centsStr}</span>` : '';
+
+    row.innerHTML = `
+      <span class="p-num">1/${n}</span>
+      <span class="p-bar-wrap"><span class="p-bar" style="width:${barPct}%"></span></span>
+      <span class="p-freq">${freq.toFixed(1)} Hz</span>
+      <span class="p-note">${name}${cLabel}</span>
+      <span class="p-interval">${interval}</span>
+      <span class="p-dot"></span>
+    `;
+
+    row.addEventListener('click', () => togglePartial(n));
+    row.addEventListener('touchstart', e => { e.preventDefault(); togglePartial(n); }, { passive: false });
+    list.appendChild(row);
+    rows[n] = row;
+  }
+}
+
+function updateRows() {
+  const root = getRoot();
+  for (let n = 1; n <= N; n++) {
+    const row = rows[n];
+    if (!row) continue;
+    const isActive = activeSet.has(n);
+    row.classList.toggle('active', isActive);
+    const freqEl = row.querySelector('.p-freq');
+    if (freqEl) freqEl.textContent = (root / n).toFixed(1) + ' Hz';
+  }
+}
+
+// ── Controls ──────────────────────────────────────────────
+const fundEl = document.getElementById('fund-input');
+
+fundEl.addEventListener('input', () => {
+  const root = getRoot();
+  buildRows();
+  for (const n of activeSet) rows[n]?.classList.add('active');
+  updateRoot(root);
+});
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    fundEl.value = btn.dataset.f;
+    fundEl.dispatchEvent(new Event('input'));
+  });
+});
+
+document.getElementById('clear-btn').addEventListener('click', clearAll);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
+
+// ── Init ──────────────────────────────────────────────────
+function init() {
+  analyser = null;
+  buildRows();
+  blankScope();
+  const cv = document.getElementById('scope');
+  const g = cv.getContext('2d');
+  cv.width = cv.offsetWidth || 640;
+  cv.height = 60;
+  scopeBuf = new Uint8Array(1024);
+  blankScope();
+}
+
+init();
+</script>
+</body>
+</html>
