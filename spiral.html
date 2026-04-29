@@ -122,6 +122,9 @@
 </head>
 <body>
 
+<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:#332;text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
 <div class="header">
   <h1 class="title">spiral of fifths</h1>
   <p class="sub">
@@ -134,6 +137,14 @@
   <button class="mode-btn on" data-m="12">12-TET</button>
   <button class="mode-btn" data-m="19">19-TET</button>
   <button class="mode-btn" data-m="31">31-TET</button>
+</div>
+
+<div class="modes" role="group" aria-label="Starting register" style="gap:0.3rem">
+  <span style="font-size:0.58rem;color:var(--dimmer);font-style:italic;align-self:center">root&nbsp;</span>
+  <button class="mode-btn" id="reg-c3" data-r="130.81">C3</button>
+  <button class="mode-btn on" id="reg-c4" data-r="261.63">C4</button>
+  <button class="mode-btn" id="reg-c5" data-r="523.25">C5</button>
+  <button class="mode-btn" id="reg-wrap" style="margin-left:0.5rem">wrap octave: off</button>
 </div>
 
 <div class="canvas-wrap">
@@ -181,11 +192,13 @@ function initAudio() {
   ac = new (window.AudioContext || window.webkitAudioContext)();
 }
 
-const ROOT_FREQ = 261.63; // C4
+let ROOT_FREQ = 261.63; // C4
+let wrapOctave = false;
 
 function pitchForStep(stepIndex, tuningKey) {
   const t = TUNINGS[tuningKey];
-  const centsAbove = stepIndex * t.fifth;
+  let centsAbove = stepIndex * t.fifth;
+  if (wrapOctave) centsAbove = ((centsAbove % 1200) + 1200) % 1200;
   return ROOT_FREQ * Math.pow(2, centsAbove / 1200);
 }
 
@@ -247,10 +260,9 @@ function getNodeNames(mode) {
 function draw(mode) {
   const cv = document.getElementById('spiral');
   const dpr = devicePixelRatio || 1;
-  cv.width  = CANVAS_SIZE * dpr;
-  cv.height = CANVAS_SIZE * dpr;
-  cv.style.width  = CANVAS_SIZE + 'px';
-  cv.style.height = CANVAS_SIZE + 'px';
+  const dispW = cv.offsetWidth || CANVAS_SIZE;
+  cv.width  = dispW * dpr;
+  cv.height = dispW * dpr;
   const g = cv.getContext('2d');
   g.scale(dpr, dpr);
 
@@ -258,13 +270,15 @@ function draw(mode) {
   const steps = t.steps;
   const col = t.color;
   const names = getNodeNames(mode);
+  const drawW = dispW;
 
   g.fillStyle = '#060608';
-  g.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  g.fillRect(0, 0, drawW, drawW);
 
-  const INNER_R = 70;
-  const OUTER_R = 220;
-  const LABEL_R = 250;
+  const cx = drawW / 2, cy = drawW / 2;
+  const OUTER_R = drawW * 0.37;
+  const INNER_R = drawW * 0.12;
+  const LABEL_R = OUTER_R + 30;
 
   // For just mode, show the spiral: each step adds a tiny outward drift
   // representing the ascending pitch. For TET modes, show a clean circle.
@@ -275,28 +289,19 @@ function draw(mode) {
 
   for (let i = 0; i < steps; i++) {
     let r, theta;
-    const fraction = i / steps;
-    const angleDeg = fraction * 360 - 90; // start at top
-    theta = angleDeg * Math.PI / 180;
 
     if (mode === 'just') {
-      // Spiral: each step drifts outward by a tiny amount representing
-      // the accumulated sharp drift of pure 3/2 vs TET
-      const drift = (i * t.fifth) % 1200; // cents above C within one octave
-      const driftNorm = drift / 1200;       // 0..1
-      // Position on a spiral: angle = position in chain, radius = slightly expanding
       const spiralAngle = (i / 12) * 2 * Math.PI - Math.PI / 2;
-      const spiralDrift = i * 1.5; // outward drift per step (visual only)
-      r = OUTER_R - 30 + spiralDrift * 1.0;
-      // Cap drift and reset radius for legibility
-      r = Math.min(r, OUTER_R + 20);
+      const spiralDrift = i * (drawW * 0.002);
+      r = OUTER_R - drawW * 0.05 + spiralDrift;
+      r = Math.min(r, OUTER_R + drawW * 0.035);
       theta = spiralAngle;
     } else {
       r = OUTER_R;
       theta = (i / steps) * 2 * Math.PI - Math.PI / 2;
     }
 
-    nodePositions.push({ x: CX + r * Math.cos(theta), y: CY + r * Math.sin(theta) });
+    nodePositions.push({ x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta) });
   }
 
   // ── Draw connecting lines between consecutive fifths ──
@@ -324,7 +329,7 @@ function draw(mode) {
   // ── Draw a subtle circle guide ────────────────────────
   if (mode !== 'just') {
     g.beginPath();
-    g.arc(CX, CY, OUTER_R, 0, Math.PI * 2);
+    g.arc(cx, cy, OUTER_R, 0, Math.PI * 2);
     g.strokeStyle = 'rgba(255,255,255,0.04)';
     g.lineWidth = 1;
     g.stroke();
@@ -383,7 +388,7 @@ function draw(mode) {
     const last  = nodePositions[steps - 1];
     const commaX = (last.x + first.x) / 2;
     const commaY = (last.y + first.y) / 2 - 14;
-    g.font = 'italic 9px Georgia, serif';
+    g.font = `italic ${Math.max(8, drawW * 0.015)}px Georgia, serif`;
     g.fillStyle = 'rgba(220,100,80,0.65)';
     g.textAlign = 'center';
     g.fillText('← Pythagorean comma', commaX, commaY);
@@ -439,12 +444,10 @@ function hitTest(x, y) {
 
 function canvasCoords(e) {
   const rect = cv.getBoundingClientRect();
-  const scaleX = CANVAS_SIZE / rect.width;
-  const scaleY = CANVAS_SIZE / rect.height;
   const touch = e.touches ? e.touches[0] : e;
   return {
-    x: (touch.clientX - rect.left) * scaleX,
-    y: (touch.clientY - rect.top)  * scaleY,
+    x: (touch.clientX - rect.left) * (cv.offsetWidth / rect.width),
+    y: (touch.clientY - rect.top)  * (cv.offsetHeight / rect.height),
   };
 }
 
@@ -496,7 +499,25 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
   });
 });
 
+document.querySelectorAll('[data-r]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ROOT_FREQ = parseFloat(btn.dataset.r);
+    document.querySelectorAll('[data-r]').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    clearAll();
+  });
+});
+
+document.getElementById('reg-wrap').addEventListener('click', function() {
+  wrapOctave = !wrapOctave;
+  this.textContent = `wrap octave: ${wrapOctave ? 'on' : 'off'}`;
+  this.classList.toggle('on', wrapOctave);
+  clearAll();
+});
+
 document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
+
+window.addEventListener('resize', () => draw(currentMode));
 
 // ── Init ──────────────────────────────────────────────────
 draw(currentMode);

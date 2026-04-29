@@ -220,7 +220,7 @@
         </div>
         <div class="slider-row">
           <span class="slider-lbl">speed</span>
-          <input class="liss-range" id="speed-range" type="range" min="1" max="100" value="30">
+          <input class="liss-range" id="speed-range" type="range" min="1" max="100" value="50">
           <span class="slider-val" id="speed-val">×1</span>
         </div>
         <div class="slider-row">
@@ -275,19 +275,19 @@ const INTERVALS = [
   { name: 'm6',        ratio: [8, 5],   tetName: 'm6',       tetCents: 800 },
   { name: 'M2',        ratio: [9, 8],   tetName: 'M2',       tetCents: 200 },
   { name: 'm7',        ratio: [9, 5],   tetName: 'm7',       tetCents: 1000 },
-  { name: '7th ∂',     ratio: [7, 4],   tetName: 'm7',       tetCents: 1000 },
-  { name: '11th ∂',    ratio: [11, 8],  tetName: 'TT',       tetCents: 600 },
-  { name: '13th ∂',    ratio: [13, 8],  tetName: 'm6',       tetCents: 800 },
+  { name: '7H',         ratio: [7, 4],   tetName: 'm7',       tetCents: 1000 },
+  { name: '11H',        ratio: [11, 8],  tetName: 'TT',       tetCents: 600 },
+  { name: '13H',        ratio: [13, 8],  tetName: 'm6',       tetCents: 800 },
   { name: 'TT',        ratio: [45, 32], tetName: 'TT',       tetCents: 600 },
   { name: '3:2:1',     ratio: [3, 1],   tetName: 'P5+oct',   tetCents: 1902 },
-  { name: 'φ ratio',   ratio: [1618, 1000], tetName: '—',    tetCents: null },
+  { name: 'φ ratio',   ratio: [1.618, 1.0], tetName: '—',    tetCents: null },
 ];
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let ratioA     = 3;
 let ratioB     = 2;
 let phase      = Math.PI / 2;
-let speed      = 0.4;
+let speed      = 50 / 30;
 let trailAlpha = 0.04;
 let animating  = true;
 let sounding   = false;
@@ -435,17 +435,22 @@ function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
 
 function setRatio(a, b) {
   if (!a || !b || a <= 0 || b <= 0) return;
-  const g = gcd(Math.round(a), Math.round(b));
-  ratioA = Math.round(a) / g;
-  ratioB = Math.round(b) / g;
+  if (Number.isInteger(a) && Number.isInteger(b)) {
+    const g = gcd(a, b);
+    ratioA = a / g;
+    ratioB = b / g;
+  } else {
+    ratioA = a;
+    ratioB = b;
+  }
   color = ratioColor(ratioA, ratioB);
   clearTrail();
   prevX = prevY = null;
   t = 0;
   updateInfo();
   updateSoundFreqs();
-  document.getElementById('ratio-a').value = a;
-  document.getElementById('ratio-b').value = b;
+  document.getElementById('ratio-a').value = Number.isInteger(a) ? a : a.toFixed(3);
+  document.getElementById('ratio-b').value = Number.isInteger(b) ? b : b.toFixed(3);
 }
 
 function ratioToCents(a, b) {
@@ -514,7 +519,7 @@ function buildIntervalButtons() {
       if (activeBtn) activeBtn.classList.remove('active');
       btn.classList.add('active');
       activeBtn = btn;
-      setRatio(parseInt(btn.dataset.a), parseInt(btn.dataset.b));
+      setRatio(parseFloat(btn.dataset.a), parseFloat(btn.dataset.b));
     });
     grid.appendChild(btn);
   });
