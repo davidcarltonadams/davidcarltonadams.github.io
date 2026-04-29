@@ -219,7 +219,7 @@
 <main>
 <div class="rhythm-wrap">
   <h1 class="rhythm-title">Polyrhythm Clock</h1>
-  <p class="rhythm-sub">up to six independent pulses · tap to set tempo · watch the orbits converge</p>
+  <p class="rhythm-sub">up to six independent pulses · bars per minute · watch the orbits converge</p>
 
   <div class="rhythm-body">
     <div class="rhythm-left">
@@ -228,8 +228,8 @@
     <div class="rhythm-right">
       <div class="master-row">
         <div class="bpm-group">
-          <span class="bpm-label">BPM</span>
-          <input id="bpm-display" type="number" value="120" min="30" max="300" aria-label="BPM">
+          <span class="bpm-label">BAR/M</span>
+          <input id="bpm-display" type="number" value="120" min="10" max="300" aria-label="Bars per minute">
         </div>
         <button class="btn-ctrl" id="btn-tap">TAP</button>
         <button class="btn-ctrl" id="btn-play">▶ PLAY</button>
@@ -238,8 +238,8 @@
       </div>
 
       <div class="bpm-slider-wrap">
-        <span>30</span>
-        <input type="range" id="bpm-slider" min="30" max="300" value="120">
+        <span>10</span>
+        <input type="range" id="bpm-slider" min="10" max="300" value="120">
         <span>300</span>
       </div>
 
@@ -523,7 +523,7 @@ function tap() {
       intervals.push(tapTimes[i] - tapTimes[i-1]);
     }
     const avg = intervals.reduce((a,b) => a+b, 0) / intervals.length;
-    masterBPM = Math.min(300, Math.max(30, Math.round(60000 / avg)));
+    masterBPM = Math.min(300, Math.max(10, Math.round(60000 / avg)));
     updateBPMDisplay();
   }
 }
@@ -573,7 +573,7 @@ canvas.addEventListener('click', togglePlay);
 
 document.getElementById('bpm-display').addEventListener('input', e => {
   const v = parseInt(e.target.value);
-  if (v >= 30 && v <= 300) {
+  if (v >= 10 && v <= 300) {
     masterBPM = v;
     document.getElementById('bpm-slider').value = v;
   }

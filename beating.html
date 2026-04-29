@@ -210,6 +210,9 @@
 </head>
 <body>
 
+<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:#332;text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
 <div class="header">
   <h1 class="title">beating</h1>
   <p class="sub">
@@ -232,7 +235,7 @@
 </div>
 
 <div class="presets">
-  <span class="preset-label">tuning reference scenarios</span>
+  <span class="preset-label">tuning reference · string players</span>
   <div class="preset-row">
     <button class="preset-btn" data-a="440" data-b="441">1 Hz beat</button>
     <button class="preset-btn" data-a="440" data-b="443">3 Hz — sharp A</button>
@@ -240,6 +243,16 @@
     <button class="preset-btn" data-a="440" data-b="440">in tune (no beat)</button>
     <button class="preset-btn" data-a="261.63" data-b="261.63">C4 in tune</button>
     <button class="preset-btn" data-a="392" data-b="392.4">slight fifth comma</button>
+  </div>
+  <span class="preset-label" style="margin-top:0.8rem;display:block">JI vs 12-TET · A=440 base · A is JI, B is ET</span>
+  <div class="preset-row">
+    <button class="preset-btn" data-a="660" data-b="659.26" title="3/2 vs 2^(7/12)">P5 · 0.7 Hz</button>
+    <button class="preset-btn" data-a="586.67" data-b="587.33" title="4/3 vs 2^(5/12)">P4 · 0.7 Hz</button>
+    <button class="preset-btn" data-a="550" data-b="554.37" title="5/4 vs 2^(4/12)">M3 · 4.4 Hz</button>
+    <button class="preset-btn" data-a="528" data-b="523.25" title="6/5 vs 2^(3/12)">m3 · 4.8 Hz</button>
+    <button class="preset-btn" data-a="733.33" data-b="739.99" title="5/3 vs 2^(9/12)">M6 · 6.7 Hz</button>
+    <button class="preset-btn" data-a="704" data-b="698.46" title="8/5 vs 2^(8/12)">m6 · 5.5 Hz</button>
+    <button class="preset-btn" data-a="770" data-b="783.99" title="7/4 vs 2^(10/12)">7th harm · 14 Hz</button>
   </div>
 </div>
 

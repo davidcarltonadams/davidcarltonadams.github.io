@@ -208,6 +208,9 @@
 </head>
 <body>
 
+<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:#332;text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
 <div class="header">
   <h1 class="title">modes</h1>
   <p class="sub">scales built on each degree — same notes, different gravity</p>
@@ -225,6 +228,16 @@
   <div class="mode-name" id="mode-name"></div>
   <div class="mode-desc" id="mode-desc"></div>
   <div class="intervals-display" id="intervals-display"></div>
+</div>
+
+<div class="mode-info" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:0.25rem">
+  <button id="auto-play-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--dim);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">▶ play scale</button>
+  <div style="display:flex;align-items:center;gap:0.5rem">
+    <span style="font-size:0.58rem;color:var(--dimmer);font-style:italic;letter-spacing:0.08em">tempo</span>
+    <input type="range" id="tempo-slider" min="40" max="220" value="90"
+           style="-webkit-appearance:none;width:100px;height:2px;background:var(--border);outline:none;border-radius:1px">
+    <span id="tempo-val" style="font-size:0.6rem;color:var(--dim);min-width:3.5ch;font-variant-numeric:tabular-nums">90</span>
+  </div>
 </div>
 
 <p class="hint">esc stops all · click to play scale tone</p>
@@ -314,13 +327,20 @@ const WHITE_PATTERN = [0,2,4,5,7,9,11,12,14,16,17,19,21,23]; // semitones of whi
 const BLACK_OFFSETS = {1:1, 3:2, 6:4, 8:5, 10:6, 13:8, 15:9, 18:11, 20:12, 22:13};
 
 // ── Audio ─────────────────────────────────────────────────
-let ac = null;
+let ac = null, masterComp = null;
 const voices = {};
 const playingNotes = new Set();
 
 function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
+  masterComp = ac.createDynamicsCompressor();
+  masterComp.threshold.value = -18;
+  masterComp.knee.value = 6;
+  masterComp.ratio.value = 8;
+  masterComp.attack.value = 0.003;
+  masterComp.release.value = 0.15;
+  masterComp.connect(ac.destination);
 }
 
 function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
@@ -338,9 +358,9 @@ function playNote(semitone) {
   osc.type = 'sine';
   osc.frequency.value = freq;
   gain.gain.setValueAtTime(0, ac.currentTime);
-  gain.gain.setTargetAtTime(0.12, ac.currentTime, 0.01);
+  gain.gain.setTargetAtTime(0.08, ac.currentTime, 0.01);
   gain.gain.setTargetAtTime(0, ac.currentTime + 0.6, 0.08);
-  osc.connect(gain); gain.connect(ac.destination);
+  osc.connect(gain); gain.connect(masterComp);
   osc.start();
   playingNotes.add(key);
   voices[key] = osc;
@@ -573,7 +593,59 @@ function buildModeInfo() {
   }
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') stopAll(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { stopAll(); stopAutoPlay(); } });
+
+// ── Autoplay ──────────────────────────────────────────────
+let autoPlaying = false, autoTimer = null, autoStep = 0;
+
+function getAutoTempo() { return parseInt(document.getElementById('tempo-slider').value); }
+
+function autoPlayStep() {
+  const sc = SCALES[currentScale];
+  const mode = sc.modes[currentModeIdx];
+  const n = sc.intervals.length;
+  let cum = 0;
+  const semitones = [];
+  for (let i = 0; i < n; i++) {
+    semitones.push(cum + currentRoot);
+    cum += sc.intervals[(mode.start + i) % n];
+  }
+  semitones.push(cum + currentRoot); // octave
+
+  if (autoStep >= semitones.length) autoStep = 0;
+  const semi = semitones[autoStep];
+  playNote(semi);
+  autoStep++;
+  if (autoStep > semitones.length) { autoStep = 0; }
+  autoTimer = setTimeout(autoPlayStep, 60000 / getAutoTempo());
+}
+
+function startAutoPlay() {
+  stopAll();
+  autoPlaying = true;
+  autoStep = 0;
+  const btn = document.getElementById('auto-play-btn');
+  btn.textContent = '■ stop';
+  btn.style.color = 'var(--accent)';
+  btn.style.borderColor = 'var(--accent)';
+  autoPlayStep();
+}
+
+function stopAutoPlay() {
+  autoPlaying = false;
+  clearTimeout(autoTimer);
+  const btn = document.getElementById('auto-play-btn');
+  if (btn) { btn.textContent = '▶ play scale'; btn.style.color = ''; btn.style.borderColor = ''; }
+}
+
+document.getElementById('auto-play-btn').addEventListener('click', () => {
+  if (autoPlaying) stopAutoPlay(); else startAutoPlay();
+});
+
+document.getElementById('tempo-slider').addEventListener('input', e => {
+  document.getElementById('tempo-val').textContent = e.target.value;
+  if (autoPlaying) { clearTimeout(autoTimer); autoPlayStep(); }
+});
 
 // ── Init ──────────────────────────────────────────────────
 buildScaleTabs();
