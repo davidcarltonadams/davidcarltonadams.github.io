@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>beating</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #06070a;
+      --bg2:    #0d0e14;
+      --text:   #cccad4;
+      --dim:    rgba(204,202,212,0.38);
+      --dimmer: rgba(204,202,212,0.18);
+      --border: rgba(255,255,255,0.07);
+      --col-a:  #8ab0c8;
+      --col-b:  #c8a08a;
+      --col-beat: #a0cc88;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.8rem 1.5rem 4rem;
+      gap: 2rem;
+    }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      font-weight: normal;
+      letter-spacing: 0.2em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.35rem;
+      line-height: 1.7;
+      max-width: 440px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ── Controls ─────────────────────────────── */
+    .controls {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.4rem;
+    }
+
+    .freq-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .freq-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      font-style: italic;
+      min-width: 3.2rem;
+    }
+    .freq-label.a { color: var(--col-a); }
+    .freq-label.b { color: var(--col-b); }
+
+    .freq-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1;
+      min-width: 100px;
+      height: 2px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 1px;
+      outline: none;
+      cursor: pointer;
+    }
+    .freq-slider.a::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--col-a); }
+    .freq-slider.b::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--col-b); }
+    .freq-slider.a::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--col-a); border: none; }
+    .freq-slider.b::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--col-b); border: none; }
+
+    .freq-val {
+      font-size: 0.8rem;
+      min-width: 5rem;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: var(--dim);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Presets ──────────────────────────────── */
+    .presets {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .preset-label {
+      font-size: 0.54rem;
+      letter-spacing: 0.13em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .preset-row { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .preset-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.07em;
+      padding: 0.25rem 0.6rem;
+      cursor: pointer;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .preset-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.22); }
+
+    /* ── Beat display ─────────────────────────── */
+    .beat-display {
+      width: 100%;
+      max-width: 520px;
+      text-align: center;
+    }
+
+    .beat-rate {
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      font-weight: normal;
+      letter-spacing: 0.08em;
+      color: var(--col-beat);
+      font-style: italic;
+      line-height: 1;
+    }
+
+    .beat-label {
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.3rem;
+    }
+
+    .beat-desc {
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      color: rgba(204,202,212,0.25);
+      font-style: italic;
+      margin-top: 0.6rem;
+    }
+
+    /* ── Waveform canvas ──────────────────────── */
+    .wave-wrap {
+      width: 100%;
+      max-width: 520px;
+    }
+    .wave-wrap canvas {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+    }
+
+    .wave-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.4rem;
+      font-size: 0.52rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+
+    /* ── Play button ──────────────────────────── */
+    .play-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      padding: 0.4rem 1.4rem;
+      cursor: pointer;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .play-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.22); }
+    .play-btn.on { color: var(--col-beat); border-color: var(--col-beat); }
+
+    .hint {
+      font-size: 0.54rem;
+      letter-spacing: 0.12em;
+      color: rgba(204,202,212,0.12);
+      font-style: italic;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1 class="title">beating</h1>
+  <p class="sub">
+    two pitches close together produce a third rhythm —<br>
+    the interference of their waves, audible as a pulse
+  </p>
+</div>
+
+<div class="controls">
+  <div class="freq-row">
+    <span class="freq-label a">A</span>
+    <input type="range" id="slider-a" class="freq-slider a" min="80" max="880" step="0.1" value="440">
+    <span class="freq-val" id="val-a">440.0 Hz</span>
+  </div>
+  <div class="freq-row">
+    <span class="freq-label b">B</span>
+    <input type="range" id="slider-b" class="freq-slider b" min="80" max="880" step="0.1" value="443">
+    <span class="freq-val" id="val-b">443.0 Hz</span>
+  </div>
+</div>
+
+<div class="presets">
+  <span class="preset-label">tuning reference scenarios</span>
+  <div class="preset-row">
+    <button class="preset-btn" data-a="440" data-b="441">1 Hz beat</button>
+    <button class="preset-btn" data-a="440" data-b="443">3 Hz — sharp A</button>
+    <button class="preset-btn" data-a="440" data-b="444">4 Hz — very sharp</button>
+    <button class="preset-btn" data-a="440" data-b="440">in tune (no beat)</button>
+    <button class="preset-btn" data-a="261.63" data-b="261.63">C4 in tune</button>
+    <button class="preset-btn" data-a="392" data-b="392.4">slight fifth comma</button>
+  </div>
+</div>
+
+<div class="beat-display">
+  <div class="beat-rate" id="beat-rate">3.0</div>
+  <div class="beat-label">beats per second</div>
+  <div class="beat-desc" id="beat-desc"></div>
+</div>
+
+<div class="wave-wrap">
+  <canvas id="wave" height="140" aria-label="Beat frequency waveform"></canvas>
+  <div class="wave-labels">
+    <span>0</span>
+    <span id="wave-time-label">1 s</span>
+  </div>
+</div>
+
+<button class="play-btn" id="play-btn">listen</button>
+
+<p class="hint">A440 + A443 = 3 beats/sec — what a string player hears when tuning slightly off</p>
+
+<script>
+// ── Audio ─────────────────────────────────────────────────
+let ac = null, oscA = null, oscB = null, gainA = null, gainB = null;
+let playing = false;
+
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function getFA() { return parseFloat(document.getElementById('slider-a').value); }
+function getFB() { return parseFloat(document.getElementById('slider-b').value); }
+
+function startAudio() {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  oscA  = ac.createOscillator();
+  gainA = ac.createGain();
+  oscB  = ac.createOscillator();
+  gainB = ac.createGain();
+
+  oscA.type = 'sine';
+  oscB.type = 'sine';
+  oscA.frequency.value = getFA();
+  oscB.frequency.value = getFB();
+  gainA.gain.setValueAtTime(0, ac.currentTime);
+  gainB.gain.setValueAtTime(0, ac.currentTime);
+  gainA.gain.setTargetAtTime(0.15, ac.currentTime, 0.02);
+  gainB.gain.setTargetAtTime(0.15, ac.currentTime, 0.02);
+
+  oscA.connect(gainA); gainA.connect(ac.destination);
+  oscB.connect(gainB); gainB.connect(ac.destination);
+  oscA.start(); oscB.start();
+}
+
+function stopAudio() {
+  if (!oscA) return;
+  gainA.gain.setTargetAtTime(0, ac.currentTime, 0.04);
+  gainB.gain.setTargetAtTime(0, ac.currentTime, 0.04);
+  const oa = oscA, ob = oscB;
+  setTimeout(() => { try { oa.stop(); ob.stop(); } catch(e){} }, 300);
+  oscA = oscB = null;
+}
+
+function updateFreqs() {
+  const fa = getFA(), fb = getFB();
+  if (oscA) oscA.frequency.setTargetAtTime(fa, ac.currentTime, 0.01);
+  if (oscB) oscB.frequency.setTargetAtTime(fb, ac.currentTime, 0.01);
+}
+
+document.getElementById('play-btn').addEventListener('click', () => {
+  if (playing) {
+    stopAudio();
+    playing = false;
+    document.getElementById('play-btn').classList.remove('on');
+    document.getElementById('play-btn').textContent = 'listen';
+  } else {
+    startAudio();
+    playing = true;
+    document.getElementById('play-btn').classList.add('on');
+    document.getElementById('play-btn').textContent = 'stop';
+  }
+});
+
+// ── Beat rate display ─────────────────────────────────────
+function beatDesc(rate) {
+  if (rate < 0.05) return 'perfectly in tune — no beating';
+  if (rate < 0.5)  return 'very slow flutter — barely perceptible';
+  if (rate < 2)    return 'slow, liquid pulse — like a vibrato';
+  if (rate < 5)    return 'clear beating — what a string player hears tuning';
+  if (rate < 10)   return 'fast beating — audibly rough';
+  if (rate < 20)   return 'very fast — starts to roughen into dissonance';
+  return 'roughness — perceived as timbral dissonance, not separate pulses';
+}
+
+// ── Waveform drawing ──────────────────────────────────────
+function drawWave() {
+  const fa = getFA(), fb = getFB();
+  const beat = Math.abs(fb - fa);
+  const cv  = document.getElementById('wave');
+  const dpr = devicePixelRatio || 1;
+  cv.width  = (cv.offsetWidth || 520) * dpr;
+  cv.height = 140 * dpr;
+  const g = cv.getContext('2d');
+  const w = cv.width / dpr, h = cv.height / dpr;
+  g.scale(dpr, dpr);
+
+  g.fillStyle = '#07080c';
+  g.fillRect(0, 0, w, h);
+
+  // Show ~2 beat cycles (or 1s minimum, 4s maximum)
+  const beatPeriod = beat > 0.05 ? 1 / beat : 2;
+  const showTime = Math.min(Math.max(beatPeriod * 2.5, 0.5), 4);
+
+  document.getElementById('wave-time-label').textContent = showTime.toFixed(2) + ' s';
+
+  const samples = Math.floor(w * 2);
+  const midY = h / 2;
+  const amp  = h * 0.38;
+  const avgF = (fa + fb) / 2;
+
+  // Draw individual tones faintly
+  const drawTone = (freq, col) => {
+    g.beginPath();
+    g.strokeStyle = col;
+    g.lineWidth = 0.8;
+    for (let i = 0; i < samples; i++) {
+      const t = (i / samples) * showTime;
+      const y = midY - Math.sin(2 * Math.PI * freq * t) * amp * 0.5;
+      i === 0 ? g.moveTo((i / samples) * w, y) : g.lineTo((i / samples) * w, y);
+    }
+    g.stroke();
+  };
+
+  drawTone(fa, 'rgba(138,176,200,0.25)');
+  drawTone(fb, 'rgba(200,160,138,0.25)');
+
+  // Draw sum (interference) waveform prominently
+  g.beginPath();
+  g.strokeStyle = 'rgba(160,204,136,0.80)';
+  g.lineWidth = 1.5;
+  for (let i = 0; i < samples; i++) {
+    const t = (i / samples) * showTime;
+    const y = midY - (Math.sin(2 * Math.PI * fa * t) + Math.sin(2 * Math.PI * fb * t)) * amp * 0.5;
+    i === 0 ? g.moveTo((i / samples) * w, y) : g.lineTo((i / samples) * w, y);
+  }
+  g.stroke();
+
+  // Draw beat envelope
+  if (beat > 0.05) {
+    g.beginPath();
+    g.strokeStyle = 'rgba(160,204,136,0.22)';
+    g.lineWidth = 1;
+    g.setLineDash([3, 3]);
+    for (let i = 0; i < samples; i++) {
+      const t = (i / samples) * showTime;
+      const env = Math.abs(Math.cos(Math.PI * beat * t)) * amp;
+      i === 0 ? g.moveTo((i / samples) * w, midY - env) : g.lineTo((i / samples) * w, midY - env);
+    }
+    g.stroke();
+    g.beginPath();
+    for (let i = 0; i < samples; i++) {
+      const t = (i / samples) * showTime;
+      const env = Math.abs(Math.cos(Math.PI * beat * t)) * amp;
+      i === 0 ? g.moveTo((i / samples) * w, midY + env) : g.lineTo((i / samples) * w, midY + env);
+    }
+    g.stroke();
+    g.setLineDash([]);
+  }
+
+  // Center line
+  g.beginPath();
+  g.strokeStyle = 'rgba(255,255,255,0.04)';
+  g.lineWidth = 1;
+  g.setLineDash([]);
+  g.moveTo(0, midY); g.lineTo(w, midY);
+  g.stroke();
+
+  // Update labels
+  const rate = beat;
+  document.getElementById('beat-rate').textContent = rate < 0.05 ? '0' : rate.toFixed(1);
+  document.getElementById('beat-desc').textContent = beatDesc(rate);
+}
+
+// ── Controls ──────────────────────────────────────────────
+function update() {
+  const fa = getFA(), fb = getFB();
+  document.getElementById('val-a').textContent = fa.toFixed(1) + ' Hz';
+  document.getElementById('val-b').textContent = fb.toFixed(1) + ' Hz';
+  updateFreqs();
+  drawWave();
+}
+
+document.getElementById('slider-a').addEventListener('input', update);
+document.getElementById('slider-b').addEventListener('input', update);
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('slider-a').value = btn.dataset.a;
+    document.getElementById('slider-b').value = btn.dataset.b;
+    update();
+  });
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && playing) {
+    stopAudio(); playing = false;
+    document.getElementById('play-btn').classList.remove('on');
+    document.getElementById('play-btn').textContent = 'listen';
+  }
+});
+
+window.addEventListener('resize', drawWave);
+update();
+</script>
+</body>
+</html>

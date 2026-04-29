@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>modes</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #070809;
+      --bg2:     #0e0f12;
+      --text:    #ccc8d0;
+      --dim:     rgba(204,200,208,0.38);
+      --dimmer:  rgba(204,200,208,0.18);
+      --border:  rgba(255,255,255,0.07);
+      --accent:  #a09acc;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 4rem;
+      gap: 1.6rem;
+    }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      font-weight: normal;
+      letter-spacing: 0.2em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.35rem;
+    }
+
+    /* ── Scale selector ───────────────────────── */
+    .scale-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      justify-content: center;
+      max-width: 640px;
+    }
+
+    .scale-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.09em;
+      padding: 0.28rem 0.7rem;
+      cursor: pointer;
+      transition: color 0.12s, border-color 0.12s, background 0.12s;
+    }
+    .scale-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .scale-btn.on { color: var(--accent); border-color: var(--accent); background: rgba(160,154,204,0.12); }
+
+    /* ── Root selector ────────────────────────── */
+    .root-row {
+      display: flex;
+      gap: 0.3rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .root-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dimmer);
+      font-family: Georgia, serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      padding: 0.22rem 0.5rem;
+      cursor: pointer;
+      transition: color 0.12s, border-color 0.12s, background 0.12s;
+      min-width: 2.2rem;
+      text-align: center;
+    }
+    .root-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .root-btn.on { color: var(--accent); border-color: var(--accent); background: rgba(160,154,204,0.12); }
+
+    /* ── Keyboard ─────────────────────────────── */
+    .keyboard-wrap {
+      width: 100%;
+      max-width: 640px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .keyboard {
+      display: flex;
+      position: relative;
+      height: 140px;
+      min-width: 500px;
+    }
+
+    .key {
+      position: relative;
+      flex: 1;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 0 0 3px 3px;
+      cursor: pointer;
+      transition: background 0.08s;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding-bottom: 6px;
+      user-select: none;
+    }
+
+    .key.white {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.10);
+      z-index: 1;
+    }
+    .key.white:hover { background: rgba(255,255,255,0.10); }
+    .key.white.in-scale { background: rgba(160,154,204,0.22); border-color: rgba(160,154,204,0.50); }
+    .key.white.in-scale:hover { background: rgba(160,154,204,0.35); }
+    .key.white.root { background: rgba(160,154,204,0.40); border-color: rgba(160,154,204,0.80); }
+    .key.white.playing { background: rgba(160,154,204,0.60) !important; }
+
+    .key.black {
+      position: absolute;
+      width: 58%;
+      height: 60%;
+      top: 0;
+      background: rgba(20,18,28,0.92);
+      border-color: rgba(255,255,255,0.12);
+      z-index: 2;
+    }
+    .key.black:hover { background: rgba(40,36,55,0.95); }
+    .key.black.in-scale { background: rgba(120,110,180,0.70); border-color: rgba(160,154,204,0.60); }
+    .key.black.in-scale:hover { background: rgba(140,130,200,0.80); }
+    .key.black.root { background: rgba(160,154,204,0.80); border-color: rgba(200,194,240,0.90); }
+    .key.black.playing { background: rgba(160,154,204,0.90) !important; }
+
+    .key-label {
+      font-size: 0.55rem;
+      color: rgba(204,200,208,0.30);
+      letter-spacing: 0.04em;
+      line-height: 1.2;
+      text-align: center;
+      pointer-events: none;
+    }
+    .key.in-scale .key-label,
+    .key.root .key-label { color: rgba(204,200,208,0.65); }
+
+    .degree-label {
+      font-size: 0.48rem;
+      color: rgba(160,154,204,0.55);
+      font-style: italic;
+      pointer-events: none;
+    }
+
+    /* ── Mode info ────────────────────────────── */
+    .mode-info {
+      text-align: center;
+      max-width: 520px;
+    }
+
+    .mode-name {
+      font-size: 0.9rem;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      font-style: italic;
+      margin-bottom: 0.3rem;
+    }
+
+    .mode-desc {
+      font-size: 0.6rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      line-height: 1.7;
+    }
+
+    .intervals-display {
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      color: rgba(160,154,204,0.50);
+      margin-top: 0.4rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hint {
+      font-size: 0.54rem;
+      letter-spacing: 0.12em;
+      color: rgba(204,200,208,0.12);
+      font-style: italic;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1 class="title">modes</h1>
+  <p class="sub">scales built on each degree — same notes, different gravity</p>
+</div>
+
+<div class="scale-tabs" id="scale-tabs"></div>
+
+<div class="root-row" id="root-row"></div>
+
+<div class="keyboard-wrap">
+  <div class="keyboard" id="keyboard"></div>
+</div>
+
+<div class="mode-info">
+  <div class="mode-name" id="mode-name"></div>
+  <div class="mode-desc" id="mode-desc"></div>
+  <div class="intervals-display" id="intervals-display"></div>
+</div>
+
+<p class="hint">esc stops all · click to play scale tone</p>
+
+<script>
+// ── Scale definitions ─────────────────────────────────────
+// Each scale: array of semitone intervals from root
+// Modes: array of {name, start-degree, description}
+
+const SCALES = {
+  major: {
+    label: 'major modes',
+    intervals: [2,2,1,2,2,2,1],
+    modes: [
+      { name: 'ionian',     start: 0, desc: 'the major scale — bright, stable, resolved' },
+      { name: 'dorian',     start: 1, desc: 'minor with a raised 6th — jazz and folk, soulful and slightly bright' },
+      { name: 'phrygian',   start: 2, desc: 'minor with a lowered 2nd — dark, Iberian, flamenco' },
+      { name: 'lydian',     start: 3, desc: 'major with a raised 4th — dreamy, floating, Debussy and film scores' },
+      { name: 'mixolydian', start: 4, desc: 'major with a lowered 7th — rock, blues, dominant seventh' },
+      { name: 'aeolian',    start: 5, desc: 'the natural minor — melancholic, unresolved, dark' },
+      { name: 'locrian',    start: 6, desc: 'diminished root, tritone fifth — unstable, rare in tonal practice' },
+    ],
+  },
+  melodicMinor: {
+    label: 'melodic minor modes',
+    intervals: [2,1,2,2,2,2,1],
+    modes: [
+      { name: 'melodic minor',        start: 0, desc: 'minor with raised 6th and 7th — Bach, jazz, both minor and major simultaneously' },
+      { name: 'dorian ♭2',           start: 1, desc: 'phrygian with major 6th — used in fusion and jazz harmony' },
+      { name: 'lydian augmented',     start: 2, desc: 'lydian with raised 5th — ethereal, unmoored from gravity' },
+      { name: 'lydian dominant',      start: 3, desc: 'lydian with lowered 7th — tritone substitution territory, jazz IV chord' },
+      { name: 'mixolydian ♭6',       start: 4, desc: 'major with lowered 6th and 7th — Hindu scale, bittersweet' },
+      { name: 'locrian ♮2',          start: 5, desc: 'half-diminished, raised 2nd — the m7♭5 chord, jazz and post-bop' },
+      { name: 'altered (super-locrian)', start: 6, desc: 'all tensions lowered/raised — the dominant altered scale; maximum tension' },
+    ],
+  },
+  harmonicMinor: {
+    label: 'harmonic minor modes',
+    intervals: [2,1,2,2,1,3,1],
+    modes: [
+      { name: 'harmonic minor',          start: 0, desc: 'natural minor with raised 7th — classical cadential motion; augmented second is the signature' },
+      { name: 'locrian ♮6',             start: 1, desc: 'half-dim with raised 6th — unusual, minor i over diminished vii' },
+      { name: 'ionian ♯5',              start: 2, desc: 'major with raised 5th — augmented tonic, surreal brightness' },
+      { name: 'dorian ♯4',              start: 3, desc: 'dorian with raised 4th — Romanian scale, Bartók territory' },
+      { name: 'phrygian dominant',       start: 4, desc: 'phrygian with major 3rd — flamenco, Jewish traditional, Spanish cadence' },
+      { name: 'lydian ♯2',              start: 5, desc: 'lydian with raised 2nd — exotic, rare, colorful' },
+      { name: 'altered diminished (♭♭7)', start: 6, desc: 'diminished scale with double-lowered 7th — tense, leading-tone saturated' },
+    ],
+  },
+  pentatonic: {
+    label: 'pentatonic',
+    intervals: [2,2,3,2,3],
+    modes: [
+      { name: 'major pentatonic',  start: 0, desc: 'universal scale — folk, blues, rock, gospel worldwide' },
+      { name: 'Egyptian',          start: 1, desc: 'sus pentatonic — suspended feel, no third' },
+      { name: 'blues major',       start: 2, desc: 'man gong — minor pentatonic starting point' },
+      { name: 'minor pentatonic',  start: 3, desc: 'the blues scale foundation — rock guitar, riffs, calls' },
+      { name: 'Yo (Japanese)',     start: 4, desc: 'Japanese Yo scale — traditional Japanese music' },
+    ],
+  },
+  wholetone: {
+    label: 'whole tone',
+    intervals: [2,2,2,2,2,2],
+    modes: [
+      { name: 'whole tone', start: 0, desc: 'six equal steps — all augmented chords, ambiguous, Debussy, dreamlike — only two transpositions exist' },
+    ],
+  },
+  diminished: {
+    label: 'diminished',
+    intervals: [2,1,2,1,2,1,2,1],
+    modes: [
+      { name: 'diminished (whole-half)', start: 0, desc: 'symmetric 8-note scale — whole-half pattern; over fully-diminished chords; jazz, jazz, jazz' },
+      { name: 'diminished (half-whole)', start: 1, desc: 'half-whole pattern — over dominant 7♭9 chords; the "bebop diminished"' },
+    ],
+  },
+};
+
+// ── State ─────────────────────────────────────────────────
+let currentScale = 'major';
+let currentModeIdx = 0;
+let currentRoot = 0; // semitones from C4
+
+const ROOT_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+
+// 2 octaves of chromatic from root
+const WHITE_PATTERN = [0,2,4,5,7,9,11,12,14,16,17,19,21,23]; // semitones of white keys C..B..C
+const BLACK_OFFSETS = {1:1, 3:2, 6:4, 8:5, 10:6, 13:8, 15:9, 18:11, 20:12, 22:13};
+
+// ── Audio ─────────────────────────────────────────────────
+let ac = null;
+const voices = {};
+const playingNotes = new Set();
+
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+
+function playNote(semitone) {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  const midi = 60 + semitone; // C4 = 60
+  const key = String(midi);
+  if (playingNotes.has(key)) return;
+
+  const freq = midiToFreq(midi);
+  const osc  = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, ac.currentTime);
+  gain.gain.setTargetAtTime(0.12, ac.currentTime, 0.01);
+  gain.gain.setTargetAtTime(0, ac.currentTime + 0.6, 0.08);
+  osc.connect(gain); gain.connect(ac.destination);
+  osc.start();
+  playingNotes.add(key);
+  voices[key] = osc;
+  setTimeout(() => {
+    try { osc.stop(); } catch(e){}
+    playingNotes.delete(key);
+    delete voices[key];
+    updateKeyVisuals();
+  }, 900);
+  updateKeyVisuals();
+}
+
+function stopAll() {
+  for (const [k, osc] of Object.entries(voices)) {
+    try { osc.stop(); } catch(e){}
+    delete voices[k];
+  }
+  playingNotes.clear();
+  updateKeyVisuals();
+}
+
+// ── Scale computation ─────────────────────────────────────
+function getScaleNotes() {
+  const sc = SCALES[currentScale];
+  const mode = sc.modes[currentModeIdx];
+  const allIntervals = sc.intervals;
+  const n = allIntervals.length;
+
+  // Build cumulative steps for full scale starting from mode.start
+  const steps = [];
+  let cum = 0;
+  for (let i = 0; i < n; i++) {
+    const idx = (mode.start + i) % n;
+    steps.push(cum);
+    cum += allIntervals[idx];
+  }
+  steps.push(cum); // octave
+
+  // Apply root offset
+  const rootSemi = currentRoot;
+  return steps.map(s => (s + rootSemi) % 12);
+}
+
+function getScaleNotesSet() { return new Set(getScaleNotes()); }
+
+// Degree names for scale steps
+const DEGREE_NAMES = ['1','♭2','2','♭3','3','4','♯4/♭5','5','♭6','6','♭7','7'];
+
+function degreeInScale(semitone) {
+  const sc = SCALES[currentScale];
+  const mode = sc.modes[currentModeIdx];
+  const n = sc.intervals.length;
+  let cum = 0;
+  const steps = [];
+  for (let i = 0; i < n; i++) {
+    const idx = (mode.start + i) % n;
+    steps.push((cum + currentRoot) % 12);
+    cum += sc.intervals[idx];
+  }
+  const pos = steps.indexOf((semitone + 12) % 12);
+  return pos >= 0 ? (pos + 1) : null;
+}
+
+// ── Build UI ──────────────────────────────────────────────
+function buildScaleTabs() {
+  const el = document.getElementById('scale-tabs');
+  el.innerHTML = '';
+  for (const [key, sc] of Object.entries(SCALES)) {
+    const btn = document.createElement('button');
+    btn.className = 'scale-btn' + (key === currentScale ? ' on' : '');
+    btn.textContent = sc.label;
+    btn.addEventListener('click', () => {
+      currentScale = key;
+      currentModeIdx = 0;
+      buildScaleTabs();
+      buildModeInfo();
+      updateKeyVisuals();
+    });
+    el.appendChild(btn);
+  }
+}
+
+function buildRootRow() {
+  const el = document.getElementById('root-row');
+  el.innerHTML = '';
+  ROOT_NAMES.forEach((name, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'root-btn' + (i === currentRoot ? ' on' : '');
+    btn.textContent = name;
+    btn.addEventListener('click', () => {
+      currentRoot = i;
+      buildRootRow();
+      buildModeInfo();
+      updateKeyVisuals();
+    });
+    el.appendChild(btn);
+  });
+}
+
+function buildKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+
+  // Two octaves: 14 white keys, black keys as absolute-positioned overlays
+  const whiteKeys = [0,2,4,5,7,9,11,12,14,16,17,19,21,23]; // semitones above C4
+  const whiteCount = whiteKeys.length;
+  const keyW = 100 / whiteCount;
+
+  // White keys first
+  whiteKeys.forEach((semi, wi) => {
+    const div = document.createElement('div');
+    div.className = 'key white';
+    div.dataset.semi = semi + currentRoot;
+    div.style.width = keyW + '%';
+    div.style.left = (wi * keyW) + '%';
+    div.style.position = 'absolute';
+    div.style.height = '100%';
+
+    const noteName = ROOT_NAMES[(semi + currentRoot) % 12];
+    div.innerHTML = `<span class="key-label">${noteName}</span>`;
+    div.addEventListener('mousedown', () => playNote(semi + currentRoot));
+    div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi + currentRoot); }, {passive: false});
+    kb.appendChild(div);
+  });
+
+  // Black keys
+  const blackMap = {1: [0,1], 3: [1,2], 6: [3,4], 8: [4,5], 10: [5,6],
+                    13: [7,8], 15: [8,9], 18: [10,11], 20: [11,12], 22: [12,13]};
+  for (const [semiStr, [leftWi, rightWi]] of Object.entries(blackMap)) {
+    const semi = parseInt(semiStr);
+    const div = document.createElement('div');
+    div.className = 'key black';
+    div.dataset.semi = semi + currentRoot;
+    const leftPct = (leftWi + 1) * keyW - keyW * 0.29;
+    div.style.left = leftPct + '%';
+    div.style.width = keyW * 0.58 + '%';
+    div.innerHTML = `<span class="key-label" style="margin-top:4px">${ROOT_NAMES[(semi + currentRoot) % 12]}</span>`;
+    div.addEventListener('mousedown', () => playNote(semi + currentRoot));
+    div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi + currentRoot); }, {passive: false});
+    kb.appendChild(div);
+  }
+
+  updateKeyVisuals();
+}
+
+function updateKeyVisuals() {
+  const scaleSet = getScaleNotesSet();
+  const rootPc = currentRoot % 12;
+
+  document.querySelectorAll('.key').forEach(k => {
+    const semi = parseInt(k.dataset.semi);
+    const pc = ((semi % 12) + 12) % 12;
+    const midiKey = String(60 + semi);
+    const isRoot = (pc === rootPc);
+    const inScale = scaleSet.has(pc);
+    const isPlaying = playingNotes.has(midiKey);
+
+    k.classList.toggle('root', isRoot);
+    k.classList.toggle('in-scale', inScale && !isRoot);
+    k.classList.toggle('playing', isPlaying);
+
+    // Update degree label
+    const existingDeg = k.querySelector('.degree-label');
+    if (existingDeg) existingDeg.remove();
+    if (inScale || isRoot) {
+      const deg = degreeInScale(pc);
+      if (deg !== null) {
+        const d = document.createElement('span');
+        d.className = 'degree-label';
+        d.textContent = deg;
+        k.appendChild(d);
+      }
+    }
+  });
+}
+
+function buildModeInfo() {
+  const sc = SCALES[currentScale];
+
+  // Build mode buttons inline
+  const el = document.getElementById('scale-tabs');
+  el.innerHTML = '';
+
+  // Scale family buttons
+  for (const [key, s] of Object.entries(SCALES)) {
+    const btn = document.createElement('button');
+    btn.className = 'scale-btn' + (key === currentScale ? ' on' : '');
+    btn.textContent = s.label;
+    btn.addEventListener('click', () => {
+      currentScale = key; currentModeIdx = 0;
+      buildModeInfo(); updateKeyVisuals(); buildRootRow();
+    });
+    el.appendChild(btn);
+  }
+
+  // Mode info
+  const mode = sc.modes[currentModeIdx];
+  document.getElementById('mode-name').textContent = mode.name;
+  document.getElementById('mode-desc').textContent = mode.desc;
+
+  // Interval steps
+  const n = sc.intervals.length;
+  const steps = [];
+  let c = 0;
+  for (let i = 0; i < n; i++) {
+    const idx = (mode.start + i) % n;
+    c += sc.intervals[idx];
+    steps.push(c);
+  }
+  document.getElementById('intervals-display').textContent =
+    sc.intervals.slice(mode.start).concat(sc.intervals.slice(0, mode.start)).join(' · ') +
+    '  →  ' + getScaleNotes().map(s => ROOT_NAMES[s]).join(' ');
+
+  // Add mode selector buttons below scale tabs
+  if (sc.modes.length > 1) {
+    const modeRow = document.createElement('div');
+    modeRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.35rem;justify-content:center;margin-top:0.5rem;';
+    sc.modes.forEach((m, i) => {
+      const b = document.createElement('button');
+      b.className = 'scale-btn' + (i === currentModeIdx ? ' on' : '');
+      b.style.fontSize = '0.6rem';
+      b.textContent = m.name;
+      b.addEventListener('click', () => {
+        currentModeIdx = i;
+        buildModeInfo(); updateKeyVisuals();
+      });
+      modeRow.appendChild(b);
+    });
+    el.appendChild(modeRow);
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') stopAll(); });
+
+// ── Init ──────────────────────────────────────────────────
+buildScaleTabs();
+buildRootRow();
+buildKeyboard();
+buildModeInfo();
+updateKeyVisuals();
+</script>
+</body>
+</html>
