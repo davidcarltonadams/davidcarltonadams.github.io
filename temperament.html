@@ -298,6 +298,8 @@ function midiToFreq(midi, a4 = 440) {
 }
 
 // ── 2. AUDIO ENGINE ───────────────────────────────────────────────────────────
+// Voice pool: oscillators run continuously at zero gain — no create/destroy GC pressure.
+// To play a note, grab an idle slot, set its frequency, apply envelope. Zero allocation.
 
 let ac = null;
 let masterComp = null, masterLPF = null;
@@ -306,52 +308,75 @@ let droneOn = false;
 
 const NOTE_MIDI = { C:60, D:62, E:64, F:65, G:67, A:69, B:71 };
 let droneNote = 'C', droneOct = 3;
+function getDroneMidi() { return NOTE_MIDI[droneNote] + (droneOct - 4) * 12; }
 
-function getDroneMidi() {
-  return NOTE_MIDI[droneNote] + (droneOct - 4) * 12;
-}
+// Pool
+const POOL_SIZE = 20;
+let pool = null; // [{osc, gain, freeAt}]
 
 function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
+
   masterLPF = ac.createBiquadFilter();
   masterLPF.type = 'lowpass';
-  masterLPF.frequency.value = 2800;
-  masterLPF.Q.value = 0.5;
+  masterLPF.frequency.value = 2200; // warmer with sawtooth
+  masterLPF.Q.value = 0.4;
+
   masterComp = ac.createDynamicsCompressor();
-  masterComp.threshold.setValueAtTime(-18, ac.currentTime);
-  masterComp.knee.setValueAtTime(6, ac.currentTime);
-  masterComp.ratio.setValueAtTime(4, ac.currentTime);
+  masterComp.threshold.setValueAtTime(-20, ac.currentTime);
+  masterComp.knee.setValueAtTime(8, ac.currentTime);
+  masterComp.ratio.setValueAtTime(5, ac.currentTime);
+  masterComp.attack.setValueAtTime(0.002, ac.currentTime);
+  masterComp.release.setValueAtTime(0.08, ac.currentTime);
+
   masterLPF.connect(masterComp);
   masterComp.connect(ac.destination);
+
+  // Build pool: sawtooth oscillators idling at zero gain
+  pool = [];
+  for (let i = 0; i < POOL_SIZE; i++) {
+    const osc = ac.createOscillator();
+    const g   = ac.createGain();
+    osc.type = 'sawtooth';
+    g.gain.value = 0;
+    osc.connect(g);
+    g.connect(masterLPF);
+    osc.start();
+    pool.push({ osc, gain: g, freeAt: 0 });
+  }
 }
 
-function playNoteAt(midi, startTime, durationSec, vol = 0.18) {
-  if (!ac) return;
+function getVoice() {
+  const now = ac.currentTime;
+  // Prefer fully free voices; otherwise steal the one that frees soonest
+  let best = pool[0];
+  for (const v of pool) {
+    if (v.freeAt <= now) return v;
+    if (v.freeAt < best.freeAt) best = v;
+  }
+  return best;
+}
+
+function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
+  if (!pool) return;
+  const v = getVoice();
   const freq = midiToFreq(midi);
-  const sine = ac.createOscillator();
-  const tri  = ac.createOscillator();
-  const sg = ac.createGain(), tg = ac.createGain(), vg = ac.createGain();
+  const t   = startTime;
+  const off = t + Math.max(durationSec - 0.015, 0.015);
+  const rel = 0.055; // release τ
 
-  sine.type = 'sine'; tri.type = 'triangle';
-  sine.frequency.value = freq; tri.frequency.value = freq;
-  sg.gain.value = 0.72; tg.gain.value = 0.22;
+  v.osc.frequency.cancelScheduledValues(t);
+  v.osc.frequency.setValueAtTime(freq, t);
 
-  sine.connect(sg); tri.connect(tg);
-  sg.connect(vg); tg.connect(vg);
+  const g = v.gain.gain;
+  g.cancelScheduledValues(t);
+  g.setValueAtTime(0.0001, t);
+  g.exponentialRampToValueAtTime(vol, t + 0.005);       // fast attack
+  g.exponentialRampToValueAtTime(vol * 0.45, t + 0.14); // pluck decay
+  g.setTargetAtTime(0.0001, off, rel);                   // release
 
-  // Envelope: fast attack, decay to sustain, release
-  const t = startTime;
-  vg.gain.setValueAtTime(0.001, t);
-  vg.gain.exponentialRampToValueAtTime(vol, t + 0.006);
-  vg.gain.exponentialRampToValueAtTime(vol * 0.55, t + 0.18);
-  const off = t + Math.max(durationSec - 0.01, 0.01);
-  vg.gain.setTargetAtTime(0.001, off, 0.04);
-
-  vg.connect(masterLPF);
-  sine.start(t); tri.start(t);
-  const stopTime = t + durationSec + 0.25;
-  sine.stop(stopTime); tri.stop(stopTime);
+  v.freeAt = off + rel * 5; // mark busy until release tail clears
 }
 
 function startDrone() {
@@ -359,12 +384,12 @@ function startDrone() {
   if (ac.state === 'suspended') ac.resume();
   stopDrone();
   const freq = midiToFreq(getDroneMidi());
-  droneOsc = ac.createOscillator();
+  droneOsc  = ac.createOscillator();
   droneGain = ac.createGain();
   droneOsc.type = 'sine';
   droneOsc.frequency.value = freq;
   droneGain.gain.setValueAtTime(0.001, ac.currentTime);
-  droneGain.gain.exponentialRampToValueAtTime(0.22, ac.currentTime + 0.05);
+  droneGain.gain.exponentialRampToValueAtTime(0.22, ac.currentTime + 0.06);
   droneOsc.connect(droneGain);
   droneGain.connect(masterLPF);
   droneOsc.start();
@@ -372,9 +397,9 @@ function startDrone() {
 
 function stopDrone() {
   if (!droneGain) return;
-  droneGain.gain.setTargetAtTime(0.001, ac.currentTime, 0.04);
+  droneGain.gain.setTargetAtTime(0.001, ac.currentTime, 0.05);
   const o = droneOsc, g = droneGain;
-  setTimeout(() => { try { o.stop(); } catch(e){} }, 300);
+  setTimeout(() => { try { o.stop(); } catch(e){} }, 400);
   droneOsc = droneGain = null;
 }
 
