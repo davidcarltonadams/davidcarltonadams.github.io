@@ -240,18 +240,18 @@
   <button class="ctrl-btn" id="btn-dots">ratio dots</button>
   <div class="slider-row">
     blur
-    <input type="range" class="ctrl-range" id="blur-slider" min="3" max="40" value="11">
-    <span id="blur-val">11¢</span>
+    <input type="range" class="ctrl-range" id="blur-slider" min="3" max="40" value="9">
+    <span id="blur-val">9¢</span>
   </div>
   <div class="slider-row">
     depth
-    <input type="range" class="ctrl-range" id="depth-slider" min="4" max="48" value="24">
-    <span id="depth-val">24</span>
+    <input type="range" class="ctrl-range" id="depth-slider" min="4" max="200" value="100">
+    <span id="depth-val">100</span>
   </div>
   <div class="slider-row">
-    contrast
-    <input type="range" class="ctrl-range" id="contrast-slider" min="12" max="60" value="22">
-    <span id="contrast-val">2.2</span>
+    clip
+    <input type="range" class="ctrl-range" id="contrast-slider" min="5" max="100" value="22">
+    <span id="contrast-val">22%</span>
   </div>
 </div>
 
@@ -333,15 +333,15 @@ function nearestRatio(ratios, cents) {
 }
 
 // ── State ─────────────────────────────────────────────────
-let ratios = buildRatios(24);
-let sigma  = 11;
+let ratios = buildRatios(100); // need height≥88 for 11:8 (11×8=88)
+let sigma  = 9;
 let N      = 1200;
 let landscape = buildLandscape(ratios, sigma, N);
 let showTET    = true;
 let showLabels = true;
 let showPhi    = true;
 let showDots   = false;
-let contrast   = 2.2;
+let clipFrac   = 0.22; // fraction of interior max used as ceiling; <1 clips strong peaks
 
 const PHI_CENTS = 1200 * Math.log2((1 + Math.sqrt(5)) / 2); // ≈ 833.09¢
 
@@ -435,13 +435,14 @@ function draw() {
   g.fillRect(0, 0, w, h);
 
   // Normalize landscape
-  // Floor = true minimum across all samples (removes DC offset)
-  // Ceiling = interior maximum only (excludes unison/octave edges so 3:2 maps to top)
+  // Floor = absolute minimum; Ceiling = clipFrac × interior max
+  // Values above ceiling clip at the top, revealing weaker intervals
   let minV = landscape[0];
   for (let i = 1; i < N; i++) if (landscape[i] < minV) minV = landscape[i];
-  const EDGE = Math.floor(N * 0.025); // ~30¢ guard zone at each end
-  let maxV = 0;
-  for (let i = EDGE; i < N - EDGE; i++) if (landscape[i] > maxV) maxV = landscape[i];
+  const EDGE = Math.floor(N * 0.025);
+  let interiorMax = 0;
+  for (let i = EDGE; i < N - EDGE; i++) if (landscape[i] > interiorMax) interiorMax = landscape[i];
+  const maxV  = minV + (interiorMax - minV) * clipFrac;
   const range = maxV - minV;
 
   const PLOT_TOP    = 32;
@@ -451,8 +452,8 @@ function draw() {
   const centsToX = c => (c / 1200) * w;
   const valToY = v => {
     const norm = range > 0 ? Math.max(0, (v - minV) / range) : 0;
-    // clip at 1 so unison/octave just touch the top rather than overflowing
-    return PLOT_BOTTOM - Math.pow(Math.min(1, norm), contrast) * PLOT_H * 0.94;
+    // gamma 0.65: stretches small peaks upward so weak intervals stay visible
+    return PLOT_BOTTOM - Math.pow(Math.min(1, norm), 0.65) * PLOT_H * 0.94;
   };
 
   // ── 12-TET grid lines ─────────────────────────────────
@@ -653,6 +654,8 @@ cv.addEventListener('mouseleave', () => {
 });
 
 cv.addEventListener('mousedown', e => {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
   dragging = true;
   updateCursor(centsFromEvent(e));
 });
@@ -666,6 +669,8 @@ window.addEventListener('mouseup', () => {
 
 cv.addEventListener('touchstart', e => {
   e.preventDefault();
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
   dragging = true;
   updateCursor(centsFromEvent(e));
 }, { passive: false });
@@ -685,7 +690,8 @@ document.getElementById('btn-drone').addEventListener('click', () => {
   initAudio();
   if (ac.state === 'suspended') ac.resume();
   droneOn = !droneOn;
-  if (droneOn) startDrone(); else stopDrone();
+  if (droneOn) startDrone();
+  else { stopDrone(); clearCursorPitch(); }
   updateDroneBtn();
 });
 
@@ -733,8 +739,8 @@ document.getElementById('depth-slider').addEventListener('input', function() {
 });
 
 document.getElementById('contrast-slider').addEventListener('input', function() {
-  contrast = parseInt(this.value) / 10;
-  document.getElementById('contrast-val').textContent = contrast.toFixed(1);
+  clipFrac = parseInt(this.value) / 100;
+  document.getElementById('contrast-val').textContent = Math.round(clipFrac * 100) + '%';
   draw();
 });
 
