@@ -177,6 +177,13 @@
       border-radius: 50%; background: var(--dim); cursor: pointer;
     }
 
+    .note-row {
+      display: flex; gap: 0.25rem; align-items: center;
+      font-size: 0.58rem; color: var(--dimmer); font-style: italic;
+      letter-spacing: 0.06em;
+    }
+    .note-row .ctrl-btn { padding: 0.22rem 0.5rem; min-width: 1.6rem; }
+
     .hint {
       font-size: 0.54rem;
       letter-spacing: 0.12em;
@@ -233,6 +240,22 @@
 </div>
 
 <div class="controls">
+  <div class="note-row">
+    root
+    <button class="ctrl-btn note-btn" data-note="C">C</button>
+    <button class="ctrl-btn note-btn" data-note="D">D</button>
+    <button class="ctrl-btn note-btn" data-note="E">E</button>
+    <button class="ctrl-btn note-btn" data-note="F">F</button>
+    <button class="ctrl-btn note-btn" data-note="G">G</button>
+    <button class="ctrl-btn note-btn on" data-note="A">A</button>
+    <button class="ctrl-btn note-btn" data-note="B">B</button>
+    &nbsp;
+    <button class="ctrl-btn oct-btn" data-oct="2">2</button>
+    <button class="ctrl-btn oct-btn on" data-oct="3">3</button>
+    <button class="ctrl-btn oct-btn" data-oct="4">4</button>
+    &nbsp;
+    <span id="root-display" style="color:var(--ji);letter-spacing:.04em">A3 · 220 Hz</span>
+  </div>
   <button class="ctrl-btn" id="btn-drone">drone: off</button>
   <button class="ctrl-btn on" id="btn-tet">12-TET lines</button>
   <button class="ctrl-btn on" id="btn-labels">JI labels</button>
@@ -348,7 +371,11 @@ const PHI_CENTS = 1200 * Math.log2((1 + Math.sqrt(5)) / 2); // ≈ 833.09¢
 // ── Audio ─────────────────────────────────────────────────
 let ac = null, droneOsc = null, droneGain = null, cursorOsc = null, cursorGain = null;
 let droneOn = false;
-const DRONE_FREQ = 220; // A3
+
+// Root pitch
+const NOTE_BASE = { C:130.813, D:146.832, E:164.814, F:174.614, G:195.998, A:220.000, B:246.942 };
+let droneNote = 'A', droneOct = 3;
+function getDroneFreq() { return NOTE_BASE[droneNote] * Math.pow(2, droneOct - 3); }
 
 function initAudio() {
   if (ac) return;
@@ -361,12 +388,18 @@ function startDrone() {
   droneOsc = ac.createOscillator();
   droneGain = ac.createGain();
   droneOsc.type = 'sine';
-  droneOsc.frequency.value = DRONE_FREQ;
+  droneOsc.frequency.value = getDroneFreq();
   droneGain.gain.setValueAtTime(0, ac.currentTime);
   droneGain.gain.setTargetAtTime(0.18, ac.currentTime, 0.05);
   droneOsc.connect(droneGain);
   droneGain.connect(ac.destination);
   droneOsc.start();
+}
+
+function updateDroneFreq() {
+  const freq = getDroneFreq();
+  if (droneOsc) droneOsc.frequency.setTargetAtTime(freq, ac.currentTime, 0.02);
+  if (cursorOsc && cursorCents >= 0) setCursorPitch(cursorCents);
 }
 
 function stopDrone() {
@@ -379,7 +412,7 @@ function stopDrone() {
 
 function setCursorPitch(cents) {
   if (!ac) return;
-  const freq = DRONE_FREQ * Math.pow(2, cents / 1200);
+  const freq = getDroneFreq() * Math.pow(2, cents / 1200);
   if (!cursorOsc) {
     cursorOsc = ac.createOscillator();
     cursorGain = ac.createGain();
@@ -683,6 +716,33 @@ cv.addEventListener('touchmove', e => {
 cv.addEventListener('touchend', () => {
   dragging = false;
   if (!droneOn) clearCursorPitch();
+});
+
+// ── Root note + octave ────────────────────────────────────
+function updateRootDisplay() {
+  const freq = getDroneFreq();
+  document.getElementById('root-display').textContent =
+    `${droneNote}${droneOct} · ${freq.toFixed(1)} Hz`;
+}
+
+document.querySelectorAll('.note-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    droneNote = this.dataset.note;
+    document.querySelectorAll('.note-btn').forEach(b => b.classList.remove('on'));
+    this.classList.add('on');
+    updateRootDisplay();
+    updateDroneFreq();
+  });
+});
+
+document.querySelectorAll('.oct-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    droneOct = parseInt(this.dataset.oct);
+    document.querySelectorAll('.oct-btn').forEach(b => b.classList.remove('on'));
+    this.classList.add('on');
+    updateRootDisplay();
+    updateDroneFreq();
+  });
 });
 
 // ── Controls ──────────────────────────────────────────────
