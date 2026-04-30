@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>temperament · wtk</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #060608; --bg2: #0c0c10; --text: #ccc8d0;
+      --dim: rgba(204,200,208,0.38); --dimmer: rgba(204,200,208,0.18);
+      --border: rgba(255,255,255,0.07);
+      --ji: #a0c888; --tet: #8ab0c8; --warm: #c8a060;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: Georgia, serif; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 2.5rem 1rem 4rem; gap: 1.8rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+    .title {
+      font-size: clamp(0.85rem,2.2vw,1.1rem); font-weight: normal;
+      letter-spacing: 0.2em; text-transform: lowercase; text-align: center;
+    }
+    .sub {
+      font-size: 0.58rem; letter-spacing: 0.1em; color: var(--dimmer);
+      font-style: italic; margin-top: 0.35rem; text-align: center;
+      line-height: 1.8;
+    }
+
+    /* ── Pitch class grid ── */
+    .pc-grid {
+      display: grid; grid-template-columns: repeat(12,1fr);
+      gap: 3px; width: 100%; max-width: 780px;
+    }
+    .pc-cell {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 2px; padding: 0.5rem 0.1rem; text-align: center;
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .pc-cell.playing { border-color: var(--ji); background: rgba(160,200,136,0.06); }
+    .pc-name {
+      font-size: clamp(0.48rem,1.4vw,0.68rem); letter-spacing: 0.02em; color: var(--text);
+    }
+    .pc-dev {
+      font-size: clamp(0.38rem,1vw,0.55rem); font-style: italic; margin-top: 3px;
+      transition: color 0.25s;
+    }
+    .pc-bar {
+      height: 2px; border-radius: 1px; margin: 3px auto 0; width: 70%;
+      transition: background 0.25s, width 0.25s;
+    }
+
+    /* ── Fifth slider ── */
+    .slider-section { width: 100%; max-width: 780px; }
+    .fifth-readout {
+      text-align: center; font-size: 0.72rem; color: var(--ji);
+      letter-spacing: 0.08em; font-style: italic; margin-bottom: 0.6rem;
+    }
+    .slider-wrap { position: relative; padding-bottom: 2.2rem; }
+    .fifth-slider {
+      -webkit-appearance: none; width: 100%; height: 2px;
+      background: var(--border); outline: none; border-radius: 1px;
+    }
+    .fifth-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 12px; height: 12px;
+      border-radius: 50%; background: var(--ji); cursor: pointer;
+    }
+    .landmarks { position: relative; height: 2.2rem; }
+    .landmark {
+      position: absolute; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .landmark-tick { width: 1px; height: 5px; background: var(--dim); }
+    .landmark-label {
+      font-size: 0.42rem; color: var(--dimmer); font-style: italic;
+      letter-spacing: 0.05em; white-space: nowrap; text-align: center; line-height: 1.2;
+    }
+
+    /* ── Preset buttons ── */
+    .presets { display: flex; flex-direction: column; gap: 0.5rem; align-items: center; }
+    .preset-row { display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: center; }
+    .preset-label {
+      font-size: 0.45rem; color: rgba(204,200,208,0.15);
+      letter-spacing: 0.12em; text-transform: uppercase;
+      text-align: center; width: 100%;
+    }
+    .ctrl-btn {
+      background: none; border: 1px solid var(--border); border-radius: 2px;
+      color: var(--dim); font-family: Georgia,serif; font-size: 0.6rem;
+      letter-spacing: 0.06em; padding: 0.25rem 0.65rem; cursor: pointer;
+      transition: color 0.12s, border-color 0.12s; white-space: nowrap;
+    }
+    .ctrl-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .ctrl-btn.on { color: var(--ji); border-color: var(--ji); }
+    .ctrl-btn.active-t { color: var(--warm); border-color: var(--warm); }
+    .ctrl-btn.well { color: var(--tet); border-color: rgba(138,176,200,0.3); }
+    .ctrl-btn.well.active-t { color: var(--warm); border-color: var(--warm); }
+
+    /* ── Drone + root ── */
+    .drone-row {
+      display: flex; gap: 0.4rem; flex-wrap: wrap;
+      align-items: center; justify-content: center;
+      width: 100%; max-width: 780px;
+    }
+    .note-row { display: flex; gap: 0.2rem; align-items: center; }
+    .note-row .ctrl-btn { padding: 0.2rem 0.4rem; min-width: 1.4rem; }
+    .note-row span { font-size: 0.52rem; color: var(--dimmer); font-style: italic; margin-right: 0.2rem; }
+    #root-hz { font-size: 0.52rem; color: var(--ji); letter-spacing: 0.04em; font-style: italic; }
+
+    /* ── WTK section ── */
+    .wtk-section { width: 100%; max-width: 780px; }
+    .wtk-header {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.6rem; margin-bottom: 0.8rem; flex-wrap: wrap;
+    }
+    .wtk-title { font-size: 0.62rem; color: var(--dim); letter-spacing: 0.14em; font-style: italic; }
+    .piece-grid {
+      display: grid; grid-template-columns: repeat(6,1fr); gap: 3px; margin-bottom: 0.8rem;
+    }
+    .piece-btn {
+      background: none; border: 1px solid var(--border); border-radius: 2px;
+      color: var(--dimmer); font-family: Georgia,serif; cursor: pointer;
+      text-align: center; padding: 0.35rem 0.1rem; line-height: 1.3;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .piece-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .piece-btn.selected { color: var(--ji); border-color: var(--ji); }
+    .piece-btn.playing-piece { color: var(--warm); border-color: var(--warm); }
+    .p-num { display: block; font-size: 0.58rem; }
+    .p-key { display: block; font-size: 0.42rem; font-style: italic; color: var(--dimmer); margin-top: 1px; }
+    .playback-bar {
+      display: flex; gap: 0.5rem; align-items: center;
+      justify-content: center; flex-wrap: wrap;
+    }
+    .tempo-row { display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.55rem; color: var(--dimmer); font-style: italic; }
+    .ctrl-range {
+      -webkit-appearance: none; width: 80px; height: 2px;
+      background: var(--border); outline: none; border-radius: 1px;
+    }
+    .ctrl-range::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: var(--dim); cursor: pointer;
+    }
+    .play-status { font-size: 0.52rem; color: var(--dimmer); font-style: italic; }
+    .hint {
+      font-size: 0.52rem; letter-spacing: 0.1em;
+      color: rgba(204,200,208,0.1); font-style: italic; text-align: center;
+      max-width: 520px;
+    }
+  </style>
+</head>
+<body>
+
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
+<div>
+  <h1 class="title">temperament</h1>
+  <p class="sub">drag the fifth &mdash; watch twelve notes reshape<br>play the Well-Tempered Clavier in any tuning</p>
+</div>
+
+<div class="pc-grid" id="pc-grid"></div>
+
+<div class="slider-section">
+  <div class="fifth-readout" id="fifth-readout">700.00¢ &mdash; 12-TET</div>
+  <div class="slider-wrap">
+    <input type="range" class="fifth-slider" id="fifth-slider" min="690" max="704" step="0.01" value="700">
+    <div class="landmarks" id="landmarks"></div>
+  </div>
+  <div class="presets">
+    <div class="preset-label">regular</div>
+    <div class="preset-row" id="regular-presets"></div>
+    <div class="preset-label" style="margin-top:0.2rem">well temperaments</div>
+    <div class="preset-row" id="well-presets"></div>
+  </div>
+</div>
+
+<div class="drone-row">
+  <div class="note-row">
+    <span>root</span>
+    <button class="ctrl-btn note-btn on" data-note="C">C</button>
+    <button class="ctrl-btn note-btn" data-note="D">D</button>
+    <button class="ctrl-btn note-btn" data-note="E">E</button>
+    <button class="ctrl-btn note-btn" data-note="F">F</button>
+    <button class="ctrl-btn note-btn" data-note="G">G</button>
+    <button class="ctrl-btn note-btn" data-note="A">A</button>
+    <button class="ctrl-btn note-btn" data-note="B">B</button>
+  </div>
+  <div class="note-row">
+    <button class="ctrl-btn oct-btn" data-oct="2">2</button>
+    <button class="ctrl-btn oct-btn on" data-oct="3">3</button>
+    <button class="ctrl-btn oct-btn" data-oct="4">4</button>
+  </div>
+  <span id="root-hz">C3 · 130.8 Hz</span>
+  <button class="ctrl-btn" id="btn-drone">drone</button>
+  <button class="ctrl-btn" id="btn-scale">scale ▶</button>
+</div>
+
+<div class="wtk-section">
+  <div class="wtk-header">
+    <span class="wtk-title">well-tempered clavier · fugues</span>
+    <button class="ctrl-btn on" id="btn-book1">Book I</button>
+    <button class="ctrl-btn" id="btn-book2">Book II</button>
+  </div>
+  <div class="piece-grid" id="piece-grid"></div>
+  <div class="playback-bar">
+    <button class="ctrl-btn" id="btn-play">▶ play</button>
+    <button class="ctrl-btn" id="btn-stop">■ stop</button>
+    <div class="tempo-row">
+      tempo
+      <input type="range" class="ctrl-range" id="tempo-slider" min="30" max="200" value="80">
+      <span id="tempo-val">80</span>
+    </div>
+    <span class="play-status" id="play-status">select a fugue</span>
+  </div>
+</div>
+
+<p class="hint">C major sounds pure · C♯ major sounds tense · each key has its own character · that was the point</p>
+
+<script>
+(function () {
+'use strict';
+
+// ── 1. TEMPERAMENT ENGINE ─────────────────────────────────────────────────────
+
+// Build 12 pcCents (cents from C for each pitch class 0-11=C,C#,D,...,B)
+// from a chain of fifths. fifths[i] = size of ith fifth C→G→D→A→E→B→F#→C#→G#→D#→A#→F
+const FIFTH_ORDER = [0,7,2,9,4,11,6,1,8,3,10,5]; // chain: C G D A E B F# C# G# D# A# F
+
+function buildFromFifths(fifths) {
+  const pc = new Float64Array(12);
+  let acc = 0;
+  for (let i = 0; i < 12; i++) {
+    pc[FIFTH_ORDER[i]] = ((acc % 1200) + 1200) % 1200;
+    if (i < 11) acc += fifths[i];
+  }
+  return pc;
+}
+
+function buildRegular(fifth) {
+  return buildFromFifths(new Array(12).fill(fifth));
+}
+
+// Named regular temperaments (single fifth size in cents)
+const REGULAR = [
+  { name: 'Pythagorean',    fifth: 701.955 },
+  { name: '12-TET',         fifth: 700.000 },
+  { name: '⅙ comma',        fifth: 698.371 },
+  { name: '¼ comma',        fifth: 696.578 },
+  { name: '31-TET',         fifth: 1200*18/31 },
+  { name: '19-TET',         fifth: 1200*11/19 },
+];
+
+// Well temperaments — irregular, defined by their 12 fifths around the circle
+// Order: C-G, G-D, D-A, A-E, E-B, B-F#, F#-C#, C#-G#, G#-Eb, Eb-Bb, Bb-F, F-C
+const PC   = 23.460; // Pythagorean comma ≈ cents
+const SC   = 21.506; // syntonic comma ≈ cents
+const P5   = 701.955;
+
+const WELL = [
+  {
+    name: 'Werckmeister III · 1691',
+    // 4 fifths narrow by PC/4: C-G, G-D, D-A, B-F#; rest pure
+    fifths: [P5-PC/4, P5-PC/4, P5-PC/4, P5, P5, P5-PC/4, P5, P5, P5, P5, P5, P5],
+  },
+  {
+    name: 'Kirnberger I · 1766',
+    // D-A narrow by full syntonic comma; rest pure. Gives pure major third C-E.
+    fifths: [P5, P5, P5-SC, P5, P5, P5, P5, P5, P5, P5, P5, P5],
+  },
+  {
+    name: 'Young II · 1800',
+    // C-G, G-D, D-A, A-E, E-B and F-C each narrow by PC/6; rest pure
+    fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6, P5, P5, P5, P5, P5, P5, P5-PC/6],
+  },
+];
+
+// Current temperament state
+let currentPcCents = buildRegular(700); // 12-TET default
+let currentFifth   = 700;
+let isWell         = false;
+let currentTempName = '12-TET';
+
+// Cents → frequency ratio relative to 12-TET (for MIDI note retuning)
+// pcCents[pc] = cents from C in current temperament
+function midiToFreq(midi, a4 = 440) {
+  const pc = ((midi % 12) + 12) % 12;
+  const deviation = currentPcCents[pc] - pc * 100; // vs 12-TET
+  return a4 * Math.pow(2, (midi - 69) / 12) * Math.pow(2, deviation / 1200);
+}
+
+// ── 2. AUDIO ENGINE ───────────────────────────────────────────────────────────
+
+let ac = null;
+let masterComp = null, masterLPF = null;
+let droneOsc = null, droneGain = null;
+let droneOn = false;
+
+const NOTE_MIDI = { C:60, D:62, E:64, F:65, G:67, A:69, B:71 };
+let droneNote = 'C', droneOct = 3;
+
+function getDroneMidi() {
+  return NOTE_MIDI[droneNote] + (droneOct - 4) * 12;
+}
+
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  masterLPF = ac.createBiquadFilter();
+  masterLPF.type = 'lowpass';
+  masterLPF.frequency.value = 2800;
+  masterLPF.Q.value = 0.5;
+  masterComp = ac.createDynamicsCompressor();
+  masterComp.threshold.setValueAtTime(-18, ac.currentTime);
+  masterComp.knee.setValueAtTime(6, ac.currentTime);
+  masterComp.ratio.setValueAtTime(4, ac.currentTime);
+  masterLPF.connect(masterComp);
+  masterComp.connect(ac.destination);
+}
+
+function playNoteAt(midi, startTime, durationSec, vol = 0.18) {
+  if (!ac) return;
+  const freq = midiToFreq(midi);
+  const sine = ac.createOscillator();
+  const tri  = ac.createOscillator();
+  const sg = ac.createGain(), tg = ac.createGain(), vg = ac.createGain();
+
+  sine.type = 'sine'; tri.type = 'triangle';
+  sine.frequency.value = freq; tri.frequency.value = freq;
+  sg.gain.value = 0.72; tg.gain.value = 0.22;
+
+  sine.connect(sg); tri.connect(tg);
+  sg.connect(vg); tg.connect(vg);
+
+  // Envelope: fast attack, decay to sustain, release
+  const t = startTime;
+  vg.gain.setValueAtTime(0.001, t);
+  vg.gain.exponentialRampToValueAtTime(vol, t + 0.006);
+  vg.gain.exponentialRampToValueAtTime(vol * 0.55, t + 0.18);
+  const off = t + Math.max(durationSec - 0.01, 0.01);
+  vg.gain.setTargetAtTime(0.001, off, 0.04);
+
+  vg.connect(masterLPF);
+  sine.start(t); tri.start(t);
+  const stopTime = t + durationSec + 0.25;
+  sine.stop(stopTime); tri.stop(stopTime);
+}
+
+function startDrone() {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  stopDrone();
+  const freq = midiToFreq(getDroneMidi());
+  droneOsc = ac.createOscillator();
+  droneGain = ac.createGain();
+  droneOsc.type = 'sine';
+  droneOsc.frequency.value = freq;
+  droneGain.gain.setValueAtTime(0.001, ac.currentTime);
+  droneGain.gain.exponentialRampToValueAtTime(0.22, ac.currentTime + 0.05);
+  droneOsc.connect(droneGain);
+  droneGain.connect(masterLPF);
+  droneOsc.start();
+}
+
+function stopDrone() {
+  if (!droneGain) return;
+  droneGain.gain.setTargetAtTime(0.001, ac.currentTime, 0.04);
+  const o = droneOsc, g = droneGain;
+  setTimeout(() => { try { o.stop(); } catch(e){} }, 300);
+  droneOsc = droneGain = null;
+}
+
+function updateDroneFreq() {
+  if (droneOsc) droneOsc.frequency.setTargetAtTime(midiToFreq(getDroneMidi()), ac.currentTime, 0.02);
+}
+
+// Scale playback
+let scaleTimer = null;
+function playScale() {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  if (scaleTimer) { clearTimeout(scaleTimer); scaleTimer = null; }
+
+  // Major scale degrees: W W H W W W H (semitones: 0 2 4 5 7 9 11 12)
+  const degrees = [0,2,4,5,7,9,11,12];
+  const rootMidi = getDroneMidi();
+  let now = ac.currentTime + 0.05;
+  const dur = 0.42;
+
+  degrees.forEach((d, i) => {
+    scaleTimer = setTimeout(() => playNoteAt(rootMidi + d, ac.currentTime + 0.01, dur, 0.2), i * dur * 1000);
+  });
+  // Highlight pc cells as scale plays
+  degrees.forEach((d, i) => {
+    setTimeout(() => {
+      clearHighlights();
+      highlightPc(((rootMidi + d) % 12 + 12) % 12);
+    }, i * dur * 1000);
+  });
+  setTimeout(clearHighlights, degrees.length * dur * 1000 + 200);
+}
+
+// ── 3. KERN PARSER ────────────────────────────────────────────────────────────
+
+function parseKernDuration(token) {
+  const m = token.match(/^(\d+)(\.{0,2})/);
+  if (!m) return null;
+  const n = parseInt(m[1]);
+  const dots = m[2].length;
+  let dur = n === 0 ? 8 : 4 / n; // in quarter notes
+  let add = dur;
+  for (let i = 0; i < dots; i++) { add /= 2; dur += add; }
+  return dur;
+}
+
+function parseKernPitch(token) {
+  // Returns midi note number or null for rest/grace/null
+  if (token === '.' || token.includes('r')) return null;
+  if (token.includes('q')) return null; // grace note
+  const pitchM = token.match(/([A-Ga-g]+)/);
+  if (!pitchM) return null;
+  const str = pitchM[1];
+  const upper = str[0] >= 'A' && str[0] <= 'G';
+  const letter = str[0].toUpperCase();
+  const PC_MAP = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 };
+  const pc = PC_MAP[letter];
+  if (pc === undefined) return null;
+  const octave = upper ? 4 - str.length : 3 + str.length;
+  const sharps = (token.match(/#/g) || []).length;
+  const flats  = (token.match(/-(?![>])/g) || []).length; // avoid matching ->
+  const acc = sharps - flats;
+  return 12 * (octave + 1) + pc + acc;
+}
+
+function parseKern(text) {
+  const lines = text.split('\n');
+  // Count spines
+  let nSpines = 0;
+  for (const l of lines) {
+    if (l.startsWith('**kern')) { nSpines = l.split('\t').length; break; }
+  }
+
+  let tempo = 72;
+  const voiceTime = new Float64Array(nSpines); // beats per voice
+  const voiceTie  = new Array(nSpines).fill(null); // {eventIdx} pending tie
+  const events = [];
+
+  for (const line of lines) {
+    if (!line || line.startsWith('!') || line.startsWith('*') || line.startsWith('=')) {
+      if (line.match(/^\*MM(\d+)/)) { const m = line.match(/\*MM(\d+)/); if (m) tempo = parseInt(m[1]); }
+      continue;
+    }
+    const tokens = line.split('\t');
+    for (let v = 0; v < Math.min(tokens.length, nSpines); v++) {
+      const tok = tokens[v].trim();
+      if (!tok || tok === '.') continue;
+      const dur = parseKernDuration(tok);
+      if (dur === null) continue;
+      const midi = parseKernPitch(tok);
+      const tieEnd   = tok.includes(']');
+      const tieStart = tok.includes('[');
+
+      if (tieEnd && voiceTie[v] !== null) {
+        // extend previous note's duration
+        events[voiceTie[v]].dur += dur;
+        if (!tieStart) voiceTie[v] = null;
+      } else if (midi !== null) {
+        const idx = events.length;
+        events.push({ t: voiceTime[v], dur, midi });
+        voiceTie[v] = tieStart ? idx : null;
+      } else {
+        voiceTie[v] = null; // rest clears tie
+      }
+      voiceTime[v] += dur;
+    }
+  }
+
+  events.sort((a, b) => a.t - b.t);
+  return { events, tempo };
+}
+
+// ── 4. SCHEDULER ─────────────────────────────────────────────────────────────
+
+const AHEAD = 0.12; // seconds to schedule ahead
+const TICK  = 30;   // ms between scheduler calls
+let schedTimer = null, score = null, schedIdx = 0;
+let playStartAC = 0, playBPM = 80;
+let isPlaying = false;
+
+function beatToSec(beats) { return beats * 60 / playBPM; }
+
+function schedLoop() {
+  if (!isPlaying || !score) return;
+  const now = ac.currentTime;
+  const until = now + AHEAD;
+  while (schedIdx < score.events.length) {
+    const ev = score.events[schedIdx];
+    const evTime = playStartAC + beatToSec(ev.t);
+    if (evTime > until) break;
+    const dur = Math.max(beatToSec(ev.dur) * 0.9, 0.04);
+    playNoteAt(ev.midi, evTime, dur, 0.15);
+    // highlight pc cell briefly
+    const pc = ((ev.midi % 12) + 12) % 12;
+    const delay = Math.max(0, (evTime - now) * 1000);
+    setTimeout(() => highlightPc(pc), delay);
+    schedIdx++;
+  }
+  if (schedIdx >= score.events.length) {
+    const lastEv = score.events[score.events.length - 1];
+    const endTime = (playStartAC + beatToSec(lastEv.t + lastEv.dur) - ac.currentTime) * 1000;
+    setTimeout(stopPlayback, Math.max(0, endTime) + 300);
+    return;
+  }
+  schedTimer = setTimeout(schedLoop, TICK);
+}
+
+function startPlayback() {
+  if (!score) return;
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  stopPlayback();
+  isPlaying = true;
+  schedIdx = 0;
+  playBPM = parseInt(document.getElementById('tempo-slider').value);
+  playStartAC = ac.currentTime + 0.1;
+  schedLoop();
+  document.getElementById('play-status').textContent = 'playing…';
+  document.getElementById('btn-play').classList.add('on');
+}
+
+function stopPlayback() {
+  clearTimeout(schedTimer);
+  isPlaying = false;
+  clearHighlights();
+  document.getElementById('play-status').textContent = score ? 'ready' : 'select a fugue';
+  document.getElementById('btn-play').classList.remove('on');
+}
+
+// ── 5. UI ─────────────────────────────────────────────────────────────────────
+
+const PC_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+
+const SLIDER_MIN = 690, SLIDER_MAX = 704;
+const LANDMARKS = [
+  { fifth: 694.737, label: '19-TET' },
+  { fifth: 694.786, label: '⅓ comma' },
+  { fifth: 696.578, label: '¼ comma' },
+  { fifth: 696.774, label: '31-TET' },
+  { fifth: 698.371, label: '⅙ comma' },
+  { fifth: 700.000, label: '12-TET' },
+  { fifth: 701.955, label: 'Pyth.' },
+];
+
+const WTK_KEYS = [
+  'C','c','C♯','c♯','D','d','E♭','e♭','E','e','F','f',
+  'F♯','f♯','G','g','A♭','g♯','A','a','B♭','b♭','B','b'
+];
+
+// Build pc grid
+function buildPcGrid() {
+  const grid = document.getElementById('pc-grid');
+  grid.innerHTML = '';
+  PC_NAMES.forEach((name, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'pc-cell';
+    cell.id = `pc-${i}`;
+    cell.innerHTML = `<div class="pc-name">${name}</div><div class="pc-dev" id="pcdev-${i}">0¢</div><div class="pc-bar" id="pcbar-${i}"></div>`;
+    grid.appendChild(cell);
+  });
+}
+
+function updatePcDisplay() {
+  for (let i = 0; i < 12; i++) {
+    const cents = currentPcCents[i];
+    const dev = cents - i * 100; // deviation from 12-TET
+    const el = document.getElementById(`pcdev-${i}`);
+    const bar = document.getElementById(`pcbar-${i}`);
+    el.textContent = (dev >= 0 ? '+' : '') + dev.toFixed(1) + '¢';
+    // Color: green = near 0, warm = flat, cool = sharp
+    const absDev = Math.abs(dev);
+    if (absDev < 1) {
+      el.style.color = 'rgba(204,200,208,0.3)';
+      bar.style.background = 'rgba(204,200,208,0.12)';
+      bar.style.width = '4px';
+    } else if (dev < 0) {
+      const t = Math.min(1, absDev / 15);
+      el.style.color = `rgba(200,${Math.round(160 - t*80)},${Math.round(96 + t*100)},${0.5+t*0.4})`;
+      bar.style.background = `rgba(200,160,96,${0.3+t*0.5})`;
+      bar.style.width = `${4 + t * 66}%`;
+    } else {
+      const t = Math.min(1, absDev / 15);
+      el.style.color = `rgba(${Math.round(100+t*60)},${Math.round(160+t*40)},200,${0.5+t*0.4})`;
+      bar.style.background = `rgba(138,176,200,${0.3+t*0.5})`;
+      bar.style.width = `${4 + t * 66}%`;
+    }
+  }
+  // Update drone frequency if active
+  if (droneOn && droneOsc) updateDroneFreq();
+}
+
+function setTemperament(pcCents, name, fifthVal, well) {
+  currentPcCents = pcCents;
+  currentTempName = name;
+  isWell = well;
+  if (!well) currentFifth = fifthVal;
+  updatePcDisplay();
+  updateRootDisplay();
+
+  // Update fifth readout
+  if (!well) {
+    document.getElementById('fifth-readout').textContent =
+      `${fifthVal.toFixed(2)}¢ — ${name}`;
+    document.getElementById('fifth-slider').value = fifthVal;
+  } else {
+    document.getElementById('fifth-readout').textContent = name;
+  }
+
+  // Update button highlights
+  document.querySelectorAll('[data-fifth]').forEach(b => {
+    b.classList.toggle('active-t', !well && Math.abs(parseFloat(b.dataset.fifth) - fifthVal) < 0.01);
+  });
+  document.querySelectorAll('[data-well]').forEach(b => {
+    b.classList.toggle('active-t', well && b.dataset.well === name);
+  });
+}
+
+function highlightPc(pc) {
+  document.querySelectorAll('.pc-cell').forEach(c => c.classList.remove('playing'));
+  const el = document.getElementById(`pc-${pc}`);
+  if (el) el.classList.add('playing');
+}
+function clearHighlights() {
+  document.querySelectorAll('.pc-cell').forEach(c => c.classList.remove('playing'));
+}
+
+// Landmark marks
+function buildLandmarks() {
+  const wrap = document.getElementById('landmarks');
+  const range = SLIDER_MAX - SLIDER_MIN;
+  LANDMARKS.forEach(lm => {
+    const pct = (lm.fifth - SLIDER_MIN) / range * 100;
+    const el = document.createElement('div');
+    el.className = 'landmark';
+    el.style.left = `${pct}%`;
+    el.innerHTML = `<div class="landmark-tick"></div><div class="landmark-label">${lm.label}<br>${lm.fifth.toFixed(2)}¢</div>`;
+    wrap.appendChild(el);
+  });
+}
+
+// Regular preset buttons
+function buildPresets() {
+  const row = document.getElementById('regular-presets');
+  REGULAR.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'ctrl-btn' + (t.name === '12-TET' ? ' active-t' : '');
+    btn.textContent = t.name;
+    btn.dataset.fifth = t.fifth;
+    btn.addEventListener('click', () => {
+      setTemperament(buildRegular(t.fifth), t.name, t.fifth, false);
+    });
+    row.appendChild(btn);
+  });
+
+  const wellRow = document.getElementById('well-presets');
+  WELL.forEach(w => {
+    const btn = document.createElement('button');
+    btn.className = 'ctrl-btn well';
+    btn.textContent = w.name;
+    btn.dataset.well = w.name;
+    btn.addEventListener('click', () => {
+      const pc = buildFromFifths(w.fifths);
+      setTemperament(pc, w.name, null, true);
+    });
+    wellRow.appendChild(btn);
+  });
+}
+
+// Piece grid
+function buildPieceGrid(book) {
+  const grid = document.getElementById('piece-grid');
+  grid.innerHTML = '';
+  for (let n = 1; n <= 24; n++) {
+    const btn = document.createElement('button');
+    btn.className = 'piece-btn';
+    btn.dataset.book = book; btn.dataset.num = n;
+    const key = WTK_KEYS[n - 1];
+    btn.innerHTML = `<span class="p-num">${n}</span><span class="p-key">${key}</span>`;
+    btn.addEventListener('click', () => selectPiece(btn, book, n));
+    grid.appendChild(btn);
+  }
+}
+
+let loadingPiece = false;
+async function selectPiece(btn, book, num) {
+  if (loadingPiece) return;
+  loadingPiece = true;
+  stopPlayback();
+  document.querySelectorAll('.piece-btn').forEach(b => b.classList.remove('selected','playing-piece'));
+  btn.classList.add('selected');
+  document.getElementById('play-status').textContent = 'loading…';
+
+  try {
+    const fname = `wtk/wtc${book}f${String(num).padStart(2,'0')}.krn`;
+    const resp = await fetch(fname);
+    if (!resp.ok) throw new Error(resp.statusText);
+    const text = await resp.text();
+    score = parseKern(text);
+    // Sync tempo slider to piece tempo
+    const pieceTempo = Math.max(30, Math.min(200, Math.round(score.tempo)));
+    document.getElementById('tempo-slider').value = pieceTempo;
+    document.getElementById('tempo-val').textContent = pieceTempo;
+    document.getElementById('play-status').textContent = `WTC ${book === '1' ? 'I' : 'II'} Fugue ${num} · ${WTK_KEYS[num-1]} · ${score.tempo} MM`;
+  } catch(e) {
+    document.getElementById('play-status').textContent = 'load error';
+    score = null;
+  }
+  loadingPiece = false;
+}
+
+function updateRootDisplay() {
+  const midi = getDroneMidi();
+  const freq = midiToFreq(midi);
+  document.getElementById('root-hz').textContent =
+    `${droneNote}${droneOct} · ${freq.toFixed(1)} Hz`;
+}
+
+// ── 6. EVENT WIRING ───────────────────────────────────────────────────────────
+
+// Fifth slider
+document.getElementById('fifth-slider').addEventListener('input', function() {
+  const v = parseFloat(this.value);
+  // Find matching preset name
+  const match = REGULAR.find(t => Math.abs(t.fifth - v) < 0.05);
+  const name = match ? match.name : `${v.toFixed(2)}¢`;
+  setTemperament(buildRegular(v), name, v, false);
+});
+
+// Note + octave buttons
+document.querySelectorAll('.note-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    droneNote = this.dataset.note;
+    document.querySelectorAll('.note-btn').forEach(b => b.classList.remove('on'));
+    this.classList.add('on');
+    updateRootDisplay();
+    updateDroneFreq();
+  });
+});
+document.querySelectorAll('.oct-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    droneOct = parseInt(this.dataset.oct);
+    document.querySelectorAll('.oct-btn').forEach(b => b.classList.remove('on'));
+    this.classList.add('on');
+    updateRootDisplay();
+    updateDroneFreq();
+  });
+});
+
+// Drone
+document.getElementById('btn-drone').addEventListener('click', function() {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  droneOn = !droneOn;
+  if (droneOn) startDrone(); else stopDrone();
+  this.classList.toggle('on', droneOn);
+});
+
+// Scale
+document.getElementById('btn-scale').addEventListener('click', playScale);
+
+// Book toggle
+let currentBook = '1';
+document.getElementById('btn-book1').addEventListener('click', function() {
+  currentBook = '1';
+  this.classList.add('on');
+  document.getElementById('btn-book2').classList.remove('on');
+  buildPieceGrid('1');
+  score = null; stopPlayback();
+});
+document.getElementById('btn-book2').addEventListener('click', function() {
+  currentBook = '2';
+  this.classList.add('on');
+  document.getElementById('btn-book1').classList.remove('on');
+  buildPieceGrid('2');
+  score = null; stopPlayback();
+});
+
+// Playback
+document.getElementById('btn-play').addEventListener('click', () => {
+  if (!score) { document.getElementById('play-status').textContent = 'select a fugue first'; return; }
+  if (isPlaying) stopPlayback(); else startPlayback();
+});
+document.getElementById('btn-stop').addEventListener('click', stopPlayback);
+
+document.getElementById('tempo-slider').addEventListener('input', function() {
+  playBPM = parseInt(this.value);
+  document.getElementById('tempo-val').textContent = playBPM;
+  if (isPlaying) {
+    // Restart with new tempo
+    stopPlayback();
+    startPlayback();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    stopPlayback();
+    if (droneOn) { stopDrone(); droneOn = false; document.getElementById('btn-drone').classList.remove('on'); }
+    clearHighlights();
+  }
+  if (e.key === ' ' && score) { e.preventDefault(); if (isPlaying) stopPlayback(); else startPlayback(); }
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+buildPcGrid();
+buildLandmarks();
+buildPresets();
+buildPieceGrid('1');
+updatePcDisplay();
+updateRootDisplay();
+
+}());
+</script>
+</body>
+</html>
