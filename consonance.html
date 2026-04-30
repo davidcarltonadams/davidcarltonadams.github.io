@@ -199,7 +199,7 @@
 </div>
 
 <div class="canvas-wrap" id="canvas-wrap">
-  <canvas id="landscape" height="260" aria-label="Consonance landscape from unison to octave"></canvas>
+  <canvas id="landscape" height="280" aria-label="Consonance landscape from unison to octave"></canvas>
 </div>
 
 <div class="info-bar">
@@ -250,7 +250,7 @@
   </div>
   <div class="slider-row">
     contrast
-    <input type="range" class="ctrl-range" id="contrast-slider" min="10" max="50" value="22">
+    <input type="range" class="ctrl-range" id="contrast-slider" min="12" max="60" value="22">
     <span id="contrast-val">2.2</span>
   </div>
 </div>
@@ -424,7 +424,7 @@ const TET_LABELS = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','
 function draw() {
   const dpr = devicePixelRatio || 1;
   const dispW = cv.offsetWidth || 760;
-  const dispH = 260;
+  const dispH = 280;
   cv.width  = dispW * dpr;
   cv.height = dispH * dpr;
   const g = cv.getContext('2d');
@@ -582,19 +582,18 @@ function draw() {
     g.fill();
   }
 
-  // ── Ratio dots ───────────────────────────────────────
+  // ── Ratio dots ─── drawn BELOW baseline so curve fill doesn't hide them ──
   if (showDots) {
+    const DOT_Y = PLOT_BOTTOM + 10; // sit in the axis gutter
     for (const r of ratios) {
       if (r.cents < 0 || r.cents > 1200) continue;
       const x = centsToX(r.cents);
-      const tickH = Math.max(2, 18 / Math.sqrt(r.height)); // taller = simpler
-      const alpha = Math.max(0.12, 0.7 / Math.sqrt(r.height));
+      const r2 = Math.max(1.2, 5.5 / Math.sqrt(r.height));
+      const alpha = Math.max(0.25, 0.9 / Math.sqrt(r.height));
       g.beginPath();
-      g.moveTo(x, PLOT_BOTTOM);
-      g.lineTo(x, PLOT_BOTTOM - tickH);
-      g.strokeStyle = `rgba(160,200,136,${alpha})`;
-      g.lineWidth = 1;
-      g.stroke();
+      g.arc(x, DOT_Y, r2, 0, Math.PI * 2);
+      g.fillStyle = `rgba(160,200,136,${alpha})`;
+      g.fill();
     }
   }
 
