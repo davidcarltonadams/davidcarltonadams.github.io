@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>consonance landscape</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #060608;
+      --bg2:     #0c0c10;
+      --text:    #ccc8d0;
+      --dim:     rgba(204,200,208,0.38);
+      --dimmer:  rgba(204,200,208,0.18);
+      --border:  rgba(255,255,255,0.07);
+      --ji:      #a0c888;
+      --tet:     #8ab0c8;
+      --phi:     #c88060;
+      --cursor:  rgba(255,255,255,0.85);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 4rem;
+      gap: 1.6rem;
+    }
+
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      font-weight: normal;
+      letter-spacing: 0.2em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.35rem;
+      line-height: 1.8;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ── Canvas ─────────────────────────────────── */
+    .canvas-wrap {
+      width: 100%;
+      max-width: 760px;
+      position: relative;
+      cursor: crosshair;
+    }
+
+    #landscape {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+    }
+
+    /* ── Info bar ───────────────────────────────── */
+    .info-bar {
+      width: 100%;
+      max-width: 760px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .info-cents {
+      font-size: 1.4rem;
+      color: var(--text);
+      font-style: italic;
+      letter-spacing: 0.05em;
+      min-width: 6rem;
+    }
+
+    .info-ratio {
+      font-size: 0.8rem;
+      color: var(--ji);
+      letter-spacing: 0.08em;
+    }
+
+    .info-name {
+      font-size: 0.62rem;
+      color: var(--dimmer);
+      font-style: italic;
+      letter-spacing: 0.08em;
+    }
+
+    .info-dist {
+      font-size: 0.6rem;
+      color: var(--dim);
+      letter-spacing: 0.06em;
+      text-align: right;
+    }
+
+    /* ── Legend ─────────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 1.4rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.58rem;
+      color: var(--dimmer);
+      font-style: italic;
+      letter-spacing: 0.08em;
+    }
+    .legend-swatch {
+      width: 20px;
+      height: 2px;
+      border-radius: 1px;
+    }
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* ── Controls ───────────────────────────────── */
+    .controls {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .ctrl-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      padding: 0.28rem 0.8rem;
+      cursor: pointer;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .ctrl-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .ctrl-btn.on { color: var(--ji); border-color: var(--ji); }
+
+    .slider-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.58rem; color: var(--dimmer); font-style: italic;
+    }
+    .ctrl-range {
+      -webkit-appearance: none; width: 80px; height: 2px;
+      background: var(--border); outline: none; border-radius: 1px;
+    }
+    .ctrl-range::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: var(--dim); cursor: pointer;
+    }
+
+    .hint {
+      font-size: 0.54rem;
+      letter-spacing: 0.12em;
+      color: rgba(204,200,208,0.12);
+      font-style: italic;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
+<div class="header">
+  <h1 class="title">consonance landscape</h1>
+  <p class="sub">
+    every interval has a geography &mdash; valleys are where simple ratios live<br>
+    click or drag to hear a pitch · the curve shows how far you are from purity
+  </p>
+</div>
+
+<div class="canvas-wrap" id="canvas-wrap">
+  <canvas id="landscape" height="260" aria-label="Consonance landscape from unison to octave"></canvas>
+</div>
+
+<div class="info-bar">
+  <div>
+    <div class="info-cents" id="info-cents">—</div>
+    <div class="info-name" id="info-name">hover the landscape</div>
+  </div>
+  <div style="text-align:right">
+    <div class="info-ratio" id="info-ratio"></div>
+    <div class="info-dist" id="info-dist"></div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:var(--ji)"></div>
+    consonance curve
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:var(--tet);opacity:0.5"></div>
+    12-TET intervals
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="background:var(--phi)"></div>
+    φ (golden ratio · 833¢)
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="background:rgba(255,255,255,0.5)"></div>
+    cursor
+  </div>
+</div>
+
+<div class="controls">
+  <button class="ctrl-btn" id="btn-drone">drone: off</button>
+  <button class="ctrl-btn on" id="btn-tet">12-TET lines</button>
+  <button class="ctrl-btn on" id="btn-labels">JI labels</button>
+  <div class="slider-row">
+    blur
+    <input type="range" class="ctrl-range" id="blur-slider" min="3" max="40" value="14">
+    <span id="blur-val">14¢</span>
+  </div>
+  <div class="slider-row">
+    depth
+    <input type="range" class="ctrl-range" id="depth-slider" min="4" max="48" value="16">
+    <span id="depth-val">16</span>
+  </div>
+</div>
+
+<p class="hint">drag across the landscape · the valleys are where ears rest · esc mutes</p>
+
+<script>
+(function () {
+
+// ── JI ratio library ──────────────────────────────────────
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+const INTERVAL_NAMES = {
+  '1:1': 'unison', '2:1': 'octave', '3:2': 'perfect fifth', '4:3': 'perfect fourth',
+  '5:4': 'major third', '6:5': 'minor third', '5:3': 'major sixth', '8:5': 'minor sixth',
+  '9:8': 'major second', '16:9': 'minor seventh', '9:5': 'minor seventh (JI)',
+  '7:4': 'harmonic seventh', '7:6': 'septimal minor third', '7:5': 'septimal tritone',
+  '8:7': 'septimal major second', '11:8': 'eleventh harmonic', '11:6': 'undecimal neutral seventh',
+  '13:8': 'thirteenth harmonic', '13:12': 'tridecimal minor second',
+  '15:8': 'major seventh', '16:15': 'diatonic semitone', '10:9': 'minor whole tone',
+  '6:4': 'perfect fifth', '5:2': 'major tenth', '3:1': 'perfect twelfth',
+};
+
+// Build ratio table: all p/q in [1,2] with p*q ≤ maxHeight
+function buildRatios(maxHeight) {
+  const seen = new Set();
+  const ratios = [];
+  for (let q = 1; q <= maxHeight; q++) {
+    for (let p = q; p <= 2 * q; p++) {
+      const g = gcd(p, q);
+      const rp = p / g, rq = q / g;
+      if (rp * rq > maxHeight) continue;
+      const key = `${rp}:${rq}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const cents = 1200 * Math.log2(rp / rq);
+      const name = INTERVAL_NAMES[key] || '';
+      ratios.push({ p: rp, q: rq, cents, height: rp * rq, name, key });
+    }
+  }
+  return ratios.sort((a, b) => a.cents - b.cents);
+}
+
+// ── Consonance computation ────────────────────────────────
+// Gaussian sum of contributions from each JI ratio, weighted by simplicity (1/height).
+// sigma = "blur" in cents — how far a ratio's influence extends.
+function buildLandscape(ratios, sigma, nSamples) {
+  const samples = new Float32Array(nSamples);
+  const twoSigSq = 2 * sigma * sigma;
+  for (const r of ratios) {
+    const weight = 1 / r.height;
+    for (let i = 0; i < nSamples; i++) {
+      const c = (i / (nSamples - 1)) * 1200;
+      const d = c - r.cents;
+      samples[i] += weight * Math.exp(-(d * d) / twoSigSq);
+    }
+  }
+  // Also include the octave's contribution folded in (periodicity)
+  for (const r of ratios) {
+    const weight = 1 / r.height;
+    for (let i = 0; i < nSamples; i++) {
+      const c = (i / (nSamples - 1)) * 1200;
+      // Contribution from one octave below (wrapping)
+      const d = c - (r.cents + 1200);
+      samples[i] += weight * 0.3 * Math.exp(-(d * d) / twoSigSq);
+      const d2 = c - (r.cents - 1200);
+      samples[i] += weight * 0.3 * Math.exp(-(d2 * d2) / twoSigSq);
+    }
+  }
+  return samples;
+}
+
+function nearestRatio(ratios, cents) {
+  let best = ratios[0], minD = Infinity;
+  for (const r of ratios) {
+    const d = Math.abs(r.cents - cents);
+    if (d < minD) { minD = d; best = r; }
+  }
+  return { ratio: best, dist: minD };
+}
+
+// ── State ─────────────────────────────────────────────────
+let ratios = buildRatios(16);
+let sigma  = 14;
+let N      = 1200;
+let landscape = buildLandscape(ratios, sigma, N);
+let showTET   = true;
+let showLabels = true;
+
+const PHI_CENTS = 1200 * Math.log2((1 + Math.sqrt(5)) / 2); // ≈ 833.09¢
+
+// ── Audio ─────────────────────────────────────────────────
+let ac = null, droneOsc = null, droneGain = null, cursorOsc = null, cursorGain = null;
+let droneOn = false;
+const DRONE_FREQ = 220; // A3
+
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function startDrone() {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  droneOsc = ac.createOscillator();
+  droneGain = ac.createGain();
+  droneOsc.type = 'sine';
+  droneOsc.frequency.value = DRONE_FREQ;
+  droneGain.gain.setValueAtTime(0, ac.currentTime);
+  droneGain.gain.setTargetAtTime(0.18, ac.currentTime, 0.05);
+  droneOsc.connect(droneGain);
+  droneGain.connect(ac.destination);
+  droneOsc.start();
+}
+
+function stopDrone() {
+  if (!droneGain) return;
+  droneGain.gain.setTargetAtTime(0, ac.currentTime, 0.05);
+  const o = droneOsc;
+  setTimeout(() => { try { o.stop(); } catch(e){} }, 300);
+  droneOsc = droneGain = null;
+}
+
+function setCursorPitch(cents) {
+  if (!ac) return;
+  const freq = DRONE_FREQ * Math.pow(2, cents / 1200);
+  if (!cursorOsc) {
+    cursorOsc = ac.createOscillator();
+    cursorGain = ac.createGain();
+    cursorOsc.type = 'sine';
+    cursorOsc.frequency.value = freq;
+    cursorGain.gain.setValueAtTime(0, ac.currentTime);
+    cursorGain.gain.setTargetAtTime(0.12, ac.currentTime, 0.02);
+    cursorOsc.connect(cursorGain);
+    cursorGain.connect(ac.destination);
+    cursorOsc.start();
+  } else {
+    cursorOsc.frequency.setTargetAtTime(freq, ac.currentTime, 0.01);
+  }
+}
+
+function clearCursorPitch() {
+  if (!cursorOsc) return;
+  cursorGain.gain.setTargetAtTime(0, ac.currentTime, 0.05);
+  const o = cursorOsc, g = cursorGain;
+  setTimeout(() => { try { o.stop(); } catch(e){} }, 300);
+  cursorOsc = cursorGain = null;
+}
+
+function muteAll() {
+  clearCursorPitch();
+  if (droneOn) { stopDrone(); droneOn = false; updateDroneBtn(); }
+}
+
+function updateDroneBtn() {
+  const btn = document.getElementById('btn-drone');
+  btn.textContent = droneOn ? 'drone: on' : 'drone: off';
+  btn.classList.toggle('on', droneOn);
+}
+
+// ── Drawing ───────────────────────────────────────────────
+const cv = document.getElementById('landscape');
+let cursorCents = -1;
+let dragging = false;
+
+const TET_LABELS = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B','C8ve'];
+
+function draw() {
+  const dpr = devicePixelRatio || 1;
+  const dispW = cv.offsetWidth || 760;
+  const dispH = 260;
+  cv.width  = dispW * dpr;
+  cv.height = dispH * dpr;
+  const g = cv.getContext('2d');
+  g.scale(dpr, dpr);
+  const w = dispW, h = dispH;
+
+  g.fillStyle = '#06060a';
+  g.fillRect(0, 0, w, h);
+
+  // Normalize landscape
+  let maxV = 0;
+  for (let i = 0; i < N; i++) if (landscape[i] > maxV) maxV = landscape[i];
+
+  const PLOT_TOP    = 32;
+  const PLOT_BOTTOM = h - 36;
+  const PLOT_H      = PLOT_BOTTOM - PLOT_TOP;
+
+  const centsToX = c => (c / 1200) * w;
+  const valToY   = v => PLOT_BOTTOM - (v / maxV) * PLOT_H * 0.88;
+
+  // ── 12-TET grid lines ─────────────────────────────────
+  if (showTET) {
+    for (let i = 0; i <= 12; i++) {
+      const x = centsToX(i * 100);
+      g.beginPath();
+      g.moveTo(x, PLOT_TOP);
+      g.lineTo(x, PLOT_BOTTOM);
+      g.strokeStyle = i === 0 || i === 12
+        ? 'rgba(138,176,200,0.20)'
+        : 'rgba(138,176,200,0.08)';
+      g.lineWidth = i === 0 || i === 12 ? 1.5 : 1;
+      g.stroke();
+
+      // Label
+      g.font = `italic ${9}px Georgia, serif`;
+      g.textAlign = 'center';
+      g.fillStyle = 'rgba(138,176,200,0.35)';
+      g.fillText(TET_LABELS[i], x, PLOT_BOTTOM + 14);
+    }
+  }
+
+  // ── Consonance curve ──────────────────────────────────
+  // Fill
+  g.beginPath();
+  for (let i = 0; i < N; i++) {
+    const x = (i / (N - 1)) * w;
+    const y = valToY(landscape[i]);
+    i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+  }
+  g.lineTo(w, PLOT_BOTTOM);
+  g.lineTo(0, PLOT_BOTTOM);
+  g.closePath();
+  const grad = g.createLinearGradient(0, PLOT_TOP, 0, PLOT_BOTTOM);
+  grad.addColorStop(0, 'rgba(160,200,136,0.30)');
+  grad.addColorStop(1, 'rgba(160,200,136,0.02)');
+  g.fillStyle = grad;
+  g.fill();
+
+  // Stroke
+  g.beginPath();
+  for (let i = 0; i < N; i++) {
+    const x = (i / (N - 1)) * w;
+    const y = valToY(landscape[i]);
+    i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+  }
+  g.strokeStyle = 'rgba(160,200,136,0.75)';
+  g.lineWidth = 1.5;
+  g.stroke();
+
+  // ── JI peak labels ────────────────────────────────────
+  if (showLabels) {
+    // Find local maxima in the landscape above threshold
+    const threshold = maxV * 0.25;
+    const labeled = new Set();
+    for (let i = 4; i < N - 4; i++) {
+      if (landscape[i] < threshold) continue;
+      const isMax = landscape[i] >= landscape[i-3] &&
+                    landscape[i] >= landscape[i+3] &&
+                    landscape[i] >= landscape[i-1] &&
+                    landscape[i] >= landscape[i+1];
+      if (!isMax) continue;
+
+      const cents = (i / (N - 1)) * 1200;
+      const { ratio } = nearestRatio(ratios, cents);
+      if (Math.abs(ratio.cents - cents) > 3) continue;
+
+      const key = ratio.key;
+      if (labeled.has(key)) continue;
+      labeled.add(key);
+
+      const x  = centsToX(ratio.cents);
+      const y  = valToY(landscape[i]);
+      const label = ratio.key;
+
+      g.font = `italic 9px Georgia, serif`;
+      g.textAlign = 'center';
+      g.fillStyle = 'rgba(160,200,136,0.80)';
+      g.fillText(label, x, Math.max(PLOT_TOP + 2, y - 6));
+    }
+  }
+
+  // ── Phi marker ────────────────────────────────────────
+  {
+    const x = centsToX(PHI_CENTS);
+    // Vertical line
+    g.beginPath();
+    g.moveTo(x, PLOT_TOP);
+    g.lineTo(x, PLOT_BOTTOM);
+    g.strokeStyle = 'rgba(200,128,96,0.50)';
+    g.lineWidth = 1;
+    g.setLineDash([3, 4]);
+    g.stroke();
+    g.setLineDash([]);
+
+    // Dot on curve
+    const phiIdx = Math.round((PHI_CENTS / 1200) * (N - 1));
+    const phiY = valToY(landscape[phiIdx]);
+    g.beginPath();
+    g.arc(x, phiY, 4, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(200,128,96,0.90)';
+    g.fill();
+
+    // Label
+    g.font = 'italic 9px Georgia, serif';
+    g.textAlign = 'center';
+    g.fillStyle = 'rgba(200,128,96,0.70)';
+    g.fillText('φ', x, PLOT_TOP - 6);
+  }
+
+  // ── Cursor ────────────────────────────────────────────
+  if (cursorCents >= 0) {
+    const x = centsToX(cursorCents);
+    const idx = Math.round((cursorCents / 1200) * (N - 1));
+    const cy2 = valToY(landscape[Math.max(0, Math.min(N-1, idx))]);
+
+    // Vertical line
+    g.beginPath();
+    g.moveTo(x, PLOT_TOP);
+    g.lineTo(x, PLOT_BOTTOM);
+    g.strokeStyle = 'rgba(255,255,255,0.18)';
+    g.lineWidth = 1;
+    g.stroke();
+
+    // Dot on curve
+    g.beginPath();
+    g.arc(x, cy2, 4.5, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(255,255,255,0.85)';
+    g.fill();
+  }
+
+  // ── Baseline ─────────────────────────────────────────
+  g.beginPath();
+  g.moveTo(0, PLOT_BOTTOM);
+  g.lineTo(w, PLOT_BOTTOM);
+  g.strokeStyle = 'rgba(255,255,255,0.06)';
+  g.lineWidth = 1;
+  g.stroke();
+}
+
+// ── Interaction ───────────────────────────────────────────
+function centsFromEvent(e) {
+  const rect = cv.getBoundingClientRect();
+  const touch = e.touches ? e.touches[0] : e;
+  const frac = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+  return frac * 1200;
+}
+
+function updateCursor(cents) {
+  cursorCents = cents;
+  const idx = Math.round((cents / 1200) * (N - 1));
+  const { ratio, dist } = nearestRatio(ratios, cents);
+
+  document.getElementById('info-cents').textContent = cents.toFixed(1) + '¢';
+  document.getElementById('info-ratio').textContent = ratio.key;
+  document.getElementById('info-name').textContent = ratio.name || '—';
+  document.getElementById('info-dist').textContent =
+    dist < 0.5 ? 'on the ratio' : `${dist.toFixed(1)}¢ from ${ratio.key}`;
+
+  if (droneOn || dragging) {
+    initAudio();
+    if (ac.state === 'suspended') ac.resume();
+    setCursorPitch(cents);
+  }
+  draw();
+}
+
+cv.addEventListener('mousemove', e => {
+  updateCursor(centsFromEvent(e));
+});
+
+cv.addEventListener('mouseleave', () => {
+  if (!dragging) {
+    cursorCents = -1;
+    clearCursorPitch();
+    document.getElementById('info-cents').textContent = '—';
+    document.getElementById('info-name').textContent = 'hover the landscape';
+    document.getElementById('info-ratio').textContent = '';
+    document.getElementById('info-dist').textContent = '';
+    draw();
+  }
+});
+
+cv.addEventListener('mousedown', e => {
+  dragging = true;
+  updateCursor(centsFromEvent(e));
+});
+
+window.addEventListener('mouseup', () => {
+  if (dragging) {
+    dragging = false;
+    if (!droneOn) clearCursorPitch();
+  }
+});
+
+cv.addEventListener('touchstart', e => {
+  e.preventDefault();
+  dragging = true;
+  updateCursor(centsFromEvent(e));
+}, { passive: false });
+
+cv.addEventListener('touchmove', e => {
+  e.preventDefault();
+  updateCursor(centsFromEvent(e));
+}, { passive: false });
+
+cv.addEventListener('touchend', () => {
+  dragging = false;
+  if (!droneOn) clearCursorPitch();
+});
+
+// ── Controls ──────────────────────────────────────────────
+document.getElementById('btn-drone').addEventListener('click', () => {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  droneOn = !droneOn;
+  if (droneOn) startDrone(); else stopDrone();
+  updateDroneBtn();
+});
+
+document.getElementById('btn-tet').addEventListener('click', function() {
+  showTET = !showTET;
+  this.classList.toggle('on', showTET);
+  this.textContent = showTET ? '12-TET lines' : '12-TET: off';
+  draw();
+});
+
+document.getElementById('btn-labels').addEventListener('click', function() {
+  showLabels = !showLabels;
+  this.classList.toggle('on', showLabels);
+  this.textContent = showLabels ? 'JI labels' : 'labels: off';
+  draw();
+});
+
+document.getElementById('blur-slider').addEventListener('input', function() {
+  sigma = parseInt(this.value);
+  document.getElementById('blur-val').textContent = sigma + '¢';
+  landscape = buildLandscape(ratios, sigma, N);
+  draw();
+});
+
+document.getElementById('depth-slider').addEventListener('input', function() {
+  const depth = parseInt(this.value);
+  document.getElementById('depth-val').textContent = depth;
+  ratios = buildRatios(depth);
+  landscape = buildLandscape(ratios, sigma, N);
+  draw();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') muteAll();
+});
+
+window.addEventListener('resize', draw);
+
+// ── Init ──────────────────────────────────────────────────
+draw();
+
+}());
+</script>
+</body>
+</html>
