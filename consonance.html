@@ -236,15 +236,22 @@
   <button class="ctrl-btn" id="btn-drone">drone: off</button>
   <button class="ctrl-btn on" id="btn-tet">12-TET lines</button>
   <button class="ctrl-btn on" id="btn-labels">JI labels</button>
+  <button class="ctrl-btn on" id="btn-phi">φ marker</button>
+  <button class="ctrl-btn" id="btn-dots">ratio dots</button>
   <div class="slider-row">
     blur
-    <input type="range" class="ctrl-range" id="blur-slider" min="3" max="40" value="14">
-    <span id="blur-val">14¢</span>
+    <input type="range" class="ctrl-range" id="blur-slider" min="3" max="40" value="11">
+    <span id="blur-val">11¢</span>
   </div>
   <div class="slider-row">
     depth
-    <input type="range" class="ctrl-range" id="depth-slider" min="4" max="48" value="16">
-    <span id="depth-val">16</span>
+    <input type="range" class="ctrl-range" id="depth-slider" min="4" max="48" value="24">
+    <span id="depth-val">24</span>
+  </div>
+  <div class="slider-row">
+    contrast
+    <input type="range" class="ctrl-range" id="contrast-slider" min="10" max="50" value="22">
+    <span id="contrast-val">2.2</span>
   </div>
 </div>
 
@@ -326,12 +333,15 @@ function nearestRatio(ratios, cents) {
 }
 
 // ── State ─────────────────────────────────────────────────
-let ratios = buildRatios(16);
-let sigma  = 14;
+let ratios = buildRatios(24);
+let sigma  = 11;
 let N      = 1200;
 let landscape = buildLandscape(ratios, sigma, N);
-let showTET   = true;
+let showTET    = true;
 let showLabels = true;
+let showPhi    = true;
+let showDots   = false;
+let contrast   = 2.2;
 
 const PHI_CENTS = 1200 * Math.log2((1 + Math.sqrt(5)) / 2); // ≈ 833.09¢
 
@@ -424,16 +434,23 @@ function draw() {
   g.fillStyle = '#06060a';
   g.fillRect(0, 0, w, h);
 
-  // Normalize landscape
-  let maxV = 0;
-  for (let i = 0; i < N; i++) if (landscape[i] > maxV) maxV = landscape[i];
+  // Normalize landscape — floor-subtract then apply gamma contrast
+  let minV = Infinity, maxV = -Infinity;
+  for (let i = 0; i < N; i++) {
+    if (landscape[i] < minV) minV = landscape[i];
+    if (landscape[i] > maxV) maxV = landscape[i];
+  }
+  const range = maxV - minV;
 
   const PLOT_TOP    = 32;
   const PLOT_BOTTOM = h - 36;
   const PLOT_H      = PLOT_BOTTOM - PLOT_TOP;
 
   const centsToX = c => (c / 1200) * w;
-  const valToY   = v => PLOT_BOTTOM - (v / maxV) * PLOT_H * 0.88;
+  const valToY = v => {
+    const norm = range > 0 ? Math.max(0, (v - minV) / range) : 0;
+    return PLOT_BOTTOM - Math.pow(norm, contrast) * PLOT_H * 0.92;
+  };
 
   // ── 12-TET grid lines ─────────────────────────────────
   if (showTET) {
@@ -486,8 +503,8 @@ function draw() {
 
   // ── JI peak labels ────────────────────────────────────
   if (showLabels) {
-    // Find local maxima in the landscape above threshold
-    const threshold = maxV * 0.25;
+    // Find local maxima above a low threshold (relative to floor-subtracted range)
+    const threshold = minV + range * 0.04;
     const labeled = new Set();
     for (let i = 4; i < N - 4; i++) {
       if (landscape[i] < threshold) continue;
@@ -517,7 +534,7 @@ function draw() {
   }
 
   // ── Phi marker ────────────────────────────────────────
-  {
+  if (showPhi) {
     const x = centsToX(PHI_CENTS);
     // Vertical line
     g.beginPath();
@@ -542,7 +559,7 @@ function draw() {
     g.textAlign = 'center';
     g.fillStyle = 'rgba(200,128,96,0.70)';
     g.fillText('φ', x, PLOT_TOP - 6);
-  }
+  } // end showPhi
 
   // ── Cursor ────────────────────────────────────────────
   if (cursorCents >= 0) {
@@ -563,6 +580,22 @@ function draw() {
     g.arc(x, cy2, 4.5, 0, Math.PI * 2);
     g.fillStyle = 'rgba(255,255,255,0.85)';
     g.fill();
+  }
+
+  // ── Ratio dots ───────────────────────────────────────
+  if (showDots) {
+    for (const r of ratios) {
+      if (r.cents < 0 || r.cents > 1200) continue;
+      const x = centsToX(r.cents);
+      const tickH = Math.max(2, 18 / Math.sqrt(r.height)); // taller = simpler
+      const alpha = Math.max(0.12, 0.7 / Math.sqrt(r.height));
+      g.beginPath();
+      g.moveTo(x, PLOT_BOTTOM);
+      g.lineTo(x, PLOT_BOTTOM - tickH);
+      g.strokeStyle = `rgba(160,200,136,${alpha})`;
+      g.lineWidth = 1;
+      g.stroke();
+    }
   }
 
   // ── Baseline ─────────────────────────────────────────
@@ -668,6 +701,20 @@ document.getElementById('btn-labels').addEventListener('click', function() {
   draw();
 });
 
+document.getElementById('btn-phi').addEventListener('click', function() {
+  showPhi = !showPhi;
+  this.classList.toggle('on', showPhi);
+  this.textContent = showPhi ? 'φ marker' : 'φ: off';
+  draw();
+});
+
+document.getElementById('btn-dots').addEventListener('click', function() {
+  showDots = !showDots;
+  this.classList.toggle('on', showDots);
+  this.textContent = showDots ? 'ratio dots' : 'dots: off';
+  draw();
+});
+
 document.getElementById('blur-slider').addEventListener('input', function() {
   sigma = parseInt(this.value);
   document.getElementById('blur-val').textContent = sigma + '¢';
@@ -680,6 +727,12 @@ document.getElementById('depth-slider').addEventListener('input', function() {
   document.getElementById('depth-val').textContent = depth;
   ratios = buildRatios(depth);
   landscape = buildLandscape(ratios, sigma, N);
+  draw();
+});
+
+document.getElementById('contrast-slider').addEventListener('input', function() {
+  contrast = parseInt(this.value) / 10;
+  document.getElementById('contrast-val').textContent = contrast.toFixed(1);
   draw();
 });
 
