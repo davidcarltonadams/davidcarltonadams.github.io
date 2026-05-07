@@ -1,5 +1,5 @@
 **Statement of Teaching Philosophy**  
-David Carlton Adams, D.M.A. (expected 2026\)
+David Carlton Adams, D.M.A. (expected May 2026\)
 
 Whether examining the fundamentals of sound, elucidating the linguistic conventions of counterpoint, or exploring the formal implications of collections of sonic materials, I delight in sowing seeds along lines of inquiry that lead to the eyes-light-up wonder of discovery. This joy emerges from an environment built on four foundational pillars: creating a safe, welcoming environment where mistakes are valued as learning opportunities; designing classroom workflows that maximize cognitive efficiency to ensure maximum engagement and retention; approaching concepts from multiple perspectives that honor diverse musical practices; and cultivating active musicianship through singing, analysis, and composition.
 
