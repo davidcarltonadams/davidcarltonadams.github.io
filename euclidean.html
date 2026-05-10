@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>euclidean</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+      --blue:   #7ab8d4;
+      --green:  #88c080;
+      --rose:   #c088b8;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.6rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 500px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.85;
+    }
+
+    canvas { display: block; }
+
+    .layers-wrap {
+      width: 100%; max-width: 500px;
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .layer-row {
+      display: grid;
+      grid-template-columns: 10px auto 1fr auto auto;
+      gap: 0.45rem 0.6rem;
+      align-items: center;
+      padding: 0.5rem 0.7rem;
+      border: 1px solid var(--border);
+    }
+    .layer-swatch { width: 8px; height: 8px; border-radius: 50%; }
+
+    .nk-wrap { display: flex; align-items: center; gap: 0.18rem; }
+    .nk-inp {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.62rem; color: var(--text);
+      background: var(--bg2); border: 1px solid var(--border);
+      padding: 0.16rem 0.22rem; width: 2.1rem; outline: none;
+      text-align: center;
+    }
+    .nk-sep { font-size: 0.55rem; color: var(--dimmer); font-style: italic; }
+
+    .layer-info { display: flex; flex-direction: column; gap: 0.22rem; min-width: 0; overflow: hidden; }
+    .pname {
+      font-size: 0.51rem; font-style: italic; color: var(--dimmer);
+      letter-spacing: 0.09em; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .pdots { display: flex; gap: 0.17rem; align-items: center; overflow: hidden; }
+    .pdot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
+    .pdot.on  { opacity: 0.80; }
+    .pdot.off { opacity: 0.16; }
+
+    .pitch-sel {
+      font-family: Georgia, serif; font-size: 0.54rem; font-style: italic;
+      color: var(--dim); background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 0.15rem 0.28rem; cursor: pointer; outline: none;
+    }
+    .btn-sm {
+      font-family: Georgia, serif;
+      font-size: 0.52rem; letter-spacing: 0.1em; text-transform: lowercase;
+      font-style: italic; color: var(--dim);
+      background: none; border: 1px solid var(--border);
+      padding: 0.28rem 0.55rem; cursor: pointer; white-space: nowrap;
+      transition: color 0.13s, border-color 0.13s;
+    }
+    .btn-sm:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
+    .btn-sm.on    { color: var(--text); border-color: rgba(255,255,255,0.4); }
+    .btn-sm.muted { opacity: 0.28; }
+
+    .transport {
+      display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap;
+      justify-content: center;
+    }
+    .bpm-group {
+      display: flex; gap: 0.35rem; align-items: center;
+      font-size: 0.58rem; font-style: italic; color: var(--dim);
+    }
+    .bpm-inp {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.62rem; color: var(--text);
+      background: var(--bg2); border: 1px solid var(--border);
+      padding: 0.16rem 0.3rem; width: 3rem; outline: none; text-align: center;
+    }
+    .play-btn {
+      font-family: Georgia, serif; font-size: 0.68rem; font-style: italic;
+      letter-spacing: 0.12em; color: var(--text);
+      background: none; border: 1px solid rgba(255,255,255,0.22);
+      padding: 0.45rem 1.5rem; cursor: pointer; transition: all 0.13s;
+    }
+    .play-btn:hover { background: rgba(255,255,255,0.03); }
+    .play-btn.playing { border-color: rgba(212,192,112,0.55); color: var(--gold); }
+
+    .explain-wrap { width: 100%; max-width: 500px; }
+    .explain-toggle {
+      font-size: 0.51rem; font-style: italic; color: var(--dimmer);
+      letter-spacing: 0.1em; background: none; border: none;
+      font-family: Georgia, serif; cursor: pointer; transition: color 0.13s;
+    }
+    .explain-toggle:hover { color: var(--dim); }
+    .explain-body {
+      display: none; margin-top: 0.9rem;
+      font-size: 0.63rem; line-height: 1.9; color: var(--dim);
+      border: 1px solid var(--border); padding: 1.2rem 1.5rem;
+    }
+    .explain-body.open { display: block; }
+    .explain-body p { margin-bottom: 0.7rem; }
+    .explain-body p:last-child { margin-bottom: 0; }
+    .explain-body strong { color: var(--text); font-weight: normal; }
+    .math {
+      font-family: 'SF Mono','Fira Code',monospace; font-size: 0.65rem;
+      color: var(--gold); padding: 0.28rem 0.7rem;
+      background: rgba(212,192,112,0.05);
+      border-left: 2px solid rgba(212,192,112,0.25);
+      margin: 0.5rem 0; display: block;
+    }
+  </style>
+</head>
+<body>
+
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
+<div class="header">
+  <h1 class="title">euclidean</h1>
+  <p class="sub">
+    distribute n pulses as evenly as possible across k equal steps —<br>
+    the same algorithm euclid used to find greatest common divisors
+  </p>
+</div>
+
+<canvas id="cv"></canvas>
+
+<div class="layers-wrap" id="layersWrap"></div>
+
+<div class="transport">
+  <div class="bpm-group">
+    <span>bpm</span>
+    <input class="bpm-inp" id="bpmInp" type="number" value="116" min="40" max="280">
+  </div>
+  <button class="play-btn" id="playBtn" onclick="togglePlay()">▶ play</button>
+</div>
+
+<div class="explain-wrap">
+  <button class="explain-toggle" onclick="toggleExplain()">? what is this</button>
+  <div class="explain-body" id="explainBody">
+    <p>The <strong>Euclidean rhythm</strong> E(n,k) distributes n onsets as evenly as possible across k equal time slots. The algorithm is identical to the one Euclid described for finding greatest common divisors — it was discovered to underlie world rhythm by Godfried Toussaint in 2005.</p>
+    <p>These patterns appear independently wherever humans distribute rhythm optimally over a cycle. <strong>E(3,8)</strong> is the <em>tresillo</em> of Cuban and Brazilian music. <strong>E(5,8)</strong> is the <em>cinquillo</em>. <strong>E(3,7)</strong> is the Bulgarian <em>ruchenitza</em>. <strong>E(4,9)</strong> is the Turkish <em>aksak</em>. <strong>E(7,8)</strong> is the Bulgarian <em>horo</em>.</p>
+    <p>Stack multiple layers to create <strong>polyrhythmic interference patterns</strong>. Full coincidence — all layers landing on beat 1 simultaneously — recurs every LCM(k₁, k₂, …) steps. Try E(3,8) + E(5,8) + E(7,12) and listen for when the grid snaps back.</p>
+    <span class="math">E(3,8) = [●○○●○○●○]  tresillo · Cuba, Brazil, West Africa</span>
+    <span class="math">E(5,8) = [●○●●○●●○]  cinquillo · Cuba</span>
+    <span class="math">E(7,8) = [●○●●●●●●]  horo · Bulgaria</span>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── Euclidean algorithm ─────────────────────────────────────────────────────
+
+function euclidean(n, k) {
+  if (n <= 0) return Array(k).fill(0);
+  if (n >= k) return Array(k).fill(1);
+  const pat = [];
+  let b = 0;
+  for (let i = 0; i < k; i++) {
+    b += n;
+    if (b >= k) { b -= k; pat.push(1); }
+    else pat.push(0);
+  }
+  const first = pat.indexOf(1);
+  return first > 0 ? [...pat.slice(first), ...pat.slice(0, first)] : pat;
+}
+
+const KNOWN = {
+  '2/3':'','3/4':'waltz','3/5':'','3/7':'ruchenitza','3/8':'tresillo',
+  '4/7':'','4/8':'son clave','4/9':'aksak','4/11':'',
+  '5/6':'','5/7':'nawruz','5/8':'cinquillo','5/16':'bossa nova',
+  '7/8':'horo','7/9':'','7/12':'west african','7/16':'samba',
+  '9/16':'afro-cuban','11/24':'adowa','13/24':'gahu',
+};
+
+function pname(n, k) {
+  const v = KNOWN[`${n}/${k}`];
+  return v !== undefined ? v : '';
+}
+
+// ─── Layer state ─────────────────────────────────────────────────────────────
+
+const COLORS = [
+  [212,192,112],  // gold
+  [122,184,212],  // blue
+  [136,192,128],  // green
+  [192,136,184],  // rose
+];
+
+const PITCH_HZ   = [880, 660, 440, 330, 220, 165, 110];
+const PITCH_LBLS = ['A5·880','E5·660','A4·440','E4·330','A3·220','E3·165','A2·110'];
+
+const layers = [
+  { n:3, k:8,  pitchIdx:2, muted:false },
+  { n:5, k:8,  pitchIdx:3, muted:false },
+  { n:4, k:12, pitchIdx:4, muted:false },
+  { n:7, k:16, pitchIdx:5, muted:false },
+];
+layers.forEach(L => { L.pattern = euclidean(L.n, L.k); L.step = -1; });
+
+let flashes     = layers.map(L => new Float32Array(L.k));
+let centerFlash = 0;
+
+function resetLayer(li) {
+  const L = layers[li];
+  L.pattern = euclidean(L.n, L.k);
+  L.step = -1;
+  flashes[li] = new Float32Array(L.k);
+}
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
+
+let ax = null;
+
+function ensureAx() {
+  if (!ax) ax = new (window.AudioContext || window.webkitAudioContext)();
+  if (ax.state === 'suspended') ax.resume();
+}
+
+function playTone(freq, when) {
+  const o = ax.createOscillator();
+  const g = ax.createGain();
+  o.type = 'sine';
+  o.frequency.value = freq;
+  const att = 0.004, dec = 0.11;
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(0.18, when + att);
+  g.gain.exponentialRampToValueAtTime(0.001, when + att + dec);
+  o.connect(g); g.connect(ax.destination);
+  o.start(when); o.stop(when + att + dec + 0.01);
+}
+
+// ─── Scheduler ───────────────────────────────────────────────────────────────
+
+let playing    = false;
+let globalTick = 0;
+let nextTickT  = 0;
+let schedID    = null;
+
+function getBpm()  { return Math.max(40, Math.min(280, parseFloat(document.getElementById('bpmInp').value) || 116)); }
+function tickSec() { return 60 / (getBpm() * 4); }  // sixteenth-note grid
+
+const LOOKAHEAD = 0.12;
+const SCHED_INT = 22;
+
+function doTick(tick, when) {
+  let hits = 0;
+  for (let li = 0; li < layers.length; li++) {
+    const L = layers[li];
+    if (L.pattern[tick % L.k] && !L.muted) {
+      playTone(PITCH_HZ[L.pitchIdx], when);
+      hits++;
+    }
+  }
+
+  const delay = Math.max(0, (when - ax.currentTime) * 1000 - 6);
+  const hitsCopy = hits;
+  setTimeout(() => {
+    for (let li = 0; li < layers.length; li++) {
+      const L = layers[li];
+      const s = tick % L.k;
+      L.step = s;
+      if (L.pattern[s]) flashes[li][s] = 1.0;
+    }
+    if (hitsCopy >= 2) centerFlash = Math.min(1, centerFlash + 0.35 * hitsCopy);
+  }, delay);
+}
+
+function schedule() {
+  while (nextTickT < ax.currentTime + LOOKAHEAD) {
+    doTick(globalTick, nextTickT);
+    nextTickT += tickSec();
+    globalTick++;
+  }
+  schedID = setTimeout(schedule, SCHED_INT);
+}
+
+function startPlay() {
+  ensureAx();
+  playing    = true;
+  globalTick = 0;
+  nextTickT  = ax.currentTime + 0.05;
+  layers.forEach((L, li) => { L.step = -1; flashes[li] = new Float32Array(L.k); });
+  centerFlash = 0;
+  schedule();
+  const btn = document.getElementById('playBtn');
+  btn.classList.add('playing');
+  btn.textContent = '■ stop';
+}
+
+function stopPlay() {
+  playing = false;
+  clearTimeout(schedID);
+  layers.forEach((L, li) => { L.step = -1; flashes[li] = new Float32Array(L.k); });
+  centerFlash = 0;
+  const btn = document.getElementById('playBtn');
+  btn.classList.remove('playing');
+  btn.textContent = '▶ play';
+}
+
+function togglePlay() { if (playing) stopPlay(); else startPlay(); }
+
+// ─── Canvas ───────────────────────────────────────────────────────────────────
+
+const cv   = document.getElementById('cv');
+const gx   = cv.getContext('2d');
+const RADII = [78, 108, 140, 174];
+
+function setSize() {
+  const s = Math.min(window.innerWidth - 32, 460);
+  cv.width = cv.height = s;
+}
+setSize();
+window.addEventListener('resize', setSize);
+
+let lastT = 0;
+
+function frame(now) {
+  const dt = Math.min((now - lastT) / 1000, 0.05);
+  lastT = now;
+
+  for (let li = 0; li < layers.length; li++) {
+    const f = flashes[li];
+    for (let s = 0; s < f.length; s++) {
+      if (f[s] > 0) f[s] = Math.max(0, f[s] - dt * 4.5);
+    }
+  }
+  centerFlash = Math.max(0, centerFlash - dt * 3);
+
+  const W  = cv.width;
+  const sc = W / 460;
+  const cx = W / 2, cy = W / 2;
+
+  gx.clearRect(0, 0, W, W);
+  gx.fillStyle = '#070709';
+  gx.fillRect(0, 0, W, W);
+
+  for (let li = 0; li < layers.length; li++) {
+    const L         = layers[li];
+    const r         = RADII[li] * sc;
+    const [R, G, B] = COLORS[li];
+
+    // ring track
+    gx.strokeStyle = `rgba(${R},${G},${B},0.07)`;
+    gx.lineWidth = 1;
+    gx.beginPath(); gx.arc(cx, cy, r, 0, Math.PI * 2); gx.stroke();
+
+    const k = L.k;
+    for (let s = 0; s < k; s++) {
+      const ang      = (s / k) * Math.PI * 2 - Math.PI / 2;
+      const dx       = cx + r * Math.cos(ang);
+      const dy       = cy + r * Math.sin(ang);
+      const isPulse  = L.pattern[s] === 1;
+      const fl       = flashes[li][s] || 0;
+
+      if (isPulse) {
+        if (fl > 0.01) {
+          gx.fillStyle = `rgba(${R},${G},${B},${fl * 0.06})`;
+          gx.beginPath(); gx.arc(dx, dy, 15 * sc, 0, Math.PI * 2); gx.fill();
+          gx.fillStyle = `rgba(${R},${G},${B},${fl * 0.18})`;
+          gx.beginPath(); gx.arc(dx, dy, 8 * sc, 0, Math.PI * 2); gx.fill();
+        }
+        const pr = (3.5 + fl * 2.2) * sc;
+        gx.fillStyle = `rgba(${R},${G},${B},${0.5 + fl * 0.5})`;
+        gx.beginPath(); gx.arc(dx, dy, pr, 0, Math.PI * 2); gx.fill();
+      } else {
+        gx.fillStyle = `rgba(${R},${G},${B},0.14)`;
+        gx.beginPath(); gx.arc(dx, dy, 2 * sc, 0, Math.PI * 2); gx.fill();
+      }
+    }
+
+    // playhead tick mark
+    if (L.step >= 0) {
+      const ang = (L.step / k) * Math.PI * 2 - Math.PI / 2;
+      gx.strokeStyle = `rgba(${R},${G},${B},0.55)`;
+      gx.lineWidth   = 1.5 * sc;
+      gx.beginPath();
+      gx.moveTo(cx + (r - 5 * sc) * Math.cos(ang), cy + (r - 5 * sc) * Math.sin(ang));
+      gx.lineTo(cx + (r + 8 * sc) * Math.cos(ang), cy + (r + 8 * sc) * Math.sin(ang));
+      gx.stroke();
+    }
+  }
+
+  // center glow
+  const cf = 0.12 + centerFlash * 0.88;
+  for (const [rr, a] of [[16,0.03],[10,0.08],[6,0.22],[3.5,0.60],[2,1]]) {
+    gx.fillStyle = `rgba(212,192,112,${cf * a})`;
+    gx.beginPath(); gx.arc(cx, cy, rr * sc, 0, Math.PI * 2); gx.fill();
+  }
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ─── Layer UI ─────────────────────────────────────────────────────────────────
+
+function onNKChange(li) {
+  let n = parseInt(document.getElementById(`n${li}`).value)  || 1;
+  let k = parseInt(document.getElementById(`k${li}`).value) || 8;
+  k = Math.max(2, Math.min(32, k));
+  n = Math.max(1, Math.min(k, n));
+  layers[li].n = n;
+  layers[li].k = k;
+  document.getElementById(`n${li}`).value = n;
+  document.getElementById(`k${li}`).value = k;
+  resetLayer(li);
+  refreshLayerUI(li);
+}
+
+function refreshLayerUI(li) {
+  const L         = layers[li];
+  const [R, G, B] = COLORS[li];
+  const col       = `rgb(${R},${G},${B})`;
+  const nm        = pname(L.n, L.k);
+
+  const nameEl = document.getElementById(`pname${li}`);
+  if (nameEl) nameEl.textContent = nm ? `E(${L.n},${L.k}) · ${nm}` : `E(${L.n},${L.k})`;
+
+  const dotsEl = document.getElementById(`pdots${li}`);
+  if (dotsEl) dotsEl.innerHTML = L.pattern.map(v =>
+    `<div class="pdot ${v ? 'on' : 'off'}" style="background:${col}"></div>`
+  ).join('');
+}
+
+function buildUI() {
+  const wrap = document.getElementById('layersWrap');
+  wrap.innerHTML = '';
+
+  layers.forEach((L, li) => {
+    const [R, G, B] = COLORS[li];
+    const col = `rgb(${R},${G},${B})`;
+
+    const row  = document.createElement('div');
+    row.className = 'layer-row';
+
+    const sw = document.createElement('div');
+    sw.className = 'layer-swatch';
+    sw.style.background = col;
+
+    const nkWrap = document.createElement('div');
+    nkWrap.className = 'nk-wrap';
+    nkWrap.innerHTML = `
+      <input class="nk-inp" id="n${li}" type="number" value="${L.n}" min="1" max="${L.k}" title="pulses">
+      <span class="nk-sep">/</span>
+      <input class="nk-inp" id="k${li}" type="number" value="${L.k}" min="2" max="32" title="steps">
+    `;
+
+    const info = document.createElement('div');
+    info.className = 'layer-info';
+    info.innerHTML = `
+      <div class="pname" id="pname${li}"></div>
+      <div class="pdots" id="pdots${li}"></div>
+    `;
+
+    const sel = document.createElement('select');
+    sel.className = 'pitch-sel';
+    sel.id = `pitch${li}`;
+    PITCH_LBLS.forEach((lbl, pi) => {
+      const opt = document.createElement('option');
+      opt.value = pi; opt.textContent = lbl;
+      if (pi === L.pitchIdx) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = () => { layers[li].pitchIdx = parseInt(sel.value); };
+
+    const muteBtn = document.createElement('button');
+    muteBtn.className = 'btn-sm';
+    muteBtn.id = `mute${li}`;
+    muteBtn.textContent = 'mute';
+    muteBtn.onclick = () => {
+      L.muted = !L.muted;
+      muteBtn.classList.toggle('muted', L.muted);
+    };
+
+    row.append(sw, nkWrap, info, sel, muteBtn);
+    wrap.appendChild(row);
+    refreshLayerUI(li);
+
+    document.getElementById(`n${li}`).addEventListener('change', () => onNKChange(li));
+    document.getElementById(`k${li}`).addEventListener('change', () => onNKChange(li));
+  });
+}
+
+function toggleExplain() {
+  document.getElementById('explainBody').classList.toggle('open');
+}
+
+buildUI();
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+});
+</script>
+</body>
+</html>
