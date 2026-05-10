@@ -267,6 +267,7 @@
     <button class="btn-sm" onclick="addEvent()">+ add step</button>
     <button class="btn-sm" onclick="exportMidi()">↓ midi float json</button>
     <button class="btn-sm" onclick="loadNew()">↺ load new</button>
+    <button class="btn-sm" onclick="sendToCanon()" title="open sequence in Canon Machine" style="margin-left:auto;border-color:rgba(74,158,255,0.3);color:rgba(74,158,255,0.7)">→ canon</button>
   </div>
 
 </div>
@@ -626,6 +627,20 @@ document.getElementById('bpmIn').addEventListener('input', e => {
 document.getElementById('swingIn').addEventListener('input', e => {
   swing = parseFloat(e.target.value) || 0.5;
 });
+
+// ─── Send to Canon ────────────────────────────────────────────────────────────
+
+function sendToCanon() {
+  if (seq.length === 0) return;
+  const data = {
+    v: 1,
+    events: seq.map(ev => ({ p: ev.p, q: ev.q, dur: ev.dur })),
+    fundamental_hz: fundHz,
+    bpm: parseFloat(document.getElementById('bpmIn').value) || bpm,
+  };
+  localStorage.setItem('seq-to-canon', JSON.stringify(data));
+  window.open('canon.html?from=seq', '_blank');
+}
 
 // ─── Keyboard ─────────────────────────────────────────────────────────────────
 
