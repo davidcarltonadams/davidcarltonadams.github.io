@@ -1195,10 +1195,55 @@ seed(); // show something immediately; loadGrid() below will overwrite if saved 
 
 // Load tunings.json (K3, Vallotti, DCA Beta, any custom entries David added),
 // then restore saved state. Falls back gracefully if file not found.
+// If opened from sequence.html (→ canon button), import that instead.
 fetch('./tunings.json')
   .then(r=>r.json())
-  .then(data=>{ loadExternalTunings(data); loadGrid(); })
-  .catch(()=>{ loadGrid(); });
+  .then(data=>{ loadExternalTunings(data); loadGridOrSeq(); })
+  .catch(()=>{ loadGridOrSeq(); });
+
+function loadGridOrSeq() {
+  const raw = localStorage.getItem('seq-to-canon');
+  if(raw && new URLSearchParams(location.search).get('from') === 'seq') {
+    localStorage.removeItem('seq-to-canon');
+    try {
+      const s = JSON.parse(raw);
+      if(!s || s.v !== 1 || !Array.isArray(s.events)) throw new Error('bad');
+      const C4 = 261.626;
+      const fund = s.fundamental_hz || 220;
+      // Map events to grid rows: row 0 = C4 in 12-TET
+      // Fundamental in semitones from C4, then add ratio semitones
+      const fundSt = 12 * Math.log2(fund / C4);
+      // Target octave: put 1/1 around row 12 (C5)
+      const BASE_ROW = 12;
+      const fundRow  = BASE_ROW + Math.round(fundSt);
+      const len = Math.min(s.events.length, 64);
+      updateSteps(Math.max(16, len));
+      if(s.bpm) { bpm=s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
+      // Clear grid
+      grid.forEach(row => row && row.fill(false));
+      s.events.slice(0, len).forEach((ev, col) => {
+        const ratioSt = 12 * Math.log2(ev.p / ev.q);
+        const row = fundRow + Math.round(ratioSt);
+        if(row >= 0 && row < numRows && col < numSteps) grid[row][col] = true;
+      });
+      markNotaDirty();
+      // Brief toast
+      const toast = document.createElement('div');
+      Object.assign(toast.style, {
+        position:'fixed', bottom:'1.5rem', left:'50%', transform:'translateX(-50%)',
+        background:'rgba(74,158,255,0.12)', border:'1px solid rgba(74,158,255,0.3)',
+        color:'rgba(74,158,255,0.9)', fontFamily:'monospace', fontSize:'0.62rem',
+        padding:'0.4rem 1rem', letterSpacing:'0.08em', zIndex:9999,
+        pointerEvents:'none', transition:'opacity 0.4s',
+      });
+      toast.textContent = `sequence loaded · ${len} steps`;
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2200);
+    } catch(e) { loadGrid(); }
+  } else {
+    loadGrid();
+  }
+}
 
 // Score click editing — delegate on #nota container (set up once)
 $('nota').addEventListener('click', e => {
