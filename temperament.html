@@ -44,7 +44,8 @@
       background: var(--bg2); border: 1px solid var(--border);
       border-radius: 2px; padding: 0.5rem 0.1rem; text-align: center;
       transition: background 0.25s, border-color 0.25s;
-      cursor: pointer; user-select: none;
+      cursor: pointer; user-select: none; -webkit-user-select: none;
+      touch-action: none;
     }
     .pc-cell:hover { border-color: rgba(255,255,255,0.18); }
     .pc-cell.playing { border-color: var(--ji); background: rgba(160,200,136,0.06); }
@@ -362,14 +363,15 @@ function getVoice() {
 
 function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   if (!pool) return;
+  const now = ac.currentTime;
 
-  // Cut any same-pitch voice still releasing so it doesn't bleed into this attack.
-  // cancelScheduledValues(0) wipes the full future schedule on that param.
+  // Immediately fade any same-pitch voice still releasing — wipe from now, not startTime,
+  // so the release tail doesn't bleed through the AHEAD lookahead window.
   for (const pv of pool) {
     if (pv.midi === midi && pv.freeAt > startTime) {
       pv.gain.gain.cancelScheduledValues(0);
-      pv.gain.gain.setTargetAtTime(0.0001, startTime, 0.008);
-      pv.freeAt = startTime + 0.04;
+      pv.gain.gain.setTargetAtTime(0.0001, now, 0.012);
+      pv.freeAt = now + 0.06;
       pv.midi = -1;
     }
   }
@@ -380,11 +382,13 @@ function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   const off = t + Math.max(durationSec - 0.015, 0.015);
   const rel = 0.055; // release τ
 
-  v.osc.frequency.cancelScheduledValues(t);
+  // cancelScheduledValues(0) wipes the full param schedule — using t here would leave
+  // any pre-t release tail playing until the new note's start time.
+  v.osc.frequency.cancelScheduledValues(0);
   v.osc.frequency.setValueAtTime(freq, t);
 
   const g = v.gain.gain;
-  g.cancelScheduledValues(t);
+  g.cancelScheduledValues(0);
   g.setValueAtTime(0.0001, t);
   g.exponentialRampToValueAtTime(vol, t + 0.005);       // fast attack
   g.exponentialRampToValueAtTime(vol * 0.45, t + 0.14); // pluck decay
@@ -669,6 +673,21 @@ const WTK_KEYS = [
   'F♯','f♯','G','g','A♭','g♯','A','a','B♭','b♭','B','b'
 ];
 
+const heldCells = new Map(); // pc index → pool voice
+
+function releasePcCell(i) {
+  const v = heldCells.get(i);
+  if (!v) return;
+  const now = ac.currentTime;
+  v.gain.gain.cancelScheduledValues(0);
+  v.gain.gain.setTargetAtTime(0.0001, now, 0.06);
+  v.freeAt = now + 0.3;
+  v.midi = -1;
+  heldCells.delete(i);
+  const cell = document.getElementById(`pc-${i}`);
+  if (cell) cell.classList.remove('playing');
+}
+
 // Build pc grid
 function buildPcGrid() {
   const grid = document.getElementById('pc-grid');
@@ -678,15 +697,34 @@ function buildPcGrid() {
     cell.className = 'pc-cell';
     cell.id = `pc-${i}`;
     cell.innerHTML = `<div class="pc-name">${name}</div><div class="pc-dev" id="pcdev-${i}">0¢</div><div class="pc-bar" id="pcbar-${i}"></div>`;
-    cell.addEventListener('click', () => {
+
+    cell.addEventListener('pointerdown', e => {
+      e.preventDefault();
       initAudio();
       if (ac.state === 'suspended') ac.resume();
+      if (heldCells.has(i)) return;
       const droneBase = Math.floor(getDroneMidi() / 12) * 12;
       const midi = droneBase + i;
-      playNoteAt(midi, ac.currentTime + 0.01, 1.2, 0.22);
-      highlightPc(i);
-      setTimeout(() => clearHighlights(), 1300);
+      const now = ac.currentTime;
+      const v = getVoice();
+      v.osc.frequency.cancelScheduledValues(0);
+      v.osc.frequency.setValueAtTime(midiToFreq(midi), now);
+      const g = v.gain.gain;
+      g.cancelScheduledValues(0);
+      g.setValueAtTime(0.0001, now);
+      g.exponentialRampToValueAtTime(0.22, now + 0.006);
+      g.exponentialRampToValueAtTime(0.22 * 0.55, now + 0.15); // settle to sustain
+      v.freeAt = now + 3600;
+      v.midi = midi;
+      heldCells.set(i, v);
+      cell.classList.add('playing');
     });
+
+    const release = () => releasePcCell(i);
+    cell.addEventListener('pointerup',     release);
+    cell.addEventListener('pointerleave',  release);
+    cell.addEventListener('pointercancel', release);
+
     grid.appendChild(cell);
   });
 }
