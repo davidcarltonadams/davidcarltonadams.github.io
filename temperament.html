@@ -315,7 +315,11 @@ function getDroneMidi() { return NOTE_MIDI[droneNote] + (droneOct - 4) * 12; }
 
 // Pool
 const POOL_SIZE = 20;
-let pool = null; // [{osc, gain, freeAt, midi}]
+let pool = null; // [{osc, gain, mute, freeAt, midi}]
+// Each voice: osc → gain (envelope) → mute (hard gate) → masterLPF
+// The mute node is a clean on/off switch — avoids cancelScheduledValues
+// browser inconsistencies (especially WebKit/iOS) by keeping envelope
+// scheduling and silence logic on separate nodes.
 
 function initAudio() {
   if (ac) return;
@@ -336,17 +340,20 @@ function initAudio() {
   masterLPF.connect(masterComp);
   masterComp.connect(ac.destination);
 
-  // Build pool: sawtooth oscillators idling at zero gain
+  // Build pool: osc → envGain → muteGain → LPF
   pool = [];
   for (let i = 0; i < POOL_SIZE; i++) {
-    const osc = ac.createOscillator();
-    const g   = ac.createGain();
+    const osc  = ac.createOscillator();
+    const env  = ac.createGain();
+    const mute = ac.createGain();
     osc.type = 'sawtooth';
-    g.gain.value = 0;
-    osc.connect(g);
-    g.connect(masterLPF);
+    env.gain.value  = 0;
+    mute.gain.value = 0; // closed until first note
+    osc.connect(env);
+    env.connect(mute);
+    mute.connect(masterLPF);
     osc.start();
-    pool.push({ osc, gain: g, freeAt: 0, midi: -1 });
+    pool.push({ osc, gain: env, mute, freeAt: 0, midi: -1 });
   }
 }
 
@@ -365,13 +372,12 @@ function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   if (!pool) return;
   const now = ac.currentTime;
 
-  // Immediately fade any same-pitch voice still releasing — wipe from now, not startTime,
-  // so the release tail doesn't bleed through the AHEAD lookahead window.
+  // Hard-mute any same-pitch voice still releasing via the mute node —
+  // no cancelScheduledValues needed, just close the gate now.
   for (const pv of pool) {
     if (pv.midi === midi && pv.freeAt > startTime) {
-      pv.gain.gain.cancelScheduledValues(0);
-      pv.gain.gain.setTargetAtTime(0.0001, now, 0.012);
-      pv.freeAt = now + 0.06;
+      pv.mute.gain.setValueAtTime(0, now);
+      pv.freeAt = now;
       pv.midi = -1;
     }
   }
@@ -382,15 +388,20 @@ function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   const off = t + Math.max(durationSec - 0.015, 0.015);
   const rel = 0.055; // release τ
 
-  // cancelScheduledValues(0) wipes the full param schedule — using t here would leave
-  // any pre-t release tail playing until the new note's start time.
+  // Close mute now → open at t: any stolen-voice release tail is gated off
+  // between now and the scheduled start, so nothing bleeds through.
+  v.mute.gain.cancelScheduledValues(0);
+  v.mute.gain.setValueAtTime(0, now);
+  v.mute.gain.setValueAtTime(1, t);
+  v.mute.gain.setValueAtTime(0, off + rel * 5); // close again after release
+
   v.osc.frequency.cancelScheduledValues(0);
   v.osc.frequency.setValueAtTime(freq, t);
 
   const g = v.gain.gain;
   g.cancelScheduledValues(0);
   g.setValueAtTime(0.0001, t);
-  g.exponentialRampToValueAtTime(vol, t + 0.005);       // fast attack
+  g.exponentialRampToValueAtTime(vol, t + 0.005);       // attack
   g.exponentialRampToValueAtTime(vol * 0.45, t + 0.14); // pluck decay
   g.setTargetAtTime(0.0001, off, rel);                   // release
 
@@ -637,9 +648,9 @@ function silencePool() {
   if (!pool) return;
   const now = ac ? ac.currentTime : 0;
   for (const v of pool) {
-    v.gain.gain.cancelScheduledValues(0);
-    v.gain.gain.setTargetAtTime(0.0001, now, 0.01);
-    v.freeAt = now + 0.05;
+    v.mute.gain.cancelScheduledValues(0);
+    v.mute.gain.setValueAtTime(0, now); // hard gate off — instant silence
+    v.freeAt = now;
     v.midi = -1;
   }
 }
@@ -679,9 +690,11 @@ function releasePcCell(i) {
   const v = heldCells.get(i);
   if (!v) return;
   const now = ac.currentTime;
-  v.gain.gain.cancelScheduledValues(0);
-  v.gain.gain.setTargetAtTime(0.0001, now, 0.06);
-  v.freeAt = now + 0.3;
+  // Close mute with a short ramp to avoid a hard click on release
+  v.mute.gain.cancelScheduledValues(0);
+  v.mute.gain.setValueAtTime(1, now);
+  v.mute.gain.linearRampToValueAtTime(0, now + 0.08);
+  v.freeAt = now + 0.1;
   v.midi = -1;
   heldCells.delete(i);
   const cell = document.getElementById(`pc-${i}`);
@@ -709,6 +722,8 @@ function buildPcGrid() {
       const v = getVoice();
       v.osc.frequency.cancelScheduledValues(0);
       v.osc.frequency.setValueAtTime(midiToFreq(midi), now);
+      v.mute.gain.cancelScheduledValues(0);
+      v.mute.gain.setValueAtTime(1, now); // open gate immediately
       const g = v.gain.gain;
       g.cancelScheduledValues(0);
       g.setValueAtTime(0.0001, now);
