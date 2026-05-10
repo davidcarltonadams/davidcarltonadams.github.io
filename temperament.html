@@ -314,7 +314,7 @@ function getDroneMidi() { return NOTE_MIDI[droneNote] + (droneOct - 4) * 12; }
 
 // Pool
 const POOL_SIZE = 20;
-let pool = null; // [{osc, gain, freeAt}]
+let pool = null; // [{osc, gain, freeAt, midi}]
 
 function initAudio() {
   if (ac) return;
@@ -345,7 +345,7 @@ function initAudio() {
     osc.connect(g);
     g.connect(masterLPF);
     osc.start();
-    pool.push({ osc, gain: g, freeAt: 0 });
+    pool.push({ osc, gain: g, freeAt: 0, midi: -1 });
   }
 }
 
@@ -362,6 +362,16 @@ function getVoice() {
 
 function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   if (!pool) return;
+
+  // Cut any same-pitch voice still in its release tail so it doesn't bleed into this attack
+  for (const pv of pool) {
+    if (pv.midi === midi && pv.freeAt > startTime) {
+      pv.gain.gain.cancelScheduledValues(startTime);
+      pv.gain.gain.setTargetAtTime(0.0001, startTime, 0.008);
+      pv.freeAt = startTime + 0.04;
+    }
+  }
+
   const v = getVoice();
   const freq = midiToFreq(midi);
   const t   = startTime;
@@ -378,7 +388,8 @@ function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   g.exponentialRampToValueAtTime(vol * 0.45, t + 0.14); // pluck decay
   g.setTargetAtTime(0.0001, off, rel);                   // release
 
-  v.freeAt = off + rel * 5; // mark busy until release tail clears
+  v.freeAt = off + rel * 5;
+  v.midi = midi;
 }
 
 function startDrone() {
