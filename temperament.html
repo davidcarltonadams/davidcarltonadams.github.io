@@ -284,6 +284,23 @@ const WELL = [
     // C-G, G-D, D-A, A-E, E-B and F-C each narrow by PC/6; rest pure
     fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6, P5, P5, P5, P5, P5, P5, P5-PC/6],
   },
+  {
+    name: 'Kirnberger III · 1779',
+    // C-G, G-D, D-A, A-E each narrow by SC/4; schisma absorbed on G#-Eb; rest pure
+    fifths: [P5-SC/4, P5-SC/4, P5-SC/4, P5-SC/4, P5, P5, P5, P5, P5-(PC-SC), P5, P5, P5],
+  },
+  {
+    name: 'Vallotti · 1754',
+    // F-C, C-G, G-D, D-A, A-E, E-B each narrow by SC/6; schisma on Bb-F; rest pure
+    // (differs from Young II which uses PC/6; SC/6 gives purer C-E third)
+    fifths: [P5-SC/6, P5-SC/6, P5-SC/6, P5-SC/6, P5-SC/6, P5, P5, P5, P5, P5, P5-(PC-SC), P5-SC/6],
+  },
+  {
+    name: 'Lehman-Bach · 2004',
+    // Lehman's 2004 reading of the WTK title page scroll:
+    // C-G, G-D, D-A narrow by PC/6; A-E, E-B, B-F# and Eb-Bb, Bb-F, F-C by PC/12; F#-C#, C#-G#, G#-Eb pure
+    fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/12, P5-PC/12, P5-PC/12, P5, P5, P5, P5-PC/12, P5-PC/12, P5-PC/12],
+  },
 ];
 
 // Current temperament state
