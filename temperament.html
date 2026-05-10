@@ -457,7 +457,7 @@ function playScale() {
   degrees.forEach((d, i) => {
     setTimeout(() => {
       clearHighlights();
-      highlightPc(((rootMidi + d) % 12 + 12) % 12);
+      highlightPc(((rootMidi + d) % 12 + 12) % 12, 0);
     }, i * dur * 1000);
   });
   setTimeout(clearHighlights, degrees.length * dur * 1000 + 200);
@@ -618,7 +618,8 @@ function schedLoop() {
     // highlight pc cell briefly
     const pc = ((ev.midi % 12) + 12) % 12;
     const delay = Math.max(0, (evTime - now) * 1000);
-    setTimeout(() => highlightPc(pc), delay);
+    const durMs = Math.max(beatToSec(ev.dur) * 0.9, 0.04) * 1000;
+    setTimeout(() => highlightPc(pc, durMs), delay);
     schedIdx++;
   }
   if (schedIdx >= score.events.length) {
@@ -799,12 +800,24 @@ function setTemperament(pcCents, name, fifthVal, well) {
   });
 }
 
-function highlightPc(pc) {
-  document.querySelectorAll('.pc-cell').forEach(c => c.classList.remove('playing'));
+const pcActive = new Int32Array(12); // reference count per pitch class
+
+function highlightPc(pc, durationMs) {
+  pcActive[pc]++;
   const el = document.getElementById(`pc-${pc}`);
   if (el) el.classList.add('playing');
+  if (durationMs > 0) {
+    setTimeout(() => {
+      pcActive[pc] = Math.max(0, pcActive[pc] - 1);
+      if (pcActive[pc] === 0) {
+        const e = document.getElementById(`pc-${pc}`);
+        if (e) e.classList.remove('playing');
+      }
+    }, durationMs);
+  }
 }
 function clearHighlights() {
+  pcActive.fill(0);
   document.querySelectorAll('.pc-cell').forEach(c => c.classList.remove('playing'));
 }
 
