@@ -436,7 +436,7 @@ function playScale() {
 // ── 3. KERN PARSER ────────────────────────────────────────────────────────────
 
 function parseKernDuration(token) {
-  const m = token.match(/^(\d+)(\.{0,2})/);
+  const m = token.match(/^\[?(\d+)(\.{0,2})/);
   if (!m) return null;
   const n = parseInt(m[1]);
   const dots = m[2].length;
@@ -467,44 +467,97 @@ function parseKernPitch(token) {
 
 function parseKern(text) {
   const lines = text.split('\n');
-  // Count spines
-  let nSpines = 0;
+  let headerTokens = [];
   for (const l of lines) {
-    if (l.startsWith('**kern')) { nSpines = l.split('\t').length; break; }
+    if (l.startsWith('**')) { headerTokens = l.split('\t'); break; }
   }
+  const nSpines = headerTokens.length;
 
   let tempo = 72;
-  const voiceTime = new Float64Array(nSpines); // beats per voice
-  const voiceTie  = new Array(nSpines).fill(null); // {eventIdx} pending tie
+  // Dynamic spine arrays — mutated by *^ (split) and *v (merge)
+  let spineTime = new Array(nSpines).fill(0);
+  let spineTie  = new Array(nSpines).fill(null);
+  // Pre-mark null/empty header slots (e.g. double-tab phantom spines) as skip
+  let spineSkip = headerTokens.map(tok => tok === '' || tok === '**');
   const events = [];
 
   for (const line of lines) {
-    if (!line || line.startsWith('!') || line.startsWith('*') || line.startsWith('=')) {
-      if (line.match(/^\*MM(\d+)/)) { const m = line.match(/\*MM(\d+)/); if (m) tempo = parseInt(m[1]); }
+    if (!line || line.startsWith('!') || line.startsWith('=')) continue;
+
+    if (line.startsWith('*')) {
+      const tokens = line.split('\t');
+
+      // Tempo
+      for (const tok of tokens) {
+        const mm = tok.match(/^\*MM(\d+)/);
+        if (mm) tempo = parseInt(mm[1]);
+      }
+
+      // *v spine merge — scan right-to-left so splice indices stay valid
+      for (let i = tokens.length - 1; i >= 1; i--) {
+        if (tokens[i] === '*v' && tokens[i - 1] === '*v') {
+          // Keep i-1, remove i; take the greater elapsed time
+          spineTime[i - 1] = Math.max(spineTime[i - 1], spineTime[i]);
+          if (spineTie[i] !== null && spineTie[i - 1] === null) spineTie[i - 1] = spineTie[i];
+          spineTime.splice(i, 1);
+          spineTie.splice(i, 1);
+          spineSkip.splice(i, 1);
+          i--; // skip past the paired token
+        }
+      }
+
+      // *^ spine split — scan right-to-left so splice indices stay valid
+      for (let i = tokens.length - 1; i >= 0; i--) {
+        if (tokens[i] === '*^') {
+          if (tokens[i + 1] === '') {
+            // Pre-allocated null slot — activate it in place (no column count change)
+            spineTime[i + 1] = spineTime[i];
+            spineSkip[i + 1] = false;
+          } else {
+            // Standard split: insert new spine after i (column count increases)
+            spineTime.splice(i + 1, 0, spineTime[i]);
+            spineTie.splice(i + 1, 0, null);
+            spineSkip.splice(i + 1, 0, false);
+          }
+        }
+      }
+
+      // Mark ossia spines to skip (primary/sic spines are kept)
+      for (let i = 0; i < Math.min(tokens.length, spineTime.length); i++) {
+        if (tokens[i] === '*S/ossia') spineSkip[i] = true;
+      }
+
       continue;
     }
+
+    // Data line
     const tokens = line.split('\t');
-    for (let v = 0; v < Math.min(tokens.length, nSpines); v++) {
+    for (let v = 0; v < Math.min(tokens.length, spineTime.length); v++) {
       const tok = tokens[v].trim();
       if (!tok || tok === '.') continue;
       const dur = parseKernDuration(tok);
       if (dur === null) continue;
+
+      if (spineSkip[v]) {
+        spineTime[v] += dur; // advance time so merge math stays correct
+        continue;
+      }
+
       const midi = parseKernPitch(tok);
       const tieEnd   = tok.includes(']');
       const tieStart = tok.includes('[');
 
-      if (tieEnd && voiceTie[v] !== null) {
-        // extend previous note's duration
-        events[voiceTie[v]].dur += dur;
-        if (!tieStart) voiceTie[v] = null;
+      if (tieEnd && spineTie[v] !== null) {
+        events[spineTie[v]].dur += dur;
+        if (!tieStart) spineTie[v] = null;
       } else if (midi !== null) {
         const idx = events.length;
-        events.push({ t: voiceTime[v], dur, midi });
-        voiceTie[v] = tieStart ? idx : null;
+        events.push({ t: spineTime[v], dur, midi });
+        spineTie[v] = tieStart ? idx : null;
       } else {
-        voiceTie[v] = null; // rest clears tie
+        spineTie[v] = null; // rest clears tie
       }
-      voiceTime[v] += dur;
+      spineTime[v] += dur;
     }
   }
 
