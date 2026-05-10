@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>drift</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d10;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.38);
+      --dimmer: rgba(204,200,208,0.16);
+      --border: rgba(255,255,255,0.07);
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 4rem;
+      gap: 1.8rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      font-weight: normal;
+      letter-spacing: 0.22em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.4rem;
+      line-height: 1.85;
+      max-width: 520px;
+      margin-left: auto; margin-right: auto;
+    }
+
+    .canvas-wrap {
+      width: 100%;
+      max-width: 900px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    #cv { display: block; width: 100%; }
+
+    .controls {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.6rem 2rem;
+      align-items: flex-end;
+    }
+    .ctrl-group { display: flex; flex-direction: column; gap: 0.38rem; }
+    .ctrl-label {
+      font-size: 0.54rem;
+      letter-spacing: 0.14em;
+      text-transform: lowercase;
+      font-style: italic;
+      color: var(--dim);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      height: 2px;
+      background: rgba(255,255,255,0.14);
+      border-radius: 1px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--text);
+      cursor: pointer;
+    }
+
+    .btn {
+      font-family: Georgia, serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: lowercase;
+      font-style: italic;
+      color: var(--text);
+      background: none;
+      border: 1px solid rgba(255,255,255,0.18);
+      padding: 0.4rem 1.2rem;
+      cursor: pointer;
+      transition: border-color 0.14s, color 0.14s;
+    }
+    .btn:hover { border-color: rgba(255,255,255,0.48); }
+    .btn.on { border-color: rgba(255,255,255,0.55); color: #fff; }
+
+    select {
+      font-family: Georgia, serif;
+      font-size: 0.62rem;
+      font-style: italic;
+      color: var(--text);
+      background: var(--bg2);
+      border: 1px solid rgba(255,255,255,0.15);
+      padding: 0.28rem 0.5rem;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .voice-status {
+      width: 100%; max-width: 900px;
+      display: flex; gap: 0.9rem; flex-wrap: wrap;
+      min-height: 54px;
+    }
+    .v-chip {
+      display: flex; flex-direction: column; gap: 0.18rem;
+      padding: 0.48rem 0.75rem;
+      border: 1px solid var(--border);
+      min-width: 96px;
+    }
+    .v-ratio { font-size: 0.88rem; letter-spacing: 0.04em; }
+    .v-detail { font-size: 0.5rem; letter-spacing: 0.1em; font-style: italic; color: var(--dim); }
+    .v-drone { opacity: 0.32; }
+  </style>
+</head>
+<body>
+
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
+<div class="header">
+  <h1 class="title">drift</h1>
+  <p class="sub">
+    voices wander through just intonation — each move a simple ratio step, each moment a chord.<br>
+    the harmonic series is the landscape; the music is what happens between destinations.
+  </p>
+</div>
+
+<div class="canvas-wrap">
+  <canvas id="cv" height="300"></canvas>
+</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">playback</span>
+    <button class="btn" id="playBtn" onclick="togglePlay()">play</button>
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">step interval — <span id="speedDisp">8s</span></span>
+    <input type="range" id="speedSlider" min="3" max="30" value="8" step="1" style="width:120px"
+           oninput="document.getElementById('speedDisp').textContent=this.value+'s'">
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">voices</span>
+    <select id="voiceCount">
+      <option value="2">two</option>
+      <option value="3" selected>three</option>
+      <option value="4">four</option>
+    </select>
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">prime limit</span>
+    <select id="primeLimit">
+      <option value="3">3-limit — pythagorean</option>
+      <option value="5">5-limit — classical JI</option>
+      <option value="7" selected>7-limit</option>
+      <option value="11">11-limit</option>
+      <option value="13">13-limit</option>
+    </select>
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">fundamental</span>
+    <select id="fundSelect">
+      <option value="82.41">E2 — 82 Hz</option>
+      <option value="98">G2 — 98 Hz</option>
+      <option value="110">A2 — 110 Hz</option>
+      <option value="130.81">C3 — 131 Hz</option>
+      <option value="146.83">D3 — 147 Hz</option>
+      <option value="196">G3 — 196 Hz</option>
+      <option value="220" selected>A3 — 220 Hz</option>
+      <option value="261.63">C4 — 262 Hz</option>
+    </select>
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">volume</span>
+    <input type="range" id="volSlider" min="0" max="100" value="55" step="1" style="width:80px"
+           oninput="setVolume(this.value)">
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">root drone</span>
+    <label style="font-size:0.6rem;font-style:italic;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:0.35rem">
+      <input type="checkbox" id="droneCheck" checked> on
+    </label>
+  </div>
+</div>
+
+<div class="voice-status" id="voiceStatus"></div>
+
+<script>
+'use strict';
+
+// ─── Math ────────────────────────────────────────────────────────────────────
+
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+function reduce(p, q) { const g = gcd(p, q); return [p/g, q/g]; }
+
+function tenneyHeight(p, q) { return Math.log2(p * q); }
+
+function ratioCents(p, q) { return 1200 * Math.log2(p / q); }
+
+function primeLimit(n) {
+  if (n <= 1) return 1;
+  let hi = 1;
+  for (const p of [2,3,5,7,11,13,17,19]) {
+    while (n % p === 0) { n /= p; hi = Math.max(hi, p); }
+  }
+  if (n > 1) hi = Math.max(hi, n);
+  return hi;
+}
+
+function ratioLimit(p, q) { return Math.max(primeLimit(p), primeLimit(q)); }
+
+// Step ratios sorted by Tenney Height (smallest = simplest first)
+const STEPS = [
+  [2,1],[3,2],[4,3],[5,4],[6,5],[7,6],[8,7],[9,8],[10,9],[11,10],[12,11],[13,12],
+  [1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,13],
+  [5,3],[3,5],[7,4],[4,7],[7,5],[5,7],[8,5],[5,8],[9,5],[5,9],[7,3],[3,7],
+  [9,7],[7,9],[10,7],[7,10],[11,6],[6,11],[11,7],[7,11],[11,8],[8,11],[11,9],[9,11],
+  [13,8],[8,13],[13,9],[9,13],[13,10],[10,13],[13,11],[11,13],[13,12],[12,13],
+  [15,8],[8,15],[16,15],[15,16],[16,9],[9,16],[25,24],[24,25],[21,16],[16,21],
+].sort((a, b) => tenneyHeight(a[0],a[1]) - tenneyHeight(b[0],b[1]));
+
+const CENTS_MIN = 0;
+const CENTS_MAX = 2400;
+
+function getNeighbors(p, q, limitCap) {
+  const seen = new Set([`${p}/${q}`]);
+  const out = [];
+  for (const [a, b] of STEPS) {
+    const [sp, sq] = reduce(p * a, q * b);
+    if (sp > 512 || sq > 512) continue;
+    const key = `${sp}/${sq}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (ratioLimit(sp, sq) > limitCap) continue;
+    const cents = ratioCents(sp, sq);
+    if (cents < CENTS_MIN || cents > CENTS_MAX) continue;
+    out.push({ p: sp, q: sq, cents, th: tenneyHeight(sp, sq) });
+  }
+  return out;
+}
+
+function weightedPick(nbrs) {
+  if (!nbrs.length) return null;
+  const minTH = Math.min(...nbrs.map(n => n.th));
+  const maxTH = Math.max(...nbrs.map(n => n.th));
+  const span = maxTH - minTH || 1;
+  // Bias toward simpler ratios (lower TH), but keep some randomness
+  const wts = nbrs.map(n => 0.65 * (1 - (n.th - minTH) / span) + 0.35 / nbrs.length);
+  const tot = wts.reduce((s, w) => s + w, 0);
+  let r = Math.random() * tot;
+  for (let i = 0; i < wts.length; i++) { r -= wts[i]; if (r <= 0) return nbrs[i]; }
+  return nbrs[nbrs.length - 1];
+}
+
+function startRatiosFor(lim) {
+  if (lim <= 3) return [[1,1],[3,2],[4,3],[9,8]];
+  if (lim <= 5) return [[1,1],[5,4],[3,2],[5,3]];
+  return [[1,1],[5,4],[3,2],[7,4]];
+}
+
+// ─── Colors ──────────────────────────────────────────────────────────────────
+
+// Voice trail colors
+const ACCENTS = [
+  { hex: '#7ab8d4', rgb: [122, 184, 212] },
+  { hex: '#88c080', rgb: [136, 192, 128] },
+  { hex: '#d4a060', rgb: [212, 160,  96] },
+  { hex: '#b070c8', rgb: [176, 112, 200] },
+];
+
+// Prime limit → color for status chips
+const LIMIT_HEX = {
+  1:'#aaaaaa', 2:'#999aaa', 3:'#6ab4d8', 5:'#78c870',
+  7:'#d8a050', 11:'#d8d050', 13:'#b058d8', 17:'#d85070',
+};
+function limitColor(lim) { return LIMIT_HEX[lim] || '#cc4444'; }
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
+
+let audioCtx = null, masterGain = null;
+let droneOsc = null, droneGain = null;
+let voices = [];        // { osc, gain, p, q, fund, accent }
+let playing = false;
+let timers = [];
+
+function ensureCtx() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = getVolume();
+  masterGain.connect(audioCtx.destination);
+}
+
+function getVolume() {
+  return document.getElementById('volSlider').value / 100 * 0.8;
+}
+
+function setVolume(v) {
+  if (masterGain) masterGain.gain.value = v / 100 * 0.8;
+}
+
+function startAll() {
+  ensureCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  const fund = parseFloat(document.getElementById('fundSelect').value);
+  const nv = parseInt(document.getElementById('voiceCount').value);
+  const lim = parseInt(document.getElementById('primeLimit').value);
+
+  // Drone
+  if (document.getElementById('droneCheck').checked) {
+    droneOsc = audioCtx.createOscillator();
+    droneGain = audioCtx.createGain();
+    droneOsc.type = 'sine';
+    droneOsc.frequency.value = fund;
+    droneGain.gain.value = 0.20;
+    droneOsc.connect(droneGain);
+    droneGain.connect(masterGain);
+    droneOsc.start();
+  }
+
+  const starts = startRatiosFor(lim);
+  for (let i = 0; i < nv; i++) {
+    const [p, q] = starts[i] || [1,1];
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = fund * p / q;
+    g.gain.value = 0.17;
+    osc.connect(g);
+    g.connect(masterGain);
+    osc.start();
+    voices.push({ osc, gain: g, p, q, fund, accent: ACCENTS[i % ACCENTS.length] });
+  }
+
+  updateStatus();
+
+  // Stagger voice drift starts
+  for (let i = 0; i < nv; i++) {
+    const delay = i * 2000 + Math.random() * 1000;
+    setTimeout(() => { if (playing) { moveVoice(i); scheduleNext(i); } }, delay);
+  }
+}
+
+function scheduleNext(i) {
+  const ms = parseInt(document.getElementById('speedSlider').value) * 1000;
+  const jitter = (Math.random() - 0.5) * ms * 0.35;
+  const t = setTimeout(() => {
+    if (!playing || i >= voices.length) return;
+    moveVoice(i);
+    scheduleNext(i);
+  }, ms + jitter);
+  timers.push(t);
+}
+
+function moveVoice(i) {
+  if (!playing || i >= voices.length) return;
+  const v = voices[i];
+  const lim = parseInt(document.getElementById('primeLimit').value);
+  const nbrs = getNeighbors(v.p, v.q, lim);
+  if (!nbrs.length) return;
+
+  // 15% chance to hold (musical breathing)
+  if (Math.random() < 0.15) return;
+
+  const next = weightedPick(nbrs);
+  if (!next) return;
+
+  v.p = next.p; v.q = next.q;
+
+  const speed = parseInt(document.getElementById('speedSlider').value);
+  const glide = Math.min(speed * 0.38, 4.0);
+  const freq = v.fund * next.p / next.q;
+
+  v.osc.frequency.cancelScheduledValues(audioCtx.currentTime);
+  v.osc.frequency.setValueAtTime(v.osc.frequency.value, audioCtx.currentTime);
+  v.osc.frequency.linearRampToValueAtTime(freq, audioCtx.currentTime + glide);
+
+  updateStatus();
+}
+
+function stopAll() {
+  timers.forEach(clearTimeout);
+  timers = [];
+  if (droneOsc) { try { droneOsc.stop(); } catch(e){} droneOsc = null; }
+  voices.forEach(v => { try { v.osc.stop(); } catch(e){} });
+  voices = [];
+  if (audioCtx) { audioCtx.close().catch(()=>{}); audioCtx = null; masterGain = null; }
+}
+
+function togglePlay() {
+  const btn = document.getElementById('playBtn');
+  if (playing) {
+    playing = false;
+    stopAll();
+    btn.textContent = 'play';
+    btn.classList.remove('on');
+    document.getElementById('voiceStatus').innerHTML = '';
+  } else {
+    playing = true;
+    startAll();
+    btn.textContent = 'stop';
+    btn.classList.add('on');
+  }
+}
+
+// ─── Status display ───────────────────────────────────────────────────────────
+
+function updateStatus() {
+  const el = document.getElementById('voiceStatus');
+  const chips = [];
+
+  if (playing && document.getElementById('droneCheck').checked) {
+    chips.push(`<div class="v-chip v-drone">
+      <span class="v-ratio" style="color:rgba(255,255,255,0.4)">1/1</span>
+      <span class="v-detail">0.0¢ · drone</span>
+    </div>`);
+  }
+
+  voices.forEach(v => {
+    const cents = ratioCents(v.p, v.q);
+    const lim = ratioLimit(v.p, v.q);
+    chips.push(`<div class="v-chip" style="border-color:${v.accent.hex}44">
+      <span class="v-ratio" style="color:${v.accent.hex}">${v.p}/${v.q}</span>
+      <span class="v-detail">${cents.toFixed(1)}¢ · ${lim}-limit</span>
+    </div>`);
+  });
+
+  el.innerHTML = chips.join('');
+}
+
+// ─── Canvas ───────────────────────────────────────────────────────────────────
+
+const cv = document.getElementById('cv');
+const gx = cv.getContext('2d');
+const CH = 300;
+const LW = 46;   // left label panel width
+
+// JI reference lines
+const REFS = [
+  {c:0,    t:'1/1'},  {c:204,  t:'9/8'},  {c:231,  t:'8/7'},
+  {c:267,  t:'7/6'},  {c:316,  t:'6/5'},  {c:386,  t:'5/4'},
+  {c:435,  t:'9/7'},  {c:498,  t:'4/3'},  {c:551,  t:'11/8'},
+  {c:583,  t:'7/5'},  {c:617,  t:'10/7'}, {c:649,  t:'16/11'},
+  {c:702,  t:'3/2'},  {c:765,  t:'14/9'}, {c:814,  t:'8/5'},
+  {c:884,  t:'5/3'},  {c:933,  t:'12/7'}, {c:969,  t:'7/4'},
+  {c:996,  t:'16/9'}, {c:1088, t:'15/8'}, {c:1200, t:'2/1'},
+  {c:1404, t:'9/4'},  {c:1586, t:'5/2'},  {c:1902, t:'3/1'},
+  {c:2088, t:'15/4'}, {c:2204, t:'9/2'},  {c:2400, t:'4/1'},
+];
+
+function cy(cents) {
+  return CH - 1 - ((cents - CENTS_MIN) / (CENTS_MAX - CENTS_MIN)) * (CH - 2);
+}
+
+function resizeCanvas() {
+  const w = Math.min(cv.parentElement.clientWidth, 900);
+  if (cv.width !== w) { cv.width = w; cv.height = CH; }
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+function drawLabels() {
+  const W = cv.width;
+  gx.fillStyle = '#070709';
+  gx.fillRect(0, 0, LW, CH);
+
+  gx.font = '7.5px "SF Mono","Fira Code",monospace';
+  gx.textAlign = 'right';
+
+  for (const r of REFS) {
+    const y = Math.round(cy(r.c));
+    const isOct = r.c % 1200 < 1;
+    const isFifth = Math.abs((r.c % 1200) - 702) < 1;
+
+    // Grid line across trail area
+    gx.fillStyle = isOct
+      ? 'rgba(255,255,255,0.09)'
+      : isFifth
+        ? 'rgba(255,255,255,0.045)'
+        : 'rgba(255,255,255,0.022)';
+    gx.fillRect(LW, y, W - LW, 1);
+
+    // Label
+    gx.fillStyle = isOct ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.20)';
+    gx.fillText(r.t, LW - 3, y + 3);
+
+    // Tick mark
+    gx.fillStyle = isOct ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.10)';
+    gx.fillRect(LW, y, 3, 1);
+  }
+}
+
+function drawVoiceDots(W) {
+  const x = W - 1;
+  for (const v of voices) {
+    const cents = ratioCents(v.p, v.q);
+    const y = Math.round(cy(cents));
+    const [r, g, b] = v.accent.rgb;
+
+    // Layered glow
+    for (const [rad, alpha] of [[7,0.03],[5,0.07],[3,0.16],[2,0.32],[1,0.62],[0,1.0]]) {
+      gx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+      gx.fillRect(x - rad, y - rad, rad*2+1, rad*2+1);
+    }
+  }
+}
+
+(function animate() {
+  requestAnimationFrame(animate);
+  const W = cv.width;
+
+  if (playing) {
+    // Scroll trail area left by 1px
+    const img = gx.getImageData(LW + 1, 0, W - LW - 1, CH);
+    gx.putImageData(img, LW, 0);
+
+    // Fade + clear right column
+    gx.fillStyle = 'rgba(7,7,9,0.88)';
+    gx.fillRect(W - 2, 0, 2, CH);
+
+    drawVoiceDots(W);
+  }
+
+  // Always redraw label panel (covers any drift)
+  drawLabels();
+})();
+</script>
+</body>
+</html>
