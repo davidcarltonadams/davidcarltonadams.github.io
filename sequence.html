@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>sequence</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+      --blue:   #7ab8d4;
+      --green:  #88c080;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.8rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal; letter-spacing: 0.24em; text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem; letter-spacing: 0.11em;
+      color: var(--dimmer); font-style: italic;
+      margin-top: 0.42rem; line-height: 1.9;
+      max-width: 560px; margin-left: auto; margin-right: auto;
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      width: 100%; max-width: 860px;
+      border: 1px dashed rgba(212,192,112,0.25);
+      padding: 2.2rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      font-size: 0.62rem; font-style: italic;
+      color: var(--dimmer);
+      letter-spacing: 0.08em;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: rgba(212,192,112,0.6);
+      background: rgba(212,192,112,0.04);
+      color: var(--dim);
+    }
+    #fileIn { display: none; }
+
+    /* ── Sequence display ── */
+    .seq-wrap { width: 100%; max-width: 860px; display: none; flex-direction: column; gap: 1.4rem; }
+    .seq-wrap.loaded { display: flex; }
+
+    /* Playhead canvas */
+    .cv-wrap { width: 100%; }
+    #cv { display: block; width: 100%; border: 1px solid var(--border); }
+
+    /* Event strip */
+    .event-strip {
+      display: flex; gap: 0; width: 100%;
+      overflow-x: auto; padding-bottom: 0.3rem;
+    }
+    .ev {
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-right: none;
+      padding: 0.55rem 0.5rem 0.45rem;
+      cursor: pointer;
+      transition: background 0.1s;
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+      min-width: 3rem;
+    }
+    .ev:last-child { border-right: 1px solid rgba(255,255,255,0.06); }
+    .ev:hover { background: rgba(255,255,255,0.03); }
+    .ev.active {
+      background: rgba(212,192,112,0.10);
+      border-color: rgba(212,192,112,0.45);
+    }
+    .ev.played { background: rgba(212,192,112,0.04); }
+    .ev-ratio {
+      font-size: 0.88rem; color: var(--gold); font-style: italic;
+    }
+    .ev-cents {
+      font-size: 0.44rem; color: var(--dimmer);
+      font-family: 'SF Mono','Fira Code',monospace;
+    }
+    .ev-dur {
+      font-size: 0.44rem; color: rgba(204,200,208,0.25);
+      font-family: 'SF Mono','Fira Code',monospace;
+    }
+
+    /* Controls */
+    .ctrl-row {
+      width: 100%; max-width: 860px;
+      display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap;
+    }
+    .btn-sm {
+      font-family: Georgia, serif; font-size: 0.58rem;
+      letter-spacing: 0.1em; text-transform: lowercase; font-style: italic;
+      color: var(--dim); background: none;
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.75rem; cursor: pointer; white-space: nowrap;
+      transition: color 0.13s, border-color 0.13s;
+    }
+    .btn-sm:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
+    .btn-sm.on   { color: var(--text); border-color: rgba(255,255,255,0.4); }
+    .btn-sm:disabled { opacity: 0.28; cursor: default; }
+    .btn-play {
+      font-size: 0.72rem; padding: 0.5rem 1.4rem;
+      border-color: rgba(212,192,112,0.3); color: var(--gold);
+    }
+    .btn-play:hover { border-color: rgba(212,192,112,0.7); }
+    select, .seq-input {
+      font-family: Georgia, serif; font-size: 0.6rem; font-style: italic;
+      color: var(--dim); background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 0.28rem 0.5rem; cursor: pointer; outline: none;
+    }
+    .seq-input { width: 3.8rem; cursor: text; }
+
+    .path-lbl {
+      font-size: 0.51rem; letter-spacing: 0.13em;
+      font-style: italic; color: var(--dimmer);
+    }
+    .kbd-hint {
+      font-size: 0.5rem; font-style: italic; letter-spacing: 0.09em;
+      color: var(--dimmer); margin-left: auto;
+    }
+    kbd {
+      font-family: 'SF Mono','Fira Code',monospace; font-style: normal;
+      font-size: 0.48rem; color: rgba(204,200,208,0.4);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 0.05rem 0.3rem;
+    }
+
+    /* Info panel */
+    .info-panel {
+      width: 100%; max-width: 860px;
+      display: flex; gap: 2rem; flex-wrap: wrap;
+    }
+    .info-block { display: flex; flex-direction: column; gap: 0.2rem; }
+    .info-label {
+      font-size: 0.48rem; letter-spacing: 0.13em;
+      font-style: italic; color: var(--dimmer);
+    }
+    .info-val {
+      font-size: 1.6rem; color: var(--gold); font-weight: normal;
+      letter-spacing: 0.03em; line-height: 1;
+    }
+    .info-sub {
+      font-size: 0.52rem; font-style: italic; color: var(--dim);
+    }
+
+    /* Waveform / progress bar */
+    .progress-wrap {
+      width: 100%; max-width: 860px;
+      height: 3px;
+      background: rgba(255,255,255,0.06);
+      position: relative;
+    }
+    .progress-bar {
+      height: 100%; background: rgba(212,192,112,0.5);
+      width: 0%; transition: none;
+    }
+
+    /* Loop mode indicator */
+    .loop-badge {
+      font-size: 0.44rem; font-family: 'SF Mono','Fira Code',monospace;
+      color: var(--dimmer); letter-spacing: 0.1em;
+    }
+    .loop-badge.on { color: rgba(136,192,128,0.7); }
+  </style>
+</head>
+<body>
+
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
+<div class="header">
+  <h1 class="title">sequence</h1>
+  <p class="sub">
+    ji sequencer — drop a grab-bag json from stern-brocot, or build manually.<br>
+    rational durations · tenney time · midi float export.
+  </p>
+</div>
+
+<!-- Drop / load zone -->
+<div class="drop-zone" id="dropZone" onclick="document.getElementById('fileIn').click()">
+  drop a <strong style="color:var(--dim)">stern-brocot json</strong> here — or click to browse
+</div>
+<input type="file" id="fileIn" accept=".json">
+
+<!-- Main sequencer UI (hidden until loaded) -->
+<div class="seq-wrap" id="seqWrap">
+
+  <div class="info-panel">
+    <div class="info-block">
+      <span class="info-label">now playing</span>
+      <span class="info-val" id="infoRatio">—</span>
+      <span class="info-sub" id="infoName">—</span>
+    </div>
+    <div class="info-block">
+      <span class="info-label">cents</span>
+      <span class="info-val" id="infoCents" style="font-size:1.1rem;padding-top:0.35rem">—</span>
+    </div>
+    <div class="info-block">
+      <span class="info-label">fundamental</span>
+      <span class="info-val" id="infoFund" style="font-size:1.1rem;padding-top:0.35rem">—</span>
+    </div>
+    <div class="info-block">
+      <span class="info-label">step</span>
+      <span class="info-val" id="infoStep" style="font-size:1.1rem;padding-top:0.35rem">—</span>
+    </div>
+  </div>
+
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+
+  <div class="event-strip" id="eventStrip"></div>
+
+  <div class="ctrl-row">
+    <button class="btn-sm btn-play" id="playBtn" onclick="togglePlay()">▶ play</button>
+    <button class="btn-sm" onclick="stopSeq()">■ stop</button>
+    <button class="btn-sm" id="loopBtn" onclick="toggleLoop()">⟳ loop</button>
+    <span class="loop-badge" id="loopBadge">off</span>
+
+    <span class="path-lbl" style="margin-left:0.5rem">bpm:</span>
+    <input class="seq-input" id="bpmIn" type="number" value="120" min="20" max="400">
+    <span class="path-lbl">swing:</span>
+    <input class="seq-input" id="swingIn" type="number" value="0.50" min="0.50" max="0.75" step="0.01" style="width:3rem">
+    <button class="btn-sm" id="dwellBtn"   onclick="setDurMode('dwell')"   title="complex ratios linger">dwell</button>
+    <button class="btn-sm" id="resolveBtn" onclick="setDurMode('resolve')" title="consonances linger">resolve</button>
+
+    <span class="path-lbl" style="margin-left:0.5rem">fundamental:</span>
+    <select id="fundSel" onchange="onFundChange()">
+      <option value="110">A2 · 110 Hz</option>
+      <option value="220" selected>A3 · 220 Hz</option>
+      <option value="130.81">C3 · 131 Hz</option>
+      <option value="261.63">C4 · 262 Hz</option>
+      <option value="196">G3 · 196 Hz</option>
+    </select>
+
+    <span class="kbd-hint">
+      <kbd>Space</kbd> play/pause &nbsp; <kbd>S</kbd> stop &nbsp; <kbd>L</kbd> loop
+    </span>
+  </div>
+
+  <div class="ctrl-row" style="margin-top:-0.6rem">
+    <button class="btn-sm" onclick="addEvent()">+ add step</button>
+    <button class="btn-sm" onclick="exportMidi()">↓ midi float json</button>
+    <button class="btn-sm" onclick="loadNew()">↺ load new</button>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ─── Interval names ───────────────────────────────────────────────────────────
+
+const NAMES = {
+  '1/1':'unison','2/1':'octave','3/2':'perfect fifth','4/3':'perfect fourth',
+  '5/4':'major third (JI)','6/5':'minor third (JI)','5/3':'major sixth (JI)',
+  '8/5':'minor sixth (JI)','7/4':'harmonic seventh','7/6':'septimal minor third',
+  '7/5':'septimal tritone','8/7':'septimal whole tone','9/8':'major whole tone',
+  '9/7':'septimal major third','10/9':'minor whole tone','11/8':'eleventh harmonic',
+  '11/9':'neutral third','11/6':'neutral seventh','12/11':'undecimal neutral 2nd',
+  '13/8':'thirteenth harmonic','15/8':'major seventh (JI)','16/9':'Pythagorean m7',
+  '16/15':'diatonic semitone','25/24':'chromatic semitone','27/16':'Pythagorean M6',
+  '32/27':'Pythagorean m3','81/64':'Pythagorean M3','9/5':'minor seventh (JI)',
+};
+const ET_IVLS = ['unison','m2','M2','m3','M3','P4','tritone','P5','m6','M6','m7','M7','octave'];
+
+function ratioCents(p, q) { return 1200 * Math.log2(p / q); }
+function tenneyH(p, q)    { return Math.log2(p * q); }
+
+function intervalName(p, q) {
+  const k = `${p}/${q}`;
+  if (NAMES[k]) return NAMES[k];
+  const c = ratioCents(p, q);
+  const s = Math.round(c / 100);
+  const dev = c - s * 100;
+  const nm = ET_IVLS[Math.min(s, 12)] || '';
+  return `≈ ${nm} (${dev >= 0 ? '+' : ''}${dev.toFixed(0)}¢)`;
+}
+
+// Parse rational duration string "p/q" or float string → seconds per beat unit
+function parseDur(dur, beatSec) {
+  if (typeof dur === 'number') return dur * beatSec;
+  const str = String(dur);
+  if (str.includes('/')) {
+    const [n, d] = str.split('/').map(Number);
+    return (n / d) * 4 * beatSec; // dur in quarter-note units × beat
+  }
+  return parseFloat(str) * beatSec;
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+let seq         = [];     // [{p,q,dur,vel}, ...]
+let fundHz      = 220;
+let bpm         = 120;
+let swing       = 0.5;
+let durMode     = 'manual'; // 'manual' | 'tenney' | 'inverse'
+let looping     = false;
+let playing     = false;
+let curIdx      = 0;
+let nextEventAt = 0;      // AudioContext time of next event
+let schedTimer  = null;
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
+
+let ax = null;
+let droneFund = null, droneGain = null;  // sustained fundamental drone
+let noteOsc = null, noteGain = null;     // current melody note
+
+function ensureAx() {
+  if (!ax) ax = new (window.AudioContext || window.webkitAudioContext)();
+  if (ax.state === 'suspended') ax.resume();
+}
+
+function startFundDrone() {
+  if (droneFund) return;
+  droneFund = ax.createOscillator();
+  droneGain = ax.createGain();
+  droneFund.type = 'sine';
+  droneFund.frequency.value = fundHz;
+  droneGain.gain.value = 0;
+  droneFund.connect(droneGain); droneGain.connect(ax.destination);
+  droneFund.start();
+  droneGain.gain.linearRampToValueAtTime(0.18, ax.currentTime + 0.5);
+}
+
+function stopFundDrone() {
+  if (!droneFund) return;
+  const now = ax.currentTime;
+  droneGain.gain.cancelScheduledValues(now);
+  droneGain.gain.setValueAtTime(droneGain.gain.value, now);
+  droneGain.gain.linearRampToValueAtTime(0, now + 0.6);
+  droneFund.stop(now + 0.65);
+  droneFund = null; droneGain = null;
+}
+
+function playNote(ev, startTime, dur) {
+  const freq = fundHz * ev.p / ev.q;
+  const vol  = (ev.vel || 0.8) * 0.25;
+  const o = ax.createOscillator();
+  const g = ax.createGain();
+  o.type = 'sine';
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0, startTime);
+  g.gain.linearRampToValueAtTime(vol, startTime + 0.025);
+  g.gain.setValueAtTime(vol, startTime + dur * 0.82);
+  g.gain.linearRampToValueAtTime(0, startTime + dur * 0.98);
+  o.connect(g); g.connect(ax.destination);
+  o.start(startTime); o.stop(startTime + dur);
+}
+
+// ─── Sequencer engine ─────────────────────────────────────────────────────────
+
+function beatSec() { return 60 / bpm; }
+
+function applySwing(idx, rawSec) {
+  // Simple pair-wise swing: even events get swing×2×beat, odd get (2-swing×2)×beat
+  if (swing === 0.5) return rawSec;
+  const pairPos = idx % 2;
+  const base = beatSec();
+  if (pairPos === 0) return swing * 2 * base;
+  return (2 - swing * 2) * base;
+}
+
+function scheduleAhead() {
+  if (!playing || seq.length === 0) return;
+  const LOOKAHEAD = 0.12; // seconds
+  while (nextEventAt < ax.currentTime + LOOKAHEAD) {
+    const ev  = seq[curIdx];
+    const dur = parseDur(ev.dur, beatSec());
+    const swungDur = applySwing(curIdx, dur);
+    playNote(ev, nextEventAt, swungDur);
+    highlightStep(curIdx);
+    nextEventAt += swungDur;
+    curIdx++;
+    if (curIdx >= seq.length) {
+      if (looping) {
+        curIdx = 0;
+      } else {
+        playing = false;
+        updatePlayBtn();
+        stopFundDrone();
+        clearTimeout(schedTimer);
+        return;
+      }
+    }
+  }
+  schedTimer = setTimeout(scheduleAhead, 40);
+}
+
+function togglePlay() {
+  ensureAx();
+  if (playing) {
+    playing = false;
+    clearTimeout(schedTimer);
+    updatePlayBtn();
+  } else {
+    playing = true;
+    if (curIdx >= seq.length) curIdx = 0;
+    nextEventAt = ax.currentTime + 0.05;
+    startFundDrone();
+    scheduleAhead();
+    updatePlayBtn();
+    animProgress();
+  }
+}
+
+function stopSeq() {
+  playing = false;
+  clearTimeout(schedTimer);
+  curIdx = 0;
+  nextEventAt = 0;
+  updatePlayBtn();
+  stopFundDrone();
+  clearHighlights();
+  document.getElementById('progressBar').style.width = '0%';
+  updateInfoPanel(null);
+}
+
+function toggleLoop() {
+  looping = !looping;
+  document.getElementById('loopBtn').classList.toggle('on', looping);
+  document.getElementById('loopBadge').textContent = looping ? 'on' : 'off';
+  document.getElementById('loopBadge').classList.toggle('on', looping);
+}
+
+function calcDur(p, q) {
+  if (durMode === 'dwell')   return tenneyH(p, q).toFixed(3);         // tenney time: ∝ TH
+  if (durMode === 'resolve') return (10 / tenneyH(p, q)).toFixed(3);  // inverse tenney: ∝ 1/TH
+  return '1/4';
+}
+
+function setDurMode(m) {
+  durMode = durMode === m ? 'manual' : m;
+  document.getElementById('dwellBtn')  .classList.toggle('on', durMode === 'dwell');
+  document.getElementById('resolveBtn').classList.toggle('on', durMode === 'resolve');
+  seq.forEach(ev => { ev.dur = calcDur(ev.p, ev.q); });
+  renderStrip();
+}
+
+function onFundChange() {
+  fundHz = parseFloat(document.getElementById('fundSel').value);
+  if (droneFund) droneFund.frequency.linearRampToValueAtTime(fundHz, ax.currentTime + 0.3);
+  document.getElementById('infoFund').textContent = `${fundHz} Hz`;
+}
+
+// ─── UI ───────────────────────────────────────────────────────────────────────
+
+function updatePlayBtn() {
+  document.getElementById('playBtn').textContent = playing ? '⏸ pause' : '▶ play';
+  document.getElementById('playBtn').classList.toggle('on', playing);
+}
+
+function highlightStep(i) {
+  document.querySelectorAll('.ev').forEach((el, j) => {
+    el.classList.toggle('active', j === i);
+    if (j < i) el.classList.add('played');
+  });
+  updateInfoPanel(seq[i]);
+  // Scroll active chip into view
+  const el = document.querySelector('.ev.active');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+}
+
+function clearHighlights() {
+  document.querySelectorAll('.ev').forEach(el => {
+    el.classList.remove('active'); el.classList.remove('played');
+  });
+}
+
+function updateInfoPanel(ev) {
+  if (!ev) {
+    ['infoRatio','infoName','infoCents','infoStep'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    return;
+  }
+  document.getElementById('infoRatio').textContent = `${ev.p}/${ev.q}`;
+  document.getElementById('infoName').textContent  = intervalName(ev.p, ev.q);
+  document.getElementById('infoCents').textContent = `${ratioCents(ev.p, ev.q).toFixed(1)}¢`;
+  document.getElementById('infoStep').textContent  = `${curIdx}/${seq.length}`;
+}
+
+function animProgress() {
+  if (!playing || seq.length === 0) return;
+  const pct = (curIdx / seq.length) * 100;
+  document.getElementById('progressBar').style.width = `${pct}%`;
+  requestAnimationFrame(animProgress);
+}
+
+function renderStrip() {
+  const strip = document.getElementById('eventStrip');
+  strip.innerHTML = seq.map((ev, i) => `
+    <div class="ev" id="ev-${i}" onclick="jumpTo(${i})">
+      <span class="ev-ratio">${ev.p}/${ev.q}</span>
+      <span class="ev-cents">${ratioCents(ev.p,ev.q).toFixed(0)}¢</span>
+      <span class="ev-dur">${ev.dur}</span>
+    </div>`).join('');
+}
+
+function jumpTo(i) {
+  curIdx = i;
+  if (!playing) highlightStep(i);
+}
+
+function addEvent() {
+  seq.push({ p: 3, q: 2, dur: tenneyTime ? tenneyH(3,2).toFixed(3) : '1/4', vel: 0.8 });
+  renderStrip();
+}
+
+// ─── JSON load ────────────────────────────────────────────────────────────────
+
+function loadJSON(data) {
+  try {
+    const j = JSON.parse(data);
+    seq = (j.events || []).map(e => ({
+      p:   e.p,
+      q:   e.q,
+      dur: e.dur || '1/4',
+      vel: e.vel || 0.8,
+    }));
+    if (j.fundamental_hz) {
+      fundHz = j.fundamental_hz;
+      // Sync selector to nearest option or leave as-is
+    }
+    if (j.tempo_bpm) {
+      bpm = j.tempo_bpm;
+      document.getElementById('bpmIn').value = bpm;
+    }
+    if (j.swing !== undefined) {
+      swing = j.swing;
+      document.getElementById('swingIn').value = swing.toFixed(2);
+    }
+    durMode = j.dur_mode || (j.tenney_time ? 'dwell' : 'manual');
+    document.getElementById('dwellBtn')  .classList.toggle('on', durMode === 'dwell');
+    document.getElementById('resolveBtn').classList.toggle('on', durMode === 'resolve');
+    document.getElementById('infoFund').textContent = `${fundHz} Hz`;
+
+    curIdx = 0; playing = false;
+    renderStrip();
+    updateInfoPanel(null);
+    document.getElementById('seqWrap').classList.add('loaded');
+    document.getElementById('dropZone').style.display = 'none';
+    updatePlayBtn();
+  } catch(e) {
+    alert('Could not parse JSON: ' + e.message);
+  }
+}
+
+function loadNew() {
+  stopSeq();
+  document.getElementById('seqWrap').classList.remove('loaded');
+  document.getElementById('dropZone').style.display = '';
+}
+
+// ─── MIDI float export ────────────────────────────────────────────────────────
+
+function exportMidi() {
+  const out = {
+    pitch_format: 'midi_float',
+    fundamental_hz: fundHz,
+    tempo_bpm: parseFloat(document.getElementById('bpmIn').value) || bpm,
+    swing: parseFloat(document.getElementById('swingIn').value) || swing,
+    events: seq.map(ev => ({
+      ratio:      `${ev.p}/${ev.q}`,
+      midi_float: parseFloat((69 + ratioCents(ev.p, ev.q) / 100
+                    + 12 * Math.log2(fundHz / 440)).toFixed(4)),
+      hz:         parseFloat((fundHz * ev.p / ev.q).toFixed(4)),
+      dur:        ev.dur,
+      vel:        ev.vel,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  Object.assign(document.createElement('a'),
+    { href: url, download: `seq-midi-${Date.now()}.json` }).click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Drag & drop / file input ─────────────────────────────────────────────────
+
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault(); dropZone.classList.add('dragover');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) { const r = new FileReader(); r.onload = ev => loadJSON(ev.target.result); r.readAsText(file); }
+});
+document.getElementById('fileIn').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) { const r = new FileReader(); r.onload = ev => loadJSON(ev.target.result); r.readAsText(file); }
+});
+
+// BPM / swing live update
+document.getElementById('bpmIn').addEventListener('input', e => {
+  bpm = parseFloat(e.target.value) || 120;
+});
+document.getElementById('swingIn').addEventListener('input', e => {
+  swing = parseFloat(e.target.value) || 0.5;
+});
+
+// ─── Keyboard ─────────────────────────────────────────────────────────────────
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ')                     { e.preventDefault(); togglePlay(); }
+  if (e.key === 's' || e.key === 'S')    { e.preventDefault(); stopSeq(); }
+  if (e.key === 'l' || e.key === 'L')    { e.preventDefault(); toggleLoop(); }
+});
+</script>
+</body>
+</html>
