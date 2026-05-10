@@ -436,7 +436,7 @@ function playScale() {
 // ── 3. KERN PARSER ────────────────────────────────────────────────────────────
 
 function parseKernDuration(token) {
-  const m = token.match(/^\[?(\d+)(\.{0,2})/);
+  const m = token.match(/^[\[({]?(\d+)(\.{0,2})/);
   if (!m) return null;
   const n = parseInt(m[1]);
   const dots = m[2].length;
