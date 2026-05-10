@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>phase</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --cyan:   #7ab8d4;
+      --gold:   #d4c070;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.6rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal; letter-spacing: 0.24em; text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem; letter-spacing: 0.11em;
+      color: var(--dimmer); font-style: italic;
+      margin-top: 0.42rem; line-height: 1.9;
+      max-width: 560px; margin-left: auto; margin-right: auto;
+    }
+
+    .cv-wrap { width: 100%; max-width: 860px; }
+    #cv { display: block; width: 100%; border: 1px solid var(--border); cursor: pointer; }
+
+    .ctrl-row {
+      width: 100%; max-width: 860px;
+      display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;
+    }
+    .lbl {
+      font-size: 0.51rem; letter-spacing: 0.13em;
+      font-style: italic; color: var(--dimmer);
+    }
+    .disp {
+      font-size: 0.56rem; font-style: italic; color: var(--dim);
+      min-width: 2.8rem;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none; height: 2px;
+      background: rgba(255,255,255,0.14); outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: var(--text); cursor: pointer;
+    }
+
+    .btn {
+      font-family: Georgia, serif; font-size: 0.6rem;
+      letter-spacing: 0.1em; text-transform: lowercase; font-style: italic;
+      color: var(--dim); background: none;
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.8rem; cursor: pointer; white-space: nowrap;
+      transition: color 0.13s, border-color 0.13s;
+    }
+    .btn:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
+    .btn.on   { color: var(--text); border-color: rgba(255,255,255,0.4); }
+    .btn.play { font-size: 0.7rem; padding: 0.45rem 1.3rem;
+      border-color: rgba(122,184,212,0.3); color: var(--cyan); }
+    .btn.play:hover { border-color: rgba(122,184,212,0.7); }
+    .btn.sml { font-size: 0.52rem; padding: 0.3rem 0.55rem; }
+
+    select {
+      font-family: Georgia, serif; font-size: 0.6rem; font-style: italic;
+      color: var(--dim); background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 0.28rem 0.5rem; cursor: pointer; outline: none;
+    }
+
+    .legend {
+      display: flex; gap: 1.4rem; align-items: center;
+      font-size: 0.52rem; letter-spacing: 0.1em; font-style: italic; color: var(--dim);
+    }
+    .leg { display: flex; align-items: center; gap: 0.4rem; }
+    .swatch { width: 20px; height: 2px; border-radius: 1px; }
+  </style>
+</head>
+<body>
+
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
+<div class="header">
+  <h1 class="title">phase</h1>
+  <p class="sub">
+    two voices, one pattern — the second drifts at a slightly different tempo.<br>
+    as they pull apart and reconnect, new rhythms and melodies emerge from the gap.
+  </p>
+</div>
+
+<div class="cv-wrap">
+  <canvas id="cv"></canvas>
+</div>
+
+<div class="ctrl-row">
+  <button class="btn play" id="playBtn" onclick="togglePlay()">▶ play</button>
+
+  <span class="lbl">bpm</span>
+  <input type="range" id="bpmR" min="40" max="240" value="126" step="1" style="width:70px"
+         oninput="onBpm(this.value)">
+  <span class="disp" id="bpmD">126</span>
+
+  <span class="lbl">drift</span>
+  <input type="range" id="driftR" min="0" max="8" value="1.5" step="0.1" style="width:90px"
+         oninput="onDrift(this.value)">
+  <span class="disp" id="driftD">+1.5%</span>
+
+  <select id="pitchSel" onchange="onPitchSet()">
+    <option value="ji-major">JI major</option>
+    <option value="harmonics">harmonics 8–15</option>
+    <option value="pentatonic">JI pentatonic</option>
+    <option value="7-limit">7-limit chromatic</option>
+  </select>
+
+  <select id="fundSel">
+    <option value="110">A2 · 110 Hz</option>
+    <option value="220" selected>A3 · 220 Hz</option>
+    <option value="130.81">C3 · 131 Hz</option>
+    <option value="196">G3 · 196 Hz</option>
+  </select>
+</div>
+
+<div class="ctrl-row">
+  <button class="btn sml" onclick="seedGrid()">seed</button>
+  <button class="btn sml" onclick="clearGrid()">clear</button>
+  <span class="lbl" style="margin-left:0.6rem">steps</span>
+  <button class="btn sml" id="s8"  onclick="setSteps(8)">8</button>
+  <button class="btn sml" id="s12" onclick="setSteps(12)">12</button>
+  <button class="btn sml on" id="s16" onclick="setSteps(16)">16</button>
+
+  <div class="legend" style="margin-left:auto">
+    <div class="leg">
+      <div class="swatch" style="background:#7ab8d4"></div>
+      <span id="legA">voice a</span>
+    </div>
+    <div class="leg">
+      <div class="swatch" style="background:#d4c070"></div>
+      <span id="legB">voice b · +1.5%</span>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── Pitch sets ───────────────────────────────────────────────────────────────
+
+const PITCH_SETS = {
+  'ji-major': {
+    label: 'JI major',
+    ratios: [[1,1],[9,8],[5,4],[4,3],[3,2],[5,3],[15,8],[2,1]],
+  },
+  'harmonics': {
+    label: 'harmonics 8–15',
+    ratios: [[1,1],[9,8],[5,4],[11,8],[3,2],[13,8],[7,4],[15,8]],
+  },
+  'pentatonic': {
+    label: 'JI pentatonic',
+    ratios: [[1,1],[9,8],[5,4],[3,2],[5,3],[2,1],[9,4],[5,2]],
+  },
+  '7-limit': {
+    label: '7-limit chromatic',
+    ratios: [[1,1],[8,7],[7,6],[6,5],[5,4],[4,3],[7,5],[3,2],[8,5],[5,3],[7,4],[2,1]].slice(0,8),
+  },
+};
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+let NUM_STEPS = 16;
+const NUM_ROWS = 8;
+let grid = makeGrid();
+let pitchSet = PITCH_SETS['ji-major'];
+let bpm = 126;
+let driftPct = 1.5;
+let playing = false;
+let startAcTime = 0;  // ax.currentTime when play started
+let ax = null;
+
+// Scheduler state
+let nextA_time = 0, nextA_step = 0;
+let nextB_time = 0, nextB_step = 0;
+let schedTimer = null;
+
+function makeGrid() {
+  return Array.from({length: NUM_ROWS}, () => new Array(NUM_STEPS).fill(false));
+}
+
+function ratioCents(p, q) { return 1200 * Math.log2(p / q); }
+function beat16A() { return 60 / bpm / 4; }
+function beat16B() { return beat16A() * (1 + driftPct / 100); }
+
+// ─── Grid ops ─────────────────────────────────────────────────────────────────
+
+function setSteps(n) {
+  NUM_STEPS = n;
+  grid = Array.from({length: NUM_ROWS}, () => new Array(n).fill(false));
+  ['s8','s12','s16'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('on', el.id === 's' + n);
+  });
+  resize();
+}
+
+function clearGrid() {
+  grid = Array.from({length: NUM_ROWS}, () => new Array(NUM_STEPS).fill(false));
+  draw();
+}
+
+function seedGrid() {
+  clearGrid();
+  // A sparse, syncopated pattern with good phasing behaviour
+  const pat16 = [
+    [4,0],[2,1],[4,3],[0,4],[2,5],[4,6],[6,8],[2,9],[4,10],[0,12],[4,13],[2,14]
+  ];
+  const pat12 = [
+    [4,0],[2,1],[4,3],[0,4],[2,6],[4,7],[6,9],[0,10],[4,11]
+  ];
+  const pat8  = [
+    [4,0],[2,1],[0,2],[4,3],[2,5],[6,6],[4,7]
+  ];
+  const src = NUM_STEPS === 8 ? pat8 : NUM_STEPS === 12 ? pat12 : pat16;
+  for (const [row, col] of src) {
+    if (col < NUM_STEPS && row < NUM_ROWS) grid[row][col] = true;
+  }
+  draw();
+}
+
+// ─── Canvas ───────────────────────────────────────────────────────────────────
+
+const cv = document.getElementById('cv');
+const gx = cv.getContext('2d');
+const CELL_H = 36;
+const LABEL_W = 56;
+let CELL_W = 40;
+
+function resize() {
+  const maxW = Math.min(cv.parentElement.clientWidth, 860);
+  cv.width  = maxW;
+  cv.height = NUM_ROWS * CELL_H;
+  CELL_W = (maxW - LABEL_W) / NUM_STEPS;
+  draw();
+}
+resize();
+window.addEventListener('resize', resize);
+
+function draw() {
+  const W = cv.width, H = cv.height;
+  gx.fillStyle = '#070709';
+  gx.fillRect(0, 0, W, H);
+
+  // Label panel
+  gx.fillStyle = 'rgba(0,0,0,0.25)';
+  gx.fillRect(0, 0, LABEL_W, H);
+
+  const ps = pitchSet.ratios;
+
+  for (let row = 0; row < NUM_ROWS; row++) {
+    const y = (NUM_ROWS - 1 - row) * CELL_H;
+    const [p, q] = ps[row] || [1, 1];
+    const isRoot = row === 0 || row === NUM_ROWS - 1;
+
+    // Row divider
+    gx.fillStyle = isRoot ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.04)';
+    gx.fillRect(0, y, W, 1);
+
+    // Label
+    gx.font = '9px "SF Mono","Fira Code",monospace';
+    gx.textAlign = 'right';
+    gx.fillStyle = 'rgba(204,200,208,0.45)';
+    gx.fillText(`${p}/${q}`, LABEL_W - 6, y + 16);
+    gx.font = '7px "SF Mono","Fira Code",monospace';
+    gx.fillStyle = 'rgba(204,200,208,0.18)';
+    gx.fillText(`${ratioCents(p,q).toFixed(0)}¢`, LABEL_W - 6, y + 28);
+
+    for (let col = 0; col < NUM_STEPS; col++) {
+      const x = LABEL_W + col * CELL_W;
+
+      // Beat marker (every 4 steps)
+      if (col % 4 === 0) {
+        gx.fillStyle = 'rgba(255,255,255,0.03)';
+        gx.fillRect(x, y + 1, CELL_W, CELL_H - 1);
+      }
+
+      // Cell col divider
+      gx.fillStyle = col % 4 === 0
+        ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.04)';
+      gx.fillRect(x, y + 1, 1, CELL_H - 1);
+
+      // Active cell
+      if (grid[row][col]) {
+        gx.fillStyle = 'rgba(180,170,208,0.22)';
+        gx.fillRect(x + 2, y + 2, CELL_W - 3, CELL_H - 4);
+        gx.fillStyle = 'rgba(220,215,240,0.14)';
+        gx.fillRect(x + 2, y + 2, CELL_W - 3, 2);
+      }
+    }
+    // Right edge
+    gx.fillStyle = 'rgba(255,255,255,0.05)';
+    gx.fillRect(LABEL_W + NUM_STEPS * CELL_W, y + 1, 1, CELL_H - 1);
+  }
+
+  // Bottom divider
+  gx.fillStyle = 'rgba(255,255,255,0.09)';
+  gx.fillRect(0, H - 1, W, 1);
+
+  // Playheads (over grid)
+  if (playing && ax) {
+    const elapsed = ax.currentTime - startAcTime;
+    const pA = (elapsed / beat16A()) % NUM_STEPS;
+    const pB = (elapsed / beat16B()) % NUM_STEPS;
+    drawHead(pA, 'rgba(122,184,212,0.5)', 'rgba(122,184,212,0.08)');
+    drawHead(pB, 'rgba(212,192,112,0.5)', 'rgba(212,192,112,0.08)');
+  }
+}
+
+function drawHead(phase, lineColor, glowColor) {
+  const x = LABEL_W + phase * CELL_W;
+  gx.fillStyle = glowColor;
+  gx.fillRect(x, 0, CELL_W, cv.height);
+  gx.fillStyle = lineColor;
+  gx.fillRect(x, 0, 2, cv.height);
+}
+
+// ─── Click to toggle ──────────────────────────────────────────────────────────
+
+cv.addEventListener('click', e => {
+  const rect = cv.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (cv.width / rect.width);
+  const my = (e.clientY - rect.top)  * (cv.height / rect.height);
+  if (mx < LABEL_W) return;
+  const col = Math.floor((mx - LABEL_W) / CELL_W);
+  const row = NUM_ROWS - 1 - Math.floor(my / CELL_H);
+  if (col < 0 || col >= NUM_STEPS || row < 0 || row >= NUM_ROWS) return;
+  grid[row][col] = !grid[row][col];
+  draw();
+});
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
+
+function ensureCtx() {
+  if (!ax) ax = new (window.AudioContext || window.webkitAudioContext)();
+  if (ax.state === 'suspended') ax.resume();
+}
+
+function scheduleNote(row, when) {
+  const [p, q] = pitchSet.ratios[row] || [1, 1];
+  const fund = parseFloat(document.getElementById('fundSel').value);
+  const freq = fund * p / q;
+  const dur  = beat16A() * 0.78;
+  const o = ax.createOscillator();
+  const g = ax.createGain();
+  o.type = 'sine';
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(0.16, when + 0.01);
+  g.gain.setValueAtTime(0.16, when + dur * 0.75);
+  g.gain.linearRampToValueAtTime(0, when + dur);
+  o.connect(g); g.connect(ax.destination);
+  o.start(when); o.stop(when + dur + 0.01);
+}
+
+const LOOKAHEAD = 0.15;
+
+function schedulerTick() {
+  if (!playing) return;
+  const now = ax.currentTime;
+
+  // Voice A
+  while (nextA_time < now + LOOKAHEAD) {
+    const step = nextA_step % NUM_STEPS;
+    const t    = nextA_time;
+    for (let r = 0; r < NUM_ROWS; r++) {
+      if (grid[r][step]) scheduleNote(r, t);
+    }
+    nextA_step++;
+    nextA_time += beat16A();
+  }
+
+  // Voice B
+  while (nextB_time < now + LOOKAHEAD) {
+    const step = nextB_step % NUM_STEPS;
+    const t    = nextB_time;
+    for (let r = 0; r < NUM_ROWS; r++) {
+      if (grid[r][step]) scheduleNote(r, t);
+    }
+    nextB_step++;
+    nextB_time += beat16B();
+  }
+
+  schedTimer = setTimeout(schedulerTick, 40);
+}
+
+function animate() {
+  if (!playing) return;
+  draw();
+  requestAnimationFrame(animate);
+}
+
+// ─── Playback control ─────────────────────────────────────────────────────────
+
+function togglePlay() {
+  const btn = document.getElementById('playBtn');
+  if (playing) {
+    playing = false;
+    clearTimeout(schedTimer);
+    btn.textContent = '▶ play';
+    btn.classList.remove('on');
+    draw();
+  } else {
+    ensureCtx();
+    playing = true;
+    startAcTime = ax.currentTime + 0.05;
+    nextA_time = startAcTime; nextA_step = 0;
+    nextB_time = startAcTime; nextB_step = 0;
+    schedulerTick();
+    requestAnimationFrame(animate);
+    btn.textContent = '■ stop';
+    btn.classList.add('on');
+  }
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+
+function onBpm(v) {
+  bpm = parseFloat(v);
+  document.getElementById('bpmD').textContent = v;
+}
+
+function onDrift(v) {
+  driftPct = parseFloat(v);
+  const s = v >= 0 ? '+' : '';
+  document.getElementById('driftD').textContent = `${s}${parseFloat(v).toFixed(1)}%`;
+  document.getElementById('legB').textContent = `voice b · ${s}${parseFloat(v).toFixed(1)}%`;
+  if (playing) {
+    // Re-align Voice B to current time so drift change takes effect cleanly
+    nextB_time = ax.currentTime + 0.05;
+    nextB_step = nextA_step;
+  }
+}
+
+function onPitchSet() {
+  pitchSet = PITCH_SETS[document.getElementById('pitchSel').value];
+  draw();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+seedGrid();
+
+document.addEventListener('keydown', e => {
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eikosany</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.6rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal; letter-spacing: 0.24em; text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem; letter-spacing: 0.11em;
+      color: var(--dimmer); font-style: italic;
+      margin-top: 0.42rem; line-height: 1.9;
+      max-width: 600px; margin-left: auto; margin-right: auto;
+    }
+
+    .tabs {
+      display: flex; gap: 0; border: 1px solid var(--border);
+    }
+    .tab {
+      font-family: Georgia, serif; font-size: 0.62rem;
+      letter-spacing: 0.12em; text-transform: lowercase; font-style: italic;
+      color: var(--dim); background: none;
+      border: none; border-right: 1px solid var(--border);
+      padding: 0.5rem 1.4rem; cursor: pointer;
+      transition: color 0.13s, background 0.13s;
+    }
+    .tab:last-child { border-right: none; }
+    .tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .tab.on { color: var(--text); background: rgba(212,192,112,0.07); border-bottom-color: transparent; }
+
+    .cv-wrap { width: 100%; max-width: 700px; }
+    #cv { display: block; width: 100%; border: 1px solid var(--border); cursor: pointer; }
+
+    .ctrl-row {
+      width: 100%; max-width: 700px;
+      display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;
+    }
+    .lbl {
+      font-size: 0.51rem; letter-spacing: 0.13em;
+      font-style: italic; color: var(--dimmer);
+    }
+    .btn {
+      font-family: Georgia, serif; font-size: 0.6rem;
+      letter-spacing: 0.1em; text-transform: lowercase; font-style: italic;
+      color: var(--dim); background: none;
+      border: 1px solid var(--border);
+      padding: 0.38rem 0.8rem; cursor: pointer;
+      transition: color 0.13s, border-color 0.13s;
+    }
+    .btn:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
+    select {
+      font-family: Georgia, serif; font-size: 0.6rem; font-style: italic;
+      color: var(--dim); background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 0.28rem 0.5rem; cursor: pointer; outline: none;
+    }
+
+    .info-panel {
+      width: 100%; max-width: 700px;
+      display: flex; gap: 2rem; flex-wrap: wrap;
+      min-height: 3.5rem; align-items: flex-start;
+    }
+    .info-block { display: flex; flex-direction: column; gap: 0.18rem; }
+    .info-label { font-size: 0.46rem; letter-spacing: 0.14em; font-style: italic; color: var(--dimmer); }
+    .info-val   { font-size: 1.3rem; color: var(--gold); font-weight: normal; letter-spacing: 0.02em; }
+    .info-sub   { font-size: 0.5rem; font-style: italic; color: var(--dim); }
+
+    .chord-strip {
+      width: 100%; max-width: 700px;
+      display: flex; gap: 0.5rem; flex-wrap: wrap; min-height: 2rem; align-items: center;
+    }
+    .chord-chip {
+      font-size: 0.58rem; font-style: italic; color: var(--dim);
+      border: 1px solid rgba(212,192,112,0.3);
+      padding: 0.2rem 0.55rem; letter-spacing: 0.06em;
+    }
+    .chord-lbl { font-size: 0.48rem; letter-spacing: 0.12em; font-style: italic; color: var(--dimmer); }
+  </style>
+</head>
+<body>
+
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
+<div class="header">
+  <h1 class="title">eikosany</h1>
+  <p class="sub">
+    Partch's combinatorial sets — notes built by multiplying subsets of prime generators.<br>
+    the hexany has six tones, the dekany ten, the eikosany twenty.<br>
+    connected nodes share all but one generator · click to build chords.
+  </p>
+</div>
+
+<div class="tabs">
+  <button class="tab on" id="t-hex"  onclick="selectSet('hexany')">hexany · 6</button>
+  <button class="tab"    id="t-dek"  onclick="selectSet('dekany')">dekany · 10</button>
+  <button class="tab"    id="t-eik"  onclick="selectSet('eikosany')">eikosany · 20</button>
+</div>
+
+<div class="cv-wrap">
+  <canvas id="cv" height="500"></canvas>
+</div>
+
+<div class="ctrl-row">
+  <button class="btn" onclick="clearChord()">clear chord</button>
+  <span class="lbl">fundamental</span>
+  <select id="fundSel" onchange="onFundChange()">
+    <option value="110">A2 · 110 Hz</option>
+    <option value="220" selected>A3 · 220 Hz</option>
+    <option value="130.81">C3 · 131 Hz</option>
+    <option value="196">G3 · 196 Hz</option>
+  </select>
+  <span class="lbl">volume</span>
+  <input type="range" id="volR" min="0" max="100" value="60" step="1" style="width:70px;-webkit-appearance:none;height:2px;background:rgba(255,255,255,0.14);outline:none;cursor:pointer"
+         oninput="setVolume(this.value)">
+</div>
+
+<div class="info-panel" id="infoPanel">
+  <div class="info-block">
+    <span class="info-label">hover to inspect</span>
+    <span class="info-val" id="iRatio">—</span>
+    <span class="info-sub" id="iGens">—</span>
+  </div>
+  <div class="info-block">
+    <span class="info-label">cents</span>
+    <span class="info-val" id="iCents" style="font-size:1rem;padding-top:0.3rem">—</span>
+  </div>
+  <div class="info-block">
+    <span class="info-label">prime limit</span>
+    <span class="info-val" id="iLimit" style="font-size:1rem;padding-top:0.3rem">—</span>
+  </div>
+</div>
+
+<div class="ctrl-row">
+  <span class="chord-lbl">chord:</span>
+  <div class="chord-strip" id="chordStrip">
+    <span style="font-size:0.5rem;font-style:italic;color:var(--dimmer)">click nodes to add pitches</span>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── Math ─────────────────────────────────────────────────────────────────────
+
+function ratioCents(p, q) { return 1200 * Math.log2(p / q); }
+
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+function normalizeToOctave(n) {
+  // Integer n → [p, q] with p/q ∈ [1,2), q a power of 2
+  let q = 1;
+  while (n >= 2 * q) q *= 2;
+  return [n, q];
+}
+
+function primeFactors(n) {
+  const f = new Set();
+  for (let p = 2; p * p <= n; p++) {
+    while (n % p === 0) { f.add(p); n /= p; }
+  }
+  if (n > 1) f.add(n);
+  return f;
+}
+
+function primeLimit(p, q) {
+  const all = [...primeFactors(p), ...primeFactors(q)];
+  return all.length ? Math.max(...all) : 1;
+}
+
+function combinations(arr, k) {
+  if (k === 0) return [[]];
+  if (arr.length < k) return [];
+  const [h, ...t] = arr;
+  return [
+    ...combinations(t, k - 1).map(c => [h, ...c]),
+    ...combinations(t, k),
+  ];
+}
+
+// ─── Combinatorial sets ───────────────────────────────────────────────────────
+
+const SETS = {
+  hexany: {
+    name: 'hexany',
+    generators: [1, 3, 5, 7],
+    k: 2,
+    tab: 't-hex',
+  },
+  dekany: {
+    name: 'dekany',
+    generators: [1, 3, 5, 7, 9],
+    k: 2,
+    tab: 't-dek',
+  },
+  eikosany: {
+    name: 'eikosany',
+    generators: [1, 3, 5, 7, 9, 11],
+    k: 3,
+    tab: 't-eik',
+  },
+};
+
+function buildNodes(setKey) {
+  const { generators, k } = SETS[setKey];
+  const combos = combinations(generators, k);
+  return combos.map(gens => {
+    const product = gens.reduce((a, b) => a * b, 1);
+    const [p, q] = normalizeToOctave(product);
+    const cents = ratioCents(p, q);
+    const lim = primeLimit(p, q);
+    return { p, q, cents, lim, gens, product };
+  }).sort((a, b) => a.cents - b.cents);
+}
+
+function buildEdges(nodes, k) {
+  const edges = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const shared = nodes[i].gens.filter(g => nodes[j].gens.includes(g)).length;
+      if (shared === k - 1) edges.push([i, j]);
+    }
+  }
+  return edges;
+}
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
+
+function circleLayout(n, cx, cy, r, angleOffset) {
+  return Array.from({length: n}, (_, i) => {
+    const a = angleOffset + (2 * Math.PI * i / n) - Math.PI / 2;
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  });
+}
+
+// For hexany (6 nodes): use a special octahedral layout (two triangles)
+// Node order after sort by cents:
+// The sorted nodes group nicely as two triangles: one "otonality-type", one "utonality-type"
+function hexanyLayout(nodes, cx, cy, r) {
+  // Identify the two groups: nodes containing generator 1 vs not
+  const g1 = [1, 3, 5, 7][0]; // = 1
+  const withOne    = nodes.filter(n => n.gens.includes(g1));
+  const withoutOne = nodes.filter(n => !n.gens.includes(g1));
+  const positions = new Array(nodes.length);
+  // Three "with-1" nodes at angles 90°, 210°, 330° (outer triangle)
+  // Three "without-1" nodes at 30°, 150°, 270° (inner triangle, rotated 60°)
+  const angles1 = [90, 210, 330].map(d => d * Math.PI / 180 - Math.PI / 2);
+  const angles2 = [30, 150, 270].map(d => d * Math.PI / 180 - Math.PI / 2);
+  withOne.forEach((n, i) => {
+    const idx = nodes.indexOf(n);
+    const a = -Math.PI/2 + (2 * Math.PI * i / 3);
+    positions[idx] = { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  });
+  withoutOne.forEach((n, i) => {
+    const idx = nodes.indexOf(n);
+    const a = -Math.PI/2 + Math.PI/3 + (2 * Math.PI * i / 3);
+    positions[idx] = { x: cx + r * 0.65 * Math.cos(a), y: cy + r * 0.65 * Math.sin(a) };
+  });
+  return positions;
+}
+
+// ─── Color by prime limit ─────────────────────────────────────────────────────
+
+const LIMIT_COLOR = {
+  1: '#aaaaaa', 3: '#7ab8d4', 5: '#88c080',
+  7: '#d4c070', 9: '#d4c070', 11: '#c880d8', 13: '#d88080',
+};
+function limitColor(lim) { return LIMIT_COLOR[lim] || '#aaaaaa'; }
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+let currentSet = 'hexany';
+let nodes = [];
+let edges = [];
+let positions = [];
+let chord = new Set(); // indices of active nodes
+let hoverIdx = -1;
+let ax = null;
+let masterGain = null;
+let nodeOscs = {}; // nodeIdx → { osc, gain }
+
+// ─── Canvas ───────────────────────────────────────────────────────────────────
+
+const cv  = document.getElementById('cv');
+const gx  = cv.getContext('2d');
+const NODE_R = 14;
+
+function resize() {
+  const w = Math.min(cv.parentElement.clientWidth, 700);
+  cv.width = w;
+  cv.height = Math.round(w * 0.72);
+  rebuildLayout();
+}
+
+function rebuildLayout() {
+  const cx = cv.width / 2;
+  const cy = cv.height / 2;
+  const r  = Math.min(cx, cy) * 0.72;
+  positions = currentSet === 'hexany'
+    ? hexanyLayout(nodes, cx, cy, r)
+    : circleLayout(nodes.length, cx, cy, r, 0);
+  draw();
+}
+
+function draw() {
+  const W = cv.width, H = cv.height;
+  gx.fillStyle = '#070709';
+  gx.fillRect(0, 0, W, H);
+
+  // Edges
+  for (const [i, j] of edges) {
+    const pi = positions[i], pj = positions[j];
+    if (!pi || !pj) continue;
+    const bothActive = chord.has(i) && chord.has(j);
+    gx.strokeStyle = bothActive
+      ? 'rgba(212,192,112,0.45)'
+      : 'rgba(255,255,255,0.07)';
+    gx.lineWidth = bothActive ? 1.5 : 1;
+    gx.beginPath();
+    gx.moveTo(pi.x, pi.y);
+    gx.lineTo(pj.x, pj.y);
+    gx.stroke();
+  }
+
+  // Nodes
+  for (let i = 0; i < nodes.length; i++) {
+    const nd = nodes[i];
+    const pos = positions[i];
+    if (!pos) continue;
+    const active  = chord.has(i);
+    const hovered = i === hoverIdx;
+    const col = limitColor(nd.lim);
+
+    // Glow for active
+    if (active) {
+      gx.beginPath();
+      gx.arc(pos.x, pos.y, NODE_R + 6, 0, Math.PI * 2);
+      gx.fillStyle = col + '22';
+      gx.fill();
+    }
+
+    // Node circle
+    gx.beginPath();
+    gx.arc(pos.x, pos.y, NODE_R, 0, Math.PI * 2);
+    if (active) {
+      gx.fillStyle = col + '44';
+    } else if (hovered) {
+      gx.fillStyle = 'rgba(255,255,255,0.06)';
+    } else {
+      gx.fillStyle = 'rgba(255,255,255,0.03)';
+    }
+    gx.fill();
+
+    // Node border
+    gx.strokeStyle = active ? col : (hovered ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.12)');
+    gx.lineWidth = active ? 1.5 : 1;
+    gx.stroke();
+
+    // Ratio label
+    gx.font = `${active ? 'bold ' : ''}9px "SF Mono","Fira Code",monospace`;
+    gx.textAlign = 'center';
+    gx.textBaseline = 'middle';
+    gx.fillStyle = active ? col : (hovered ? 'rgba(204,200,208,0.8)' : 'rgba(204,200,208,0.45)');
+    gx.fillText(`${nd.p}/${nd.q}`, pos.x, pos.y - 1);
+
+    // Cents label below node
+    gx.font = '7px "SF Mono","Fira Code",monospace';
+    gx.fillStyle = active ? col + 'cc' : 'rgba(204,200,208,0.2)';
+    gx.fillText(`${nd.cents.toFixed(0)}¢`, pos.x, pos.y + NODE_R + 8);
+  }
+}
+
+// ─── Interaction ──────────────────────────────────────────────────────────────
+
+function nodeAt(mx, my) {
+  for (let i = 0; i < positions.length; i++) {
+    const p = positions[i];
+    if (!p) continue;
+    const dx = mx - p.x, dy = my - p.y;
+    if (Math.sqrt(dx*dx + dy*dy) <= NODE_R + 4) return i;
+  }
+  return -1;
+}
+
+function canvasXY(e) {
+  const rect = cv.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (cv.width / rect.width),
+    y: (e.clientY - rect.top)  * (cv.height / rect.height),
+  };
+}
+
+cv.addEventListener('mousemove', e => {
+  const {x, y} = canvasXY(e);
+  const idx = nodeAt(x, y);
+  if (idx !== hoverIdx) {
+    hoverIdx = idx;
+    if (idx >= 0) updateInfoPanel(nodes[idx]);
+    else clearInfoPanel();
+    draw();
+  }
+});
+
+cv.addEventListener('mouseleave', () => {
+  hoverIdx = -1;
+  clearInfoPanel();
+  draw();
+});
+
+cv.addEventListener('click', e => {
+  const {x, y} = canvasXY(e);
+  const idx = nodeAt(x, y);
+  if (idx < 0) return;
+  if (chord.has(idx)) {
+    chord.delete(idx);
+    stopNode(idx);
+  } else {
+    chord.add(idx);
+    playNode(idx);
+  }
+  updateChordStrip();
+  draw();
+});
+
+// ─── Info panel ───────────────────────────────────────────────────────────────
+
+function updateInfoPanel(nd) {
+  document.getElementById('iRatio').textContent = `${nd.p}/${nd.q}`;
+  document.getElementById('iGens').textContent  = `generators: {${nd.gens.join('·')}}`;
+  document.getElementById('iCents').textContent = `${nd.cents.toFixed(1)}¢`;
+  document.getElementById('iLimit').textContent = `${nd.lim}-limit`;
+}
+
+function clearInfoPanel() {
+  document.getElementById('iRatio').textContent = '—';
+  document.getElementById('iGens').textContent  = '—';
+  document.getElementById('iCents').textContent = '—';
+  document.getElementById('iLimit').textContent = '—';
+}
+
+function updateChordStrip() {
+  const strip = document.getElementById('chordStrip');
+  if (chord.size === 0) {
+    strip.innerHTML = '<span style="font-size:0.5rem;font-style:italic;color:var(--dimmer)">click nodes to add pitches</span>';
+    return;
+  }
+  const chips = [...chord]
+    .map(i => nodes[i])
+    .sort((a, b) => a.cents - b.cents)
+    .map(n => `<span class="chord-chip" style="color:${limitColor(n.lim)};border-color:${limitColor(n.lim)}44">${n.p}/${n.q}</span>`)
+    .join('');
+  strip.innerHTML = chips;
+}
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
+
+function ensureCtx() {
+  if (!ax) {
+    ax = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ax.createGain();
+    masterGain.gain.value = getVolume();
+    masterGain.connect(ax.destination);
+  }
+  if (ax.state === 'suspended') ax.resume();
+}
+
+function getVolume() {
+  return document.getElementById('volR').value / 100 * 0.7;
+}
+
+function setVolume(v) {
+  if (masterGain) masterGain.gain.value = v / 100 * 0.7;
+}
+
+function fundHz() {
+  return parseFloat(document.getElementById('fundSel').value);
+}
+
+function playNode(idx) {
+  ensureCtx();
+  if (nodeOscs[idx]) return;
+  const nd = nodes[idx];
+  const freq = fundHz() * nd.p / nd.q;
+
+  const osc = ax.createOscillator();
+  const g   = ax.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, ax.currentTime);
+  g.gain.linearRampToValueAtTime(0.22, ax.currentTime + 0.04);
+  osc.connect(g);
+  g.connect(masterGain);
+  osc.start();
+  nodeOscs[idx] = { osc, gain: g };
+}
+
+function stopNode(idx) {
+  const n = nodeOscs[idx];
+  if (!n) return;
+  const now = ax.currentTime;
+  n.gain.gain.cancelScheduledValues(now);
+  n.gain.gain.setValueAtTime(n.gain.gain.value, now);
+  n.gain.gain.linearRampToValueAtTime(0, now + 0.12);
+  n.osc.stop(now + 0.15);
+  delete nodeOscs[idx];
+}
+
+function clearChord() {
+  [...chord].forEach(i => stopNode(i));
+  chord.clear();
+  updateChordStrip();
+  draw();
+}
+
+function onFundChange() {
+  const f = fundHz();
+  Object.entries(nodeOscs).forEach(([idx, {osc}]) => {
+    const nd = nodes[parseInt(idx)];
+    osc.frequency.linearRampToValueAtTime(f * nd.p / nd.q, ax.currentTime + 0.1);
+  });
+}
+
+// ─── Set switching ────────────────────────────────────────────────────────────
+
+function selectSet(key) {
+  clearChord();
+  currentSet = key;
+  nodes = buildNodes(key);
+  edges = buildEdges(nodes, SETS[key].k);
+  Object.keys(SETS).forEach(k => {
+    document.getElementById(SETS[k].tab).classList.toggle('on', k === key);
+  });
+  rebuildLayout();
+  clearInfoPanel();
+  updateChordStrip();
+}
+
+// ─── Touch / pointer ──────────────────────────────────────────────────────────
+
+cv.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = cv.getBoundingClientRect();
+  const x = (touch.clientX - rect.left) * (cv.width / rect.width);
+  const y = (touch.clientY - rect.top)  * (cv.height / rect.height);
+  const idx = nodeAt(x, y);
+  if (idx < 0) return;
+  if (chord.has(idx)) { chord.delete(idx); stopNode(idx); }
+  else { chord.add(idx); playNode(idx); }
+  updateChordStrip();
+  draw();
+}, { passive: false });
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+selectSet('hexany');
+resize();
+window.addEventListener('resize', resize);
+</script>
+</body>
+</html>
