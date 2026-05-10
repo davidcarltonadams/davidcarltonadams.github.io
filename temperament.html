@@ -363,12 +363,14 @@ function getVoice() {
 function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   if (!pool) return;
 
-  // Cut any same-pitch voice still in its release tail so it doesn't bleed into this attack
+  // Cut any same-pitch voice still releasing so it doesn't bleed into this attack.
+  // cancelScheduledValues(0) wipes the full future schedule on that param.
   for (const pv of pool) {
     if (pv.midi === midi && pv.freeAt > startTime) {
-      pv.gain.gain.cancelScheduledValues(startTime);
+      pv.gain.gain.cancelScheduledValues(0);
       pv.gain.gain.setTargetAtTime(0.0001, startTime, 0.008);
       pv.freeAt = startTime + 0.04;
+      pv.midi = -1;
     }
   }
 
@@ -627,9 +629,21 @@ function startPlayback() {
   document.getElementById('btn-play').classList.add('on');
 }
 
+function silencePool() {
+  if (!pool) return;
+  const now = ac ? ac.currentTime : 0;
+  for (const v of pool) {
+    v.gain.gain.cancelScheduledValues(0);
+    v.gain.gain.setTargetAtTime(0.0001, now, 0.01);
+    v.freeAt = now + 0.05;
+    v.midi = -1;
+  }
+}
+
 function stopPlayback() {
   clearTimeout(schedTimer);
   isPlaying = false;
+  silencePool();
   clearHighlights();
   document.getElementById('play-status').textContent = score ? 'ready' : 'select a fugue';
   document.getElementById('btn-play').classList.remove('on');
