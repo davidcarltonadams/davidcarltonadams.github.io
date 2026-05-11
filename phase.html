@@ -127,9 +127,9 @@
   <span class="disp" id="bpmD">126</span>
 
   <span class="lbl">drift</span>
-  <input type="range" id="driftR" min="0" max="8" value="1.5" step="0.1" style="width:90px"
+  <input type="range" id="driftR" min="0" max="15" value="3" step="0.1" style="width:80px"
          oninput="onDrift(this.value)">
-  <span class="disp" id="driftD">+1.5%</span>
+  <span class="disp" id="driftD">+3.0%</span>
 
   <select id="pitchSel" onchange="onPitchSet()">
     <option value="ji-major">JI major</option>
@@ -154,6 +154,14 @@
   <button class="btn sml" id="s12" onclick="setSteps(12)">12</button>
   <button class="btn sml on" id="s16" onclick="setSteps(16)">16</button>
 
+  <span class="lbl" style="margin-left:0.8rem">swing</span>
+  <input type="range" id="swingR" min="0" max="100" value="0" step="1" style="width:70px;-webkit-appearance:none;height:2px;background:rgba(255,255,255,0.14);outline:none;cursor:pointer"
+         oninput="onSwing(this.value)">
+  <span class="disp" id="swingD">straight</span>
+
+  <button class="btn sml" id="syncBtn" onclick="togglePauseAtSync()"
+          title="pause both voices when they re-align to step 0">pause at sync</button>
+
   <div class="legend" style="margin-left:auto">
     <div class="leg">
       <div class="swatch" style="background:#7ab8d4"></div>
@@ -161,7 +169,7 @@
     </div>
     <div class="leg">
       <div class="swatch" style="background:#d4c070"></div>
-      <span id="legB">voice b · +1.5%</span>
+      <span id="legB">voice b · +3.0%</span>
     </div>
   </div>
 </div>
@@ -197,15 +205,23 @@ const NUM_ROWS = 8;
 let grid = makeGrid();
 let pitchSet = PITCH_SETS['ji-major'];
 let bpm = 126;
-let driftPct = 1.5;
+let driftPct = 3.0;
+let swing = 0.5;        // 0.5 = straight … 0.75 = dotted-quarter
 let playing = false;
-let startAcTime = 0;  // ax.currentTime when play started
+let startAcTime = 0;
 let ax = null;
 
 // Scheduler state
 let nextA_time = 0, nextA_step = 0;
 let nextB_time = 0, nextB_step = 0;
 let schedTimer = null;
+
+// Sync-pause state
+let pauseAtSync = false;
+let syncPaused  = false;
+let syncDetected = false;  // true once per cycle so we don't fire twice
+let lastDiff = -1;
+let flashAlpha = 0;        // 0–1, decays each frame
 
 function makeGrid() {
   return Array.from({length: NUM_ROWS}, () => new Array(NUM_STEPS).fill(false));
@@ -214,6 +230,18 @@ function makeGrid() {
 function ratioCents(p, q) { return 1200 * Math.log2(p / q); }
 function beat16A() { return 60 / bpm / 4; }
 function beat16B() { return beat16A() * (1 + driftPct / 100); }
+
+// Swing-aware step durations — pair total stays constant, so average is unchanged
+function stepDurA(step) {
+  if (swing <= 0.501) return beat16A();
+  const pair = beat16A() * 2;
+  return step % 2 === 0 ? swing * pair : (1 - swing) * pair;
+}
+function stepDurB(step) {
+  if (swing <= 0.501) return beat16B();
+  const pair = beat16B() * 2;
+  return step % 2 === 0 ? swing * pair : (1 - swing) * pair;
+}
 
 // ─── Grid ops ─────────────────────────────────────────────────────────────────
 
@@ -329,13 +357,38 @@ function draw() {
   gx.fillStyle = 'rgba(255,255,255,0.09)';
   gx.fillRect(0, H - 1, W, 1);
 
+  // Sync alignment flash (behind playheads)
+  if (flashAlpha > 0) {
+    gx.fillStyle = `rgba(255,248,200,${flashAlpha * 0.12})`;
+    gx.fillRect(LABEL_W, 0, W - LABEL_W, H);
+    flashAlpha = Math.max(0, flashAlpha - 0.018); // fade ~55 frames
+  }
+
   // Playheads (over grid)
-  if (playing && ax) {
+  if (playing && ax && !syncPaused) {
     const elapsed = ax.currentTime - startAcTime;
     const pA = (elapsed / beat16A()) % NUM_STEPS;
     const pB = (elapsed / beat16B()) % NUM_STEPS;
+
+    // Sync detection: diff goes HIGH→LOW when they meet at step 0
+    const diff = (pA - pB + NUM_STEPS) % NUM_STEPS;
+    if (lastDiff > NUM_STEPS * 0.80 && diff < NUM_STEPS * 0.20) {
+      if (!syncDetected) {
+        syncDetected = true;
+        flashAlpha   = 1.0;
+        if (pauseAtSync) triggerSyncPause();
+      }
+    } else if (diff > 1.0) {
+      syncDetected = false;
+    }
+    lastDiff = diff;
+
     drawHead(pA, 'rgba(122,184,212,0.5)', 'rgba(122,184,212,0.08)');
     drawHead(pB, 'rgba(212,192,112,0.5)', 'rgba(212,192,112,0.08)');
+  } else if (playing && syncPaused) {
+    // Both frozen at step 0 during hold
+    drawHead(0, 'rgba(122,184,212,0.35)', 'rgba(122,184,212,0.06)');
+    drawHead(0, 'rgba(212,192,112,0.35)', 'rgba(212,192,112,0.06)');
   }
 }
 
@@ -368,11 +421,11 @@ function ensureCtx() {
   if (ax.state === 'suspended') ax.resume();
 }
 
-function scheduleNote(row, when) {
+function scheduleNote(row, when, noteDur) {
   const [p, q] = pitchSet.ratios[row] || [1, 1];
   const fund = parseFloat(document.getElementById('fundSel').value);
   const freq = fund * p / q;
-  const dur  = beat16A() * 0.78;
+  const dur  = noteDur * 0.78;
   const o = ax.createOscillator();
   const g = ax.createGain();
   o.type = 'sine';
@@ -388,32 +441,49 @@ function scheduleNote(row, when) {
 const LOOKAHEAD = 0.15;
 
 function schedulerTick() {
-  if (!playing) return;
+  if (!playing || syncPaused) return;
   const now = ax.currentTime;
 
   // Voice A
   while (nextA_time < now + LOOKAHEAD) {
     const step = nextA_step % NUM_STEPS;
+    const dur  = stepDurA(step);
     const t    = nextA_time;
     for (let r = 0; r < NUM_ROWS; r++) {
-      if (grid[r][step]) scheduleNote(r, t);
+      if (grid[r][step]) scheduleNote(r, t, dur);
     }
     nextA_step++;
-    nextA_time += beat16A();
+    nextA_time += dur;
   }
 
   // Voice B
   while (nextB_time < now + LOOKAHEAD) {
     const step = nextB_step % NUM_STEPS;
+    const dur  = stepDurB(step);
     const t    = nextB_time;
     for (let r = 0; r < NUM_ROWS; r++) {
-      if (grid[r][step]) scheduleNote(r, t);
+      if (grid[r][step]) scheduleNote(r, t, dur);
     }
     nextB_step++;
-    nextB_time += beat16B();
+    nextB_time += dur;
   }
 
   schedTimer = setTimeout(schedulerTick, 40);
+}
+
+function triggerSyncPause() {
+  syncPaused = true;
+  clearTimeout(schedTimer);
+  // Hold for 1 full measure (4 beats = 16 sixteenth notes at A tempo)
+  const holdMs = 16 * beat16A() * 1000;
+  setTimeout(() => {
+    if (!playing) { syncPaused = false; return; }
+    syncPaused = false;
+    startAcTime = ax.currentTime + 0.05;
+    nextA_step = 0; nextA_time = startAcTime;
+    nextB_step = 0; nextB_time = startAcTime;
+    schedulerTick();
+  }, holdMs);
 }
 
 function animate() {
@@ -454,14 +524,31 @@ function onBpm(v) {
 
 function onDrift(v) {
   driftPct = parseFloat(v);
-  const s = v >= 0 ? '+' : '';
+  const s = '+';
   document.getElementById('driftD').textContent = `${s}${parseFloat(v).toFixed(1)}%`;
   document.getElementById('legB').textContent = `voice b · ${s}${parseFloat(v).toFixed(1)}%`;
-  if (playing) {
-    // Re-align Voice B to current time so drift change takes effect cleanly
+  if (playing && !syncPaused) {
     nextB_time = ax.currentTime + 0.05;
     nextB_step = nextA_step;
   }
+}
+
+function onSwing(v) {
+  // Map 0–100 → 0.50–0.75
+  swing = 0.5 + (parseFloat(v) / 100) * 0.25;
+  const labels = { 0: 'straight', 33: 'triplet', 67: 'dotted 8th', 100: 'dotted ¼' };
+  const near = Object.keys(labels).reduce((a, b) =>
+    Math.abs(b - v) < Math.abs(a - v) ? b : a);
+  const pct = Math.round(parseFloat(v));
+  document.getElementById('swingD').textContent =
+    labels[near] ? labels[near] : `${pct}%`;
+}
+
+function togglePauseAtSync() {
+  pauseAtSync = !pauseAtSync;
+  const btn = document.getElementById('syncBtn');
+  btn.classList.toggle('on', pauseAtSync);
+  btn.textContent = pauseAtSync ? 'pause at sync ✓' : 'pause at sync';
 }
 
 function onPitchSet() {
