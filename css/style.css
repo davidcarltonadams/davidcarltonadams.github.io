@@ -271,7 +271,7 @@ footer a:hover { color: var(--text-2); }
 }
 
 .bio-block--flip {
-  flex-direction: row-reverse;
+  /* DOM order in flip blocks already puts figure first — no reversal needed */
 }
 
 .bio-block-text {
@@ -304,8 +304,7 @@ footer a:hover { color: var(--text-2); }
 }
 
 @media (max-width: 640px) {
-  .bio-block,
-  .bio-block--flip {
+  .bio-block {
     flex-direction: column;
   }
   .bio-block-figure {
