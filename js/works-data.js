@@ -7,8 +7,8 @@ const WORKS = [
     id: "drownin-in-it",
     title: "Drownin' in it",
     year: 2026,
-    duration: "",
-    instrumentation: "Voices, viola, microtonal electric guitars, synthesizers, fretless bass, drums, electronics",
+    duration: "6'",
+    instrumentation: "Voices, electric viola, microtonal electric guitars, synthesizers, fretless bass, drums, electronics",
     forces: ["vocal", "electronics", "interdisciplinary"],
     premiere: {
       date: "2026-04-26",
@@ -17,8 +17,8 @@ const WORKS = [
       venue: "Le Mondo, Baltimore, MD"
     },
     links: { score: "", audio: "", video: "" },
-    notes: "Le Mondo Spring 2026 residency. Scope condensed during production.",
-    highlighted: false
+    notes: "Le Mondo Spring 2026 residency.",
+    highlighted: true
   },
   {
     id: "murmuration-and-fugue",
