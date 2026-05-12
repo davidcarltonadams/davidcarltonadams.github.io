@@ -1,0 +1,31 @@
+slug,title,file,category,created,version,last_updated,polish
+drone,Drone Machine,drone.html,tool,2024,1.1,2026-05-12,ready
+spectrogram,Real-Time Spectrum Analyzer,spectrogram.html,tool,2025,1.0,2026-05-12,ready
+partials,Harmonic Series Explorer,partials.html,tool,2025,1.0,2026-05-12,ready
+undertone,Subharmonic Series,undertone.html,tool,2025,1.0,2026-05-12,ready
+soundfield,Sound Field,sound.html,tool,2024,1.0,2026-05-12,ready
+eikosany,Partch Combinatorial Sets,eikosany.html,tool,2026-04,1.0,2026-05-11,ready
+phase,Phase Machine,phase.html,tool,2026-04,1.0,2026-05-11,ready
+euclidean,Euclidean Rhythm Generator,euclidean.html,tool,2026-05,1.0,2026-05-10,ready
+lissajous,Interval Figures,lissajous.html,tool,2025,1.0,2026-05-09,ready
+diamond,Tonality Diamond,diamond.html,egg,2025,1.0,2026-04,ready
+lattice,5-limit JI Lattice,lattice.html,egg,2025,1.0,2026-04,ready
+septimal,7-limit Lattice,septimal.html,egg,2025,1.0,2026-05-10,ready
+tuning,Microtonal Keyboard,tuning.html,egg,2025,1.0,2026-04,beta
+temperament,Temperament Explorer,temperament.html,egg,2026-03,1.2,2026-05-10,ready
+stern-brocot,Stern-Brocot Tree,stern-brocot.html,egg,2026-05,1.1,2026-05-09,ready
+sequence,JI Sequencer,sequence.html,egg,2026-05,1.1,2026-05-11,ready
+drift,Drift,drift.html,egg,2026-05-08,1.0,2026-05-08,ready
+spiral,Spiral of Fifths,spiral.html,egg,2025,1.0,2026-04,beta
+sumtones,Combination Tones,sumtones.html,egg,2025,1.0,2026-04,beta
+beating,Beating,beating.html,egg,2025,1.0,2026-04,beta
+modes,Modes,modes.html,egg,2025,1.0,2026-04,beta
+consonance,Consonance,consonance.html,egg,2026-04,1.0,2026-04-29,beta
+canon,Canon Machine,canon.html,raw,2026-05,2.3,2026-05-10,alpha
+fugue,Fugue Machine,fugue.html,raw,2026-05,1.0,2026-05-07,alpha
+mtok,MTOK,mtok.html,raw,2024,2.0,2026-05,beta
+rhythm,Polyrhythm Clock,rhythm.html,raw,2025,1.0,2026-04,beta
+clock,Performance Clock,clock.html,raw,2024,1.0,2026-04,alpha
+score,Performance Instructions,score.html,raw,2024,1.0,2026-04,alpha
+notation,Generated Score,notation.html,raw,2024,1.0,2026-04,alpha
+audience,Audience Instrument,audience.html,raw,2024,1.0,2026-04,alpha

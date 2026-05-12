@@ -7,7 +7,7 @@ const WORKS = [
     id: "drownin-in-it",
     title: "Drownin' in it",
     year: 2026,
-    duration: "30'",
+    duration: "",
     instrumentation: "Voices, viola, microtonal electric guitars, synthesizers, fretless bass, drums, electronics",
     forces: ["vocal", "electronics", "interdisciplinary"],
     premiere: {
@@ -17,8 +17,8 @@ const WORKS = [
       venue: "Le Mondo, Baltimore, MD"
     },
     links: { score: "", audio: "", video: "" },
-    notes: "Le Mondo Spring 2026 residency centerpiece.",
-    highlighted: true
+    notes: "Le Mondo Spring 2026 residency. Scope condensed during production.",
+    highlighted: false
   },
   {
     id: "murmuration-and-fugue",
@@ -84,7 +84,7 @@ const WORKS = [
       performers: "Old Bay New Music Ensemble",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=YipecWHEUW0" },
     notes: "",
     highlighted: true
   },
@@ -102,7 +102,7 @@ const WORKS = [
       performers: "Kevin Rogers, Doug Machiz, David Carlton Adams",
       venue: "Walden School, Dublin, NH"
     },
-    links: { score: "https://www.davidcarltonadams.com/s/Adams-words-from-a-friend-2025-11-17-22-52.pdf", audio: "", video: "" },
+    links: { score: "https://www.davidcarltonadams.com/s/Adams-words-from-a-friend-2025-11-17-22-52.pdf", audio: "", video: "https://www.youtube.com/watch?v=lgpv50H1hr0" },
     notes: "Multiple performances.",
     highlighted: false
   },
@@ -119,7 +119,7 @@ const WORKS = [
       performers: "Johannes Burghoff",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=QaxdHiLyVo8" },
     notes: "",
     highlighted: false
   },
@@ -136,7 +136,7 @@ const WORKS = [
       performers: "Wet Ink Ensemble (Erin Lesser, Alex Mincek, Ian Antonio, Sam Pluta, David Carlton Adams)",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "https://www.davidcarltonadams.com/s/David-Carlton-Adams-Play-Nice-2023-score-p9k4.pdf", audio: "https://soundcloud.com/davidcarltonadams/play-nice/s-jiAXF6YLleI", video: "" },
+    links: { score: "https://www.davidcarltonadams.com/s/David-Carlton-Adams-Play-Nice-2023-score-p9k4.pdf", audio: "https://soundcloud.com/davidcarltonadams/play-nice/s-jiAXF6YLleI", video: "https://www.youtube.com/watch?v=8aDN6cvh8aU" },
     notes: "Performed by Wet Ink Ensemble.",
     highlighted: true
   },
@@ -187,7 +187,7 @@ const WORKS = [
       performers: "David Carlton Adams",
       venue: "MICA, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=-8R5Ge_--Z0" },
     notes: "",
     highlighted: false
   },
@@ -204,7 +204,7 @@ const WORKS = [
       performers: "David Carlton Adams",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=KkenYRV6Jrk" },
     notes: "",
     highlighted: false
   },
@@ -289,7 +289,7 @@ const WORKS = [
       performers: "Cameron Church, Sebastian Suarez-Solis",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=fDwkSb5FfcA" },
     notes: "Multiple versions.",
     highlighted: false
   },
@@ -357,7 +357,7 @@ const WORKS = [
       performers: "JACK Quartet (Chris Otto, Austin Wulliman, John Richards, Jay Campbell)",
       venue: "Lake Dunmore, VT"
     },
-    links: { score: "", audio: "https://soundcloud.com/davidcarltonadams/three-or-four-of-many", video: "" },
+    links: { score: "", audio: "https://soundcloud.com/davidcarltonadams/three-or-four-of-many", video: "https://www.youtube.com/watch?v=5tWE6UaFJI4" },
     notes: "Performed by JACK Quartet.",
     highlighted: true
   },
@@ -459,7 +459,7 @@ const WORKS = [
       performers: "Talea Ensemble (Barry Crawford, Rane Moore, Chris Gross)",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=6JdOdQEHaiY" },
     notes: "Performed by Talea Ensemble.",
     highlighted: false
   },
