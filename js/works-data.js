@@ -170,8 +170,8 @@ const WORKS = [
       performers: "David Carlton Adams",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
-    notes: "",
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=qjaPWptTr7E" },
+    notes: "Performed at DEX/DSL.",
     highlighted: false
   },
   {
@@ -221,7 +221,7 @@ const WORKS = [
       performers: "Hayley Camp, Elisheva Pront",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "https://soundcloud.com/davidcarltonadams/adams-what-did", video: "" },
     notes: "Live premiere of work first composed in 2020.",
     highlighted: false
   },
@@ -255,7 +255,7 @@ const WORKS = [
       performers: "David Carlton Adams, Cameron Church",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=6EQVuh14OZw" },
     notes: "Co-composed with Cameron Church.",
     highlighted: false
   },
@@ -306,7 +306,7 @@ const WORKS = [
       performers: "Alexander Braud, Adams Clifton, Liz Fetzer, Graham Viegut",
       venue: "Princeton University, Princeton, NJ"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=0GQL8-Sw5Js" },
     notes: "",
     highlighted: false
   },
@@ -374,7 +374,7 @@ const WORKS = [
       performers: "Tzu-Jung Wang, Hui-Chuan Chen",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=FNqm2EP15cg" },
     notes: "Operatic fragment.",
     highlighted: false
   },
@@ -391,7 +391,7 @@ const WORKS = [
       performers: "Elma Meijer, Michelle Pritchard, Sabien Canton",
       venue: "Netherlands"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=Njrx6aUSr0E" },
     notes: "",
     highlighted: false
   },
@@ -425,7 +425,7 @@ const WORKS = [
       performers: "David Carlton Adams, Cameron Church, Mary Price",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=6Elu7ZX7FlU" },
     notes: "",
     highlighted: false
   },
@@ -442,7 +442,7 @@ const WORKS = [
       performers: "David Carlton Adams, Mike Begay, Sam Kohler",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=mgsJjEMgH48" },
     notes: "",
     highlighted: false
   },
@@ -477,7 +477,7 @@ const WORKS = [
       venue: "Peabody Institute, Baltimore, MD"
     },
     links: { score: "", audio: "", video: "" },
-    notes: "Co-composed with Derrick Peng and Haoran Li.",
+    notes: "Co-composed with Derrick Peng and Haoran Li. (Co-write confirmed.)",
     highlighted: false
   },
   {
@@ -510,7 +510,7 @@ const WORKS = [
       performers: "Christabel Lin, Karli Leal, Shawn Sanders",
       venue: "YouTube"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=PbbYPr4uyPk" },
     notes: "",
     highlighted: false
   },
@@ -527,7 +527,7 @@ const WORKS = [
       performers: "Peabody Laptop Orchestra",
       venue: "Zoom"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=se4pHD-syio" },
     notes: "",
     highlighted: false
   },
@@ -646,7 +646,7 @@ const WORKS = [
       performers: "Sputterbox",
       venue: "Instagram"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "https://sputterbox.bandcamp.com/track/i-have-always-wanted", video: "" },
     notes: "",
     highlighted: false
   },
@@ -663,7 +663,7 @@ const WORKS = [
       performers: "Jamaica Plain Saxophone Quartet",
       venue: "Boston, MA"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=vNxLw3HOHtk" },
     notes: "Composed 2018; multiple performances.",
     highlighted: false
   },
@@ -680,7 +680,7 @@ const WORKS = [
       performers: "Michael Mikulka with Density512",
       venue: "Bates Recital Hall, University of Texas, Austin, TX"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=bN3djJnGP3s" },
     notes: "",
     highlighted: true
   },
@@ -731,7 +731,7 @@ const WORKS = [
       performers: "One Ounce Opera with Angela Irving",
       venue: "Central Presbyterian Church, Austin, TX"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "https://soundcloud.com/davidcarltonadams/sets/5-mystic-songs-for-string", video: "" },
     notes: "",
     highlighted: false
   },
@@ -748,7 +748,7 @@ const WORKS = [
       performers: "Multiple performers",
       venue: "Various venues"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=vJ4ZWBmmSA4" },
     notes: "Multiple versions and performances.",
     highlighted: false
   },
@@ -782,15 +782,15 @@ const WORKS = [
       performers: "Jarred Broussard; choreography by Audrey Halm",
       venue: "University of Texas, Austin, TX"
     },
-    links: { score: "", audio: "", video: "" },
+    links: { score: "", audio: "https://soundcloud.com/davidcarltonadams/wail-20-282013-29", video: "" },
     notes: "",
     highlighted: false
   },
   {
-    id: "courante-pavanabande",
-    title: "Courante & Pavanabande",
+    id: "suite-of-dances",
+    title: "Suite of Dances for String Quartet",
     year: 2013,
-    duration: "~10'",
+    duration: "~13'",
     instrumentation: "String quartet",
     forces: ["chamber"],
     premiere: {
@@ -799,25 +799,8 @@ const WORKS = [
       performers: "ACC pickup quartet",
       venue: "Austin Community College, Austin, TX"
     },
-    links: { score: "", audio: "", video: "" },
-    notes: "From Suite of Dances; revised 2013.",
-    highlighted: false
-  },
-  {
-    id: "courante",
-    title: "Courante",
-    year: 2013,
-    duration: "~3'",
-    instrumentation: "String quartet",
-    forces: ["chamber"],
-    premiere: {
-      date: "2010-12-10",
-      date_display: "December 10, 2010",
-      performers: "ACC pickup quartet",
-      venue: "Austin Community College, Austin, TX"
-    },
-    links: { score: "", audio: "", video: "" },
-    notes: "From Suite of Dances; revised 2013.",
+    links: { score: "", audio: "https://soundcloud.com/davidcarltonadams/sets/suite-of-dances-for-string", video: "" },
+    notes: "Includes Courante and Pavanabande; revised 2013.",
     highlighted: false
   },
   {
