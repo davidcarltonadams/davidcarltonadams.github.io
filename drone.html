@@ -11,11 +11,11 @@
       --bg:      #060606;
       --bg2:     #0d0d0d;
       --text:    #d4ccc4;
-      --dim:     rgba(212,204,196,0.35);
-      --dimmer:  rgba(212,204,196,0.15);
-      --accent:  rgba(212,204,196,0.6);
-      --on-bg:   rgba(212,204,196,0.08);
-      --border:  rgba(212,204,196,0.07);
+      --dim:     rgba(212,204,196,0.55);
+      --dimmer:  rgba(212,204,196,0.35);
+      --accent:  rgba(212,204,196,0.8);
+      --on-bg:   rgba(212,204,196,0.10);
+      --border:  rgba(212,204,196,0.18);
     }
 
     body {
@@ -152,6 +152,7 @@
       display: flex;
       gap: 6px;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .partial-btn {
@@ -256,9 +257,9 @@ const NOTES = [
 // JI ratios relative to C4 = 261.63 Hz
 const C4 = 261.63;
 
-const PARTIALS = [2, 3, 4, 5, 7];
-const PARTIAL_LABELS = ['2', '3', '4', '5', '7'];
-const PARTIAL_NAMES  = ['octave', '5th', '2nd oct', '3rd', 'b7th'];
+const PARTIALS = [2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 16];
+const PARTIAL_LABELS = ['2', '3', '4', '5', '6', '7', '8', '9', '11', '13', '16'];
+const PARTIAL_NAMES  = ['octave', '5th', '2nd oct', 'M3', 'oct+5', 'b7', '3rd oct', 'M2', '+4th', '13th', '4th oct'];
 
 let state = {
   noteIdx:   5,   // A
@@ -281,6 +282,7 @@ function noteLabel() {
 }
 
 // ── Web Audio ──────────────────────────────────────────────────────────────
+const FADE = 0.015; // fade in/out seconds — eliminates clicks
 let ctx, masterGain, oscNodes = [];
 
 function startAudio() {
@@ -302,7 +304,8 @@ function startDrone() {
     const gain = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.value = f;
-    gain.gain.value = gainVal;
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(gainVal, ctx.currentTime + FADE);
     osc.connect(gain);
     gain.connect(masterGain);
     osc.start();
@@ -326,7 +329,14 @@ function startDrone() {
 }
 
 function stopDrone() {
-  oscNodes.forEach(({ osc }) => { try { osc.stop(); } catch(e) {} });
+  const now = ctx ? ctx.currentTime : 0;
+  oscNodes.forEach(({ osc, gain }) => {
+    try {
+      gain.gain.setValueAtTime(gain.gain.value, now);
+      gain.gain.linearRampToValueAtTime(0, now + FADE);
+      osc.stop(now + FADE + 0.001);
+    } catch(e) {}
+  });
   oscNodes = [];
 }
 
