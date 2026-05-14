@@ -57,7 +57,7 @@
       display: flex;
       align-items: center;
       gap: 1rem;
-      margin-bottom: 2.5rem;
+      margin-bottom: 1rem;
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -92,6 +92,27 @@
       letter-spacing: 0.06em;
     }
 
+    /* ── Octave buttons ───────────────────────────── */
+    .octave-btns {
+      display: flex;
+      gap: 0.3rem;
+    }
+
+    .oct-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--dim);
+      font-family: Georgia, serif;
+      font-size: 0.58rem;
+      letter-spacing: 0.06em;
+      font-style: italic;
+      padding: 0.25rem 0.5rem;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .oct-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+
     .presets {
       display: flex;
       gap: 0.4rem;
@@ -111,7 +132,7 @@
     }
     .preset-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
 
-    .clear-btn {
+    .clear-btn, .export-btn {
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
@@ -124,7 +145,52 @@
       cursor: pointer;
       transition: color 0.15s, border-color 0.15s;
     }
-    .clear-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .clear-btn:hover, .export-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    /* ── Glide bar ────────────────────────────────── */
+    .glide-zone {
+      width: 100%;
+      max-width: 680px;
+      margin-bottom: 1.5rem;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+      cursor: ew-resize;
+      position: relative;
+    }
+    .glide-zone:hover, .glide-zone.dragging { opacity: 1; }
+
+    .glide-track {
+      width: 100%;
+      height: 2px;
+      background: var(--border);
+      border-radius: 1px;
+      position: relative;
+    }
+
+    .glide-fill {
+      height: 100%;
+      background: var(--dim);
+      border-radius: 1px;
+      width: 0%;
+      transition: background 0.15s;
+    }
+    .glide-zone.dragging .glide-fill,
+    .glide-zone:hover .glide-fill { background: var(--accent); }
+
+    .glide-label {
+      position: absolute;
+      right: 0;
+      top: -14px;
+      font-size: 0.52rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+      pointer-events: none;
+      white-space: nowrap;
+    }
 
     /* ── Partials table ───────────────────────────── */
     .partials {
@@ -209,7 +275,6 @@
     }
     .partial-row.active .p-dot { background: var(--on); border-color: var(--on); }
 
-    /* Column header */
     .partials-header {
       display: grid;
       grid-template-columns: 2rem 1fr 5.5rem 5rem 4.5rem 1.5rem;
@@ -245,8 +310,73 @@
       font-style: italic;
     }
 
+    /* ── W/X/Y/Z slot buttons (fixed left) ───────── */
+    .slots {
+      position: fixed;
+      left: 1.2rem;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      z-index: 10;
+    }
+
+    .slot-btn {
+      width: 2rem;
+      height: 2rem;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 2px;
+      color: transparent;
+      font-family: Georgia, serif;
+      font-size: 0.75rem;
+      font-style: italic;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: color 0.2s, border-color 0.2s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .slot-btn:hover {
+      color: var(--dim);
+      border-color: var(--border);
+    }
+    .slot-btn.filled {
+      border-color: var(--border);
+      color: var(--dimmer);
+    }
+    .slot-btn.filled:hover {
+      color: var(--text);
+      border-color: var(--dim);
+    }
+    .slot-btn.active-slot {
+      color: var(--on);
+      border-color: rgba(138,176,200,0.4);
+    }
+
+    /* hold-to-save fill animation */
+    .slot-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(138,176,200,0.15);
+      transform: scaleX(0);
+      transform-origin: left;
+    }
+    .slot-btn.holding::after {
+      animation: slot-fill 3s linear forwards;
+    }
+    @keyframes slot-fill {
+      from { transform: scaleX(0); }
+      to   { transform: scaleX(1); }
+    }
+
     /* ── Responsive ───────────────────────────────── */
-    @media (max-width: 480px) {
+    @media (max-width: 600px) {
+      .slots { display: none; }
       .partial-row {
         grid-template-columns: 1.5rem 1fr 4.5rem 4rem 3.5rem 1rem;
         font-size: 0.68rem;
@@ -257,6 +387,9 @@
 </head>
 <body>
 
+<!-- ── W/X/Y/Z slot buttons ─────────────────────────── -->
+<div class="slots" id="slots"></div>
+
 <div class="header">
   <h1 class="title">the harmonic series</h1>
   <p class="sub">click a partial to sound it &mdash; layer as many as you like</p>
@@ -266,9 +399,14 @@
 <div class="control">
   <label for="fund-input">fundamental</label>
   <input type="number" id="fund-input" class="freq-input"
-         value="55" min="20" max="500" step="0.01"
+         value="55" min="20" max="4000" step="0.01"
          aria-label="Fundamental frequency in Hz">
   <span class="hz-label">Hz</span>
+
+  <div class="octave-btns">
+    <button class="oct-btn" id="btn-8va" title="octave up">+8va</button>
+    <button class="oct-btn" id="btn-8vb" title="octave down">−8vb</button>
+  </div>
 
   <div class="presets" role="group" aria-label="Preset fundamentals">
     <button class="preset-btn" data-f="27.5"  title="A0">A0</button>
@@ -279,6 +417,15 @@
   </div>
 
   <button class="clear-btn" id="clear-btn">clear all</button>
+  <button class="export-btn" id="export-btn" title="export slots as JSON">export json</button>
+</div>
+
+<!-- ── Glide bar (hidden until hover) ─────────────────── -->
+<div class="glide-zone" id="glide-zone" title="glide time">
+  <div class="glide-track">
+    <div class="glide-fill" id="glide-fill"></div>
+  </div>
+  <span class="glide-label" id="glide-label">glide: off</span>
 </div>
 
 <!-- ── Partials ─────────────────────────────────────────── -->
@@ -298,15 +445,16 @@
   <canvas id="scope" height="60" aria-hidden="true"></canvas>
 </div>
 
-<p class="hint">click partials above &mdash; change the fundamental to explore different tuning contexts</p>
+<p class="hint">click partials to layer &mdash; hover left edge for slots &mdash; drag glide bar above</p>
 
 <script>
 // ── Audio engine ─────────────────────────────────────────
 let ac = null;
-const nodes = {};   // partial index → {osc, gain}
+const nodes  = {};
 const active = new Set();
 let scopeNode = null, analyser = null, scopeBuf = null;
 let rafId = null;
+let glideMs = 0;
 
 function initAudio() {
   if (ac) return;
@@ -323,12 +471,38 @@ function getFundamental() {
   return isFinite(v) && v > 0 ? v : 55;
 }
 
+function applyFundamentalChange() {
+  if (active.size > 0) retuneAll();
+  else renderRows();
+}
+
+function retuneAll() {
+  const fund = getFundamental();
+  if (ac) {
+    const t = ac.currentTime;
+    for (const n of active) {
+      if (nodes[n]) {
+        const target = fund * n;
+        nodes[n].osc.frequency.cancelScheduledValues(t);
+        nodes[n].osc.frequency.setValueAtTime(nodes[n].osc.frequency.value, t);
+        if (glideMs > 0) {
+          nodes[n].osc.frequency.exponentialRampToValueAtTime(
+            Math.max(target, 0.001), t + glideMs / 1000
+          );
+        } else {
+          nodes[n].osc.frequency.setTargetAtTime(target, t, 0.02);
+        }
+      }
+    }
+  }
+  renderRows();
+}
+
 function togglePartial(n) {
   initAudio();
   if (ac.state === 'suspended') ac.resume();
 
   if (active.has(n)) {
-    // fade out and stop
     const {osc, gain} = nodes[n];
     const t = ac.currentTime;
     gain.gain.setTargetAtTime(0, t, 0.04);
@@ -338,9 +512,7 @@ function togglePartial(n) {
   } else {
     const fund = getFundamental();
     const freq = fund * n;
-    // amplitude: perceptually compensated rolloff (1/n is physically correct
-    // but too steep to hear upper partials — n^0.7 keeps the shape audible)
-    const amp = 0.35 / Math.pow(n, 0.7);
+    const amp  = 0.35 / Math.pow(n, 0.7);
 
     const osc  = ac.createOscillator();
     const gain = ac.createGain();
@@ -348,7 +520,6 @@ function togglePartial(n) {
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0, ac.currentTime);
     gain.gain.setTargetAtTime(amp, ac.currentTime, 0.02);
-
     osc.connect(gain);
     gain.connect(analyser);
     osc.start();
@@ -373,23 +544,11 @@ function clearAll() {
   updateRows();
 }
 
-// When fundamental changes, retune all active oscillators
-function retuneAll() {
-  const fund = getFundamental();
-  for (const n of active) {
-    if (nodes[n]) {
-      nodes[n].osc.frequency.setTargetAtTime(fund * n, ac.currentTime, 0.02);
-    }
-  }
-  renderRows(); // update displayed frequencies
-}
-
 // ── Note naming ──────────────────────────────────────────
 const NOTE_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
 
 function freqToNote(freq) {
   if (freq <= 0) return { name: '—', cents: 0 };
-  // A4 = 440 Hz, MIDI 69
   const semis = 12 * Math.log2(freq / 440);
   const midi  = Math.round(semis) + 69;
   const cents = Math.round((semis - (midi - 69)) * 100);
@@ -406,10 +565,10 @@ function fmtFreq(f) {
 
 function centsColor(c) {
   const abs = Math.abs(c);
-  if (abs <= 2)  return 'rgba(170,204,221,0.9)'; // near-pure
+  if (abs <= 2)  return 'rgba(170,204,221,0.9)';
   if (abs <= 10) return 'rgba(190,190,160,0.8)';
   if (abs <= 25) return 'rgba(200,170,130,0.75)';
-  return 'rgba(200,140,120,0.75)'; // far from 12-TET
+  return 'rgba(200,140,120,0.75)';
 }
 
 function centsLabel(c) {
@@ -417,25 +576,19 @@ function centsLabel(c) {
   return (c > 0 ? '+' : '') + c + '¢';
 }
 
-// ── Bar widths ────────────────────────────────────────────
-// partial n has width proportional to 1/n (like natural loudness)
-function barWidth(n, total) {
-  return (1 / n) / (1 / 1) * 100; // relative to fundamental = 100%
-}
-
 // ── Render rows ───────────────────────────────────────────
 const NUM_PARTIALS = 24;
 
 function renderRows() {
-  const fund  = getFundamental();
-  const list  = document.getElementById('partials-list');
+  const fund = getFundamental();
+  const list = document.getElementById('partials-list');
   list.innerHTML = '';
 
   for (let n = NUM_PARTIALS; n >= 1; n--) {
-    const freq    = fund * n;
+    const freq  = fund * n;
     const {name, cents} = freqToNote(freq);
-    const isOn    = active.has(n);
-    const barPct  = Math.min(100, 100 / n);
+    const isOn  = active.has(n);
+    const barPct = Math.min(100, 100 / n);
 
     const row = document.createElement('div');
     row.className = 'partial-row' + (isOn ? ' active' : '');
@@ -465,7 +618,6 @@ function renderRows() {
 }
 
 function updateRows() {
-  // Lightweight: just toggle active class without full re-render
   document.querySelectorAll('.partial-row').forEach(row => {
     const n = parseInt(row.dataset.n);
     const isOn = active.has(n);
@@ -475,10 +627,7 @@ function updateRows() {
 }
 
 // ── Scope ─────────────────────────────────────────────────
-function startScope() {
-  if (rafId) return;
-  drawScope();
-}
+function startScope() { if (!rafId) drawScope(); }
 function stopScope() {
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   const canvas = document.getElementById('scope');
@@ -491,7 +640,7 @@ function stopScope() {
 function drawScope() {
   rafId = requestAnimationFrame(drawScope);
   const canvas = document.getElementById('scope');
-  const W = canvas.width = canvas.offsetWidth * devicePixelRatio;
+  const W = canvas.width  = canvas.offsetWidth * devicePixelRatio;
   const H = canvas.height = 60 * devicePixelRatio;
   const g = canvas.getContext('2d');
   g.scale(devicePixelRatio, devicePixelRatio);
@@ -500,7 +649,6 @@ function drawScope() {
 
   g.fillStyle = '#0a0a0a';
   g.fillRect(0, 0, w, h);
-
   if (!analyser) return;
   analyser.getByteTimeDomainData(scopeBuf);
 
@@ -509,32 +657,213 @@ function drawScope() {
   g.beginPath();
   const sliceW = w / scopeBuf.length;
   for (let i = 0; i < scopeBuf.length; i++) {
-    const v  = scopeBuf[i] / 128;
-    const y  = h / 2 + (v - 1) * h * 0.42;
+    const v = scopeBuf[i] / 128;
+    const y = h / 2 + (v - 1) * h * 0.42;
     i === 0 ? g.moveTo(0, y) : g.lineTo(i * sliceW, y);
   }
   g.stroke();
 }
 
-// ── Events ────────────────────────────────────────────────
-document.getElementById('fund-input').addEventListener('input', () => {
-  if (active.size > 0) retuneAll();
-  else renderRows();
+// ── Glide bar ─────────────────────────────────────────────
+const glideZone  = document.getElementById('glide-zone');
+const glideFill  = document.getElementById('glide-fill');
+const glideLabel = document.getElementById('glide-label');
+const GLIDE_MAX  = 1000;
+let glideDragging = false;
+let glideDragStartX = 0, glideDragStartMs = 0;
+
+function glideCursor(ms) {
+  const label = ms === 0 ? 'no glide' : `${ms}ms`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='18'><text x='2' y='13' fill='%23d8d0c8' font-size='11' font-family='Georgia,serif' font-style='italic'>${label}</text></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 0 0, ew-resize`;
+}
+
+function setGlide(ms) {
+  glideMs = Math.max(0, Math.min(GLIDE_MAX, Math.round(ms)));
+  glideFill.style.width = (glideMs / GLIDE_MAX * 100) + '%';
+  glideLabel.textContent = glideMs === 0 ? 'glide: off' : `glide: ${glideMs} ms`;
+  glideZone.style.cursor = glideCursor(glideMs);
+}
+
+glideZone.addEventListener('mouseenter', () => {
+  glideZone.style.cursor = glideCursor(glideMs);
 });
 
+glideZone.addEventListener('mousedown', e => {
+  glideDragging = true;
+  glideDragStartX  = e.clientX;
+  glideDragStartMs = glideMs;
+  glideZone.classList.add('dragging');
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', e => {
+  if (!glideDragging) return;
+  const rect  = glideZone.getBoundingClientRect();
+  const delta = e.clientX - glideDragStartX;
+  const msDelta = (delta / rect.width) * GLIDE_MAX;
+  setGlide(glideDragStartMs + msDelta);
+  glideZone.style.cursor = glideCursor(glideMs);
+});
+
+document.addEventListener('mouseup', () => {
+  if (glideDragging) {
+    glideDragging = false;
+    glideZone.classList.remove('dragging');
+  }
+});
+
+// ── W/X/Y/Z presets ──────────────────────────────────────
+const SLOT_KEYS = ['W', 'X', 'Y', 'Z'];
+const slotData  = { W: null, X: null, Y: null, Z: null };
+
+SLOT_KEYS.forEach(k => {
+  const raw = localStorage.getItem(`partials-slot-${k}`);
+  if (raw) try { slotData[k] = JSON.parse(raw); } catch(e) {}
+});
+
+let activeSlot = null;
+let holdTimer  = null;
+
+function letterCursor(letter) {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><text x='1' y='20' fill='%23d8d0c8' font-size='20' font-family='Georgia,serif' font-style='italic'>${letter}</text></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 0 20, pointer`;
+}
+
+function slotSnapshot(slot) {
+  const fund = getFundamental();
+  const parts = [...active].sort((a, b) => a - b);
+  const pitches = parts.map(n => {
+    const hz = fund * n;
+    const { name, cents } = freqToNote(hz);
+    return { partial: n, hz: parseFloat(hz.toFixed(2)), note: name, cents };
+  });
+  return { slot, fundamental_hz: parseFloat(fund.toFixed(4)), partials: parts,
+           glide_ms: glideMs, beats: 2, pitches };
+}
+
+function saveSlot(slot) {
+  slotData[slot] = slotSnapshot(slot);
+  localStorage.setItem(`partials-slot-${slot}`, JSON.stringify(slotData[slot]));
+  activeSlot = slot;
+  renderSlotBtns();
+}
+
+function loadSlot(slot) {
+  const d = slotData[slot];
+  if (!d) return;
+  clearAll();
+  document.getElementById('fund-input').value = d.fundamental_hz.toFixed(2);
+  renderRows();
+  if (d.glide_ms !== undefined) setGlide(d.glide_ms);
+  setTimeout(() => {
+    d.partials.forEach(n => togglePartial(n));
+    activeSlot = slot;
+    renderSlotBtns();
+  }, 60);
+}
+
+function renderSlotBtns() {
+  const container = document.getElementById('slots');
+  container.innerHTML = '';
+  SLOT_KEYS.forEach(k => {
+    const btn = document.createElement('button');
+    btn.className = 'slot-btn' +
+      (slotData[k] ? ' filled' : '') +
+      (activeSlot === k ? ' active-slot' : '');
+    btn.textContent = k;
+    btn.title = slotData[k]
+      ? `${k}: ${slotData[k].fundamental_hz} Hz [${slotData[k].partials.join(',')}] — hold 3s to overwrite`
+      : `${k}: empty — hold 3s to save`;
+    btn.style.cursor = letterCursor(k);
+
+    btn.addEventListener('mouseenter', () => {
+      btn.style.cursor = letterCursor(k);
+    });
+
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      btn.classList.add('holding');
+      holdTimer = setTimeout(() => {
+        saveSlot(k);
+        btn.classList.remove('holding');
+        holdTimer = null;
+      }, 3000);
+    });
+
+    const cancelHold = () => {
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+      btn.classList.remove('holding');
+    };
+
+    btn.addEventListener('pointerup',    cancelHold);
+    btn.addEventListener('pointerleave', cancelHold);
+
+    btn.addEventListener('click', () => {
+      if (!holdTimer) loadSlot(k);
+    });
+
+    container.appendChild(btn);
+  });
+}
+
+// ── JSON export ───────────────────────────────────────────
+function exportJSON() {
+  const filled = SLOT_KEYS.filter(k => slotData[k]);
+  if (!filled.length) {
+    alert('Save at least one slot (hold W/X/Y/Z for 3s) before exporting.');
+    return;
+  }
+  const out = {
+    tool: 'harmonic-series',
+    version: 1,
+    chords: filled.map(k => slotData[k])
+  };
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `harmonic-series-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Octave buttons ────────────────────────────────────────
+document.getElementById('btn-8va').addEventListener('click', () => {
+  const inp = document.getElementById('fund-input');
+  const v   = parseFloat(inp.value);
+  if (isFinite(v) && v * 2 <= 4000) {
+    inp.value = (v * 2).toFixed(2);
+    applyFundamentalChange();
+  }
+});
+
+document.getElementById('btn-8vb').addEventListener('click', () => {
+  const inp = document.getElementById('fund-input');
+  const v   = parseFloat(inp.value);
+  if (isFinite(v) && v / 2 >= 20) {
+    inp.value = (v / 2).toFixed(2);
+    applyFundamentalChange();
+  }
+});
+
+// ── Standard events ───────────────────────────────────────
+document.getElementById('fund-input').addEventListener('input', applyFundamentalChange);
 document.getElementById('clear-btn').addEventListener('click', clearAll);
+document.getElementById('export-btn').addEventListener('click', exportJSON);
 
 document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('fund-input').value = btn.dataset.f;
-    if (active.size > 0) retuneAll();
-    else renderRows();
+    applyFundamentalChange();
   });
 });
 
 // ── Init ──────────────────────────────────────────────────
 renderRows();
+renderSlotBtns();
 stopScope();
+setGlide(0);
 </script>
 </body>
 </html>
