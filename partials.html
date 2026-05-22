@@ -357,6 +357,24 @@
       border-color: rgba(138,176,200,0.4);
     }
 
+    .slot-omega {
+      width: 2rem;
+      height: 2rem;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 2px;
+      color: transparent;
+      font-family: Georgia, serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+      margin-top: 0.4rem;
+    }
+    .slot-omega:hover {
+      color: rgba(200,140,120,0.7);
+      border-color: rgba(200,140,120,0.25);
+    }
+
     /* hold-to-save fill animation */
     .slot-btn::after {
       content: '';
@@ -754,6 +772,67 @@ function saveSlot(slot) {
 function loadSlot(slot) {
   const d = slotData[slot];
   if (!d) return;
+
+  // glide transition: if audio running and glide > 0, voice-lead to new chord
+  if (ac && active.size > 0 && glideMs > 0) {
+    initAudio();
+    if (ac.state === 'suspended') ac.resume();
+    const newFund   = d.fundamental_hz;
+    const newSet    = new Set(d.partials);
+    const curSet    = new Set(active);
+    const t         = ac.currentTime;
+    const glideSec  = glideMs / 1000;
+
+    // glide shared partials to new frequencies
+    for (const n of curSet) {
+      if (newSet.has(n) && nodes[n]) {
+        const target = Math.max(newFund * n, 0.001);
+        nodes[n].osc.frequency.cancelScheduledValues(t);
+        nodes[n].osc.frequency.setValueAtTime(nodes[n].osc.frequency.value, t);
+        nodes[n].osc.frequency.exponentialRampToValueAtTime(target, t + glideSec);
+      }
+    }
+
+    // fade out partials leaving
+    for (const n of curSet) {
+      if (!newSet.has(n) && nodes[n]) {
+        const {osc, gain} = nodes[n];
+        delete nodes[n];
+        active.delete(n);
+        gain.gain.setValueAtTime(gain.gain.value, t);
+        gain.gain.linearRampToValueAtTime(0, t + glideSec);
+        setTimeout(() => { try { osc.stop(); } catch(e){} }, glideMs + 50);
+      }
+    }
+
+    // fade in new partials
+    for (const n of newSet) {
+      if (!curSet.has(n)) {
+        const freq = newFund * n;
+        const amp  = 0.35 / Math.pow(n, 0.7);
+        const osc  = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(amp, t + glideSec);
+        osc.connect(gain);
+        gain.connect(analyser);
+        osc.start();
+        nodes[n] = {osc, gain};
+        active.add(n);
+        startScope();
+      }
+    }
+
+    document.getElementById('fund-input').value = newFund.toFixed(2);
+    if (d.glide_ms !== undefined) setGlide(d.glide_ms);
+    activeSlot = slot;
+    setTimeout(() => { renderRows(); renderSlotBtns(); }, glideMs);
+    return;
+  }
+
+  // hard recall (no audio running or glide = 0)
   clearAll();
   document.getElementById('fund-input').value = d.fundamental_hz.toFixed(2);
   renderRows();
@@ -807,6 +886,23 @@ function renderSlotBtns() {
 
     container.appendChild(btn);
   });
+
+  // Ω — clear all stored slots
+  const omega = document.createElement('button');
+  omega.className = 'slot-omega';
+  omega.textContent = 'Ω';
+  omega.title = 'clear all stored slots';
+  omega.addEventListener('click', clearAllSlots);
+  container.appendChild(omega);
+}
+
+function clearAllSlots() {
+  SLOT_KEYS.forEach(k => {
+    slotData[k] = null;
+    localStorage.removeItem(`partials-slot-${k}`);
+  });
+  activeSlot = null;
+  renderSlotBtns();
 }
 
 // ── JSON export ───────────────────────────────────────────
