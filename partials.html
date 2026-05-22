@@ -534,12 +534,14 @@ function togglePartial(n) {
 function clearAll() {
   if (!ac) return;
   const t = ac.currentTime;
-  for (const n of [...active]) {
-    const {osc, gain} = nodes[n];
-    gain.gain.setTargetAtTime(0, t, 0.04);
-    setTimeout(() => { try { osc.stop(); } catch(e){} delete nodes[n]; }, 300);
-  }
+  // capture refs before clearing — prevents collision with immediate re-triggers
+  const toStop = Object.values(nodes);
+  for (const k in nodes) delete nodes[k];
   active.clear();
+  for (const {osc, gain} of toStop) {
+    gain.gain.setTargetAtTime(0, t, 0.04);
+    setTimeout(() => { try { osc.stop(); } catch(e){} }, 300);
+  }
   stopScope();
   updateRows();
 }
