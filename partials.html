@@ -369,6 +369,8 @@
       cursor: pointer;
       transition: color 0.2s, border-color 0.2s;
       margin-top: 0.4rem;
+      position: relative;
+      overflow: hidden;
     }
     .slot-omega:hover {
       color: rgba(200,140,120,0.7);
@@ -376,7 +378,7 @@
     }
 
     /* hold-to-save fill animation */
-    .slot-btn::after {
+    .slot-btn::after, .slot-omega::after {
       content: '';
       position: absolute;
       inset: 0;
@@ -384,7 +386,7 @@
       transform: scaleX(0);
       transform-origin: left;
     }
-    .slot-btn.holding::after {
+    .slot-btn.holding::after, .slot-omega.holding::after {
       animation: slot-fill 3s linear forwards;
     }
     @keyframes slot-fill {
@@ -892,7 +894,22 @@ function renderSlotBtns() {
   omega.className = 'slot-omega';
   omega.textContent = 'Ω';
   omega.title = 'clear all stored slots';
-  omega.addEventListener('click', clearAllSlots);
+  let omegaTimer = null;
+  omega.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    omega.classList.add('holding');
+    omegaTimer = setTimeout(() => {
+      clearAllSlots();
+      omega.classList.remove('holding');
+      omegaTimer = null;
+    }, 3000);
+  });
+  const cancelOmega = () => {
+    if (omegaTimer) { clearTimeout(omegaTimer); omegaTimer = null; }
+    omega.classList.remove('holding');
+  };
+  omega.addEventListener('pointerup',    cancelOmega);
+  omega.addEventListener('pointerleave', cancelOmega);
   container.appendChild(omega);
 }
 
