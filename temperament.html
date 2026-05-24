@@ -159,6 +159,94 @@
       color: rgba(204,200,208,0.1); font-style: italic; text-align: center;
       max-width: 520px;
     }
+
+    /* ── Timbre section ── */
+    .timbre-section { width: 100%; max-width: 780px; }
+    .timbre-toggle {
+      background: none; border: 1px solid var(--border); border-radius: 2px;
+      color: var(--dimmer); font-family: Georgia,serif; font-size: 0.6rem;
+      letter-spacing: 0.1em; padding: 0.3rem 1rem; cursor: pointer;
+      width: 100%; text-align: center;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .timbre-toggle:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .timbre-toggle.open { color: var(--warm); border-color: rgba(200,160,96,0.4); }
+    .timbre-panel {
+      margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.7rem;
+      padding: 0.8rem; border: 1px solid var(--border); border-radius: 2px;
+      background: var(--bg2);
+    }
+
+    /* Timbre preset row */
+    .tp-row { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center; }
+    .tp-btn {
+      background: none; border: 1px solid var(--border); border-radius: 2px;
+      color: var(--dimmer); font-family: Georgia,serif; font-size: 0.58rem;
+      letter-spacing: 0.06em; padding: 0.2rem 0.6rem; cursor: pointer;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .tp-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .tp-btn.active-tp { color: var(--warm); border-color: var(--warm); }
+
+    /* Favorites */
+    .faves-row {
+      display: flex; gap: 0.5rem; align-items: center;
+      justify-content: center; flex-wrap: wrap;
+    }
+    .fave-label {
+      font-size: 0.42rem; color: rgba(204,200,208,0.18);
+      letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    .fave-slot { display: flex; gap: 0.2rem; align-items: center; }
+    .fave-name {
+      font-size: 0.48rem; color: var(--dimmer); font-style: italic;
+      min-width: 3.5rem; text-align: center;
+    }
+    .fave-btn {
+      background: none; border: 1px solid var(--border); border-radius: 2px;
+      color: rgba(204,200,208,0.2); font-family: Georgia,serif; font-size: 0.46rem;
+      letter-spacing: 0.04em; padding: 0.12rem 0.38rem; cursor: pointer;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .fave-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .fave-load { color: rgba(204,200,208,0.22); }
+    .fave-load.has-data { color: var(--tet); border-color: rgba(138,176,200,0.3); }
+    .fave-load.has-data:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
+    .fave-save:hover { color: var(--warm); border-color: rgba(200,160,96,0.5); }
+
+    /* Control groups grid */
+    .ctrl-groups {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 0.6rem;
+    }
+    .ctrl-group {
+      display: flex; flex-direction: column; gap: 0.35rem;
+      padding: 0.55rem 0.6rem;
+      border: 1px solid rgba(255,255,255,0.05); border-radius: 2px;
+    }
+    .cg-title {
+      font-size: 0.40rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(204,200,208,0.18); margin-bottom: 0.1rem;
+    }
+    .cg-row { display: flex; align-items: center; gap: 0.45rem; }
+    .cg-label {
+      font-size: 0.50rem; color: var(--dimmer); font-style: italic;
+      min-width: 3.6rem; text-align: right; flex-shrink: 0;
+    }
+    .cg-val {
+      font-size: 0.46rem; color: var(--ji); font-style: italic;
+      min-width: 3.4rem; flex-shrink: 0;
+    }
+    .cg-slider {
+      -webkit-appearance: none; flex: 1; min-width: 0;
+      height: 2px; background: rgba(255,255,255,0.08);
+      outline: none; border-radius: 1px;
+    }
+    .cg-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 9px; height: 9px;
+      border-radius: 50%; background: var(--warm); cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -228,15 +316,133 @@
 
 <p class="hint">C major sounds pure · C♯ major sounds tense · each key has its own character · that was the point</p>
 
+<!-- ── Timbre section ── -->
+<div class="timbre-section" id="timbre-section">
+  <button class="timbre-toggle" id="timbre-toggle">timbre ▸</button>
+  <div class="timbre-panel" id="timbre-panel" style="display:none">
+
+    <!-- Preset row -->
+    <div class="tp-row" id="tp-row"></div>
+
+    <!-- Favorites -->
+    <div class="faves-row" id="faves-row">
+      <span class="fave-label">faves</span>
+    </div>
+
+    <!-- Manual controls -->
+    <div class="ctrl-groups">
+
+      <!-- Oscillator blend -->
+      <div class="ctrl-group">
+        <div class="cg-title">oscillator</div>
+        <div class="cg-row">
+          <span class="cg-label">sine</span>
+          <input type="range" class="cg-slider" id="osc-sine" min="0" max="100" step="1" value="0">
+          <span class="cg-val" id="osc-sine-val">0%</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">square</span>
+          <input type="range" class="cg-slider" id="osc-sq" min="0" max="100" step="1" value="0">
+          <span class="cg-val" id="osc-sq-val">0%</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">sawtooth</span>
+          <input type="range" class="cg-slider" id="osc-saw" min="0" max="100" step="1" value="100">
+          <span class="cg-val" id="osc-saw-val">100%</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">triangle</span>
+          <input type="range" class="cg-slider" id="osc-tri" min="0" max="100" step="1" value="0">
+          <span class="cg-val" id="osc-tri-val">0%</span>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="ctrl-group">
+        <div class="cg-title">filter</div>
+        <div class="cg-row">
+          <span class="cg-label">cutoff</span>
+          <input type="range" class="cg-slider" id="flt-cutoff" min="0" max="100" step="0.5" value="53">
+          <span class="cg-val" id="flt-cutoff-val">2200 Hz</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">Q</span>
+          <input type="range" class="cg-slider" id="flt-q" min="0" max="100" step="0.5" value="25">
+          <span class="cg-val" id="flt-q-val">0.4</span>
+        </div>
+      </div>
+
+      <!-- Envelope -->
+      <div class="ctrl-group">
+        <div class="cg-title">envelope</div>
+        <div class="cg-row">
+          <span class="cg-label">attack</span>
+          <input type="range" class="cg-slider" id="env-atk" min="0" max="100" step="0.5" value="16">
+          <span class="cg-val" id="env-atk-val">5 ms</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">decay</span>
+          <input type="range" class="cg-slider" id="env-dec" min="0" max="100" step="0.5" value="30">
+          <span class="cg-val" id="env-dec-val">140 ms</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">sustain</span>
+          <input type="range" class="cg-slider" id="env-sus" min="0" max="100" step="1" value="45">
+          <span class="cg-val" id="env-sus-val">45%</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">release</span>
+          <input type="range" class="cg-slider" id="env-rel" min="0" max="100" step="0.5" value="22">
+          <span class="cg-val" id="env-rel-val">55 ms</span>
+        </div>
+      </div>
+
+      <!-- EQ -->
+      <div class="ctrl-group">
+        <div class="cg-title">eq</div>
+        <div class="cg-row">
+          <span class="cg-label">bass</span>
+          <input type="range" class="cg-slider" id="eq-bass" min="0" max="100" step="0.5" value="50">
+          <span class="cg-val" id="eq-bass-val">0.0 dB</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">treble</span>
+          <input type="range" class="cg-slider" id="eq-treble" min="0" max="100" step="0.5" value="50">
+          <span class="cg-val" id="eq-treble-val">0.0 dB</span>
+        </div>
+      </div>
+
+      <!-- Reverb -->
+      <div class="ctrl-group">
+        <div class="cg-title">reverb</div>
+        <div class="cg-row">
+          <span class="cg-label">send</span>
+          <input type="range" class="cg-slider" id="rev-wet" min="0" max="100" step="1" value="0">
+          <span class="cg-val" id="rev-wet-val">0%</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">rt60</span>
+          <input type="range" class="cg-slider" id="rev-rt60" min="0" max="100" step="0.5" value="34">
+          <span class="cg-val" id="rev-rt60-val">1.5 s</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">damp</span>
+          <input type="range" class="cg-slider" id="rev-damp" min="0" max="100" step="1" value="50">
+          <span class="cg-val" id="rev-damp-val">50%</span>
+        </div>
+      </div>
+
+    </div><!-- .ctrl-groups -->
+  </div><!-- .timbre-panel -->
+</div><!-- .timbre-section -->
+
 <script>
 (function () {
 'use strict';
 
 // ── 1. TEMPERAMENT ENGINE ─────────────────────────────────────────────────────
 
-// Build 12 pcCents (cents from C for each pitch class 0-11=C,C#,D,...,B)
-// from a chain of fifths. fifths[i] = size of ith fifth C→G→D→A→E→B→F#→C#→G#→D#→A#→F
-const FIFTH_ORDER = [0,7,2,9,4,11,6,1,8,3,10,5]; // chain: C G D A E B F# C# G# D# A# F
+const FIFTH_ORDER = [0,7,2,9,4,11,6,1,8,3,10,5];
 
 function buildFromFifths(fifths) {
   const pc = new Float64Array(12);
@@ -252,7 +458,6 @@ function buildRegular(fifth) {
   return buildFromFifths(new Array(12).fill(fifth));
 }
 
-// Named regular temperaments (single fifth size in cents)
 const REGULAR = [
   { name: 'Pythagorean',    fifth: 701.955 },
   { name: '12-TET',         fifth: 700.000 },
@@ -262,67 +467,152 @@ const REGULAR = [
   { name: '19-TET',         fifth: 1200*11/19 },
 ];
 
-// Well temperaments — irregular, defined by their 12 fifths around the circle
-// Order: C-G, G-D, D-A, A-E, E-B, B-F#, F#-C#, C#-G#, G#-Eb, Eb-Bb, Bb-F, F-C
-const PC   = 23.460; // Pythagorean comma ≈ cents
-const SC   = 21.506; // syntonic comma ≈ cents
+const PC   = 23.460;
+const SC   = 21.506;
 const P5   = 701.955;
 
 const WELL = [
   {
     name: 'Werckmeister III · 1691',
-    // 4 fifths narrow by PC/4: C-G, G-D, D-A, B-F#; rest pure
     fifths: [P5-PC/4, P5-PC/4, P5-PC/4, P5, P5, P5-PC/4, P5, P5, P5, P5, P5, P5],
   },
   {
     name: 'Kirnberger I · 1766',
-    // D-A narrow by full syntonic comma; rest pure. Gives pure major third C-E.
     fifths: [P5, P5, P5-SC, P5, P5, P5, P5, P5, P5, P5, P5, P5],
   },
   {
     name: 'Young II · 1800',
-    // C-G, G-D, D-A, A-E, E-B and F-C each narrow by PC/6; rest pure
     fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6, P5, P5, P5, P5, P5, P5, P5-PC/6],
   },
   {
     name: 'Kirnberger III · 1779',
-    // C-G, G-D, D-A, A-E each narrow by SC/4; schisma absorbed on G#-Eb; rest pure
     fifths: [P5-SC/4, P5-SC/4, P5-SC/4, P5-SC/4, P5, P5, P5, P5, P5-(PC-SC), P5, P5, P5],
   },
   {
     name: 'Vallotti · 1754',
-    // F-C, C-G, G-D, D-A, A-E, E-B each narrow by SC/6; schisma on Bb-F; rest pure
-    // (differs from Young II which uses PC/6; SC/6 gives purer C-E third)
     fifths: [P5-SC/6, P5-SC/6, P5-SC/6, P5-SC/6, P5-SC/6, P5, P5, P5, P5, P5, P5-(PC-SC), P5-SC/6],
   },
   {
     name: 'Lehman-Bach · 2004',
-    // Lehman's 2004 reading of the WTK title page scroll:
-    // C-G, G-D, D-A narrow by PC/6; A-E, E-B, B-F# and Eb-Bb, Bb-F, F-C by PC/12; F#-C#, C#-G#, G#-Eb pure
     fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/12, P5-PC/12, P5-PC/12, P5, P5, P5, P5-PC/12, P5-PC/12, P5-PC/12],
   },
 ];
 
-// Current temperament state
-let currentPcCents = buildRegular(700); // 12-TET default
+let currentPcCents = buildRegular(700);
 let currentFifth   = 700;
 let isWell         = false;
 let currentTempName = '12-TET';
 
-// Cents → frequency ratio relative to 12-TET (for MIDI note retuning)
-// pcCents[pc] = cents from C in current temperament
 function midiToFreq(midi, a4 = 440) {
   const pc = ((midi % 12) + 12) % 12;
-  const deviation = currentPcCents[pc] - pc * 100; // vs 12-TET
+  const deviation = currentPcCents[pc] - pc * 100;
   return a4 * Math.pow(2, (midi - 69) / 12) * Math.pow(2, deviation / 1200);
 }
 
-// ── 2. AUDIO ENGINE ───────────────────────────────────────────────────────────
-// Voice pool: oscillators run continuously at zero gain — no create/destroy GC pressure.
-// To play a note, grab an idle slot, set its frequency, apply envelope. Zero allocation.
+// ── 2. TIMBRE STATE & PRESETS ─────────────────────────────────────────────────
+
+// Envelope params read by playNoteAt and hold-note code
+let ENV = {
+  attack:  0.005,
+  decay:   0.14,
+  sustain: 0.45,
+  release: 0.055
+};
+
+// Full timbre state (internal units: Hz, seconds, fractions, dB)
+let TSTATE = {
+  sine: 0, sq: 0, saw: 1, tri: 0,
+  cutoff: 2200, q: 0.4,
+  attack: 0.005, decay: 0.14, sustain: 0.45, release: 0.055,
+  wet: 0, rt60: 1.5, damp: 0.5,
+  bass: 0, treble: 0
+};
+
+// 7 timbre presets (values in same units as TSTATE)
+const TP = {
+  sine: {
+    label: 'sine',
+    sine:0.95, sq:0, saw:0.05, tri:0,
+    cutoff:5000, q:0.3,
+    attack:0.012, decay:0.5, sustain:0.7, release:0.18,
+    wet:22, rt60:2.2, damp:0.55,
+    bass:0, treble:-2
+  },
+  organ: {
+    label: 'organ',
+    sine:0.45, sq:0, saw:0.35, tri:0.2,
+    cutoff:3200, q:0.3,
+    attack:0.018, decay:2.0, sustain:0.92, release:0.06,
+    wet:38, rt60:2.8, damp:0.5,
+    bass:2, treble:-2
+  },
+  clavichord: {
+    label: 'clavichord',
+    sine:0.25, sq:0, saw:0.25, tri:0.5,
+    cutoff:1600, q:0.55,
+    attack:0.003, decay:0.18, sustain:0.12, release:0.1,
+    wet:10, rt60:0.7, damp:0.65,
+    bass:1, treble:-1
+  },
+  harpsichord: {
+    label: 'harpsichord',
+    sine:0.1, sq:0, saw:0.7, tri:0.2,
+    cutoff:2800, q:0.65,
+    attack:0.002, decay:0.1, sustain:0.04, release:0.055,
+    wet:22, rt60:1.3, damp:0.4,
+    bass:-1, treble:2
+  },
+  fortepiano: {
+    label: 'fortepiano',
+    sine:0.15, sq:0, saw:0.35, tri:0.5,
+    cutoff:1500, q:0.5,
+    attack:0.004, decay:0.9, sustain:0.25, release:0.2,
+    wet:28, rt60:1.6, damp:0.6,
+    bass:2, treble:-2
+  },
+  'cc-orig': {
+    label: 'cc orig',
+    sine:0, sq:0, saw:1, tri:0,
+    cutoff:2200, q:0.4,
+    attack:0.005, decay:0.14, sustain:0.45, release:0.055,
+    wet:0, rt60:1.5, damp:0.5,
+    bass:0, treble:0
+  },
+  'cc-spec': {
+    label: 'cc spec',
+    sine:0.35, sq:0.05, saw:0.1, tri:0.5,
+    cutoff:1100, q:1.4,
+    attack:0.22, decay:2.5, sustain:0.82, release:0.45,
+    wet:60, rt60:4.0, damp:0.7,
+    bass:3, treble:-4
+  }
+};
+
+// Slider ↔ internal-value conversions (slider: 0–100)
+const PARAM_CFG = {
+  'osc-sine':   { key:'sine',    fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
+  'osc-sq':     { key:'sq',      fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
+  'osc-saw':    { key:'saw',     fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
+  'osc-tri':    { key:'tri',     fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
+  'flt-cutoff': { key:'cutoff',  fwd: t=>80*Math.pow(100,t/100),         inv: v=>Math.log(v/80)/Math.log(100)*100,        disp: v=>Math.round(v)+' Hz' },
+  'flt-q':      { key:'q',       fwd: t=>0.1+t/100*11.9,                 inv: v=>(v-0.1)/11.9*100,                        disp: v=>v.toFixed(1) },
+  'env-atk':    { key:'attack',  fwd: t=>0.001*Math.pow(500,t/100),      inv: v=>Math.log(v/0.001)/Math.log(500)*100,     disp: v=>v<0.1?Math.round(v*1000)+' ms':v.toFixed(2)+' s' },
+  'env-dec':    { key:'decay',   fwd: t=>0.01*Math.pow(300,t/100),       inv: v=>Math.log(v/0.01)/Math.log(300)*100,      disp: v=>v<0.1?Math.round(v*1000)+' ms':v.toFixed(2)+' s' },
+  'env-sus':    { key:'sustain', fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
+  'env-rel':    { key:'release', fwd: t=>0.01*Math.pow(200,t/100),       inv: v=>Math.log(v/0.01)/Math.log(200)*100,      disp: v=>v<0.1?Math.round(v*1000)+' ms':v.toFixed(2)+' s' },
+  'rev-wet':    { key:'wet',     fwd: t=>t,                              inv: v=>v,                                       disp: v=>Math.round(v)+'%' },
+  'rev-rt60':   { key:'rt60',    fwd: t=>0.2*Math.pow(30,t/100),         inv: v=>Math.log(v/0.2)/Math.log(30)*100,        disp: v=>v.toFixed(1)+' s' },
+  'rev-damp':   { key:'damp',    fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
+  'eq-bass':    { key:'bass',    fwd: t=>(t-50)*0.24,                    inv: v=>v/0.24+50,                               disp: v=>(v>=0?'+':'')+v.toFixed(1)+' dB' },
+  'eq-treble':  { key:'treble',  fwd: t=>(t-50)*0.24,                    inv: v=>v/0.24+50,                               disp: v=>(v>=0?'+':'')+v.toFixed(1)+' dB' },
+};
+
+// ── 3. AUDIO ENGINE ───────────────────────────────────────────────────────────
 
 let ac = null;
 let masterComp = null, masterLPF = null;
+let eqBass = null, eqTreble = null;
+let dryGain = null, convolver = null, wetGain = null;
 let droneOsc = null, droneGain = null;
 let droneOn = false;
 
@@ -330,23 +620,109 @@ const NOTE_MIDI = { C:60, D:62, E:64, F:65, G:67, A:69, B:71 };
 let droneNote = 'C', droneOct = 3;
 function getDroneMidi() { return NOTE_MIDI[droneNote] + (droneOct - 4) * 12; }
 
-// Pool
 const POOL_SIZE = 20;
-let pool = null; // [{osc, gain, mute, freeAt, midi}]
-// Each voice: osc → gain (envelope) → mute (hard gate) → masterLPF
-// The mute node is a clean on/off switch — avoids cancelScheduledValues
-// browser inconsistencies (especially WebKit/iOS) by keeping envelope
-// scheduling and silence logic on separate nodes.
+let pool = null;
+
+// Build a blended PeriodicWave from Fourier coefficients of four standard waveforms.
+// Weights are raw (not pre-normalized) — buildWave normalizes internally.
+function buildWave(sine, sq, saw, tri) {
+  if (!ac) return null;
+  const N = 32;
+  const real = new Float32Array(N + 1);
+  const imag = new Float32Array(N + 1);
+  const total = sine + sq + saw + tri || 1;
+  const ws = sine/total, wsq = sq/total, wsaw = saw/total, wtri = tri/total;
+  for (let n = 1; n <= N; n++) {
+    let im = 0;
+    if (n === 1) im += ws;                                          // sine: fundamental only
+    if (n % 2 === 1) im += wsq * 4 / (Math.PI * n);               // square: odd harmonics
+    im += wsaw * 2 * Math.pow(-1, n + 1) / (Math.PI * n);          // sawtooth: all harmonics
+    if (n % 2 === 1) {                                              // triangle: odd, alternating sign
+      im += wtri * 8 * Math.pow(-1, (n-1)/2) / (Math.PI * Math.PI * n * n);
+    }
+    imag[n] = im;
+  }
+  return ac.createPeriodicWave(real, imag);
+}
+
+// Generate a synthetic reverb impulse response (noise + exponential decay + LP damping)
+function makeIR(rt60, damp) {
+  if (!ac) return null;
+  const rate  = ac.sampleRate;
+  const len   = Math.min(Math.round(rate * rt60 * 1.4), rate * 8);
+  const ir    = ac.createBuffer(2, len, rate);
+  const kDecay = Math.pow(0.001, 1.0 / (rt60 * rate)); // -60 dB in rt60 s
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    let lp = 0, env = 1.0;
+    for (let i = 0; i < len; i++) {
+      const noise = Math.random() * 2 - 1;
+      lp = noise * (1 - damp) + lp * damp; // one-pole LP (air absorption)
+      d[i] = lp * env;
+      env *= kDecay;
+    }
+  }
+  return ir;
+}
+
+// Apply timbre state to the audio graph (and update ENV for envelope params)
+function applyTimbre(ts) {
+  Object.assign(TSTATE, ts);
+  ENV.attack  = ts.attack;
+  ENV.decay   = ts.decay;
+  ENV.sustain = ts.sustain;
+  ENV.release = ts.release;
+  if (!ac) return;
+
+  // Filter
+  masterLPF.frequency.setTargetAtTime(ts.cutoff, ac.currentTime, 0.02);
+  masterLPF.Q.setTargetAtTime(ts.q, ac.currentTime, 0.02);
+
+  // EQ
+  eqBass.gain.setTargetAtTime(ts.bass, ac.currentTime, 0.02);
+  eqTreble.gain.setTargetAtTime(ts.treble, ac.currentTime, 0.02);
+
+  // Osc blend — update all pool voices immediately
+  const wave = buildWave(ts.sine, ts.sq, ts.saw, ts.tri);
+  if (wave && pool) pool.forEach(v => v.osc.setPeriodicWave(wave));
+
+  // Reverb
+  wetGain.gain.setTargetAtTime(ts.wet / 100, ac.currentTime, 0.05);
+  convolver.buffer = makeIR(ts.rt60, ts.damp);
+}
 
 function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
 
+  // Main lowpass filter
   masterLPF = ac.createBiquadFilter();
   masterLPF.type = 'lowpass';
-  masterLPF.frequency.value = 2200; // warmer with sawtooth
-  masterLPF.Q.value = 0.4;
+  masterLPF.frequency.value = TSTATE.cutoff;
+  masterLPF.Q.value = TSTATE.q;
 
+  // EQ shelves
+  eqBass = ac.createBiquadFilter();
+  eqBass.type = 'lowshelf';
+  eqBass.frequency.value = 250;
+  eqBass.gain.value = TSTATE.bass;
+
+  eqTreble = ac.createBiquadFilter();
+  eqTreble.type = 'highshelf';
+  eqTreble.frequency.value = 3000;
+  eqTreble.gain.value = TSTATE.treble;
+
+  // Dry path
+  dryGain = ac.createGain();
+  dryGain.gain.value = 1.0;
+
+  // Reverb path
+  convolver = ac.createConvolver();
+  convolver.buffer = makeIR(TSTATE.rt60, TSTATE.damp);
+  wetGain = ac.createGain();
+  wetGain.gain.value = TSTATE.wet / 100;
+
+  // Compressor (output stage)
   masterComp = ac.createDynamicsCompressor();
   masterComp.threshold.setValueAtTime(-20, ac.currentTime);
   masterComp.knee.setValueAtTime(8, ac.currentTime);
@@ -354,29 +730,39 @@ function initAudio() {
   masterComp.attack.setValueAtTime(0.002, ac.currentTime);
   masterComp.release.setValueAtTime(0.08, ac.currentTime);
 
-  masterLPF.connect(masterComp);
+  // Chain: voices → LPF → eqBass → eqTreble → dryGain ──────── masterComp → dest
+  //                                           ↘ convolver → wetGain ↗
+  masterLPF.connect(eqBass);
+  eqBass.connect(eqTreble);
+  eqTreble.connect(dryGain);
+  eqTreble.connect(convolver);
+  dryGain.connect(masterComp);
+  convolver.connect(wetGain);
+  wetGain.connect(masterComp);
   masterComp.connect(ac.destination);
 
-  // Build pool: osc → envGain → muteGain → LPF
+  // Voice pool: osc → envGain → muteGain → masterLPF
   pool = [];
   for (let i = 0; i < POOL_SIZE; i++) {
     const osc  = ac.createOscillator();
     const env  = ac.createGain();
     const mute = ac.createGain();
-    osc.type = 'sawtooth';
     env.gain.value  = 0;
-    mute.gain.value = 0; // closed until first note
+    mute.gain.value = 0;
     osc.connect(env);
     env.connect(mute);
     mute.connect(masterLPF);
     osc.start();
     pool.push({ osc, gain: env, mute, freeAt: 0, midi: -1 });
   }
+
+  // Apply initial waveform blend
+  const wave = buildWave(TSTATE.sine, TSTATE.sq, TSTATE.saw, TSTATE.tri);
+  if (wave) pool.forEach(v => v.osc.setPeriodicWave(wave));
 }
 
 function getVoice() {
   const now = ac.currentTime;
-  // Prefer fully free voices; otherwise steal the one that frees soonest
   let best = pool[0];
   for (const v of pool) {
     if (v.freeAt <= now) return v;
@@ -389,8 +775,6 @@ function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   if (!pool) return;
   const now = ac.currentTime;
 
-  // Hard-mute any same-pitch voice still releasing via the mute node —
-  // no cancelScheduledValues needed, just close the gate now.
   for (const pv of pool) {
     if (pv.midi === midi && pv.freeAt > startTime) {
       pv.mute.gain.setValueAtTime(0, now);
@@ -402,15 +786,16 @@ function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   const v = getVoice();
   const freq = midiToFreq(midi);
   const t   = startTime;
+  const atk = ENV.attack;
+  const dec = ENV.decay;
+  const sus = ENV.sustain;
+  const rel = ENV.release;
   const off = t + Math.max(durationSec - 0.015, 0.015);
-  const rel = 0.055; // release τ
 
-  // Close mute now → open at t: any stolen-voice release tail is gated off
-  // between now and the scheduled start, so nothing bleeds through.
   v.mute.gain.cancelScheduledValues(0);
   v.mute.gain.setValueAtTime(0, now);
   v.mute.gain.setValueAtTime(1, t);
-  v.mute.gain.setValueAtTime(0, off + rel * 5); // close again after release
+  v.mute.gain.setValueAtTime(0, off + rel * 7);
 
   v.osc.frequency.cancelScheduledValues(0);
   v.osc.frequency.setValueAtTime(freq, t);
@@ -418,11 +803,11 @@ function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   const g = v.gain.gain;
   g.cancelScheduledValues(0);
   g.setValueAtTime(0.0001, t);
-  g.exponentialRampToValueAtTime(vol, t + 0.005);       // attack
-  g.exponentialRampToValueAtTime(vol * 0.45, t + 0.14); // pluck decay
-  g.setTargetAtTime(0.0001, off, rel);                   // release
+  g.exponentialRampToValueAtTime(vol, t + atk);
+  g.exponentialRampToValueAtTime(Math.max(vol * sus, 0.0001), t + atk + dec);
+  g.setTargetAtTime(0.0001, off, rel);
 
-  v.freeAt = off + rel * 5;
+  v.freeAt = off + rel * 7;
   v.midi = midi;
 }
 
@@ -461,16 +846,13 @@ function playScale() {
   if (ac.state === 'suspended') ac.resume();
   if (scaleTimer) { clearTimeout(scaleTimer); scaleTimer = null; }
 
-  // Major scale degrees: W W H W W W H (semitones: 0 2 4 5 7 9 11 12)
   const degrees = [0,2,4,5,7,9,11,12];
   const rootMidi = getDroneMidi();
-  let now = ac.currentTime + 0.05;
   const dur = 0.42;
 
   degrees.forEach((d, i) => {
     scaleTimer = setTimeout(() => playNoteAt(rootMidi + d, ac.currentTime + 0.01, dur, 0.2), i * dur * 1000);
   });
-  // Highlight pc cells as scale plays
   degrees.forEach((d, i) => {
     setTimeout(() => {
       clearHighlights();
@@ -480,23 +862,22 @@ function playScale() {
   setTimeout(clearHighlights, degrees.length * dur * 1000 + 200);
 }
 
-// ── 3. KERN PARSER ────────────────────────────────────────────────────────────
+// ── 4. KERN PARSER ────────────────────────────────────────────────────────────
 
 function parseKernDuration(token) {
   const m = token.match(/^[\[({]?(\d+)(\.{0,2})/);
   if (!m) return null;
   const n = parseInt(m[1]);
   const dots = m[2].length;
-  let dur = n === 0 ? 8 : 4 / n; // in quarter notes
+  let dur = n === 0 ? 8 : 4 / n;
   let add = dur;
   for (let i = 0; i < dots; i++) { add /= 2; dur += add; }
   return dur;
 }
 
 function parseKernPitch(token) {
-  // Returns midi note number or null for rest/grace/null
   if (token === '.' || token.includes('r')) return null;
-  if (token.includes('q')) return null; // grace note
+  if (token.includes('q')) return null;
   const pitchM = token.match(/([A-Ga-g]+)/);
   if (!pitchM) return null;
   const str = pitchM[1];
@@ -507,7 +888,7 @@ function parseKernPitch(token) {
   if (pc === undefined) return null;
   const octave = upper ? 4 - str.length : 3 + str.length;
   const sharps = (token.match(/#/g) || []).length;
-  const flats  = (token.match(/-(?![>])/g) || []).length; // avoid matching ->
+  const flats  = (token.match(/-(?![>])/g) || []).length;
   const acc = sharps - flats;
   return 12 * (octave + 1) + pc + acc;
 }
@@ -521,10 +902,8 @@ function parseKern(text) {
   const nSpines = headerTokens.length;
 
   let tempo = 72;
-  // Dynamic spine arrays — mutated by *^ (split) and *v (merge)
   let spineTime = new Array(nSpines).fill(0);
   let spineTie  = new Array(nSpines).fill(null);
-  // Pre-mark null/empty header slots (e.g. double-tab phantom spines) as skip
   let spineSkip = headerTokens.map(tok => tok === '' || tok === '**');
   const events = [];
 
@@ -534,34 +913,28 @@ function parseKern(text) {
     if (line.startsWith('*')) {
       const tokens = line.split('\t');
 
-      // Tempo
       for (const tok of tokens) {
         const mm = tok.match(/^\*MM(\d+)/);
         if (mm) tempo = parseInt(mm[1]);
       }
 
-      // *v spine merge — scan right-to-left so splice indices stay valid
       for (let i = tokens.length - 1; i >= 1; i--) {
         if (tokens[i] === '*v' && tokens[i - 1] === '*v') {
-          // Keep i-1, remove i; take the greater elapsed time
           spineTime[i - 1] = Math.max(spineTime[i - 1], spineTime[i]);
           if (spineTie[i] !== null && spineTie[i - 1] === null) spineTie[i - 1] = spineTie[i];
           spineTime.splice(i, 1);
           spineTie.splice(i, 1);
           spineSkip.splice(i, 1);
-          i--; // skip past the paired token
+          i--;
         }
       }
 
-      // *^ spine split — scan right-to-left so splice indices stay valid
       for (let i = tokens.length - 1; i >= 0; i--) {
         if (tokens[i] === '*^') {
           if (tokens[i + 1] === '') {
-            // Pre-allocated null slot — activate it in place (no column count change)
             spineTime[i + 1] = spineTime[i];
             spineSkip[i + 1] = false;
           } else {
-            // Standard split: insert new spine after i (column count increases)
             spineTime.splice(i + 1, 0, spineTime[i]);
             spineTie.splice(i + 1, 0, null);
             spineSkip.splice(i + 1, 0, false);
@@ -569,7 +942,6 @@ function parseKern(text) {
         }
       }
 
-      // Mark ossia spines to skip (primary/sic spines are kept)
       for (let i = 0; i < Math.min(tokens.length, spineTime.length); i++) {
         if (tokens[i] === '*S/ossia') spineSkip[i] = true;
       }
@@ -577,7 +949,6 @@ function parseKern(text) {
       continue;
     }
 
-    // Data line
     const tokens = line.split('\t');
     for (let v = 0; v < Math.min(tokens.length, spineTime.length); v++) {
       const tok = tokens[v].trim();
@@ -586,7 +957,7 @@ function parseKern(text) {
       if (dur === null) continue;
 
       if (spineSkip[v]) {
-        spineTime[v] += dur; // advance time so merge math stays correct
+        spineTime[v] += dur;
         continue;
       }
 
@@ -602,7 +973,7 @@ function parseKern(text) {
         events.push({ t: spineTime[v], dur, midi });
         spineTie[v] = tieStart ? idx : null;
       } else {
-        spineTie[v] = null; // rest clears tie
+        spineTie[v] = null;
       }
       spineTime[v] += dur;
     }
@@ -612,10 +983,10 @@ function parseKern(text) {
   return { events, tempo };
 }
 
-// ── 4. SCHEDULER ─────────────────────────────────────────────────────────────
+// ── 5. SCHEDULER ─────────────────────────────────────────────────────────────
 
-const AHEAD = 0.12; // seconds to schedule ahead
-const TICK  = 30;   // ms between scheduler calls
+const AHEAD = 0.12;
+const TICK  = 30;
 let schedTimer = null, score = null, schedIdx = 0;
 let playStartAC = 0, playBPM = 80;
 let isPlaying = false;
@@ -632,7 +1003,6 @@ function schedLoop() {
     if (evTime > until) break;
     const dur = Math.max(beatToSec(ev.dur) * 0.9, 0.04);
     playNoteAt(ev.midi, evTime, dur, 0.15);
-    // highlight pc cell briefly
     const pc = ((ev.midi % 12) + 12) % 12;
     const delay = Math.max(0, (evTime - now) * 1000);
     const durMs = Math.max(beatToSec(ev.dur) * 0.9, 0.04) * 1000;
@@ -667,7 +1037,7 @@ function silencePool() {
   const now = ac ? ac.currentTime : 0;
   for (const v of pool) {
     v.mute.gain.cancelScheduledValues(0);
-    v.mute.gain.setValueAtTime(0, now); // hard gate off — instant silence
+    v.mute.gain.setValueAtTime(0, now);
     v.freeAt = now;
     v.midi = -1;
   }
@@ -682,11 +1052,12 @@ function stopPlayback() {
   document.getElementById('btn-play').classList.remove('on');
 }
 
-// ── 5. UI ─────────────────────────────────────────────────────────────────────
+// ── 6. UI ─────────────────────────────────────────────────────────────────────
 
 const PC_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
 
 const SLIDER_MIN = 690, SLIDER_MAX = 704;
+
 const LANDMARKS = [
   { fifth: 694.737, label: '19-TET' },
   { fifth: 694.786, label: '⅓ comma' },
@@ -702,13 +1073,12 @@ const WTK_KEYS = [
   'F♯','f♯','G','g','A♭','g♯','A','a','B♭','b♭','B','b'
 ];
 
-const heldCells = new Map(); // pc index → pool voice
+const heldCells = new Map();
 
 function releasePcCell(i) {
   const v = heldCells.get(i);
   if (!v) return;
   const now = ac.currentTime;
-  // Close mute with a short ramp to avoid a hard click on release
   v.mute.gain.cancelScheduledValues(0);
   v.mute.gain.setValueAtTime(1, now);
   v.mute.gain.linearRampToValueAtTime(0, now + 0.08);
@@ -719,7 +1089,6 @@ function releasePcCell(i) {
   if (cell) cell.classList.remove('playing');
 }
 
-// Build pc grid
 function buildPcGrid() {
   const grid = document.getElementById('pc-grid');
   grid.innerHTML = '';
@@ -741,12 +1110,13 @@ function buildPcGrid() {
       v.osc.frequency.cancelScheduledValues(0);
       v.osc.frequency.setValueAtTime(midiToFreq(midi), now);
       v.mute.gain.cancelScheduledValues(0);
-      v.mute.gain.setValueAtTime(1, now); // open gate immediately
+      v.mute.gain.setValueAtTime(1, now);
       const g = v.gain.gain;
       g.cancelScheduledValues(0);
       g.setValueAtTime(0.0001, now);
-      g.exponentialRampToValueAtTime(0.22, now + 0.006);
-      g.exponentialRampToValueAtTime(0.22 * 0.55, now + 0.15); // settle to sustain
+      g.exponentialRampToValueAtTime(0.22, now + ENV.attack);
+      const susTarget = Math.max(0.22 * ENV.sustain, 0.0001);
+      g.exponentialRampToValueAtTime(susTarget, now + ENV.attack + ENV.decay);
       v.freeAt = now + 3600;
       v.midi = midi;
       heldCells.set(i, v);
@@ -765,11 +1135,10 @@ function buildPcGrid() {
 function updatePcDisplay() {
   for (let i = 0; i < 12; i++) {
     const cents = currentPcCents[i];
-    const dev = cents - i * 100; // deviation from 12-TET
+    const dev = cents - i * 100;
     const el = document.getElementById(`pcdev-${i}`);
     const bar = document.getElementById(`pcbar-${i}`);
     el.textContent = (dev >= 0 ? '+' : '') + dev.toFixed(1) + '¢';
-    // Color: green = near 0, warm = flat, cool = sharp
     const absDev = Math.abs(dev);
     if (absDev < 1) {
       el.style.color = 'rgba(204,200,208,0.3)';
@@ -787,7 +1156,6 @@ function updatePcDisplay() {
       bar.style.width = `${4 + t * 66}%`;
     }
   }
-  // Update drone frequency if active
   if (droneOn && droneOsc) updateDroneFreq();
 }
 
@@ -799,7 +1167,6 @@ function setTemperament(pcCents, name, fifthVal, well) {
   updatePcDisplay();
   updateRootDisplay();
 
-  // Update fifth readout
   if (!well) {
     document.getElementById('fifth-readout').textContent =
       `${fifthVal.toFixed(2)}¢ — ${name}`;
@@ -808,7 +1175,6 @@ function setTemperament(pcCents, name, fifthVal, well) {
     document.getElementById('fifth-readout').textContent = name;
   }
 
-  // Update button highlights
   document.querySelectorAll('[data-fifth]').forEach(b => {
     b.classList.toggle('active-t', !well && Math.abs(parseFloat(b.dataset.fifth) - fifthVal) < 0.01);
   });
@@ -817,7 +1183,7 @@ function setTemperament(pcCents, name, fifthVal, well) {
   });
 }
 
-const pcActive = new Int32Array(12); // reference count per pitch class
+const pcActive = new Int32Array(12);
 
 function highlightPc(pc, durationMs) {
   pcActive[pc]++;
@@ -838,7 +1204,6 @@ function clearHighlights() {
   document.querySelectorAll('.pc-cell').forEach(c => c.classList.remove('playing'));
 }
 
-// Landmark marks
 function buildLandmarks() {
   const wrap = document.getElementById('landmarks');
   const range = SLIDER_MAX - SLIDER_MIN;
@@ -852,7 +1217,6 @@ function buildLandmarks() {
   });
 }
 
-// Regular preset buttons
 function buildPresets() {
   const row = document.getElementById('regular-presets');
   REGULAR.forEach(t => {
@@ -880,7 +1244,6 @@ function buildPresets() {
   });
 }
 
-// Piece grid
 function buildPieceGrid(book) {
   const grid = document.getElementById('piece-grid');
   grid.innerHTML = '';
@@ -910,7 +1273,6 @@ async function selectPiece(btn, book, num) {
     if (!resp.ok) throw new Error(resp.statusText);
     const text = await resp.text();
     score = parseKern(text);
-    // Sync tempo slider to piece tempo
     const pieceTempo = Math.max(30, Math.min(200, Math.round(score.tempo)));
     document.getElementById('tempo-slider').value = pieceTempo;
     document.getElementById('tempo-val').textContent = pieceTempo;
@@ -929,18 +1291,176 @@ function updateRootDisplay() {
     `${droneNote}${droneOct} · ${freq.toFixed(1)} Hz`;
 }
 
-// ── 6. EVENT WIRING ───────────────────────────────────────────────────────────
+// ── 7. TIMBRE UI ──────────────────────────────────────────────────────────────
 
-// Fifth slider
+let activeTimbrePreset = 'cc-orig';
+
+// Set all slider positions + value displays from a timbre state object
+function syncSlidersToState(ts) {
+  for (const [id, cfg] of Object.entries(PARAM_CFG)) {
+    const el  = document.getElementById(id);
+    const val = document.getElementById(id + '-val');
+    if (!el || !val) continue;
+    const sliderPos = Math.max(0, Math.min(100, cfg.inv(ts[cfg.key])));
+    el.value = sliderPos;
+    val.textContent = cfg.disp(ts[cfg.key]);
+  }
+}
+
+// Read current slider positions into TSTATE and apply
+function readSlidersIntoState() {
+  for (const [id, cfg] of Object.entries(PARAM_CFG)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    TSTATE[cfg.key] = cfg.fwd(parseFloat(el.value));
+  }
+  applyTimbre(TSTATE);
+}
+
+// Fave slot localStorage key
+function faveKey(n) { return `temperament_fave_${n}`; }
+
+function loadFave(n) {
+  const raw = localStorage.getItem(faveKey(n));
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    activeTimbrePreset = data._preset || '';
+    document.querySelectorAll('.tp-btn').forEach(b => {
+      b.classList.toggle('active-tp', b.dataset.tp === activeTimbrePreset);
+    });
+    applyTimbre(data);
+    syncSlidersToState(data);
+  } catch(e) {}
+}
+
+function saveFave(n) {
+  const data = Object.assign({ _preset: activeTimbrePreset }, TSTATE);
+  localStorage.setItem(faveKey(n), JSON.stringify(data));
+  refreshFaveSlots();
+}
+
+function getFaveName(n) {
+  const raw = localStorage.getItem(faveKey(n));
+  if (!raw) return null;
+  try {
+    const d = JSON.parse(raw);
+    return d._preset || 'custom';
+  } catch(e) { return null; }
+}
+
+function refreshFaveSlots() {
+  for (let i = 0; i < 3; i++) {
+    const loadBtn = document.getElementById(`fave-load-${i}`);
+    const nameEl  = document.getElementById(`fave-name-${i}`);
+    if (!loadBtn || !nameEl) continue;
+    const name = getFaveName(i);
+    nameEl.textContent = name || '—';
+    loadBtn.classList.toggle('has-data', name !== null);
+  }
+}
+
+function buildTimbrePanel() {
+  // Timbre preset buttons
+  const tpRow = document.getElementById('tp-row');
+  Object.entries(TP).forEach(([key, preset]) => {
+    const btn = document.createElement('button');
+    btn.className = 'tp-btn' + (key === 'cc-orig' ? ' active-tp' : '');
+    btn.textContent = preset.label;
+    btn.dataset.tp = key;
+    btn.addEventListener('click', () => {
+      activeTimbrePreset = key;
+      document.querySelectorAll('.tp-btn').forEach(b => b.classList.toggle('active-tp', b.dataset.tp === key));
+      applyTimbre(preset);
+      syncSlidersToState(preset);
+    });
+    tpRow.appendChild(btn);
+  });
+
+  // Favorite slots
+  const favesRow = document.getElementById('faves-row');
+  for (let i = 0; i < 3; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'fave-slot';
+    slot.innerHTML = `
+      <span class="fave-name" id="fave-name-${i}">—</span>
+      <button class="fave-btn fave-load" id="fave-load-${i}" title="load">load</button>
+      <button class="fave-btn fave-save" id="fave-save-${i}" title="save here">save</button>
+    `;
+    favesRow.appendChild(slot);
+    document.getElementById(`fave-load-${i}`).addEventListener('click', () => loadFave(i));
+    document.getElementById(`fave-save-${i}`).addEventListener('click', () => saveFave(i));
+  }
+  refreshFaveSlots();
+
+  // Wire up all control sliders
+  for (const [id, cfg] of Object.entries(PARAM_CFG)) {
+    const el  = document.getElementById(id);
+    const val = document.getElementById(id + '-val');
+    if (!el || !val) continue;
+
+    // Osc sliders just rebuild wave and update display (no full applyTimbre for perf)
+    el.addEventListener('input', () => {
+      const v = cfg.fwd(parseFloat(el.value));
+      TSTATE[cfg.key] = v;
+      val.textContent = cfg.disp(v);
+
+      // Group-specific fast paths
+      if (id.startsWith('osc-')) {
+        if (ac && pool) {
+          const wave = buildWave(TSTATE.sine, TSTATE.sq, TSTATE.saw, TSTATE.tri);
+          if (wave) pool.forEach(pv => pv.osc.setPeriodicWave(wave));
+        }
+      } else if (id.startsWith('flt-')) {
+        if (ac) {
+          masterLPF.frequency.setTargetAtTime(TSTATE.cutoff, ac.currentTime, 0.01);
+          masterLPF.Q.setTargetAtTime(TSTATE.q, ac.currentTime, 0.01);
+        }
+      } else if (id.startsWith('env-')) {
+        ENV.attack  = TSTATE.attack;
+        ENV.decay   = TSTATE.decay;
+        ENV.sustain = TSTATE.sustain;
+        ENV.release = TSTATE.release;
+      } else if (id === 'rev-wet') {
+        if (ac) wetGain.gain.setTargetAtTime(TSTATE.wet / 100, ac.currentTime, 0.03);
+      } else if (id === 'rev-rt60' || id === 'rev-damp') {
+        if (ac) convolver.buffer = makeIR(TSTATE.rt60, TSTATE.damp);
+      } else if (id.startsWith('eq-')) {
+        if (ac) {
+          eqBass.gain.setTargetAtTime(TSTATE.bass, ac.currentTime, 0.01);
+          eqTreble.gain.setTargetAtTime(TSTATE.treble, ac.currentTime, 0.01);
+        }
+      }
+
+      // Any manual adjustment clears the active preset highlight
+      document.querySelectorAll('.tp-btn').forEach(b => b.classList.remove('active-tp'));
+      activeTimbrePreset = '';
+    });
+  }
+
+  // Sync sliders to initial state
+  syncSlidersToState(TSTATE);
+
+  // Toggle panel
+  const toggle = document.getElementById('timbre-toggle');
+  const panel  = document.getElementById('timbre-panel');
+  toggle.addEventListener('click', () => {
+    const open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'flex';
+    toggle.classList.toggle('open', !open);
+    toggle.textContent = open ? 'timbre ▸' : 'timbre ▾';
+  });
+}
+
+// ── 8. EVENT WIRING ───────────────────────────────────────────────────────────
+
 document.getElementById('fifth-slider').addEventListener('input', function() {
   const v = parseFloat(this.value);
-  // Find matching preset name
   const match = REGULAR.find(t => Math.abs(t.fifth - v) < 0.05);
   const name = match ? match.name : `${v.toFixed(2)}¢`;
   setTemperament(buildRegular(v), name, v, false);
 });
 
-// Note + octave buttons
 document.querySelectorAll('.note-btn').forEach(btn => {
   btn.addEventListener('click', function() {
     droneNote = this.dataset.note;
@@ -960,7 +1480,6 @@ document.querySelectorAll('.oct-btn').forEach(btn => {
   });
 });
 
-// Drone
 document.getElementById('btn-drone').addEventListener('click', function() {
   initAudio();
   if (ac.state === 'suspended') ac.resume();
@@ -969,10 +1488,8 @@ document.getElementById('btn-drone').addEventListener('click', function() {
   this.classList.toggle('on', droneOn);
 });
 
-// Scale
 document.getElementById('btn-scale').addEventListener('click', playScale);
 
-// Book toggle
 let currentBook = '1';
 document.getElementById('btn-book1').addEventListener('click', function() {
   currentBook = '1';
@@ -989,7 +1506,6 @@ document.getElementById('btn-book2').addEventListener('click', function() {
   score = null; stopPlayback();
 });
 
-// Playback
 document.getElementById('btn-play').addEventListener('click', () => {
   if (!score) { document.getElementById('play-status').textContent = 'select a fugue first'; return; }
   if (isPlaying) stopPlayback(); else startPlayback();
@@ -1000,7 +1516,6 @@ document.getElementById('tempo-slider').addEventListener('input', function() {
   playBPM = parseInt(this.value);
   document.getElementById('tempo-val').textContent = playBPM;
   if (isPlaying) {
-    // Restart with new tempo
     stopPlayback();
     startPlayback();
   }
@@ -1021,6 +1536,7 @@ buildPcGrid();
 buildLandmarks();
 buildPresets();
 buildPieceGrid('1');
+buildTimbrePanel();
 updatePcDisplay();
 updateRootDisplay();
 
