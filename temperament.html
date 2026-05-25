@@ -801,11 +801,11 @@ function initAudio() {
 
   // Compressor (output stage)
   masterComp = ac.createDynamicsCompressor();
-  masterComp.threshold.setValueAtTime(-20, ac.currentTime);
-  masterComp.knee.setValueAtTime(8, ac.currentTime);
-  masterComp.ratio.setValueAtTime(5, ac.currentTime);
-  masterComp.attack.setValueAtTime(0.002, ac.currentTime);
-  masterComp.release.setValueAtTime(0.08, ac.currentTime);
+  masterComp.threshold.setValueAtTime(-3, ac.currentTime);
+  masterComp.knee.setValueAtTime(3, ac.currentTime);
+  masterComp.ratio.setValueAtTime(20, ac.currentTime);
+  masterComp.attack.setValueAtTime(0.001, ac.currentTime);
+  masterComp.release.setValueAtTime(0.3, ac.currentTime);
 
   // Chain: voices → LPF → eqBass → eqTreble → dryGain ──────────────── masterComp → dest
   //                                           ↘ preDelay → convolver → wetLowCut → wetHighCut → wetGain ↗
