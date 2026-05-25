@@ -421,6 +421,21 @@
           <span class="cg-val" id="rev-wet-val">0%</span>
         </div>
         <div class="cg-row">
+          <span class="cg-label">predelay</span>
+          <input type="range" class="cg-slider" id="rev-pre" min="0" max="100" step="0.5" value="0">
+          <span class="cg-val" id="rev-pre-val">0 ms</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">low cut</span>
+          <input type="range" class="cg-slider" id="rev-lc" min="0" max="100" step="0.5" value="0">
+          <span class="cg-val" id="rev-lc-val">20 Hz</span>
+        </div>
+        <div class="cg-row">
+          <span class="cg-label">high cut</span>
+          <input type="range" class="cg-slider" id="rev-hc" min="0" max="100" step="0.5" value="100">
+          <span class="cg-val" id="rev-hc-val">20k Hz</span>
+        </div>
+        <div class="cg-row">
           <span class="cg-label">rt60</span>
           <input type="range" class="cg-slider" id="rev-rt60" min="0" max="100" step="0.5" value="34">
           <span class="cg-val" id="rev-rt60-val">1.5 s</span>
@@ -524,7 +539,7 @@ let TSTATE = {
   sine: 0, sq: 0, saw: 1, tri: 0,
   cutoff: 2200, q: 0.4,
   attack: 0.005, decay: 0.14, sustain: 0.45, release: 0.055,
-  wet: 0, rt60: 1.5, damp: 0.5,
+  wet: 0, predelay: 0, lowcut: 20, highcut: 20000, rt60: 1.5, damp: 0.5,
   bass: 0, treble: 0
 };
 
@@ -546,7 +561,7 @@ const TP = {
     sine:0.95, sq:0, saw:0.05, tri:0,
     cutoff:6000, q:0.25,
     attack:0.008, decay:0.06, sustain:0.8, release:0.22,
-    wet:14, rt60:2.0, damp:0.6,
+    wet:14, predelay:0,    lowcut:20,  highcut:16000, rt60:2.0, damp:0.6,
     bass:0, treble:0
   },
   organ: {
@@ -554,7 +569,7 @@ const TP = {
     sine:0.45, sq:0, saw:0.35, tri:0.2,
     cutoff:3200, q:0.3,
     attack:0.018, decay:2.0, sustain:0.92, release:0.06,
-    wet:38, rt60:2.8, damp:0.5,
+    wet:38, predelay:0.03, lowcut:80,  highcut:8000,  rt60:2.8, damp:0.5,
     bass:2, treble:-2
   },
   clavichord: {
@@ -562,7 +577,7 @@ const TP = {
     sine:0.25, sq:0, saw:0.25, tri:0.5,
     cutoff:1600, q:0.55,
     attack:0.003, decay:0.06, sustain:0.08, release:0.09,
-    wet:20, rt60:0.6, damp:0.7,
+    wet:20, predelay:0.005, lowcut:100, highcut:6000,  rt60:0.6, damp:0.7,
     bass:1, treble:-1
   },
   harpsichord: {
@@ -570,7 +585,7 @@ const TP = {
     sine:0.1, sq:0, saw:0.7, tri:0.2,
     cutoff:2800, q:0.65,
     attack:0.002, decay:0.04, sustain:0.02, release:0.055,
-    wet:22, rt60:1.1, damp:0.45,
+    wet:22, predelay:0.01, lowcut:80,  highcut:10000, rt60:1.1, damp:0.45,
     bass:-1, treble:2
   },
   fortepiano: {
@@ -578,7 +593,7 @@ const TP = {
     sine:0.15, sq:0, saw:0.35, tri:0.5,
     cutoff:1500, q:0.5,
     attack:0.004, decay:0.25, sustain:0.15, release:0.25,
-    wet:28, rt60:1.4, damp:0.65,
+    wet:28, predelay:0.015, lowcut:80,  highcut:9000,  rt60:1.4, damp:0.65,
     bass:2, treble:-2
   },
   'cc-orig': {
@@ -586,7 +601,7 @@ const TP = {
     sine:0, sq:0, saw:1, tri:0,
     cutoff:2200, q:0.4,
     attack:0.005, decay:0.14, sustain:0.45, release:0.055,
-    wet:0, rt60:1.5, damp:0.5,
+    wet:0,  predelay:0,    lowcut:20,  highcut:20000, rt60:1.5, damp:0.5,
     bass:0, treble:0
   },
   'cc-spec': {
@@ -594,7 +609,7 @@ const TP = {
     sine:0.35, sq:0.05, saw:0.1, tri:0.5,
     cutoff:1100, q:1.4,
     attack:0.22, decay:2.5, sustain:0.82, release:0.45,
-    wet:40, rt60:3.5, damp:0.75,
+    wet:40, predelay:0.02,  lowcut:60,  highcut:7000,  rt60:3.5, damp:0.75,
     bass:3, treble:-4
   }
 };
@@ -605,13 +620,16 @@ const PARAM_CFG = {
   'osc-sq':     { key:'sq',      fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
   'osc-saw':    { key:'saw',     fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
   'osc-tri':    { key:'tri',     fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
-  'flt-cutoff': { key:'cutoff',  fwd: t=>80*Math.pow(100,t/100),         inv: v=>Math.log(v/80)/Math.log(100)*100,        disp: v=>Math.round(v)+' Hz' },
+  'flt-cutoff': { key:'cutoff',  fwd: t=>80*Math.pow(150,t/100),         inv: v=>Math.log(v/80)/Math.log(150)*100,        disp: v=>v>=1000?(v/1000).toFixed(1)+'k Hz':Math.round(v)+' Hz' },
   'flt-q':      { key:'q',       fwd: t=>0.1+t/100*11.9,                 inv: v=>(v-0.1)/11.9*100,                        disp: v=>v.toFixed(1) },
   'env-atk':    { key:'attack',  fwd: t=>0.001*Math.pow(500,t/100),      inv: v=>Math.log(v/0.001)/Math.log(500)*100,     disp: v=>v<0.1?Math.round(v*1000)+' ms':v.toFixed(2)+' s' },
   'env-dec':    { key:'decay',   fwd: t=>0.01*Math.pow(300,t/100),       inv: v=>Math.log(v/0.01)/Math.log(300)*100,      disp: v=>v<0.1?Math.round(v*1000)+' ms':v.toFixed(2)+' s' },
   'env-sus':    { key:'sustain', fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
   'env-rel':    { key:'release', fwd: t=>0.01*Math.pow(200,t/100),       inv: v=>Math.log(v/0.01)/Math.log(200)*100,      disp: v=>v<0.1?Math.round(v*1000)+' ms':v.toFixed(2)+' s' },
-  'rev-wet':    { key:'wet',     fwd: t=>t,                              inv: v=>v,                                       disp: v=>Math.round(v)+'%' },
+  'rev-wet':    { key:'wet',      fwd: t=>t,                              inv: v=>v,                                       disp: v=>Math.round(v)+'%' },
+  'rev-pre':    { key:'predelay',fwd: t=>t/1000,                         inv: v=>v*1000,                                  disp: v=>Math.round(v*1000)+' ms' },
+  'rev-lc':     { key:'lowcut',  fwd: t=>20*Math.pow(25,t/100),          inv: v=>Math.log(v/20)/Math.log(25)*100,         disp: v=>Math.round(v)+' Hz' },
+  'rev-hc':     { key:'highcut', fwd: t=>1000*Math.pow(20,t/100),        inv: v=>Math.log(v/1000)/Math.log(20)*100,       disp: v=>v>=1000?(v/1000).toFixed(1)+'k Hz':Math.round(v)+' Hz' },
   'rev-rt60':   { key:'rt60',    fwd: t=>0.2*Math.pow(30,t/100),         inv: v=>Math.log(v/0.2)/Math.log(30)*100,        disp: v=>v.toFixed(1)+' s' },
   'rev-damp':   { key:'damp',    fwd: t=>t/100,                          inv: v=>v*100,                                   disp: v=>Math.round(v*100)+'%' },
   'eq-bass':    { key:'bass',    fwd: t=>(t-50)*0.24,                    inv: v=>v/0.24+50,                               disp: v=>(v>=0?'+':'')+v.toFixed(1)+' dB' },
@@ -623,7 +641,7 @@ const PARAM_CFG = {
 let ac = null;
 let masterComp = null, masterLPF = null;
 let eqBass = null, eqTreble = null;
-let dryGain = null, convolver = null, wetGain = null;
+let dryGain = null, preDelayNode = null, convolver = null, wetLowCut = null, wetHighCut = null, wetGain = null;
 let droneOsc = null, droneGain = null;
 let droneOn = false;
 
@@ -726,6 +744,11 @@ function applyTimbre(ts, irPath) {
   const wave = buildWave(ts.sine, ts.sq, ts.saw, ts.tri);
   if (wave && pool) pool.forEach(v => v.osc.setPeriodicWave(wave));
 
+  // Predelay + wet EQ
+  preDelayNode.delayTime.setTargetAtTime(ts.predelay, ac.currentTime, 0.02);
+  wetLowCut.frequency.setTargetAtTime(ts.lowcut,  ac.currentTime, 0.02);
+  wetHighCut.frequency.setTargetAtTime(ts.highcut, ac.currentTime, 0.02);
+
   // Reverb — real IR if provided, synthetic otherwise
   applyReverb(ts, irPath !== undefined ? irPath : null);
 }
@@ -756,8 +779,18 @@ function initAudio() {
   dryGain.gain.value = 1.0;
 
   // Reverb path — synthetic first, real IR loads async after first interaction
+  preDelayNode = ac.createDelay(0.15); // max 150ms predelay
+  preDelayNode.delayTime.value = TSTATE.predelay;
   convolver = ac.createConvolver();
   convolver.buffer = makeIR(TSTATE.rt60, TSTATE.damp);
+  wetLowCut = ac.createBiquadFilter();
+  wetLowCut.type = 'highpass';
+  wetLowCut.frequency.value = TSTATE.lowcut;
+  wetLowCut.Q.value = 0.7;
+  wetHighCut = ac.createBiquadFilter();
+  wetHighCut.type = 'lowpass';
+  wetHighCut.frequency.value = TSTATE.highcut;
+  wetHighCut.Q.value = 0.7;
   wetGain = ac.createGain();
   wetGain.gain.value = TSTATE.wet / 100;
   // Kick off real IR load for the current preset if one is assigned
@@ -774,14 +807,17 @@ function initAudio() {
   masterComp.attack.setValueAtTime(0.002, ac.currentTime);
   masterComp.release.setValueAtTime(0.08, ac.currentTime);
 
-  // Chain: voices → LPF → eqBass → eqTreble → dryGain ──────── masterComp → dest
-  //                                           ↘ convolver → wetGain ↗
+  // Chain: voices → LPF → eqBass → eqTreble → dryGain ──────────────── masterComp → dest
+  //                                           ↘ preDelay → convolver → wetLowCut → wetHighCut → wetGain ↗
   masterLPF.connect(eqBass);
   eqBass.connect(eqTreble);
   eqTreble.connect(dryGain);
-  eqTreble.connect(convolver);
+  eqTreble.connect(preDelayNode);
+  preDelayNode.connect(convolver);
   dryGain.connect(masterComp);
-  convolver.connect(wetGain);
+  convolver.connect(wetLowCut);
+  wetLowCut.connect(wetHighCut);
+  wetHighCut.connect(wetGain);
   wetGain.connect(masterComp);
   masterComp.connect(ac.destination);
 
@@ -1467,6 +1503,12 @@ function buildTimbrePanel() {
         ENV.release = TSTATE.release;
       } else if (id === 'rev-wet') {
         if (ac) wetGain.gain.setTargetAtTime(TSTATE.wet / 100, ac.currentTime, 0.03);
+      } else if (id === 'rev-pre') {
+        if (ac) preDelayNode.delayTime.setTargetAtTime(TSTATE.predelay, ac.currentTime, 0.02);
+      } else if (id === 'rev-lc') {
+        if (ac) wetLowCut.frequency.setTargetAtTime(TSTATE.lowcut, ac.currentTime, 0.02);
+      } else if (id === 'rev-hc') {
+        if (ac) wetHighCut.frequency.setTargetAtTime(TSTATE.highcut, ac.currentTime, 0.02);
       } else if (id === 'rev-rt60' || id === 'rev-damp') {
         if (ac) convolver.buffer = makeIR(TSTATE.rt60, TSTATE.damp);
       } else if (id.startsWith('eq-')) {
