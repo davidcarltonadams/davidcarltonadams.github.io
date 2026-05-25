@@ -529,15 +529,24 @@ let TSTATE = {
 };
 
 // 7 timbre presets (values in same units as TSTATE)
+// Map preset key → IR file in reverb/ (null = dry / synthetic fallback)
+const IR_PATHS = {
+  sine:       'reverb/studio.wav',    // Steinman Foundation Recording Suite
+  organ:      'reverb/cathedral.wav', // St Paul's Cathedral San Diego
+  clavichord: 'reverb/cellar.wav',    // Cedar Creek Winery Cellar Wisconsin
+  harpsichord:'reverb/recital.wav',   // Steinman Hall Millersville University
+  fortepiano: 'reverb/lobby.wav',     // Littlefield Concert Hall Lobby Oakland
+  'cc-orig':  null,
+  'cc-spec':  'reverb/caverns.wav',   // Cathedral Room Shasta Lake Caverns
+};
+
 const TP = {
   sine: {
     label: 'sine',
-    // Nearly pure sine — keep reverb OFF until real IRs arrive; synthetic reverb
-    // sounds noisy against a sine. Short decay keeps fast passages clean.
     sine:0.95, sq:0, saw:0.05, tri:0,
     cutoff:6000, q:0.25,
     attack:0.008, decay:0.06, sustain:0.8, release:0.22,
-    wet:0, rt60:2.0, damp:0.6,
+    wet:14, rt60:2.0, damp:0.6,
     bass:0, treble:0
   },
   organ: {
@@ -550,29 +559,26 @@ const TP = {
   },
   clavichord: {
     label: 'clavichord',
-    // Shortened decay (60ms) so 16th-note runs don't smear; low sustain = pluck
     sine:0.25, sq:0, saw:0.25, tri:0.5,
     cutoff:1600, q:0.55,
     attack:0.003, decay:0.06, sustain:0.08, release:0.09,
-    wet:8, rt60:0.6, damp:0.7,
+    wet:20, rt60:0.6, damp:0.7,
     bass:1, treble:-1
   },
   harpsichord: {
     label: 'harpsichord',
-    // Very short decay (40ms) — quill pluck is instant, string rings on its own
     sine:0.1, sq:0, saw:0.7, tri:0.2,
     cutoff:2800, q:0.65,
     attack:0.002, decay:0.04, sustain:0.02, release:0.055,
-    wet:18, rt60:1.1, damp:0.45,
+    wet:22, rt60:1.1, damp:0.45,
     bass:-1, treble:2
   },
   fortepiano: {
     label: 'fortepiano',
-    // Faster decay (250ms) to match hammer-struck character; sustain low like a real piano
     sine:0.15, sq:0, saw:0.35, tri:0.5,
     cutoff:1500, q:0.5,
     attack:0.004, decay:0.25, sustain:0.15, release:0.25,
-    wet:15, rt60:1.4, damp:0.65,
+    wet:28, rt60:1.4, damp:0.65,
     bass:2, treble:-2
   },
   'cc-orig': {
@@ -585,11 +591,10 @@ const TP = {
   },
   'cc-spec': {
     label: 'cc spec',
-    // Slow bowed pad — reverb dialed back until real IRs arrive
     sine:0.35, sq:0.05, saw:0.1, tri:0.5,
     cutoff:1100, q:1.4,
     attack:0.22, decay:2.5, sustain:0.82, release:0.45,
-    wet:20, rt60:3.5, damp:0.75,
+    wet:40, rt60:3.5, damp:0.75,
     bass:3, treble:-4
   }
 };
@@ -671,8 +676,37 @@ function makeIR(rt60, damp) {
   return ir;
 }
 
+// Cache of decoded AudioBuffers keyed by path
+const irCache = new Map();
+
+// Fetch + decode an IR file; returns Promise<AudioBuffer>
+async function loadIR(path) {
+  if (irCache.has(path)) return irCache.get(path);
+  const resp = await fetch(path);
+  if (!resp.ok) throw new Error(`IR fetch failed: ${path}`);
+  const arrayBuf = await resp.arrayBuffer();
+  const audioBuf = await ac.decodeAudioData(arrayBuf);
+  irCache.set(path, audioBuf);
+  return audioBuf;
+}
+
+// Apply reverb buffer to convolver (null → synthetic fallback)
+function applyReverb(ts, irPath) {
+  if (!ac) return;
+  wetGain.gain.setTargetAtTime(ts.wet / 100, ac.currentTime, 0.05);
+  if (!irPath) {
+    convolver.buffer = makeIR(ts.rt60, ts.damp);
+    return;
+  }
+  // Load real IR async; use synthetic immediately so there's no silence gap
+  convolver.buffer = makeIR(ts.rt60, ts.damp);
+  loadIR(irPath).then(buf => {
+    convolver.buffer = buf;
+  }).catch(() => { /* synthetic fallback already set */ });
+}
+
 // Apply timbre state to the audio graph (and update ENV for envelope params)
-function applyTimbre(ts) {
+function applyTimbre(ts, irPath) {
   Object.assign(TSTATE, ts);
   ENV.attack  = ts.attack;
   ENV.decay   = ts.decay;
@@ -692,9 +726,8 @@ function applyTimbre(ts) {
   const wave = buildWave(ts.sine, ts.sq, ts.saw, ts.tri);
   if (wave && pool) pool.forEach(v => v.osc.setPeriodicWave(wave));
 
-  // Reverb
-  wetGain.gain.setTargetAtTime(ts.wet / 100, ac.currentTime, 0.05);
-  convolver.buffer = makeIR(ts.rt60, ts.damp);
+  // Reverb — real IR if provided, synthetic otherwise
+  applyReverb(ts, irPath !== undefined ? irPath : null);
 }
 
 function initAudio() {
@@ -722,11 +755,16 @@ function initAudio() {
   dryGain = ac.createGain();
   dryGain.gain.value = 1.0;
 
-  // Reverb path
+  // Reverb path — synthetic first, real IR loads async after first interaction
   convolver = ac.createConvolver();
   convolver.buffer = makeIR(TSTATE.rt60, TSTATE.damp);
   wetGain = ac.createGain();
   wetGain.gain.value = TSTATE.wet / 100;
+  // Kick off real IR load for the current preset if one is assigned
+  const initIRPath = IR_PATHS[activeTimbrePreset];
+  if (initIRPath) {
+    loadIR(initIRPath).then(buf => { convolver.buffer = buf; }).catch(() => {});
+  }
 
   // Compressor (output stage)
   masterComp = ac.createDynamicsCompressor();
@@ -1335,7 +1373,7 @@ function loadFave(n) {
     document.querySelectorAll('.tp-btn').forEach(b => {
       b.classList.toggle('active-tp', b.dataset.tp === activeTimbrePreset);
     });
-    applyTimbre(data);
+    applyTimbre(data, IR_PATHS[activeTimbrePreset] || null);
     syncSlidersToState(data);
   } catch(e) {}
 }
@@ -1377,7 +1415,7 @@ function buildTimbrePanel() {
     btn.addEventListener('click', () => {
       activeTimbrePreset = key;
       document.querySelectorAll('.tp-btn').forEach(b => b.classList.toggle('active-tp', b.dataset.tp === key));
-      applyTimbre(preset);
+      applyTimbre(preset, IR_PATHS[key] || null);
       syncSlidersToState(preset);
     });
     tpRow.appendChild(btn);
