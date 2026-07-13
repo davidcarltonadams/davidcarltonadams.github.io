@@ -605,11 +605,18 @@
   <div id="perf-next"></div>
 </div>
 
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="vendor/peerjs-1.5.4.min.js"></script>
 <script>
 // ── Utility ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const PEER_NS = 'dcaclock-';
+
+// SHA-256 hex — keeps plaintext session/section passwords out of shared URLs.
+// Requires a secure context (https or localhost); GitHub Pages satisfies this.
+async function sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -824,30 +831,47 @@ function perfTick() {
 function renderPerfContent(section) {
   const contentEl = $('perf-content');
 
-  // Password protection
+  // Password protection.
+  // Build the unlock UI with DOM APIs (not innerHTML) — section.id / section.content
+  // are URL-derived and must never be interpolated into markup.
   if (section.password && !unlockedSections.has(section.id)) {
-    contentEl.innerHTML = `
-      <span id="perf-locked">locked</span>
-      <form class="unlock-form" data-id="${section.id}">
-        <input type="text" placeholder="enter code" autocomplete="off" autocapitalize="off">
-        <button type="submit">unlock</button>
-      </form>`;
-    contentEl.querySelector('form').addEventListener('submit', e => {
+    contentEl.textContent = '';
+    const locked = document.createElement('span');
+    locked.id = 'perf-locked';
+    locked.textContent = 'locked';
+    const form = document.createElement('form');
+    form.className = 'unlock-form';
+    form.dataset.id = section.id;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'enter code';
+    input.autocomplete = 'off';
+    input.setAttribute('autocapitalize', 'off');
+    const unlockBtn = document.createElement('button');
+    unlockBtn.type = 'submit';
+    unlockBtn.textContent = 'unlock';
+    form.append(input, unlockBtn);
+    contentEl.append(locked, form);
+    form.addEventListener('submit', async e => {
       e.preventDefault();
-      const val = e.target.querySelector('input').value;
-      if (val === section.password) {
+      const val = input.value;
+      if (await sha256Hex(val) === section.password) {
         unlockedSections.add(section.id);
         lastRenderedId = null; // force re-render on next tick
         renderPerfContent(section);
       } else {
-        e.target.querySelector('input').value = '';
+        input.value = '';
       }
     });
     return;
   }
 
   if (section.type === 'image') {
-    contentEl.innerHTML = `<img src="${section.content}" alt="">`;
+    contentEl.textContent = '';
+    const img = document.createElement('img');
+    img.src = section.content || '';  // set via DOM API, not markup interpolation
+    img.alt = '';
+    contentEl.appendChild(img);
   } else {
     contentEl.innerHTML = (section.content || '')
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -1007,10 +1031,18 @@ $('add-section-btn').addEventListener('click', () => {
   renderSetup();
 });
 
-$('create-btn').addEventListener('click', () => {
+$('create-btn').addEventListener('click', async () => {
   const roomCode = ($('room-input').value.trim() || genCode()).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) || genCode();
-  const pw       = $('session-pw').value.trim();
-  const sects    = setupSections.map(s => ({...s}));
+  const pwPlain  = $('session-pw').value.trim();
+  // Hash session + per-section passwords so plaintext codes never appear in the
+  // shared/QR URL (which gets copied, screenshotted, and stored in history).
+  const pw       = pwPlain ? await sha256Hex(pwPlain) : '';
+  const sects    = [];
+  for (const s of setupSections) {
+    const c = { ...s };
+    c.password = c.password ? await sha256Hex(c.password) : '';
+    sects.push(c);
+  }
 
   const condURL = buildURL(roomCode, true,  sects, pw);
   const perfURL = buildURL(roomCode, false, sects, pw);
@@ -1099,18 +1131,19 @@ function initConductor(roomCode) {
 }
 
 // ── Performer view ─────────────────────────────────────────────────────────
-function initPerformer(roomCode) {
-  // Session password gate
-  const pw = SESS_PW;
-  if (pw) {
-    const entered = sessionStorage.getItem('dcaclock-pw-' + roomCode);
-    if (entered !== pw) {
+async function initPerformer(roomCode) {
+  // Session password gate. SESS_PW is now a SHA-256 hash (not plaintext);
+  // compare the hash of the entered value against it.
+  const pwHash = SESS_PW;
+  if (pwHash) {
+    const stored = sessionStorage.getItem('dcaclock-pw-' + roomCode);
+    if (stored !== pwHash) {
       const val = prompt('session password:');
-      if (val !== pw) {
+      if (!val || await sha256Hex(val) !== pwHash) {
         document.body.innerHTML = '<p style="color:#666;font-family:Georgia;padding:2rem;font-style:italic">incorrect password.</p>';
         return;
       }
-      sessionStorage.setItem('dcaclock-pw-' + roomCode, val);
+      sessionStorage.setItem('dcaclock-pw-' + roomCode, pwHash);
     }
   }
 
