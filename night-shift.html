@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>night shift</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.38);
+      --dimmer: rgba(204,200,208,0.16);
+      --border: rgba(255,255,255,0.07);
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 4rem;
+      gap: 1.8rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.1rem);
+      font-weight: normal;
+      letter-spacing: 0.22em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.4rem;
+      line-height: 1.85;
+      max-width: 520px;
+      margin-left: auto; margin-right: auto;
+    }
+
+    .canvas-wrap {
+      width: 100%;
+      max-width: 900px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+    }
+    #cv { display: block; width: 100%; touch-action: manipulation; }
+
+    #gate {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: .9rem;
+      background: rgba(7,7,9,0.55);
+      transition: opacity 1.4s;
+    }
+    #gate.gone { opacity: 0; pointer-events: none; }
+    #gate .invite {
+      font-size: .62rem; letter-spacing: .2em; color: var(--dim);
+      font-style: italic;
+    }
+    #gate .silent-note {
+      font-size: .5rem; letter-spacing: .12em; color: var(--dimmer);
+    }
+
+    .controls {
+      width: 100%; max-width: 900px;
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-family: 'SF Mono','Fira Code',monospace;
+    }
+    .now-line {
+      font-size: .54rem; letter-spacing: .14em; color: var(--dimmer);
+      font-style: italic; font-family: Georgia, serif;
+    }
+    #hush {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      font-size: .56rem; letter-spacing: .16em; padding: .38rem .9rem;
+      cursor: pointer; font-family: inherit; transition: color .15s, border-color .15s;
+    }
+    #hush:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    .footer {
+      font-size: 0.52rem; letter-spacing: 0.13em; color: #2a2a30;
+      font-style: italic; text-align: center; line-height: 2;
+    }
+  </style>
+</head>
+<body>
+  <a class="eggs-back" href="eggs.html">&larr; eggs</a>
+
+  <div class="header">
+    <div class="title">night shift</div>
+    <div class="sub">
+      the machine that stays home, playing to an empty room.<br>
+      partials of a low C &middot; sparser the later it gets &middot; touch a star to ring it
+    </div>
+  </div>
+
+  <div class="canvas-wrap" id="wrap">
+    <canvas id="cv"></canvas>
+    <div id="gate">
+      <div class="invite">touch to begin the shift</div>
+      <div class="silent-note">(phones: the ring/silent switch must be off)</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="now-line" id="nowline"></div>
+    <button id="hush" aria-label="pause all sound">hush</button>
+  </div>
+
+  <div class="footer">
+    tuning: just partials of C, 32.70 Hz &middot; the recurring chord is 11 : 13 : 33<br>
+    made overnight, 2026-07-23, by the mac mini while david slept
+  </div>
+
+<script>
+'use strict';
+
+// ── the material ────────────────────────────────────────────────────────────
+// Partials of a low C. Odd numbers carry the color: 7 and 21 open the septimal
+// corridor, 11/13/33 are the house chord. Everything rings at its true
+// frequency — no folding, no temperament.
+const F0 = 32.703;   // C1
+const PARTIALS = [1, 2, 3, 4, 5, 6, 7, 9, 11, 13, 17, 19, 21, 27, 33];
+const CHORD = [11, 13, 33];
+
+// Night-weighted draw: deep night favors the low, slow end.
+function weightFor(p, hour) {
+  const deep = (hour >= 23 || hour < 6);
+  const low = 1 / Math.pow(p, deep ? 0.55 : 0.30);
+  const corridor = (p === 7 || p === 21) ? 1.35 : 1.0;   // lean septimal
+  const house = CHORD.includes(p) ? 1.2 : 1.0;
+  return low * corridor * house;
+}
+
+// Mean seconds between strikes, by hour — the room empties out after midnight.
+function meanGap(hour) {
+  if (hour >= 1 && hour < 6)  return 15;
+  if (hour >= 23 || hour < 1) return 12;
+  if (hour >= 6 && hour < 9)  return 8;
+  return 9.5;
+}
+
+// ── audio ───────────────────────────────────────────────────────────────────
+let ctx = null, master = null, running = false;
+const live = new Set();   // sounding oscillators, so hush can free them safely
+
+function initAudio() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -22; comp.ratio.value = 4;
+  master = ctx.createGain();
+  master.gain.value = 0.85;
+  master.connect(comp); comp.connect(ctx.destination);
+}
+
+// One bell: a sine with two quiet upper partials, long exponential decay.
+// Lower partials ring longer, like bigger bells.
+function strike(p, when, velocity) {
+  if (!ctx || !running) return;
+  const f = F0 * p;
+  const t = when ?? ctx.currentTime;
+  const dur = 14 / Math.pow(p, 0.35);            // p=1 → 14s … p=33 → ~4.1s
+  const stack = [[1, 1.0], [2, 0.22], [3, 0.07]];
+  for (const [mult, g] of stack) {
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    const detune = 1 + (Math.random() - 0.5) * 0.0022;
+    osc.frequency.value = f * mult * detune;
+    const peak = 0.16 * velocity * g / Math.pow(p, 0.18);
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(peak, t + 0.010);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur / mult * 0.9 + 0.05);
+    osc.connect(env); env.connect(master);
+    osc.start(t);
+    osc.stop(t + dur / mult + 0.1);
+    live.add(osc);
+    osc.onended = () => live.delete(osc);
+  }
+  glow(p, Math.max(0, (t - ctx.currentTime) * 1000));
+}
+
+function panicAll() {          // the always-present way out
+  for (const osc of live) { try { osc.stop(); } catch (e) {} }
+  live.clear();
+}
+
+// ── the shift itself ────────────────────────────────────────────────────────
+let nextTimer = null;
+
+function scheduleNext() {
+  if (!running) return;
+  const hour = new Date().getHours();
+  // exponential inter-strike gap around the hourly mean
+  const gap = -Math.log(1 - Math.random()) * meanGap(hour);
+  nextTimer = setTimeout(() => {
+    const hourNow = new Date().getHours();
+    if (Math.random() < 0.085) {
+      // the house chord, rolled gently upward
+      const t0 = ctx.currentTime + 0.05;
+      CHORD.forEach((p, i) => strike(p, t0 + i * (0.28 + Math.random() * 0.22), 0.8));
+    } else {
+      strike(drawPartial(hourNow), ctx.currentTime + 0.02, 0.55 + Math.random() * 0.4);
+    }
+    scheduleNext();
+  }, Math.max(1200, gap * 1000));
+}
+
+function drawPartial(hour) {
+  const ws = PARTIALS.map(p => weightFor(p, hour));
+  let r = Math.random() * ws.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < PARTIALS.length; i++) { r -= ws[i]; if (r <= 0) return PARTIALS[i]; }
+  return PARTIALS[0];
+}
+
+// ── star chart ──────────────────────────────────────────────────────────────
+// x = pitch-class position (octave-reduced log2), y = octave band.
+// Each partial is a dim star; a strike lights it and it fades over seconds.
+const cv = document.getElementById('cv');
+const g2 = cv.getContext('2d');
+let W = 0, H = 0, stars = [];
+
+function frac(x) { return x - Math.floor(x); }
+function hash(n) { return frac(Math.sin(n * 127.1) * 43758.5453); }
+
+function layout() {
+  const wrap = document.getElementById('wrap');
+  W = wrap.clientWidth;
+  H = Math.max(300, Math.min(460, Math.round(W * 0.48)));
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.height = H + 'px';
+  g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const maxOct = Math.log2(33);
+  stars = PARTIALS.map(p => {
+    const oct = Math.floor(Math.log2(p));
+    return {
+      p,
+      x: 40 + frac(Math.log2(p)) * (W - 80),
+      y: H - 42 - (oct / Math.ceil(maxOct)) * (H - 90) - hash(p) * 14,
+      heat: 0,
+      drift: hash(p * 3.7) * Math.PI * 2,
+    };
+  });
+}
+
+function glow(p, delayMs) {
+  setTimeout(() => {
+    const s = stars.find(s => s.p === p);
+    if (s) s.heat = 1;
+  }, delayMs);
+}
+
+function ratioLabel(p) {
+  // octave-reduced ratio over the nearest power of two below p
+  let d = 1; while (d * 2 <= p) d *= 2;
+  return d === p ? 'octave' : p + '/' + d;
+}
+
+let lastStruck = null, lastStruckAt = 0;
+
+function draw(ts) {
+  requestAnimationFrame(draw);
+  g2.fillStyle = '#070709';
+  g2.fillRect(0, 0, W, H);
+  const t = ts / 1000;
+  for (const s of stars) {
+    const breathe = 0.55 + 0.45 * Math.sin(t * 0.13 + s.drift);
+    const base = 0.10 + 0.06 * breathe;
+    const a = Math.min(1, base + s.heat * 0.9);
+    const rad = 1.3 + s.heat * 4.5 + (33 - s.p) * 0.04;
+    for (const [rr, aa] of [[rad * 4, 0.05], [rad * 2.2, 0.16], [rad, 1]]) {
+      g2.beginPath();
+      g2.arc(s.x, s.y + Math.sin(t * 0.07 + s.drift) * 2.5, rr, 0, Math.PI * 2);
+      // warmer where the septimal corridor runs
+      const warm = (s.p % 7 === 0);
+      g2.fillStyle = warm
+        ? `rgba(216,196,170,${(a * aa).toFixed(3)})`
+        : `rgba(196,198,216,${(a * aa).toFixed(3)})`;
+      g2.fill();
+    }
+    if (s.heat > 0.004) s.heat *= 0.988; else s.heat = 0;
+  }
+  // label the most recent strike, briefly
+  if (lastStruck && performance.now() - lastStruckAt < 4200) {
+    const s = stars.find(x => x.p === lastStruck);
+    if (s) {
+      g2.font = '10px Georgia';
+      g2.fillStyle = 'rgba(204,200,208,0.34)';
+      g2.textAlign = 'center';
+      g2.fillText('partial ' + s.p + ' · ' + ratioLabel(s.p), s.x, s.y - 14);
+    }
+  }
+}
+
+// ── interaction ─────────────────────────────────────────────────────────────
+const gate = document.getElementById('gate');
+const hushBtn = document.getElementById('hush');
+
+function begin() {
+  if (!ctx) initAudio();
+  if (ctx.state === 'suspended') ctx.resume();
+  if (!running) {
+    running = true;
+    gate.classList.add('gone');
+    hushBtn.textContent = 'hush';
+    // a first breath: the low fundamental, then the shift begins
+    strike(2, ctx.currentTime + 0.15, 0.9);
+    lastStruck = 2; lastStruckAt = performance.now();
+    scheduleNext();
+  }
+}
+
+gate.addEventListener('click', begin);
+
+cv.addEventListener('click', (e) => {
+  if (!running) { begin(); return; }
+  const rect = cv.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  let best = null, bd = 1e9;
+  for (const s of stars) {
+    const d = (s.x - x) ** 2 + (s.y - y) ** 2;
+    if (d < bd) { bd = d; best = s; }
+  }
+  if (best && bd < 55 ** 2) {
+    strike(best.p, ctx.currentTime + 0.02, 0.9);
+    lastStruck = best.p; lastStruckAt = performance.now();
+  }
+});
+
+hushBtn.addEventListener('click', () => {
+  if (!ctx) return;
+  if (running) {
+    running = false;
+    clearTimeout(nextTimer);
+    panicAll();
+    ctx.suspend();
+    hushBtn.textContent = 'resume';
+  } else {
+    begin();
+  }
+});
+
+// keep honest when the tab sleeps
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && running) {
+    clearTimeout(nextTimer);
+  } else if (!document.hidden && running) {
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    scheduleNext();
+  }
+});
+
+// ── the clock in the corner ─────────────────────────────────────────────────
+function tickClock() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const hour = d.getHours();
+  const phase = (hour >= 23 || hour < 6) ? 'deep night — sparsest'
+              : (hour < 9)  ? 'early — waking up'
+              : (hour < 18) ? 'daytime — it plays anyway'
+              : 'evening — settling';
+  document.getElementById('nowline').textContent = hh + ':' + mm + ' · ' + phase;
+}
+setInterval(tickClock, 20000);
+tickClock();
+
+window.addEventListener('resize', layout);
+layout();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
