@@ -1,0 +1,26 @@
+# David Carlton Adams
+
+> Composer, performer, and educator based in Baltimore. DMA in Composition,
+> Peabody Institute / Johns Hopkins University. Music spanning contemporary
+> chamber music, opera, improvisation, rock, and live electronics, with a
+> core interest in microtonality and just intonation.
+
+## Main pages
+
+- [About](https://davidcarltonadams.com/): bio, recent performances, press
+- [Works](https://davidcarltonadams.com/works.html): filterable catalogue of 50 compositions, 2008–present
+- [Media](https://davidcarltonadams.com/media.html): recordings and video
+- [Teaching](https://davidcarltonadams.com/teaching.html): courses, private lessons, teaching philosophy
+- [Contact](https://davidcarltonadams.com/contact.html): email and profiles
+- [Eggs](https://davidcarltonadams.com/eggs.html): three dozen browser-based
+  musical instruments and toys — just intonation lattices, rhythm machines,
+  psychoacoustic illusions, tuning explorers. All run client-side in the
+  browser with no accounts and no data collection.
+- [Nest](https://davidcarltonadams.com/nest.html): a concept map of the eggs —
+  an 8-dimensional similarity embedding flattened to 2D.
+
+## Notes
+
+- The site is fully static (GitHub Pages); every instrument is self-contained
+  HTML/JS using the Web Audio API.
+- Scores and performance materials: contact via the address on the contact page.
