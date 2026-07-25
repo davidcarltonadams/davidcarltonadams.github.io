@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <title>comma</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.6rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 540px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.9;
+    }
+
+    canvas { display: block; cursor: pointer; }
+
+    .chord-row {
+      display: flex;
+      gap: 1.4rem;
+      align-items: baseline;
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+    }
+    .chord-name { color: var(--dimmer); transition: color 0.12s; }
+    .chord-name.lit { color: var(--gold); }
+
+    .ratio-line {
+      font-size: 0.56rem;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+      min-height: 1em;
+    }
+
+    .drift-line {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+    }
+    .drift-line .neg { color: var(--gold); }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem 2.2rem;
+      justify-content: center;
+      max-width: 700px;
+    }
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.38rem;
+      align-items: center;
+    }
+    .ctrl-label {
+      font-size: 0.57rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .ctrl-val {
+      font-size: 0.57rem;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+      min-width: 3em;
+      text-align: center;
+    }
+    input[type=range] { width: 150px; accent-color: var(--gold); }
+    select {
+      background: var(--bg2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.28rem 0.55rem;
+      font-size: 0.62rem;
+      font-family: Georgia, serif;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      background: transparent;
+      color: var(--dimmer);
+      border: 1px solid var(--border);
+      padding: 0.32rem 0.85rem;
+      font-family: Georgia, serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.13em;
+      font-style: italic;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button.on { color: var(--gold); border-color: rgba(212,192,112,0.4); }
+
+    .hint {
+      font-size: 0.53rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
+<div class="header">
+  <h1 class="title">comma</h1>
+  <p class="sub">the syntonic comma pump. four familiar chords — C, A minor, D minor, G — each tuned purely from a note the previous chord leaves behind. no voice ever moves by anything but a pure interval, yet every time the progression comes home, home has sunk by 81/80 — a syntonic comma, 21.5 cents. escher's staircase is an illusion; this one really descends. about 56 cycles to fall a full octave. reverse to climb, temper to stand still.</p>
+</div>
+
+<canvas id="cv"></canvas>
+
+<div class="chord-row" id="chordRow">
+  <span class="chord-name" data-c="C">C</span>
+  <span class="chord-name" data-c="Am">Am</span>
+  <span class="chord-name" data-c="Dm">Dm</span>
+  <span class="chord-name" data-c="G">G</span>
+</div>
+<div class="ratio-line" id="ratioLine">&nbsp;</div>
+<div class="drift-line" id="driftLine">cycle 0 · tonic ±0.0¢</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">tuning</span>
+    <select id="modeSel">
+      <option value="pure" selected>pure · drifts</option>
+      <option value="corrected">corrected · snaps back</option>
+      <option value="tempered">tempered · anchored</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">tone</span>
+    <select id="toneSel">
+      <option value="sine">sine</option>
+      <option value="felt">felt</option>
+      <option value="organ" selected>organ</option>
+      <option value="reed">reed</option>
+      <option value="strings">strings</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">tempo · BPM</span>
+    <input type="range" id="bpmSlider" min="40" max="750" value="121" step="1">
+    <span class="ctrl-val" id="bpmVal">121</span>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button id="btnPlay">play</button>
+  <button id="btnReverse">reverse</button>
+</div>
+
+<p class="hint">click the canvas to start · gold bars are notes held over from the previous chord — the pure links the comma sneaks through</p>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  comma — the syntonic comma pump
+//  I–vi–ii–V–I with every chord tuned by pure intervals from a
+//  common tone held out of the previous chord. The chain of pure
+//  fifths and thirds fails to close: each cycle multiplies the
+//  tonic by 80/81, so the key sinks a syntonic comma per turn.
+//  Voicing table is hand-derived so every seam holds at least
+//  one voice at literally the same frequency (verified: seams
+//  hold, drift = -21.506 cents/cycle, 55.8 cycles/octave).
+// ─────────────────────────────────────────────────────────────
+
+const C4 = 261.6256;
+const COMMA = 80 / 81;                 // one cycle's damage
+const CENTS_PER_CYCLE = 1200 * Math.log2(81 / 80); // 21.506
+
+// Event cycle: Ca = C arrival (open voicing, still relative to the
+// OLD base — its 80/81 root IS the drift), Cc = C settled (closed
+// voicing, base has absorbed the comma), then Am, Dm, G.
+// Ratios are per-voice, low to high; voice-leading is built in.
+const PURE = {
+  Ca: [80/81, 40/27, 160/81, 200/81],  // C4 G4 C5 E5 — holds G4 from G
+  Cc: [1, 5/4, 3/2, 2],                // C4 E4 G4 C5 — holds C4 across the settle
+  Am: [1, 5/4, 5/3, 2],                // C4 E4 A4 C5 — holds C4 E4 C5
+  Dm: [10/9, 4/3, 5/3, 20/9],          // D4 F4 A4 D5 — holds A4
+  G:  [10/9, 40/27, 50/27, 20/9],      // D4 G4 B4 D5 — holds D4 D5
+};
+const st = n => Math.pow(2, n / 12);
+const TEMP = {
+  Ca: [st(0), st(7), st(12), st(16)],
+  Cc: [st(0), st(4), st(7), st(12)],
+  Am: [st(0), st(4), st(9), st(12)],
+  Dm: [st(2), st(5), st(9), st(14)],
+  G:  [st(2), st(7), st(11), st(14)],
+};
+const SEQ    = ['Ca', 'Cc', 'Am', 'Dm', 'G'];
+const LABEL  = { Ca: 'C', Cc: 'C', Am: 'Am', Dm: 'Dm', G: 'G' };
+const RATIOS = {
+  Ca: '80/81 · 40/27 · 160/81 · 200/81',
+  Cc: '1 · 5/4 · 3/2 · 2',
+  Am: '1 · 5/4 · 5/3 · 2',
+  Dm: '10/9 · 4/3 · 5/3 · 20/9',
+  G:  '10/9 · 40/27 · 50/27 · 20/9',
+};
+
+let mode    = 'pure';      // pure | corrected | tempered
+let bpm     = 121;
+let dir     = 1;           // 1 forward (sinks), -1 reverse (climbs)
+let running = false;
+
+let base   = 1;            // current tonic as ratio of original C
+let idx    = 1;            // start on Cc, skip the phantom arrival
+let cycles = 0;
+let prevFreqs = null;
+let primed = false;        // first beat sounds the opening chord in place
+
+// ── Audio ────────────────────────────────────────────────────
+let actx = null, master = null;
+let voices = [];           // 4 persistent oscillators
+let tone = 'organ';
+const waves = {};          // built PeriodicWaves, keyed by tone name
+
+// harmonic recipes (index = partial number; normalized on build)
+const TONES = {
+  sine:    [0, 1],
+  felt:    [0, 1, 0.15, 0.04],
+  organ:   [0, 1, 0.35, 0.15, 0.08],
+  reed:    [0, 1, 0.04, 0.45, 0.03, 0.28, 0.02, 0.15],
+  strings: [0, 1, 0.55, 0.38, 0.27, 0.2, 0.15, 0.11, 0.08],
+};
+
+function buildWave(name) {
+  if (waves[name]) return waves[name];
+  const H = TONES[name];
+  const sum = H.reduce((a, b) => a + b, 0);
+  const imag = new Float32Array(H.map(h => h / sum * 1.5));
+  waves[name] = actx.createPeriodicWave(new Float32Array(H.length), imag);
+  return waves[name];
+}
+
+function setTone(name) {
+  tone = name;
+  if (actx) for (const osc of voices) osc.setPeriodicWave(buildWave(name));
+}
+
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  master = actx.createGain();
+  master.gain.value = 0.0;
+  master.connect(actx.destination);
+  const wave = buildWave(tone);
+  for (let k = 0; k < 4; k++) {
+    const osc = actx.createOscillator();
+    const g = actx.createGain();
+    osc.setPeriodicWave(wave);
+    g.gain.value = 0.22;
+    osc.frequency.value = C4;
+    osc.connect(g); g.connect(master);
+    osc.start();
+    voices.push(osc);
+  }
+}
+
+function chordFreqs(name, b) {
+  const table = mode === 'tempered' ? TEMP : PURE;
+  const eb = mode === 'tempered' ? 1 : b;   // tempered never drifts
+  return table[name].map(r => C4 * r * eb);
+}
+
+// ── Sequencer ────────────────────────────────────────────────
+let nextBeatAt = 0;        // performance.now() ms
+const history = [];        // { t, freqs[4], held[4] } — for the piano roll
+
+function advance(now) {
+  if (!primed) {
+    primed = true;         // sound the chord we're standing on first
+  } else {
+    idx = ((idx + dir) % SEQ.length + SEQ.length) % SEQ.length;
+    // the comma is paid at the Ca↔Cc seam (the settle)
+    if (mode === 'pure') {
+      if (dir === 1 && SEQ[idx] === 'Cc') { base *= COMMA; cycles++; }
+      if (dir === -1 && SEQ[idx] === 'Ca') { base /= COMMA; cycles++; }
+    } else if (SEQ[idx] === (dir === 1 ? 'Cc' : 'Ca')) {
+      cycles++;            // count cycles even when anchored
+    }
+  }
+  const freqs = chordFreqs(SEQ[idx], base);
+  const held = freqs.map((f, i) =>
+    prevFreqs ? Math.abs(f - prevFreqs[i]) < 0.01 : false);
+  prevFreqs = freqs;
+
+  if (actx) {
+    const t = actx.currentTime;
+    // glide tightens with tempo so chords stay articulate at speed:
+    // ~12ms up to ~140 BPM, ~5ms at 750
+    const tc = Math.min(0.012, (60 / bpm) * 0.06);
+    for (let k = 0; k < 4; k++)
+      voices[k].frequency.setTargetAtTime(freqs[k], t, tc);
+  }
+  history.push({ t: now, freqs, held });
+  if (history.length > 400) history.shift();
+  updateReadout();
+}
+
+function updateReadout() {
+  const name = SEQ[idx];
+  document.querySelectorAll('.chord-name').forEach(el =>
+    el.classList.toggle('lit', el.dataset.c === LABEL[name]));
+  document.getElementById('ratioLine').textContent =
+    mode === 'tempered' ? 'equal-tempered · every interval slightly impure · nothing moves'
+                        : RATIOS[name];
+  const cents = 1200 * Math.log2(base);
+  const s = (cents <= -0.05 ? '−' : cents >= 0.05 ? '+' : '±') +
+            Math.abs(cents).toFixed(1);
+  document.getElementById('driftLine').innerHTML =
+    `cycle ${cycles} · tonic <span class="neg">${s}¢</span>` +
+    (mode === 'pure'
+      ? ` · ${dir === 1 ? '−' : '+'}${CENTS_PER_CYCLE.toFixed(1)}¢ per turn`
+      : '');
+}
+
+// ── Canvas ───────────────────────────────────────────────────
+const canvas = document.getElementById('cv');
+const dpr = window.devicePixelRatio || 1;
+const W = Math.min(window.innerWidth - 32, 620);
+const H = 340;
+canvas.width = W * dpr; canvas.height = H * dpr;
+canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+const c = canvas.getContext('2d');
+c.scale(dpr, dpr);
+
+const PPO = 96;            // pixels per octave
+const WINDOW_MS = 26000;   // visible history
+let cam = 0.55;            // camera center, in octaves rel. original C4 + 0.55
+
+const yOf = oct => H / 2 - (oct - cam) * PPO;
+const xOf = (t, now) => W - 14 - (now - t) / WINDOW_MS * (W - 28);
+
+function draw(now) {
+  c.clearRect(0, 0, W, H);
+  // camera eases toward current tonic (+0.55 oct so voicing sits centered)
+  const target = Math.log2(base) + 0.55;
+  cam += (target - cam) * 0.03;
+
+  // semitone ruler in the ORIGINAL frame — as the music sinks,
+  // the ruler visibly climbs away
+  c.font = "9px 'SF Mono', monospace";
+  c.textAlign = 'left'; c.textBaseline = 'middle';
+  const octLo = Math.floor(cam - H / (2 * PPO)) - 1;
+  const octHi = Math.ceil(cam + H / (2 * PPO)) + 1;
+  for (let s = octLo * 12; s <= octHi * 12; s++) {
+    const oct = s / 12;
+    const y = yOf(oct);
+    if (y < -4 || y > H + 4) continue;
+    const isC = ((s % 12) + 12) % 12 === 0;
+    c.strokeStyle = isC ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.03)';
+    c.lineWidth = 1;
+    c.beginPath(); c.moveTo(10, y); c.lineTo(W - 10, y); c.stroke();
+    if (isC) {
+      c.fillStyle = 'rgba(204,200,208,0.25)';
+      c.fillText('C' + (4 + s / 12), 12, y - 7);
+    }
+  }
+  // where C began
+  const y0 = yOf(0);
+  if (y0 > -4 && y0 < H + 4) {
+    c.strokeStyle = 'rgba(212,192,112,0.35)';
+    c.setLineDash([3, 4]); c.lineWidth = 1;
+    c.beginPath(); c.moveTo(10, y0); c.lineTo(W - 10, y0); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = 'rgba(212,192,112,0.4)';
+    c.textAlign = 'right';
+    c.fillText('where C began', W - 12, y0 - 7);
+    c.textAlign = 'left';
+  }
+
+  // piano-roll bars: each chord event is a set of 4 horizontal bars
+  for (let i = 0; i < history.length; i++) {
+    const ev = history[i];
+    const tEnd = i + 1 < history.length ? history[i + 1].t : now;
+    const x1 = xOf(ev.t, now), x2 = xOf(tEnd, now);
+    if (x2 < 10) continue;
+    const age = (now - ev.t) / WINDOW_MS;
+    const fade = Math.max(0, 1 - age);
+    for (let k = 0; k < 4; k++) {
+      const oct = Math.log2(ev.freqs[k] / C4);
+      const y = yOf(oct);
+      if (y < -6 || y > H + 6) continue;
+      if (ev.held[k]) {
+        // a pure link — the tone the comma sneaks through
+        c.fillStyle = `rgba(238,224,168,${0.75 * fade})`;
+        c.fillRect(Math.max(10, x1), y - 2, Math.min(x2, W - 10) - Math.max(10, x1), 4);
+      } else {
+        c.fillStyle = `rgba(204,200,208,${0.30 * fade})`;
+        c.fillRect(Math.max(10, x1), y - 1.5, Math.min(x2, W - 10) - Math.max(10, x1), 3);
+      }
+    }
+  }
+
+  // direction cue
+  c.fillStyle = running ? 'rgba(212,192,112,0.75)' : 'rgba(204,200,208,0.15)';
+  c.font = "15px Georgia, serif"; c.textBaseline = 'middle';
+  if (mode === 'tempered') c.fillText('· anchored', 12, H - 24);
+  else if (mode === 'corrected') c.fillText('↺ snapping back', 12, H - 24);
+  else c.fillText(dir === 1 ? '↓ sinking' : '↑ climbing', 12, dir === 1 ? H - 24 : 24);
+}
+
+// ── Loop ─────────────────────────────────────────────────────
+function loop(now) {
+  if (running && now >= nextBeatAt) {
+    advance(now);
+    nextBeatAt = Math.max(nextBeatAt + 60000 / bpm, now - 5);
+  }
+  if (actx) {
+    master.gain.setTargetAtTime(running ? 0.28 : 0.0, actx.currentTime, 0.06);
+  }
+  draw(now);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ── Controls ─────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function setRunning(on) {
+  running = on;
+  if (on) nextBeatAt = performance.now();
+  $('btnPlay').textContent = on ? 'pause' : 'play';
+  $('btnPlay').classList.toggle('on', on);
+}
+function start() {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  setRunning(!running);
+}
+
+$('btnPlay').addEventListener('click', start);
+canvas.addEventListener('click', () => {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  if (!running) setRunning(true);
+});
+$('btnReverse').addEventListener('click', () => {
+  dir = -dir;
+  $('btnReverse').classList.toggle('on', dir === -1);
+  updateReadout();
+});
+$('modeSel').addEventListener('change', e => {
+  mode = e.target.value;
+  if (mode !== 'pure') { base = 1; }   // corrected/tempered re-anchor
+  updateReadout();
+});
+$('bpmSlider').addEventListener('input', e => {
+  bpm = parseInt(e.target.value, 10);
+  $('bpmVal').textContent = bpm;
+});
+$('toneSel').addEventListener('change', e => setTone(e.target.value));
+
+updateReadout();
+</script>
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <title>waveform sculptor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+      --blue:   #7ab8d4;
+      --green:  #88c080;
+      --rose:   #c088b8;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.5rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 520px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.9;
+    }
+
+    /* waveform canvas */
+    #wvCanvas {
+      display: block;
+      border: 1px solid var(--border);
+    }
+
+    /* harmonic rows */
+    .harmonics {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .h-row {
+      display: grid;
+      grid-template-columns: 2rem 1fr 3.5rem 1fr;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
+      padding: 0.28rem 0.5rem;
+      border: 1px solid transparent;
+      border-radius: 2px;
+      transition: border-color 0.15s;
+    }
+    .h-row:hover { border-color: var(--border); }
+    .h-num {
+      font-size: 0.58rem;
+      font-family: 'SF Mono','Fira Code',monospace;
+      color: var(--dimmer);
+      text-align: right;
+    }
+    input[type=range].h-slider {
+      width: 100%;
+      accent-color: var(--gold);
+    }
+    .h-val {
+      font-size: 0.55rem;
+      font-family: 'SF Mono','Fira Code',monospace;
+      color: var(--dim);
+      text-align: center;
+    }
+    .h-name {
+      font-size: 0.54rem;
+      font-style: italic;
+      color: var(--dimmer);
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+
+    /* transport + root */
+    .transport {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.8rem;
+      justify-content: center;
+      align-items: center;
+      max-width: 600px;
+    }
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .ctrl-label {
+      font-size: 0.56rem;
+      letter-spacing: 0.11em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .ctrl-val {
+      font-size: 0.56rem;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+    }
+    input[type=range].wide { width: 150px; accent-color: var(--gold); }
+
+    .play-btn {
+      font-family: Georgia, serif;
+      font-size: 0.68rem;
+      font-style: italic;
+      letter-spacing: 0.13em;
+      color: var(--text);
+      background: none;
+      border: 1px solid rgba(255,255,255,0.22);
+      padding: 0.45rem 1.6rem;
+      cursor: pointer;
+      transition: all 0.13s;
+    }
+    .play-btn:hover { background: rgba(255,255,255,0.03); }
+    .play-btn.playing { border-color: rgba(212,192,112,0.55); color: var(--gold); }
+
+    /* presets */
+    .presets {
+      display: flex;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .preset-btn {
+      background: transparent;
+      color: var(--dimmer);
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.8rem;
+      font-family: Georgia, serif;
+      font-size: 0.58rem;
+      font-style: italic;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: color 0.13s, border-color 0.13s;
+    }
+    .preset-btn:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+  </style>
+</head>
+<body>
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
+<div class="header">
+  <h1 class="title">waveform sculptor</h1>
+  <p class="sub">add harmonics one at a time and watch the waveform appear. a sine wave is one partial. a sawtooth is all of them. everything else is somewhere in between.</p>
+</div>
+
+<canvas id="wvCanvas"></canvas>
+
+<div class="harmonics" id="harmonicRows"></div>
+
+<div class="transport">
+  <div class="ctrl-group">
+    <span class="ctrl-label">root frequency</span>
+    <input type="range" class="wide" id="rootSlider" min="55" max="880" value="220" step="1">
+    <span class="ctrl-val" id="rootVal">220 Hz</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">volume</span>
+    <input type="range" class="wide" id="volSlider" min="0" max="1" value="0.55" step="0.01">
+  </div>
+  <button class="play-btn" id="playBtn">play</button>
+</div>
+
+<div class="presets">
+  <button class="preset-btn" data-preset="sine">sine</button>
+  <button class="preset-btn" data-preset="sawtooth">sawtooth</button>
+  <button class="preset-btn" data-preset="square">square</button>
+  <button class="preset-btn" data-preset="triangle">triangle</button>
+  <button class="preset-btn" data-preset="clear">clear</button>
+</div>
+
+<script>
+const NUM_H = 16;
+
+// interval names for each harmonic (octave-reduced)
+const NAMES = [
+  'fundamental',
+  'octave',
+  'fifth · 3∶2',
+  'octave',
+  'major third · 5∶4',
+  'fifth',
+  '7th harmonic · ♭7',
+  'octave',
+  'major second · 9∶8',
+  'major third',
+  '11th harmonic · ↑4',
+  'fifth',
+  '13th harmonic · ↑6',
+  '7th harmonic',
+  'major seventh · 15∶8',
+  'octave',
+];
+
+// harmonic amplitudes (0–1)
+const amps = new Array(NUM_H).fill(0);
+amps[0] = 1; // start with fundamental
+
+// ── Canvas setup
+const wvCanvas = document.getElementById('wvCanvas');
+const dpr = window.devicePixelRatio || 1;
+const CW = Math.min(window.innerWidth - 32, 600);
+const CH = 130;
+wvCanvas.width  = CW * dpr;
+wvCanvas.height = CH * dpr;
+wvCanvas.style.width  = CW + 'px';
+wvCanvas.style.height = CH + 'px';
+const wc = wvCanvas.getContext('2d');
+wc.scale(dpr, dpr);
+
+// ── Draw waveform (mathematical, normalized)
+function drawWaveform() {
+  // explicit background so lines don't vanish against same-dark body
+  wc.fillStyle = '#0a0a0c';
+  wc.fillRect(0, 0, CW, CH);
+
+  const N = CW * 2; // oversample for smooth curve
+  const samples = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const t = i / N;
+    let v = 0;
+    for (let h = 0; h < NUM_H; h++) {
+      if (amps[h] > 0.001) v += amps[h] * Math.sin(2 * Math.PI * (h + 1) * t);
+    }
+    samples[i] = v;
+  }
+
+  let peak = 0;
+  for (let i = 0; i < N; i++) peak = Math.max(peak, Math.abs(samples[i]));
+  const scale = peak > 0.001 ? 1 / peak : 1;
+
+  const mid = CH / 2;
+  const amp = CH * 0.42;
+
+  // center line
+  wc.beginPath();
+  wc.moveTo(0, mid); wc.lineTo(CW, mid);
+  wc.strokeStyle = 'rgba(255,255,255,0.12)';
+  wc.lineWidth = 0.5; wc.stroke();
+
+  // fill under curve
+  wc.beginPath();
+  for (let i = 0; i < N; i++) {
+    const x = i / N * CW;
+    const y = mid - samples[i] * scale * amp;
+    if (i === 0) wc.moveTo(x, y);
+    else wc.lineTo(x, y);
+  }
+  wc.lineTo(CW, mid); wc.lineTo(0, mid); wc.closePath();
+  wc.fillStyle = 'rgba(122,184,212,0.08)';
+  wc.fill();
+
+  // waveform stroke
+  const grad = wc.createLinearGradient(0, 0, CW, 0);
+  grad.addColorStop(0,   'rgba(212,192,112,0.6)');
+  grad.addColorStop(0.5, 'rgba(122,184,212,1.0)');
+  grad.addColorStop(1,   'rgba(212,192,112,0.6)');
+
+  wc.beginPath();
+  for (let i = 0; i < N; i++) {
+    const x = i / N * CW;
+    const y = mid - samples[i] * scale * amp;
+    if (i === 0) wc.moveTo(x, y);
+    else wc.lineTo(x, y);
+  }
+  wc.strokeStyle = grad;
+  wc.lineWidth = 2;
+  wc.stroke();
+}
+
+// ── Build harmonic rows
+const rowsEl = document.getElementById('harmonicRows');
+const sliders = [];
+for (let h = 0; h < NUM_H; h++) {
+  const row = document.createElement('div');
+  row.className = 'h-row';
+
+  const num = document.createElement('span');
+  num.className = 'h-num';
+  num.textContent = h + 1;
+
+  const slider = document.createElement('input');
+  slider.type = 'range'; slider.className = 'h-slider';
+  slider.min = 0; slider.max = 1; slider.step = 0.01;
+  slider.value = amps[h];
+  sliders.push(slider);
+
+  const val = document.createElement('span');
+  val.className = 'h-val';
+  val.textContent = amps[h].toFixed(2);
+
+  const name = document.createElement('span');
+  name.className = 'h-name';
+  name.textContent = NAMES[h];
+
+  slider.addEventListener('input', () => {
+    amps[h] = parseFloat(slider.value);
+    val.textContent = amps[h].toFixed(2);
+    drawWaveform();
+    syncOscillators();
+  });
+
+  row.appendChild(num);
+  row.appendChild(slider);
+  row.appendChild(val);
+  row.appendChild(name);
+  rowsEl.appendChild(row);
+}
+
+// ── Presets
+const PRESETS = {
+  sine:     () => { const a = new Array(NUM_H).fill(0); a[0] = 1; return a; },
+  sawtooth: () => Array.from({length: NUM_H}, (_, h) => 1 / (h + 1)),
+  square:   () => Array.from({length: NUM_H}, (_, h) => h % 2 === 0 ? 1 / (h + 1) : 0),
+  triangle: () => Array.from({length: NUM_H}, (_, h) => {
+    if (h % 2 !== 0) return 0;
+    const k = h / 2;
+    return (k % 2 === 0 ? 1 : -1) / ((h + 1) ** 2);
+  }).map(v => Math.abs(v)),
+  clear:    () => new Array(NUM_H).fill(0),
+};
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const preset = PRESETS[btn.dataset.preset]();
+    const peak = Math.max(...preset.map(Math.abs), 0.001);
+    for (let h = 0; h < NUM_H; h++) {
+      amps[h] = Math.min(1, preset[h] / peak);
+      sliders[h].value = amps[h];
+      sliders[h].nextElementSibling.textContent = amps[h].toFixed(2);
+    }
+    drawWaveform();
+    syncOscillators();
+  });
+});
+
+// ── Audio
+let actx = null, masterGain = null, oscNodes = [], playing = false;
+
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = actx.createGain();
+  masterGain.gain.value = parseFloat(document.getElementById('volSlider').value);
+  masterGain.connect(actx.destination);
+}
+
+function startAudio() {
+  ensureAudio();
+  stopAudio();
+  if (actx.state === 'suspended') actx.resume();
+  const root = parseFloat(document.getElementById('rootSlider').value);
+  for (let h = 0; h < NUM_H; h++) {
+    const osc  = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = root * (h + 1);
+    gain.gain.value = amps[h] * 0.6;
+    osc.connect(gain);
+    gain.connect(masterGain);
+    osc.start();
+    oscNodes.push({ osc, gain });
+  }
+  playing = true;
+}
+
+function stopAudio() {
+  for (const { osc, gain } of oscNodes) {
+    try { osc.stop(); } catch(e) {}
+    osc.disconnect(); gain.disconnect();
+  }
+  oscNodes = [];
+  playing = false;
+}
+
+function syncOscillators() {
+  if (!playing || !actx) return;
+  for (let h = 0; h < NUM_H; h++) {
+    if (!oscNodes[h]) continue;
+    oscNodes[h].gain.gain.value = amps[h] * 0.6;
+  }
+}
+
+document.getElementById('playBtn').addEventListener('click', e => {
+  if (playing) {
+    stopAudio();
+    e.target.textContent = 'play';
+    e.target.classList.remove('playing');
+  } else {
+    startAudio();
+    e.target.textContent = 'stop';
+    e.target.classList.add('playing');
+  }
+});
+
+document.getElementById('rootSlider').addEventListener('input', e => {
+  const root = parseFloat(e.target.value);
+  document.getElementById('rootVal').textContent = `${root} Hz`;
+  if (playing) {
+    for (let h = 0; h < NUM_H; h++) {
+      if (oscNodes[h]) oscNodes[h].osc.frequency.setTargetAtTime(root * (h + 1), actx.currentTime, 0.02);
+    }
+  }
+});
+
+document.getElementById('volSlider').addEventListener('input', e => {
+  if (masterGain) masterGain.gain.setTargetAtTime(parseFloat(e.target.value), actx.currentTime, 0.02);
+});
+
+// ── Initial draw
+drawWaveform();
+</script>
+</body>
+</html>
