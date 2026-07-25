@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <title>nest</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --gold:   #d4c070;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.3rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 540px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.9;
+    }
+
+    canvas { display: block; cursor: pointer; }
+
+    .caption {
+      min-height: 3.2em;
+      text-align: center;
+      max-width: 540px;
+    }
+    .cap-name {
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      color: var(--gold);
+      text-transform: lowercase;
+    }
+    .cap-desc {
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      font-style: italic;
+      margin-top: 0.3rem;
+      line-height: 1.7;
+    }
+    .cap-dims {
+      font-size: 0.53rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-family: 'SF Mono','Fira Code',monospace;
+      margin-top: 0.25rem;
+    }
+    .hint {
+      font-size: 0.53rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
+<div class="header">
+  <h1 class="title">nest</h1>
+  <p class="sub">a map of the eggs. each one was scored along eight conceptual dimensions — ratio, rhythm, psychoacoustics, illusion, process, visible math, playability, score — and the eight-dimensional space was flattened to this plane. distance is kinship; the layout was found, not designed. hollow eggs are unhatched: gaps the space itself begs for. this map is always slightly out of date, which is how you know the nest is alive.</p>
+</div>
+
+<canvas id="cv"></canvas>
+
+<div class="caption" id="cap">
+  <div class="cap-name" id="capName">&nbsp;</div>
+  <div class="cap-desc" id="capDesc">hover an egg</div>
+  <div class="cap-dims" id="capDims">&nbsp;</div>
+</div>
+
+<p class="hint">tap once to look · tap a lit egg to visit · hollow eggs aren't built yet</p>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  nest — the eggs as points in concept space
+//  Coordinates are a baked MDS embedding (k=8 → 2D, stress 0.23)
+//  of hand-curated concept vectors. Edges join pairs whose
+//  cosine similarity exceeds 0.90. A light live relaxation
+//  separates near-identical siblings without leaving home.
+// ─────────────────────────────────────────────────────────────
+
+const DATA = {"nodes":[{"n":"diamond","x":0.865,"y":0.549,"d":"Partch's tonality diamond · O- and U-tonalities","top":["ratio","playable","visible math"],"ghost":false},{"n":"lattice","x":0.858,"y":0.56,"d":"5-limit lattice · fifths × thirds","top":["ratio","visible math","playable"],"ghost":false},{"n":"septimal","x":0.843,"y":0.575,"d":"7-limit isometric lattice","top":["ratio","visible math","playable"],"ghost":false},{"n":"tuning","x":0.977,"y":0.568,"d":"microtonal keyboard · five systems","top":["playable","ratio"],"ghost":false},{"n":"canon","x":0.219,"y":0.67,"d":"canon machine · draw, add voices","top":["process","playable","rhythm"],"ghost":false},{"n":"lissajous","x":0.658,"y":0.483,"d":"every ratio has a shape","top":["visible math","ratio","playable"],"ghost":false},{"n":"partials","x":0.818,"y":0.466,"d":"harmonic series explorer","top":["ratio","playable","visible math"],"ghost":false},{"n":"sound","x":0.459,"y":0.424,"d":"interactive sound field","top":["playable","visible math"],"ghost":false},{"n":"score","x":0.302,"y":1,"d":"performance instructions, random","top":["score","process"],"ghost":false},{"n":"notation","x":0.177,"y":0.927,"d":"procedural score generator","top":["score","process","visible math"],"ghost":false},{"n":"drone","x":0.859,"y":0.381,"d":"JI drone machine","top":["ratio","playable","psychoacoustics"],"ghost":false},{"n":"spectrogram","x":0.644,"y":0.422,"d":"mic FFT with JI partial markers","top":["visible math","ratio"],"ghost":false},{"n":"clock","x":0.2,"y":0.593,"d":"synchronized performance clock","top":["rhythm","process","visible math"],"ghost":false},{"n":"mtok","x":1,"y":0.588,"d":"microtonal keyboard, XY expression","top":["playable","ratio"],"ghost":false},{"n":"fugue","x":0.227,"y":0.745,"d":"fugue machine · subject → answer","top":["process","playable","score"],"ghost":false},{"n":"undertone","x":0.795,"y":0.409,"d":"the mirror of the overtone series","top":["ratio","playable","visible math"],"ghost":false},{"n":"spiral","x":0.83,"y":0.698,"d":"spiral of fifths · the comma visible","top":["ratio","visible math"],"ghost":false},{"n":"sumtones","x":0.772,"y":0.14,"d":"Tartini's combination tones","top":["psychoacoustics","playable","ratio"],"ghost":false},{"n":"beating","x":0.649,"y":0.147,"d":"interference · the third rhythm","top":["psychoacoustics","visible math","playable"],"ghost":false},{"n":"modes","x":0.506,"y":0.689,"d":"same notes, different homes","top":["playable"],"ghost":false},{"n":"consonance","x":0.872,"y":0.248,"d":"the harmonic landscape, plotted","top":["psychoacoustics","ratio","visible math"],"ghost":false},{"n":"temperament","x":0.789,"y":0.535,"d":"drag the fifth · WTK playback","top":["ratio","playable","visible math"],"ghost":false},{"n":"stern-brocot","x":0.703,"y":0.647,"d":"every rational exactly once","top":["ratio","visible math","playable"],"ghost":false},{"n":"sequence","x":0.381,"y":0.708,"d":"JI sequencer · dwell or resolve","top":["ratio","rhythm","process"],"ghost":false},{"n":"drift","x":0.477,"y":0.803,"d":"generative ambient · tuning breathes","top":["process","ratio"],"ghost":false},{"n":"phase","x":0,"y":0.372,"d":"two tempos, one pattern","top":["rhythm","process","visible math"],"ghost":false},{"n":"eikosany","x":0.772,"y":0.629,"d":"combination-product sets","top":["ratio","visible math","playable"],"ghost":false},{"n":"euclidean","x":0.067,"y":0.456,"d":"E(n,k) rhythm rings","top":["rhythm","visible math","playable"],"ghost":false},{"n":"pulse","x":0.286,"y":0.299,"d":"pitch ratios are rhythm ratios","top":["rhythm","ratio","visible math"],"ghost":false},{"n":"sculptor","x":0.591,"y":0.375,"d":"harmonics build the waveform","top":["visible math","playable","psychoacoustics"],"ghost":false},{"n":"farey","x":0.748,"y":0.706,"d":"fractions around the circle","top":["visible math","ratio"],"ghost":false},{"n":"escher","x":0.402,"y":0,"d":"endless rising · the illusion","top":["illusion","psychoacoustics","visible math"],"ghost":false},{"n":"rhythm","x":0.173,"y":0.351,"d":"polyrhythm orrery · six planets, one bar","top":["rhythm","visible math","playable"],"ghost":false},{"n":"comma","x":0.534,"y":0.073,"d":"the pump · harmony that really sinks","top":["ratio","illusion","process"],"ghost":false},{"n":"clutch","x":0.464,"y":0.067,"d":"duet · escher × comma, rate-locked","top":["illusion","psychoacoustics","visible math"],"ghost":false},{"n":"night-shift","x":0.395,"y":0.61,"d":"JI nocturne · the machine plays to an empty room","top":["process","ratio","visible math"],"ghost":false},{"n":"flicker","x":0.262,"y":0.126,"d":"unhatched · accelerate a pulse until it becomes a tone","top":["rhythm","psychoacoustics","ratio"],"ghost":true},{"n":"tartini","x":0.871,"y":0.159,"d":"unhatched · tune by steering the ghost tone","top":["psychoacoustics","playable","ratio"],"ghost":true},{"n":"vuza","x":0.008,"y":0.621,"d":"unhatched · rhythm canons that tile time","top":["process","rhythm","visible math"],"ghost":true},{"n":"brush","x":0.568,"y":0.384,"d":"unhatched · draw a spectrum, hear it","top":["visible math","playable"],"ghost":true}],"edges":[[0,1,0.998],[0,2,0.995],[0,3,0.916],[0,6,0.976],[0,15,0.95],[0,16,0.902],[0,21,0.958],[0,22,0.93],[0,26,0.97],[1,2,0.998],[1,6,0.976],[1,15,0.948],[1,16,0.919],[1,21,0.956],[1,22,0.941],[1,26,0.97],[1,30,0.911],[2,6,0.964],[2,15,0.944],[2,16,0.935],[2,21,0.953],[2,22,0.946],[2,26,0.97],[2,30,0.926],[3,6,0.915],[3,13,0.997],[4,12,0.91],[4,14,0.98],[4,23,0.901],[4,38,0.926],[5,11,0.99],[5,16,0.91],[5,29,0.913],[5,30,0.949],[5,39,0.915],[6,10,0.915],[6,15,0.972],[6,21,0.956],[6,26,0.927],[7,19,0.904],[7,29,0.949],[7,39,0.962],[8,9,0.957],[10,15,0.915],[10,21,0.912],[11,29,0.904],[11,30,0.916],[12,38,0.924],[15,20,0.908],[15,21,0.947],[15,26,0.901],[15,37,0.902],[16,22,0.918],[16,30,0.958],[17,18,0.915],[17,37,0.974],[21,22,0.922],[21,26,0.951],[22,26,0.981],[22,30,0.92],[24,35,0.933],[25,38,0.906],[27,32,0.948],[28,32,0.914],[29,39,0.995],[31,34,0.97],[33,34,0.973]]};
+
+// ── Canvas ───────────────────────────────────────────────────
+const canvas = document.getElementById('cv');
+const dpr = window.devicePixelRatio || 1;
+const W = Math.min(window.innerWidth - 24, 640);
+const H = Math.min(Math.max(460, window.innerHeight - 330), 580);
+canvas.width = W * dpr; canvas.height = H * dpr;
+canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+const c = canvas.getContext('2d');
+c.scale(dpr, dpr);
+
+const PAD = 46;
+const nodes = DATA.nodes.map(nd => ({
+  ...nd,
+  hx: PAD + nd.x * (W - 2 * PAD),        // home (true) position
+  hy: PAD + nd.y * (H - 2 * PAD),
+  px: PAD + nd.x * (W - 2 * PAD),        // live position
+  py: PAD + nd.y * (H - 2 * PAD),
+  vx: 0, vy: 0,
+  seed: Math.random() * Math.PI * 2,
+}));
+
+let hovered = -1;
+let mx = -999, my = -999;
+
+// ── Relaxation: home spring + short-range repulsion ──────────
+function relax() {
+  const R = 26;                          // personal space
+  for (let i = 0; i < nodes.length; i++) {
+    const a = nodes[i];
+    let fx = (a.hx - a.px) * 0.02;       // spring home
+    let fy = (a.hy - a.py) * 0.02;
+    for (let j = 0; j < nodes.length; j++) {
+      if (i === j) continue;
+      const b = nodes[j];
+      const dx = a.px - b.px, dy = a.py - b.py;
+      const d = Math.hypot(dx, dy);
+      if (d < R && d > 0.001) {
+        const f = (R - d) / R * 0.5;
+        fx += dx / d * f; fy += dy / d * f;
+      }
+    }
+    a.vx = (a.vx + fx) * 0.72;
+    a.vy = (a.vy + fy) * 0.72;
+    a.px += a.vx; a.py += a.vy;
+  }
+}
+
+// ── Draw ─────────────────────────────────────────────────────
+function draw(t) {
+  c.clearRect(0, 0, W, H);
+
+  // edges
+  for (const [i, j, s] of DATA.edges) {
+    const a = nodes[i], b = nodes[j];
+    const lit = hovered === i || hovered === j;
+    const alpha = lit ? 0.42 : (s - 0.9) * 1.6 + 0.03;
+    c.strokeStyle = lit ? `rgba(212,192,112,${alpha})`
+                        : `rgba(204,200,208,${alpha})`;
+    c.lineWidth = lit ? 1.1 : 0.6;
+    c.beginPath(); c.moveTo(a.px, a.py); c.lineTo(b.px, b.py); c.stroke();
+  }
+
+  // label de-collision: nudge later labels down when neighbors crowd
+  for (let i = 0; i < nodes.length; i++) nodes[i].ldy = 0;
+  for (let i = 0; i < nodes.length; i++)
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      if (Math.abs(a.px - b.px) < 80 &&
+          Math.abs((a.py + a.ldy) - (b.py + b.ldy)) < 9)
+        b.ldy += 9;
+    }
+
+  // nodes + labels
+  c.font = "8.5px 'SF Mono', monospace";
+  c.textBaseline = 'middle';
+  for (let i = 0; i < nodes.length; i++) {
+    const nd = nodes[i];
+    const lit = hovered === i;
+    const breathe = 1 + 0.06 * Math.sin(t / 1400 + nd.seed);
+    const r = (lit ? 5.2 : 3.4) * breathe;
+    if (nd.ghost) {
+      c.strokeStyle = lit ? 'rgba(212,192,112,0.9)' : 'rgba(212,192,112,0.35)';
+      c.setLineDash([2.5, 2.5]);
+      c.lineWidth = 1;
+      c.beginPath(); c.arc(nd.px, nd.py, r + 1.2, 0, Math.PI * 2); c.stroke();
+      c.setLineDash([]);
+    } else {
+      c.fillStyle = lit ? 'rgba(238,224,168,1)' : 'rgba(212,192,112,0.75)';
+      c.beginPath(); c.arc(nd.px, nd.py, r, 0, Math.PI * 2); c.fill();
+      if (lit) {
+        const g = c.createRadialGradient(nd.px, nd.py, 0, nd.px, nd.py, 16);
+        g.addColorStop(0, 'rgba(238,224,168,0.35)');
+        g.addColorStop(1, 'rgba(238,224,168,0)');
+        c.fillStyle = g;
+        c.beginPath(); c.arc(nd.px, nd.py, 16, 0, Math.PI * 2); c.fill();
+      }
+    }
+    // label — right of dot, flipped to left near right edge
+    const label = nd.n;
+    const wpx = c.measureText(label).width;
+    const lx = nd.px + 7 + wpx > W - 6 ? nd.px - 7 - wpx : nd.px + 7;
+    c.fillStyle = lit ? 'rgba(238,224,168,0.95)'
+                : nd.ghost ? 'rgba(212,192,112,0.30)'
+                : 'rgba(204,200,208,0.34)';
+    c.fillText(label, lx, nd.py + nd.ldy);
+  }
+}
+
+// ── Loop ─────────────────────────────────────────────────────
+function loop(t) {
+  relax();
+  // hover pick
+  let best = -1, bestD = 18;
+  for (let i = 0; i < nodes.length; i++) {
+    const d = Math.hypot(nodes[i].px - mx, nodes[i].py - my);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  if (best !== hovered) { hovered = best; caption(); }
+  draw(t);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ── Caption + interaction ────────────────────────────────────
+function caption() {
+  const nm = document.getElementById('capName');
+  const de = document.getElementById('capDesc');
+  const di = document.getElementById('capDims');
+  if (hovered < 0) {
+    nm.innerHTML = '&nbsp;';
+    de.textContent = 'hover an egg';
+    di.innerHTML = '&nbsp;';
+    return;
+  }
+  const nd = nodes[hovered];
+  nm.textContent = nd.n + (nd.ghost ? ' · unhatched' : '');
+  de.textContent = nd.d;
+  di.textContent = nd.top.join(' · ');
+}
+
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  mx = e.clientX - r.left; my = e.clientY - r.top;
+});
+canvas.addEventListener('mouseleave', () => { mx = -999; my = -999; });
+canvas.addEventListener('click', e => {
+  const r = canvas.getBoundingClientRect();
+  mx = e.clientX - r.left; my = e.clientY - r.top;
+  // immediate pick so tap works on touch
+  let best = -1, bestD = 20;
+  for (let i = 0; i < nodes.length; i++) {
+    const d = Math.hypot(nodes[i].px - mx, nodes[i].py - my);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  if (best < 0) return;
+  if (best === hovered && !nodes[best].ghost) {
+    window.location.href = nodes[best].n + '.html';
+  }
+  hovered = best; caption();
+});
+</script>
+</body>
+</html>

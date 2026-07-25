@@ -3,67 +3,106 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>— David Carlton Adams</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <title>eggs — David Carlton Adams</title>
+  <meta name="description" content="Three dozen browser instruments and toys by David Carlton Adams — just intonation lattices, rhythm machines, psychoacoustic illusions, tuning explorers. Tap anything.">
+  <meta property="og:title" content="eggs — David Carlton Adams">
+  <meta property="og:description" content="Three dozen browser instruments and toys — just intonation, rhythm, illusion. Tap anything.">
+  <meta property="og:image" content="https://davidcarltonadams.com/assets/eggs/nest-map.webp">
+  <meta property="og:url" content="https://davidcarltonadams.com/eggs.html">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://davidcarltonadams.com/eggs.html">
   <link rel="stylesheet" href="css/style.css">
   <style>
     body { background: #0c0c10; color: #c0c0cc; }
 
     .eggs-wrap {
-      max-width: 520px;
+      max-width: 1080px;
       margin: 0 auto;
-      padding: 3rem 1rem 4rem;
+      padding: 3rem 1.2rem 4rem;
       font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
     }
 
     .eggs-epigraph {
-      font-size: 0.68rem;
-      color: #444;
+      font-size: 0.78rem;
+      color: #9a96a4;
       letter-spacing: 0.06em;
-      line-height: 1.7;
-      margin-bottom: 3rem;
+      line-height: 1.8;
+      margin-bottom: 2.2rem;
       font-style: italic;
     }
+    .eggs-epigraph .quiet { color: #5a5764; }
 
-    .eggs-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
+    /* ── the map, featured ── */
+    .nest-card {
       display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-
-    .egg-item {
-      display: flex;
-      align-items: baseline;
-      gap: 1rem;
-      padding: 0.65rem 0;
-      border-bottom: 1px solid #111118;
-    }
-    .egg-item:first-child { border-top: 1px solid #111118; }
-
-    .egg-link {
-      font-size: 0.75rem;
-      color: #666;
+      align-items: center;
+      gap: 1.6rem;
+      border: 1px solid #1e1e28;
+      border-radius: 4px;
+      padding: 1rem;
+      margin-bottom: 2.6rem;
       text-decoration: none;
-      letter-spacing: 0.06em;
-      transition: color 0.15s;
+      transition: border-color 0.2s;
     }
-    .egg-link:hover { color: #ccc; }
+    .nest-card:hover { border-color: #3a3830; }
+    .nest-card img {
+      width: 300px; max-width: 46%;
+      border-radius: 3px; display: block;
+    }
+    .nest-card-title {
+      font-size: 0.85rem; color: #d4c070;
+      letter-spacing: 0.16em;
+    }
+    .nest-card-desc {
+      font-size: 0.68rem; color: #8a8a96;
+      letter-spacing: 0.05em; line-height: 1.7;
+      margin-top: 0.5rem; font-style: italic;
+    }
+    @media (max-width: 560px) {
+      .nest-card { flex-direction: column; align-items: stretch; }
+      .nest-card img { width: 100%; max-width: none; }
+    }
 
-    .egg-desc {
-      font-size: 0.6rem;
-      color: #333;
-      letter-spacing: 0.04em;
-      flex: 1;
+    /* ── card grid ── */
+    .egg-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 1.4rem 1.2rem;
+    }
+    .card {
+      display: flex; flex-direction: column; gap: 0.45rem;
+      text-decoration: none;
+    }
+    .card img {
+      width: 100%; height: auto; aspect-ratio: 8/5;
+      object-fit: cover;
+      border: 1px solid #1c1c24; border-radius: 3px;
+      background: #08080b;
+      transition: border-color 0.2s;
+      display: block;
+    }
+    .card:hover img { border-color: #d4c070; }
+    .card-name {
+      font-size: 0.75rem; color: #b8b4c2;
+      letter-spacing: 0.08em;
+    }
+    .card:hover .card-name { color: #eee8d0; }
+    .card-desc {
+      font-size: 0.62rem; color: #8a8a96;
+      letter-spacing: 0.04em; line-height: 1.65;
     }
 
     .eggs-footer {
-      margin-top: 3rem;
-      font-size: 0.58rem;
-      color: #222;
+      margin-top: 3.2rem;
+      font-size: 0.66rem;
+      color: #6a6774;
       letter-spacing: 0.06em;
+      line-height: 2;
     }
+    .eggs-footer a { color: #9a96a4; }
+    .eggs-footer a:hover { color: #d4c070; }
   </style>
 </head>
 <body>
@@ -84,7 +123,7 @@
       <li><a href="media.html">media</a></li>
       <li><a href="teaching.html">teaching</a></li>
       <li><a href="contact.html">contact</a></li>
-      <li><a href="tools.html">tools</a></li>
+      <li><a href="eggs.html" class="active" aria-current="page">eggs</a></li>
     </ul>
   </div>
 </nav>
@@ -93,127 +132,203 @@
 <div class="eggs-wrap">
 
   <p class="eggs-epigraph">
-    you found this.<br>
-    nothing here is hidden, exactly —<br>
-    it just wasn't announced.
+    browser instruments &amp; toys. tap anything.<br>
+    <span class="quiet">small machines for hearing how music works — ratio, rhythm, illusion.<br>
+    they run right here, in the browser. no installs, no accounts, nothing collected.</span>
   </p>
 
-  <ul class="eggs-list">
-    <li class="egg-item">
-      <a class="egg-link" href="diamond.html">diamond</a>
-      <span class="egg-desc">Partch's tonality diamond · 13-limit JI · O-tonalities × U-tonalities · 49 pure ratios · click chords by row or column</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="lattice.html">lattice</a>
-      <span class="egg-desc">5-limit JI lattice · click to build chords · perfect fifths × major thirds · 35 pure ratios</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="septimal.html">septimal</a>
-      <span class="egg-desc">7-limit isometric lattice · three axes: perfect fifths · major thirds · septimal seventh · 45 pure ratios</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="tuning.html">tuning</a>
-      <span class="egg-desc">microtonal keyboard · 12-TET, 19-TET, 31-TET, just intonation, harmonic series</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="canon.html">canon</a>
-      <span class="egg-desc">canon machine · draw a melody · add voices · 12-TET, 19-EDO, 31-EDO, α scale</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="lissajous.html">lissajous</a>
-      <span class="egg-desc">interval figures · every musical ratio has a shape</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="partials.html">partials</a>
-      <span class="egg-desc">harmonic series explorer · 16 partials · retune and listen</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="sound.html">sound</a>
-      <span class="egg-desc">interactive sound field · move through it</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="score.html">score</a>
-      <span class="egg-desc">performance instructions · random · ?n=14 loads a specific one</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="notation.html">notation</a>
-      <span class="egg-desc">procedural score generator · drawn from the vocabulary of the practice · shareable by URL</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="drone.html">drone</a>
-      <span class="egg-desc">root pitch · beating · harmonic partials · JI tuning · C D E F G A B + octave + keyboard</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="spectrogram.html">spectrogram</a>
-      <span class="egg-desc">mic input · FFT · JI partial markers · log scale · listens only, no audio output</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="clock.html">clock</a>
-      <span class="egg-desc">synchronized performance clock · define sections · conductor starts, everyone sees it run · drag-drop images · shareable QR</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="mtok.html">mtok</a>
-      <span class="egg-desc">microtonal keyboard · JI alpha tuning · per-note XY expression · play on tablet</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="fugue.html">fugue</a>
-      <span class="egg-desc">fugue machine · draw subject · auto-generate answer · prototype expositions in any tuning</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="undertone.html">undertone</a>
-      <span class="egg-desc">subharmonic series · the mirror image of the overtone series · where overtones give major, undertones give minor</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="spiral.html">spiral</a>
-      <span class="egg-desc">spiral of fifths · 12-TET closes · just intonation doesn't · see the Pythagorean comma · toggle 19-TET and 31-TET</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="sumtones.html">sumtones</a>
-      <span class="egg-desc">combination tones · two pitches produce two more · Tartini's discovery · difference tone · sum tone</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="beating.html">beating</a>
-      <span class="egg-desc">two close pitches produce a third rhythm · the interference waveform · what string players hear when tuning</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="modes.html">modes</a>
-      <span class="egg-desc">major modes · melodic minor modes · harmonic minor · pentatonic · whole tone · diminished · same notes, different gravity</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="consonance.html">consonance</a>
-      <span class="egg-desc">the harmonic landscape · every interval plotted by purity · valleys are where simple ratios live · φ sits on a hill · drag to hear</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="temperament.html">temperament</a>
-      <span class="egg-desc">drag the fifth · watch twelve notes reshape · Pythagorean · meantone · well temperament · play the WTK fugues in any tuning</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="stern-brocot.html">stern-brocot</a>
-      <span class="egg-desc">every rational number exactly once · the tree that generates all JI ratios · navigate by ear · grab bag · dwell or resolve</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="sequence.html">sequence</a>
-      <span class="egg-desc">JI sequencer · load a grab bag from the tree · schedule ratios in time · dwell or resolve · export to SuperCollider or Canon Machine</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="drift.html">drift</a>
-      <span class="egg-desc">generative ambient · pure JI ratios cycling slowly · lets the tuning breathe</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="phase.html">phase</a>
-      <span class="egg-desc">two voices, one pattern · voice b drifts at a slightly different tempo · new rhythms emerge from the collision</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="eikosany.html">eikosany</a>
-      <span class="egg-desc">Partch's combinatorial sets · hexany · dekany · eikosany · notes built from prime generator products · click to build chords</span>
-    </li>
-    <li class="egg-item">
-      <a class="egg-link" href="euclidean.html">euclidean</a>
-      <span class="egg-desc">four layered rhythmic rings · E(n,k) distributes pulses as evenly as possible · the same algorithm as the GCD · tresillo, cinquillo, aksak, samba</span>
-    </li>
-  </ul>
+  <a class="nest-card" href="nest.html">
+    <img src="assets/eggs/nest-map.webp" alt="the nest — a concept map of all the eggs" width="560" height="382">
+    <span>
+      <span class="nest-card-title">the nest · start here</span>
+      <span class="nest-card-desc" style="display:block">a map of the whole clutch. every egg scored along eight conceptual dimensions, the space flattened to a plane. distance is kinship. the hollow ones aren't built yet.</span>
+    </span>
+  </a>
 
-  <p class="eggs-footer">this page is not linked from anywhere. you got here on your own.<br>the serious ones are at <a href="tools.html" style="color:inherit">tools.html</a>.<br>the unhatched ones are at <a href="raw-eggs.html" style="color:inherit">raw-eggs.html</a>.</p>
+  <div class="egg-grid">
+    <a class="card" href="diamond.html">
+      <img src="assets/eggs/diamond.webp" alt="diamond — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">diamond</span>
+      <span class="card-desc">Partch's tonality diamond · 13-limit JI · O-tonalities × U-tonalities · 49 pure ratios · click chords by row or column</span>
+    </a>
+    <a class="card" href="lattice.html">
+      <img src="assets/eggs/lattice.webp" alt="lattice — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">lattice</span>
+      <span class="card-desc">5-limit JI lattice · click to build chords · perfect fifths × major thirds · 35 pure ratios</span>
+    </a>
+    <a class="card" href="septimal.html">
+      <img src="assets/eggs/septimal.webp" alt="septimal — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">septimal</span>
+      <span class="card-desc">7-limit isometric lattice · three axes: perfect fifths · major thirds · septimal seventh · 45 pure ratios</span>
+    </a>
+    <a class="card" href="tuning.html">
+      <img src="assets/eggs/tuning.webp" alt="tuning — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">tuning</span>
+      <span class="card-desc">microtonal keyboard · 12-TET, 19-TET, 31-TET, just intonation, harmonic series</span>
+    </a>
+    <a class="card" href="canon.html">
+      <img src="assets/eggs/canon.webp" alt="canon — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">canon</span>
+      <span class="card-desc">canon machine · draw a melody · add voices · 12-TET, 19-EDO, 31-EDO, α scale</span>
+    </a>
+    <a class="card" href="lissajous.html">
+      <img src="assets/eggs/lissajous.webp" alt="lissajous — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">lissajous</span>
+      <span class="card-desc">interval figures · every musical ratio has a shape</span>
+    </a>
+    <a class="card" href="partials.html">
+      <img src="assets/eggs/partials.webp" alt="partials — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">partials</span>
+      <span class="card-desc">harmonic series explorer · 16 partials · retune and listen</span>
+    </a>
+    <a class="card" href="sound.html">
+      <img src="assets/eggs/sound.webp" alt="sound — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">sound</span>
+      <span class="card-desc">interactive sound field · move through it</span>
+    </a>
+    <a class="card" href="score.html">
+      <img src="assets/eggs/score.webp" alt="score — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">score</span>
+      <span class="card-desc">performance instructions · random · ?n=14 loads a specific one</span>
+    </a>
+    <a class="card" href="notation.html">
+      <img src="assets/eggs/notation.webp" alt="notation — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">notation</span>
+      <span class="card-desc">procedural score generator · drawn from the vocabulary of the practice · shareable by URL</span>
+    </a>
+    <a class="card" href="drone.html">
+      <img src="assets/eggs/drone.webp" alt="drone — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">drone</span>
+      <span class="card-desc">root pitch · beating · harmonic partials · JI tuning · C D E F G A B + octave + keyboard</span>
+    </a>
+    <a class="card" href="spectrogram.html">
+      <img src="assets/eggs/spectrogram.webp" alt="spectrogram — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">spectrogram</span>
+      <span class="card-desc">mic input · FFT · JI partial markers · log scale · listens only, no audio output</span>
+    </a>
+    <a class="card" href="clock.html">
+      <img src="assets/eggs/clock.webp" alt="clock — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">clock</span>
+      <span class="card-desc">synchronized performance clock · define sections · conductor starts, everyone sees it run · drag-drop images · shareable QR</span>
+    </a>
+    <a class="card" href="mtok.html">
+      <img src="assets/eggs/mtok.webp" alt="mtok — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">mtok</span>
+      <span class="card-desc">microtonal keyboard · JI alpha tuning · per-note XY expression · play on tablet</span>
+    </a>
+    <a class="card" href="fugue.html">
+      <img src="assets/eggs/fugue.webp" alt="fugue — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">fugue</span>
+      <span class="card-desc">fugue machine · draw subject · auto-generate answer · prototype expositions in any tuning</span>
+    </a>
+    <a class="card" href="undertone.html">
+      <img src="assets/eggs/undertone.webp" alt="undertone — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">undertone</span>
+      <span class="card-desc">subharmonic series · the mirror image of the overtone series · where overtones give major, undertones give minor</span>
+    </a>
+    <a class="card" href="spiral.html">
+      <img src="assets/eggs/spiral.webp" alt="spiral — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">spiral</span>
+      <span class="card-desc">spiral of fifths · 12-TET closes · just intonation doesn't · see the Pythagorean comma · toggle 19-TET and 31-TET</span>
+    </a>
+    <a class="card" href="sumtones.html">
+      <img src="assets/eggs/sumtones.webp" alt="sumtones — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">sumtones</span>
+      <span class="card-desc">combination tones · two pitches produce two more · Tartini's discovery · difference tone · sum tone</span>
+    </a>
+    <a class="card" href="beating.html">
+      <img src="assets/eggs/beating.webp" alt="beating — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">beating</span>
+      <span class="card-desc">two close pitches produce a third rhythm · the interference waveform · what string players hear when tuning</span>
+    </a>
+    <a class="card" href="modes.html">
+      <img src="assets/eggs/modes.webp" alt="modes — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">modes</span>
+      <span class="card-desc">major modes · melodic minor modes · harmonic minor · pentatonic · whole tone · diminished · same notes, different gravity</span>
+    </a>
+    <a class="card" href="consonance.html">
+      <img src="assets/eggs/consonance.webp" alt="consonance — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">consonance</span>
+      <span class="card-desc">the harmonic landscape · every interval plotted by purity · valleys are where simple ratios live · φ sits on a hill · drag to hear</span>
+    </a>
+    <a class="card" href="temperament.html">
+      <img src="assets/eggs/temperament.webp" alt="temperament — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">temperament</span>
+      <span class="card-desc">drag the fifth · watch twelve notes reshape · Pythagorean · meantone · well temperament · play the WTK fugues in any tuning</span>
+    </a>
+    <a class="card" href="stern-brocot.html">
+      <img src="assets/eggs/stern-brocot.webp" alt="stern-brocot — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">stern-brocot</span>
+      <span class="card-desc">every rational number exactly once · the tree that generates all JI ratios · navigate by ear · grab bag · dwell or resolve</span>
+    </a>
+    <a class="card" href="sequence.html">
+      <img src="assets/eggs/sequence.webp" alt="sequence — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">sequence</span>
+      <span class="card-desc">JI sequencer · load a grab bag from the tree · schedule ratios in time · dwell or resolve · export to SuperCollider or Canon Machine</span>
+    </a>
+    <a class="card" href="drift.html">
+      <img src="assets/eggs/drift.webp" alt="drift — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">drift</span>
+      <span class="card-desc">generative ambient · pure JI ratios cycling slowly · lets the tuning breathe</span>
+    </a>
+    <a class="card" href="phase.html">
+      <img src="assets/eggs/phase.webp" alt="phase — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">phase</span>
+      <span class="card-desc">two voices, one pattern · voice b drifts at a slightly different tempo · new rhythms emerge from the collision</span>
+    </a>
+    <a class="card" href="eikosany.html">
+      <img src="assets/eggs/eikosany.webp" alt="eikosany — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">eikosany</span>
+      <span class="card-desc">Partch's combinatorial sets · hexany · dekany · eikosany · notes built from prime generator products · click to build chords</span>
+    </a>
+    <a class="card" href="euclidean.html">
+      <img src="assets/eggs/euclidean.webp" alt="euclidean — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">euclidean</span>
+      <span class="card-desc">four layered rhythmic rings · E(n,k) distributes pulses as evenly as possible · the same algorithm as the GCD · tresillo, cinquillo, aksak, samba</span>
+    </a>
+    <a class="card" href="pulse.html">
+      <img src="assets/eggs/pulse.webp" alt="pulse lattice — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">pulse lattice</span>
+      <span class="card-desc">pitch ratios are rhythm ratios · the same mathematics that names a perfect fifth (3∶2) generates a hemiola · click nodes on a JI lattice to hear both the interval and the polyrhythm at once</span>
+    </a>
+    <a class="card" href="sculptor.html">
+      <img src="assets/eggs/sculptor.webp" alt="waveform sculptor — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">waveform sculptor</span>
+      <span class="card-desc">add harmonics one at a time and watch the waveform appear · a sine wave is one partial · a sawtooth is all of them · presets: sine, sawtooth, square, triangle</span>
+    </a>
+    <a class="card" href="farey.html">
+      <img src="assets/eggs/farey.webp" alt="farey clock — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">farey clock</span>
+      <span class="card-desc">every fraction p/q sits at exactly p/q × 360° around the circle · radian space made visible · adjacent fractions satisfy |ps−rq|=1 · toggle JI overlay to see where just intervals actually live</span>
+    </a>
+    <a class="card" href="escher.html">
+      <img src="assets/eggs/escher.webp" alt="escher — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">escher</span>
+      <span class="card-desc">an endless rising tone · Shepard–Risset glissando · octave-spaced voices slide forever under a fixed brightness bell, so the pitch climbs without ever leaving the middle · reverse to fall forever · step it through any EDO</span>
+    </a>
+    <a class="card" href="rhythm.html">
+      <img src="assets/eggs/rhythm.webp" alt="rhythm — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">rhythm</span>
+      <span class="card-desc">a polyrhythm orrery · six planets, one bar · each orbit divides the cycle by its own integer · 3-against-4-against-5 as moons with different years · every ratio is a pitch interval slowed ten thousand times · tap tempo, align to send the planets home</span>
+    </a>
+    <a class="card" href="comma.html">
+      <img src="assets/eggs/comma.webp" alt="comma — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">comma</span>
+      <span class="card-desc">the syntonic comma pump · C–Am–Dm–G tuned purely, each chord borrowing a held note from the last · every cycle home sinks 21.5¢ · escher's staircase is an illusion — this one really descends · ≈56 cycles to fall an octave · reverse to climb, temper to stand still</span>
+    </a>
+    <a class="card" href="night-shift.html">
+      <img src="assets/eggs/night-shift.webp" alt="night shift — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">night shift</span>
+      <span class="card-desc">the machine that stays home, playing to an empty room · partials of a low C, leaning septimal · the recurring chord is 11:13:33 · sparser the later it gets · touch a star to ring it · made overnight by the mac mini while david slept</span>
+    </a>
+    <a class="card" href="clutch.html">
+      <img src="assets/eggs/clutch.webp" alt="clutch — interface" loading="lazy" width="480" height="300">
+      <span class="card-name">clutch</span>
+      <span class="card-desc">two eggs, one clock · first pairing: escher × comma · the endless staircase and the real descent, rate-locked to the same ¢/second · only one of them means it · the pump eventually leaves the frame; the staircase never does · duets live in the spaces between eggs</span>
+    </a>
+  </div>
+
+  <p class="eggs-footer">the nine sturdiest, described in prose, live at <a href="tools.html">tools.html</a>.<br>the unhatched ones are at <a href="raw-eggs.html">raw-eggs.html</a>.</p>
 
 </div>
 </main>
