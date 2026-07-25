@@ -1114,3 +1114,19 @@ a.egg {
   text-decoration: none;
   cursor: default;
 }
+
+/* ── doors row (index): four quiet ways in ─────────────────── */
+.doors {
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  color: var(--text-2);
+  margin: 2.2rem 0 1.6rem;
+}
+.doors a {
+  color: var(--text-2);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.doors a:hover { color: var(--text); border-color: var(--text-2); }
