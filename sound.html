@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <title>dca — sound field</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,6 +42,7 @@
 
     #stage {
       position: relative;
+      transition: all 0.3s ease;
     }
 
     canvas {
@@ -48,6 +50,7 @@
       cursor: crosshair;
       touch-action: none;
       border: 1px solid #1c1c1c;
+      transition: width 0.3s ease, height 0.3s ease;
     }
 
     /* axis labels */
@@ -58,11 +61,48 @@
       opacity: 0.25;
       font-style: italic;
       pointer-events: none;
+      transition: opacity 0.3s ease;
     }
     #al-left   { bottom: -1.3rem; left: 0; }
     #al-right  { bottom: -1.3rem; right: 0; }
     #al-top    { left: -0.4rem; top: 0; writing-mode: vertical-rl; transform: rotate(180deg); }
     #al-bottom { left: -0.4rem; bottom: 0; writing-mode: vertical-rl; transform: rotate(180deg); }
+
+    /* expand toggle button */
+    #expand-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 24px;
+      height: 24px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      transition: background 0.2s;
+      color: rgba(255,255,255,0.4);
+      font-size: 13px;
+      line-height: 1;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #expand-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
+
+    body.expanded {
+      justify-content: center;
+      gap: 0;
+    }
+    body.expanded .header-block,
+    body.expanded #hint,
+    body.expanded #err { display: none; }
+    body.expanded #stage { width: 100vw; height: 100vh; overflow: hidden; }
+    body.expanded #expand-btn { top: 10px; right: 10px; }
+    body.expanded canvas { border: none; }
+    body.expanded .al { opacity: 0.15; }
 
     #hint {
       font-size: 0.58rem;
@@ -81,7 +121,7 @@
 </head>
 <body>
 
-<div>
+<div class="header-block">
   <h1>welcome &mdash; david carlton adams</h1>
   <div class="sub">an interactive sound field</div>
 </div>
@@ -92,6 +132,7 @@
   <div class="al" id="al-right">open</div>
   <div class="al" id="al-top">resonant</div>
   <div class="al" id="al-bottom">quiet</div>
+  <button id="expand-btn" title="expand / collapse">⤢</button>
 </div>
 
 <div id="hint">press &amp; drag &mdash; release to silence</div>
@@ -104,14 +145,30 @@ try {
   const g       = canvas.getContext('2d');
   let   ready   = false;  // true after first click inits audio
 
+  let expanded = false;
+
   function setSize() {
-    const W = Math.min(window.innerWidth - 60, 600);
-    const H = Math.min(window.innerHeight - 180, 400);
+    let W, H;
+    if (expanded) {
+      W = window.innerWidth;
+      H = window.innerHeight;
+    } else {
+      W = Math.min(window.innerWidth - 60, 600);
+      H = Math.min(window.innerHeight - 180, 400);
+    }
     canvas.width  = Math.max(W, 260);
     canvas.height = Math.max(H, 180);
   }
   setSize();
   window.addEventListener('resize', () => { setSize(); idle(); });
+
+  document.getElementById('expand-btn').addEventListener('click', () => {
+    expanded = !expanded;
+    document.body.classList.toggle('expanded', expanded);
+    document.getElementById('expand-btn').textContent = expanded ? '⤡' : '⤢';
+    setSize();
+    idle();
+  });
 
   // ── audio ───────────────────────────────────────────────────────
   let ac, osc, filt, vol, acOsc, acGain, scope, scopeBuf, freqBuf;
