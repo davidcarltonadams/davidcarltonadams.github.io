@@ -208,7 +208,7 @@
   <div class="ctrl-group">
     <span class="ctrl-label">root drone</span>
     <label style="font-size:0.6rem;font-style:italic;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:0.35rem">
-      <input type="checkbox" id="droneCheck" checked> on
+      <input type="checkbox" id="droneCheck" checked onchange="toggleDrone(this.checked)"> on
     </label>
   </div>
 </div>
@@ -330,6 +330,46 @@ function setVolume(v) {
   if (masterGain) masterGain.gain.value = v / 100 * 0.8;
 }
 
+// Drone: fade in/out so the checkbox can be toggled mid-play without a click
+const DRONE_LEVEL = 0.20;
+const DRONE_FADE = 0.5;   // seconds
+
+function startDrone(fund) {
+  if (droneOsc) return;
+  ensureCtx();
+  const t = audioCtx.currentTime;
+  droneOsc = audioCtx.createOscillator();
+  droneGain = audioCtx.createGain();
+  droneOsc.type = 'sine';
+  droneOsc.frequency.value = fund;
+  droneGain.gain.setValueAtTime(0.0001, t);
+  droneGain.gain.exponentialRampToValueAtTime(DRONE_LEVEL, t + DRONE_FADE);
+  droneOsc.connect(droneGain);
+  droneGain.connect(masterGain);
+  droneOsc.start();
+}
+
+function releaseDrone() {
+  if (!droneOsc) return;
+  const osc = droneOsc, g = droneGain;
+  droneOsc = null; droneGain = null;   // detach first: a re-toggle builds a fresh drone
+  const t = audioCtx.currentTime;
+  try {
+    g.gain.cancelScheduledValues(t);
+    g.gain.setValueAtTime(Math.max(g.gain.value, 0.0001), t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + DRONE_FADE);
+  } catch (e) {}
+  try { osc.stop(t + DRONE_FADE + 0.02); } catch (e) {}
+  osc.onended = () => { try { osc.disconnect(); g.disconnect(); } catch (e) {} };
+}
+
+function toggleDrone(on) {
+  if (!playing) return;   // unchecked-at-start is handled by startAll()
+  if (on) startDrone(parseFloat(document.getElementById('fundSelect').value));
+  else releaseDrone();
+  updateStatus();
+}
+
 function startAll() {
   ensureCtx();
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -339,16 +379,7 @@ function startAll() {
   const lim = parseInt(document.getElementById('primeLimit').value);
 
   // Drone
-  if (document.getElementById('droneCheck').checked) {
-    droneOsc = audioCtx.createOscillator();
-    droneGain = audioCtx.createGain();
-    droneOsc.type = 'sine';
-    droneOsc.frequency.value = fund;
-    droneGain.gain.value = 0.20;
-    droneOsc.connect(droneGain);
-    droneGain.connect(masterGain);
-    droneOsc.start();
-  }
+  if (document.getElementById('droneCheck').checked) startDrone(fund);
 
   const starts = startRatiosFor(lim);
   for (let i = 0; i < nv; i++) {
@@ -413,7 +444,7 @@ function moveVoice(i) {
 function stopAll() {
   timers.forEach(clearTimeout);
   timers = [];
-  if (droneOsc) { try { droneOsc.stop(); } catch(e){} droneOsc = null; }
+  if (droneOsc) { try { droneOsc.stop(); } catch(e){} droneOsc = null; droneGain = null; }
   voices.forEach(v => { try { v.osc.stop(); } catch(e){} });
   voices = [];
   if (audioCtx) { audioCtx.close().catch(()=>{}); audioCtx = null; masterGain = null; }
