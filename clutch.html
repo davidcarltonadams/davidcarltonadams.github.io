@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <title>clutch</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.5rem;
+      width: 100%;
+      overflow-x: hidden;
+    }
+    /* every block is allowed to shrink — otherwise a fixed max-width
+       item makes the flex-centered column wider than the viewport and
+       the whole page slides sideways */
+    body > * { max-width: 100%; }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .pairing {
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+      color: var(--dim);
+      margin-top: 0.35rem;
+      font-family: 'SF Mono','Fira Code',monospace;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 560px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.9;
+    }
+
+    /* max-width is the backstop: the canvas can never overflow the
+       viewport and push the flex-centered layout out from under itself */
+    canvas { display: block; cursor: pointer; max-width: 100%; }
+
+    .verdict {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+      text-align: center;
+      line-height: 1.9;
+    }
+    .verdict .gold { color: var(--gold); }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem 2.2rem;
+      justify-content: center;
+      max-width: 700px;
+    }
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.38rem;
+      align-items: center;
+    }
+    .ctrl-label {
+      font-size: 0.57rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .ctrl-val {
+      font-size: 0.57rem;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+      min-width: 3em;
+      text-align: center;
+    }
+    input[type=range] { width: 150px; accent-color: var(--gold); }
+
+    .btn-row {
+      display: flex;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      background: transparent;
+      color: var(--dimmer);
+      border: 1px solid var(--border);
+      padding: 0.32rem 0.85rem;
+      font-family: Georgia, serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.13em;
+      font-style: italic;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button.on { color: var(--gold); border-color: rgba(212,192,112,0.4); }
+    /* voice toggles: lit = sounding, dark = muted. Default state is lit,
+       because both sides sound until you silence one. */
+    button.voice { color: var(--gold); border-color: rgba(212,192,112,0.4); }
+    button.voice.muted {
+      color: rgba(204,200,208,0.22);
+      border-color: rgba(255,255,255,0.06);
+      text-decoration: line-through;
+      text-decoration-color: rgba(204,200,208,0.3);
+    }
+    button.voice .side {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-style: normal;
+      font-size: 0.85em;
+      opacity: 0.55;
+    }
+
+    .hint {
+      font-size: 0.53rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
+<div class="header">
+  <h1 class="title">clutch</h1>
+  <p class="pairing">escher × comma</p>
+  <p class="sub">two eggs, one clock. on the left, escher — the staircase that always descends and never arrives. on the right, comma — the pump that arrives 21.5 cents lower every time it comes home. their rates are locked: both fall at exactly the same cents per second. only one of them means it. eventually the pump leaves the room; the staircase never does. first pairing of the clutch — the duets live in the spaces between eggs.</p>
+</div>
+
+<canvas id="cv"></canvas>
+
+<div class="verdict" id="verdict">press play</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">tempo · BPM</span>
+    <input type="range" id="bpmSlider" min="40" max="750" value="121" step="1">
+    <span class="ctrl-val" id="bpmVal">121</span>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button id="btnPlay">play</button>
+  <button id="btnReverse">reverse</button>
+  <button id="btnMuteL" class="voice" title="escher — the staircase, left channel">escher <span class="side">· staircase</span></button>
+  <button id="btnMuteR" class="voice" title="comma — the pump, right channel">comma <span class="side">· pump</span></button>
+</div>
+
+<p class="hint">click the canvas to start · escher sounds left, comma sounds right · a lit button is sounding, a struck-through one is muted</p>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  clutch — duets between eggs. Pairing 1: escher × comma.
+//  One clock: the Shepard–Risset glissando's glide rate is
+//  DERIVED from the comma pump's real drift (21.506¢ per
+//  5-beat cycle), so both sides fall at identical ¢/sec.
+//  The camera is fixed. The pump's chords stair-step down and
+//  eventually leave the frame; the staircase cycles in place,
+//  net displacement zero, forever. Illusion vs. arithmetic.
+// ─────────────────────────────────────────────────────────────
+
+const C4 = 261.6256;
+const COMMA = 80 / 81;
+const CENTS_PER_CYCLE = 1200 * Math.log2(81 / 80);   // 21.506
+
+// comma pump voicing table (verified: every seam holds a common
+// tone; see comma.html) — 5 events per cycle
+const PURE = {
+  Ca: [80/81, 40/27, 160/81, 200/81],
+  Cc: [1, 5/4, 3/2, 2],
+  Am: [1, 5/4, 5/3, 2],
+  Dm: [10/9, 4/3, 5/3, 20/9],
+  G:  [10/9, 40/27, 50/27, 20/9],
+};
+const SEQ = ['Ca', 'Cc', 'Am', 'Dm', 'G'];
+const LABEL = { Ca: 'C', Cc: 'C', Am: 'Am', Dm: 'Dm', G: 'G' };
+
+let bpm = 121;
+let dir = 1;
+let running = false;
+let muteL = false, muteR = false;
+
+// drift rate both sides share, in cents/sec (sign = dir)
+function centsPerSec() { return CENTS_PER_CYCLE * bpm / 300; }
+
+// ── comma state ──────────────────────────────────────────────
+let base = 1, idx = 1, cycles = 0, primed = false, prevFreqs = null;
+const history = [];       // {t, freqs[4], held[4]}
+
+// ── escher state ─────────────────────────────────────────────
+const NB = 6;             // voices = octaves of band (C1..C7)
+const FMIN = C4 / 8;      // C1
+const SIGMA = 0.18;
+let phase = 0;            // voice 0 position in band [0,1)
+
+function bell(x) { const d = x - 0.5; return Math.exp(-(d*d)/(2*SIGMA*SIGMA)); }
+function escherFreq(x) { return FMIN * Math.pow(2, NB * x); }
+
+// ── Audio ────────────────────────────────────────────────────
+let actx = null, master = null;
+let eVoices = [];         // escher: {osc, gain}
+let cVoices = [];         // comma: oscillators
+let panL = null, panR = null, gainL = null, gainR = null;
+
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  lastAudio = actx.currentTime;
+  master = actx.createGain();
+  master.gain.value = 0;
+  // ten oscillators can momentarily line up in phase; a gentle limiter
+  // catches the peak instead of letting the DAC clip it into a tick
+  const limiter = actx.createDynamicsCompressor();
+  limiter.threshold.value = -8;
+  limiter.knee.value = 6;
+  limiter.ratio.value = 12;
+  limiter.attack.value = 0.004;
+  limiter.release.value = 0.15;
+  master.connect(limiter);
+  limiter.connect(actx.destination);
+
+  gainL = actx.createGain(); gainR = actx.createGain();
+  panL = actx.createStereoPanner ? actx.createStereoPanner() : actx.createGain();
+  panR = actx.createStereoPanner ? actx.createStereoPanner() : actx.createGain();
+  if (panL.pan) { panL.pan.value = -0.55; panR.pan.value = 0.55; }
+  gainL.connect(panL); panL.connect(master);
+  gainR.connect(panR); panR.connect(master);
+  gainL.gain.value = 0.5; gainR.gain.value = 0.62;
+
+  // escher voices: sines through the bell
+  for (let k = 0; k < NB; k++) {
+    const osc = actx.createOscillator();
+    const g = actx.createGain();
+    osc.type = 'sine'; g.gain.value = 0;
+    osc.connect(g); g.connect(gainL);
+    osc.start();
+    eVoices.push({ osc, gain: g });
+  }
+  // comma voices: gentle organ
+  const H = [0, 1, 0.35, 0.15, 0.08];
+  const wave = actx.createPeriodicWave(new Float32Array(H.length), new Float32Array(H));
+  for (let k = 0; k < 4; k++) {
+    const osc = actx.createOscillator();
+    const g = actx.createGain();
+    osc.setPeriodicWave(wave);
+    g.gain.value = 0.22;
+    osc.frequency.value = C4;
+    osc.connect(g); g.connect(gainR);
+    osc.start();
+    cVoices.push(osc);
+  }
+}
+
+// ── comma sequencer ──────────────────────────────────────────
+// atTime = when this beat sounds, on the audio clock.
+// wallMs = the same instant on the rAF clock, for the piano roll.
+function advance(atTime, wallMs) {
+  if (!primed) {
+    primed = true;
+  } else {
+    idx = ((idx + dir) % SEQ.length + SEQ.length) % SEQ.length;
+    if (dir === 1 && SEQ[idx] === 'Cc') { base *= COMMA; cycles++; }
+    if (dir === -1 && SEQ[idx] === 'Ca') { base /= COMMA; cycles++; }
+  }
+  const freqs = PURE[SEQ[idx]].map(r => C4 * r * base);
+  const held = freqs.map((f, i) =>
+    prevFreqs ? Math.abs(f - prevFreqs[i]) < 0.01 : false);
+  prevFreqs = freqs;
+  if (actx) {
+    const tc = Math.min(0.012, (60 / bpm) * 0.06);
+    for (let k = 0; k < 4; k++)
+      cVoices[k].frequency.setTargetAtTime(freqs[k], atTime, tc);
+  }
+  history.push({ t: wallMs, freqs, held });
+  if (history.length > 400) history.shift();
+}
+
+// ── escher motion + audio ────────────────────────────────────
+function updateEscher(dt) {
+  if (running) {
+    // locked to the pump: cents/sec → octaves/sec → band units
+    phase += dir * (centsPerSec() / 1200) / NB * dt;
+    phase = ((phase % 1) + 1) % 1;
+  }
+  if (!actx) return;
+  const t = actx.currentTime;
+  for (let k = 0; k < NB; k++) {
+    const x = (((phase + k / NB) % 1) + 1) % 1;
+    const a = bell(x);
+    const v = eVoices[k];
+    const f = escherFreq(x);
+    // when a voice recycles to the far end of the band it is essentially
+    // silent — jump it, don't let setTargetAtTime smear a six-octave
+    // sweep across the wrap
+    if (v.lastX !== undefined && Math.abs(x - v.lastX) > 0.5) {
+      v.osc.frequency.cancelScheduledValues(t);
+      v.osc.frequency.setValueAtTime(f, t);
+    } else {
+      v.osc.frequency.setTargetAtTime(f, t, 0.01);
+    }
+    v.lastX = x;
+    v.gain.gain.setTargetAtTime(a * a, t, 0.02);
+  }
+}
+
+// ── Canvas ───────────────────────────────────────────────────
+const canvas = document.getElementById('cv');
+const c = canvas.getContext('2d');
+
+// Geometry is re-derived on every resize — the buffer, the CSS box and
+// the drawing coordinates must never drift apart (that's what squashed
+// the frame into a sliver when the window changed size after load).
+let W = 640, H = 360, MID = 320, PPO = 90;
+const yOf = oct => H / 2 - oct * PPO;   // oct rel. C4; ±2 visible
+const WINDOW_MS = 22000;
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  // clientWidth excludes the scrollbar; innerWidth does not
+  const avail = document.documentElement.clientWidth - 32;
+  W = Math.max(240, Math.min(avail, 640));
+  H = Math.round(Math.min(360, Math.max(240, W * 0.5625)));
+  MID = W / 2;
+  PPO = H / 4;                     // ±2 octaves always fill the frame
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);   // reset, don't accumulate
+}
+resize();
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', resize);
+
+function draw(now) {
+  c.clearRect(0, 0, W, H);
+
+  // shared semitone ruler across both chambers
+  c.font = "9px 'SF Mono', monospace";
+  c.textBaseline = 'middle';
+  for (let s = -24; s <= 24; s++) {
+    const y = yOf(s / 12);
+    if (y < 4 || y > H - 4) continue;
+    const isC = s % 12 === 0;
+    c.strokeStyle = isC ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.025)';
+    c.beginPath(); c.moveTo(8, y); c.lineTo(W - 8, y); c.stroke();
+    if (isC) {
+      c.fillStyle = 'rgba(204,200,208,0.22)';
+      c.textAlign = 'left';
+      c.fillText('C' + (4 + s / 12), 10, y - 7);
+    }
+  }
+  // where both began
+  const y0 = yOf(0);
+  c.strokeStyle = 'rgba(212,192,112,0.3)';
+  c.setLineDash([3, 4]);
+  c.beginPath(); c.moveTo(8, y0); c.lineTo(W - 8, y0); c.stroke();
+  c.setLineDash([]);
+
+  // center divider
+  c.strokeStyle = 'rgba(255,255,255,0.06)';
+  c.setLineDash([2, 5]);
+  c.beginPath(); c.moveTo(MID, 8); c.lineTo(MID, H - 8); c.stroke();
+  c.setLineDash([]);
+
+  // chamber names
+  c.font = "11px Georgia, serif";
+  c.textAlign = 'center';
+  const roomy = W >= 520;          // narrow frames get the bare names
+  const tag = (name, epithet, muted) =>
+    (roomy ? name + ' · ' + epithet : name) + (muted && roomy ? ' — muted' : '');
+  c.fillStyle = muteL ? 'rgba(204,200,208,0.12)' : 'rgba(204,200,208,0.3)';
+  c.fillText(tag('escher', 'the staircase', muteL), MID / 2, 16);
+  c.fillStyle = muteR ? 'rgba(204,200,208,0.12)' : 'rgba(204,200,208,0.3)';
+  c.fillText(tag('comma', 'the pump', muteR), MID + MID / 2, 16);
+
+  // ── left: escher voices — bars growing from left edge ──────
+  const barMax = MID - 40;
+  for (let k = 0; k < NB; k++) {
+    const x = (((phase + k / NB) % 1) + 1) % 1;
+    const oct = Math.log2(escherFreq(x) / C4);
+    const y = yOf(oct);
+    if (y < -6 || y > H + 6) continue;
+    const a = bell(x);
+    const alpha = a * a * (muteL ? 0.25 : 1);
+    if (alpha < 0.02) continue;
+    const w = 14 + a * barMax;
+    const g = c.createLinearGradient(14, 0, w, 0);
+    g.addColorStop(0, `rgba(212,192,112,${0.04 * alpha})`);
+    g.addColorStop(1, `rgba(230,214,150,${0.5 * alpha})`);
+    c.fillStyle = g;
+    c.fillRect(14, y - 2, w - 14, 4);
+    c.beginPath();
+    c.arc(w, y, 2.8 + 2.6 * alpha, 0, Math.PI * 2);
+    c.fillStyle = `rgba(238,224,168,${0.3 + 0.7 * alpha})`;
+    c.fill();
+  }
+
+  // ── right: comma piano-roll, fixed frame ───────────────────
+  const x0 = MID + 14, x1 = W - 10;
+  for (let i = 0; i < history.length; i++) {
+    const ev = history[i];
+    const tEnd = i + 1 < history.length ? history[i + 1].t : now;
+    const bx1 = x1 - (now - ev.t) / WINDOW_MS * (x1 - x0);
+    const bx2 = x1 - (now - tEnd) / WINDOW_MS * (x1 - x0);
+    if (bx2 < x0) continue;
+    const fade = Math.max(0, 1 - (now - ev.t) / WINDOW_MS) * (muteR ? 0.3 : 1);
+    for (let k = 0; k < 4; k++) {
+      const y = yOf(Math.log2(ev.freqs[k] / C4));
+      if (y < -6 || y > H + 6) continue;
+      if (ev.held[k]) {
+        c.fillStyle = `rgba(238,224,168,${0.75 * fade})`;
+        c.fillRect(Math.max(x0, bx1), y - 2, Math.min(bx2, x1) - Math.max(x0, bx1), 4);
+      } else {
+        c.fillStyle = `rgba(204,200,208,${0.3 * fade})`;
+        c.fillRect(Math.max(x0, bx1), y - 1.5, Math.min(bx2, x1) - Math.max(x0, bx1), 3);
+      }
+    }
+  }
+  // out-of-frame marker when the pump has left the visible range
+  const tonicOct = Math.log2(base);
+  if (yOf(tonicOct) > H + 10) {
+    c.fillStyle = 'rgba(212,192,112,0.5)';
+    c.font = "10px 'SF Mono', monospace"; c.textAlign = 'center';
+    c.fillText('↓ out of frame · still sinking', MID + MID / 2, H - 12);
+  } else if (yOf(tonicOct + 1) < -10) {
+    c.fillStyle = 'rgba(212,192,112,0.5)';
+    c.font = "10px 'SF Mono', monospace"; c.textAlign = 'center';
+    c.fillText('↑ out of frame · still climbing', MID + MID / 2, 30);
+  }
+}
+
+// ── verdict line ─────────────────────────────────────────────
+function verdict() {
+  const el = document.getElementById('verdict');
+  if (!running && cycles === 0) { el.textContent = 'press play'; return; }
+  const rate = (dir === 1 ? '−' : '+') + centsPerSec().toFixed(1);
+  const drift = 1200 * Math.log2(base);
+  const s = (drift <= -0.05 ? '−' : drift >= 0.05 ? '+' : '±') + Math.abs(drift).toFixed(1);
+  el.innerHTML =
+    `both fall at <span class="gold">${rate}¢/s</span> · ` +
+    `distance travelled — staircase: <span class="gold">±0.0¢</span> · ` +
+    `pump: <span class="gold">${s}¢</span> · cycle ${cycles}`;
+}
+
+// ── Beat scheduler ───────────────────────────────────────────
+// Beats are placed on the audio clock, one lookahead window ahead of
+// where we are. rAF only decides *when we look*, never when a beat
+// sounds — at 650 BPM the 92 ms beat was inside frame jitter, which is
+// what made fast tempi stumble. Tempo changes take effect at the next
+// unscheduled beat, so dragging the slider can't retime a pending one.
+const LOOKAHEAD = 0.12;            // seconds of audio scheduled ahead
+let nextBeatTime = 0;              // on actx.currentTime
+
+function scheduleBeats(nowMs) {
+  if (!actx || !running) return;
+  const t = actx.currentTime;
+  // a backgrounded tab can leave the clock far behind; resync, don't
+  // machine-gun the backlog
+  if (nextBeatTime < t - 0.5) nextBeatTime = t + 0.02;
+  let fired = false;
+  while (nextBeatTime < t + LOOKAHEAD) {
+    advance(nextBeatTime, nowMs + (nextBeatTime - t) * 1000);
+    nextBeatTime += 60 / bpm;      // re-read bpm every beat
+    fired = true;
+  }
+  if (fired) verdict();
+}
+
+// ── Loop ─────────────────────────────────────────────────────
+let last = performance.now();
+let lastAudio = 0;
+function loop(now) {
+  // the glissando runs on the audio clock too, so "their rates are
+  // locked" survives a dropped frame
+  let dt;
+  if (actx) {
+    const at = actx.currentTime;
+    dt = Math.min(0.05, Math.max(0, at - lastAudio));
+    lastAudio = at;
+  } else {
+    dt = Math.min(0.05, (now - last) / 1000);
+  }
+  last = now;
+  scheduleBeats(now);
+  updateEscher(dt);
+  if (actx) {
+    master.gain.setTargetAtTime(running ? 0.3 : 0, actx.currentTime, 0.06);
+    gainL.gain.setTargetAtTime(muteL ? 0 : 0.5, actx.currentTime, 0.04);
+    gainR.gain.setTargetAtTime(muteR ? 0 : 0.62, actx.currentTime, 0.04);
+  }
+  draw(now);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ── Controls ─────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function setRunning(on) {
+  running = on;
+  if (on && actx) {
+    lastAudio = actx.currentTime;          // don't credit the pause to dt
+    nextBeatTime = actx.currentTime + 0.03;
+  }
+  $('btnPlay').textContent = on ? 'pause' : 'play';
+  $('btnPlay').classList.toggle('on', on);
+}
+function start() {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  setRunning(!running);
+}
+
+$('btnPlay').addEventListener('click', start);
+canvas.addEventListener('click', () => {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  if (!running) setRunning(true);
+});
+$('btnReverse').addEventListener('click', () => {
+  dir = -dir;
+  $('btnReverse').classList.toggle('on', dir === -1);
+  verdict();
+});
+// lit = sounding, struck through = muted
+function paintVoice(id, muted) {
+  const b = $(id);
+  b.classList.toggle('muted', muted);
+  b.setAttribute('aria-pressed', String(!muted));
+}
+$('btnMuteL').addEventListener('click', () => {
+  muteL = !muteL; paintVoice('btnMuteL', muteL);
+});
+$('btnMuteR').addEventListener('click', () => {
+  muteR = !muteR; paintVoice('btnMuteR', muteR);
+});
+paintVoice('btnMuteL', muteL);
+paintVoice('btnMuteR', muteR);
+$('bpmSlider').addEventListener('input', e => {
+  bpm = parseInt(e.target.value, 10);
+  $('bpmVal').textContent = bpm;
+});
+</script>
+</body>
+</html>

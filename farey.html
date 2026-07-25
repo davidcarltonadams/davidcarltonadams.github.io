@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <title>farey clock</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+      --blue:   #7ab8d4;
+      --green:  #88c080;
+      --rose:   #c088b8;
+      --teal:   #70c4b8;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.5rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 540px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.9;
+    }
+
+    canvas { display: block; cursor: pointer; }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.1rem 2rem;
+      justify-content: center;
+      align-items: center;
+    }
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.38rem;
+      align-items: center;
+    }
+    .ctrl-label {
+      font-size: 0.56rem;
+      letter-spacing: 0.11em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .ctrl-val {
+      font-size: 0.56rem;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+    }
+    input[type=range] { width: 140px; accent-color: var(--gold); }
+    select {
+      background: var(--bg2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.28rem 0.55rem;
+      font-size: 0.62rem;
+      font-family: Georgia, serif;
+      cursor: pointer; outline: none;
+    }
+    .toggle-row {
+      display: flex;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      background: transparent;
+      color: var(--dimmer);
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.8rem;
+      font-family: Georgia, serif;
+      font-size: 0.58rem;
+      font-style: italic;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: color 0.13s, border-color 0.13s;
+    }
+    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button.on { color: var(--gold); border-color: rgba(212,192,112,0.5); }
+
+    .info-line {
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+      text-align: center;
+      min-height: 1.4em;
+    }
+
+    .legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.53rem;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .legend-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+    }
+    button.sweep-on { color: var(--teal); border-color: rgba(112,196,184,0.55); }
+  </style>
+</head>
+<body>
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
+<div class="header">
+  <h1 class="title">farey clock</h1>
+  <p class="sub">every fraction p∕q sits at exactly (p∕q × 360°) around the circle — radian space made visible. the farey sequence of order n contains every fraction with denominator ≤ n. adjacent fractions have a beautiful property: if p∕q and r∕s are neighbors, then |ps − rq| = 1. click any dot to hear that position as a pitch.</p>
+</div>
+
+<canvas id="cv"></canvas>
+
+<p class="info-line" id="infoLine">hover or click a fraction</p>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">order n (denominators ≤ n)</span>
+    <input type="range" id="nSlider" min="1" max="16" value="5" step="1">
+    <span class="ctrl-val" id="nVal">F₅ — <span id="nCount">0</span> fractions</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">root pitch</span>
+    <select id="rootSel">
+      <option value="220" selected>A3 · 220 Hz</option>
+      <option value="110">A2 · 110 Hz</option>
+      <option value="330">E4 · 330 Hz</option>
+      <option value="440">A4 · 440 Hz</option>
+    </select>
+  </div>
+</div>
+
+<div class="toggle-row">
+  <button id="btnNeighbors" class="on">neighbor lines</button>
+  <button id="btnJI">JI overlay</button>
+  <button id="btnSpokes">spokes</button>
+  <button id="btnSweep">sweep</button>
+</div>
+
+<div class="controls" id="sweepControls" style="display:none">
+  <div class="ctrl-group">
+    <span class="ctrl-label">sweep speed</span>
+    <input type="range" id="sweepSpeed" min="0.05" max="1" value="0.2" step="0.05">
+    <span class="ctrl-val" id="sweepSpeedVal">0.2 rev/s</span>
+  </div>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<script>
+// ── Farey sequence
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+function fareySeq(n) {
+  const fracs = [];
+  for (let q = 1; q <= n; q++) {
+    for (let p = 0; p <= q; p++) {
+      if (gcd(p, q) === 1) fracs.push({ p, q, v: p / q });
+    }
+  }
+  fracs.sort((a, b) => a.v - b.v);
+  return fracs;
+}
+
+// ── JI intervals (position = log2(ratio) = fraction of octave in pitch space)
+const JI_INTERVALS = [
+  { name: '1∶1', ratio: 1/1,    color: 'rgba(255,255,255,0.55)' },
+  { name: '16∶15', ratio: 16/15, color: 'rgba(192,136,184,0.7)' },
+  { name: '9∶8',  ratio: 9/8,   color: 'rgba(192,136,184,0.7)' },
+  { name: '6∶5',  ratio: 6/5,   color: 'rgba(136,192,128,0.75)' },
+  { name: '5∶4',  ratio: 5/4,   color: 'rgba(136,192,128,0.75)' },
+  { name: '4∶3',  ratio: 4/3,   color: 'rgba(122,184,212,0.75)' },
+  { name: '45∶32', ratio: 45/32, color: 'rgba(112,196,184,0.65)' },
+  { name: '3∶2',  ratio: 3/2,   color: 'rgba(212,192,112,0.85)' },
+  { name: '8∶5',  ratio: 8/5,   color: 'rgba(136,192,128,0.75)' },
+  { name: '5∶3',  ratio: 5/3,   color: 'rgba(136,192,128,0.75)' },
+  { name: '16∶9', ratio: 16/9,  color: 'rgba(192,136,184,0.7)' },
+  { name: '15∶8', ratio: 15/8,  color: 'rgba(192,136,184,0.7)' },
+  { name: '2∶1',  ratio: 2/1,   color: 'rgba(255,255,255,0.55)' },
+];
+
+// ── Color by denominator
+const DEN_COLORS = [
+  null,
+  'rgba(204,200,208,0.70)', // q=1
+  'rgba(212,192,112,0.80)', // q=2
+  'rgba(122,184,212,0.80)', // q=3
+  'rgba(136,192,128,0.75)', // q=4
+  'rgba(192,136,184,0.75)', // q=5
+  'rgba(112,196,184,0.70)', // q=6
+  'rgba(224,168,100,0.70)', // q=7
+  'rgba(192,192,128,0.65)', // q=8
+  'rgba(148,168,220,0.65)', // q=9
+  'rgba(160,200,168,0.62)', // q=10
+  'rgba(208,152,176,0.62)', // q=11
+  'rgba(128,208,196,0.60)', // q=12
+  'rgba(220,180,112,0.58)', // q=13
+  'rgba(168,180,224,0.56)', // q=14
+  'rgba(176,212,160,0.54)', // q=15
+  'rgba(216,160,180,0.52)', // q=16
+];
+function denColor(q) { return DEN_COLORS[Math.min(q, 16)] || 'rgba(204,200,208,0.4)'; }
+
+// ── Canvas
+const canvas = document.getElementById('cv');
+const dpr = window.devicePixelRatio || 1;
+const SIZE = Math.min(window.innerWidth - 32, 480);
+canvas.width  = SIZE * dpr;
+canvas.height = SIZE * dpr;
+canvas.style.width  = SIZE + 'px';
+canvas.style.height = SIZE + 'px';
+const c = canvas.getContext('2d');
+c.scale(dpr, dpr);
+
+const CX = SIZE / 2, CY = SIZE / 2;
+const R  = SIZE * 0.36;  // main ring radius
+const RL = SIZE * 0.44;  // label ring
+const DOT_R_BASE = 5;
+
+// ── State
+let n = 5;
+let fracs = fareySeq(n);
+let showNeighbors = true;
+let showJI = false;
+let showSpokes = false;
+let hoveredFrac = null;
+
+// ── Sweep state
+let sweeping = false;
+let sweepAngle = 0;      // 0–1, fraction of full revolution
+let sweepLastTime = null;
+let sweepRAF = null;
+let sweepSpeed = 0.2;    // rev/sec
+
+// ── Angle from fraction value (top = 0, clockwise)
+function fracAngle(v) { return -Math.PI / 2 + 2 * Math.PI * v; }
+
+// ── Position on ring
+function ringPos(v, radius) {
+  const a = fracAngle(v);
+  return { x: CX + radius * Math.cos(a), y: CY + radius * Math.sin(a) };
+}
+
+// ── Draw
+let rafPending = false;
+function requestDraw() {
+  if (!rafPending) { rafPending = true; requestAnimationFrame(() => { rafPending = false; draw(); }); }
+}
+
+function draw() {
+  // explicit background — clearRect leaves transparent; against same-dark body, faint colors vanish
+  c.fillStyle = '#07070a';
+  c.fillRect(0, 0, SIZE, SIZE);
+
+  // outer ring
+  c.beginPath();
+  c.arc(CX, CY, R, 0, Math.PI * 2);
+  c.strokeStyle = 'rgba(255,255,255,0.22)';
+  c.lineWidth = 1; c.stroke();
+
+  // 12-TET tick marks (faint reference grid)
+  for (let k = 0; k < 12; k++) {
+    const a = fracAngle(k / 12);
+    const r1 = R - 6, r2 = R + 6;
+    c.beginPath();
+    c.moveTo(CX + r1 * Math.cos(a), CY + r1 * Math.sin(a));
+    c.lineTo(CX + r2 * Math.cos(a), CY + r2 * Math.sin(a));
+    c.strokeStyle = 'rgba(255,255,255,0.18)';
+    c.lineWidth = 0.8; c.stroke();
+    const lp = ringPos(k / 12, R + 16);
+    c.fillStyle = 'rgba(255,255,255,0.22)';
+    c.font = '8px SF Mono, Fira Code, monospace';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(`${k}/12`, lp.x, lp.y);
+  }
+
+  // center label
+  c.fillStyle = 'rgba(204,200,208,0.20)';
+  c.font = 'italic 9px Georgia, serif';
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('p/q × 360°', CX, CY + 3);
+
+  // ── JI overlay (log₂ positions — irrational, so they don't land on Farey dots)
+  if (showJI) {
+    for (const ji of JI_INTERVALS) {
+      if (ji.ratio === 1 || ji.ratio === 2) continue;
+      const pos = Math.log2(ji.ratio);
+      const a = fracAngle(pos);
+      const x = CX + (R - 13) * Math.cos(a);
+      const y = CY + (R - 13) * Math.sin(a);
+      c.save();
+      c.translate(x, y); c.rotate(a + Math.PI / 4);
+      c.beginPath(); c.rect(-3.5, -3.5, 7, 7);
+      c.fillStyle = ji.color; c.fill();
+      c.restore();
+      const lp = ringPos(pos, R + 28);
+      c.fillStyle = ji.color;
+      c.font = 'italic 8.5px Georgia, serif';
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(ji.name, lp.x, lp.y);
+    }
+  }
+
+  // ── Farey neighbor lines
+  if (showNeighbors) {
+    for (let i = 0; i < fracs.length - 1; i++) {
+      const fa = fracs[i], fb = fracs[i + 1];
+      const pa = ringPos(fa.v, R);
+      const pb = ringPos(fb.v, R);
+      c.beginPath();
+      c.moveTo(pa.x, pa.y);
+      const mx = (pa.x + pb.x) / 2 * 0.85 + CX * 0.15;
+      const my = (pa.y + pb.y) / 2 * 0.85 + CY * 0.15;
+      c.quadraticCurveTo(mx, my, pb.x, pb.y);
+      c.strokeStyle = 'rgba(255,255,255,0.12)';
+      c.lineWidth = 0.9; c.stroke();
+    }
+  }
+
+  // ── Spokes
+  if (showSpokes) {
+    for (const f of fracs) {
+      if (f.v === 0 || f.v === 1) continue;
+      const a = fracAngle(f.v);
+      c.beginPath();
+      c.moveTo(CX, CY);
+      c.lineTo(CX + R * Math.cos(a), CY + R * Math.sin(a));
+      c.strokeStyle = denColor(f.q).replace(/[\d.]+\)$/, '0.18)');
+      c.lineWidth = 0.7; c.stroke();
+    }
+  }
+
+  // ── Fraction dots
+  const BASE_R = 7;
+  for (const f of fracs) {
+    const pt = ringPos(f.v, R);
+    const isHovered = hoveredFrac && hoveredFrac.p === f.p && hoveredFrac.q === f.q;
+    const dotR = isHovered ? BASE_R + 4 : (f.q <= 2 ? BASE_R + 1 : BASE_R - 1);
+    const col = denColor(f.q);
+
+    // glow on hover
+    if (isHovered) {
+      const grad = c.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, dotR * 3);
+      grad.addColorStop(0, col.replace(/[\d.]+\)$/, '0.5)'));
+      grad.addColorStop(1, col.replace(/[\d.]+\)$/, '0)'));
+      c.beginPath(); c.arc(pt.x, pt.y, dotR * 3, 0, Math.PI * 2);
+      c.fillStyle = grad; c.fill();
+    }
+
+    c.beginPath();
+    c.arc(pt.x, pt.y, dotR, 0, Math.PI * 2);
+    c.fillStyle = col;
+    c.fill();
+
+    // label for simple fractions or hovered
+    if (f.q <= Math.min(n, 7) || isHovered) {
+      const lp = ringPos(f.v, R + 22);
+      c.fillStyle = isHovered ? col.replace(/[\d.]+\)$/, '1)') : col.replace(/[\d.]+\)$/, '0.85)');
+      c.font = `${isHovered ? 'bold ' : ''}${f.q <= 3 ? 11 : 9.5}px Georgia, serif`;
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(`${f.p}/${f.q}`, lp.x, lp.y);
+    }
+  }
+
+  // ── Sweep line
+  if (sweeping) {
+    const sa = fracAngle(sweepAngle);
+    const tx = CX + R * Math.cos(sa);
+    const ty = CY + R * Math.sin(sa);
+
+    // trailing arc glow
+    const trailLen = Math.PI / 6;
+    const trailStart = sa - trailLen;
+    c.beginPath();
+    c.arc(CX, CY, R, trailStart, sa);
+    c.strokeStyle = 'rgba(112,196,184,0.18)';
+    c.lineWidth = 6; c.stroke();
+
+    // spoke
+    c.beginPath();
+    c.moveTo(CX, CY);
+    c.lineTo(tx, ty);
+    c.strokeStyle = 'rgba(112,196,184,0.70)';
+    c.lineWidth = 1.5; c.stroke();
+
+    // tip glow
+    const glow = c.createRadialGradient(tx, ty, 0, tx, ty, 14);
+    glow.addColorStop(0, 'rgba(112,196,184,0.7)');
+    glow.addColorStop(1, 'rgba(112,196,184,0)');
+    c.beginPath(); c.arc(tx, ty, 14, 0, Math.PI * 2);
+    c.fillStyle = glow; c.fill();
+  }
+
+  // center marker
+  c.beginPath(); c.arc(CX, CY, 3.5, 0, Math.PI * 2);
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fill();
+}
+
+// ── Hover / click detection
+function findFrac(mx, my) {
+  for (const f of fracs) {
+    const p = ringPos(f.v, R);
+    if ((mx - p.x) ** 2 + (my - p.y) ** 2 <= (DOT_R_BASE + 6) ** 2) return f;
+  }
+  return null;
+}
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  hoveredFrac = findFrac(e.clientX - rect.left, e.clientY - rect.top);
+  if (hoveredFrac) {
+    const cents = (hoveredFrac.v * 1200).toFixed(0);
+    const freq  = (parseFloat(document.getElementById('rootSel').value) * Math.pow(2, hoveredFrac.v)).toFixed(2);
+    const deg   = (hoveredFrac.v * 360).toFixed(1);
+    document.getElementById('infoLine').textContent =
+      `${hoveredFrac.p}/${hoveredFrac.q} · ${deg}° · ${cents}¢ · ${freq} Hz`;
+  } else {
+    document.getElementById('infoLine').textContent = 'hover or click a fraction';
+  }
+  requestDraw();
+});
+
+canvas.addEventListener('mouseleave', () => {
+  hoveredFrac = null;
+  document.getElementById('infoLine').textContent = 'hover or click a fraction';
+  requestDraw();
+});
+
+// ── Audio
+let actx = null;
+
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playFrac(f) {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  const root = parseFloat(document.getElementById('rootSel').value);
+  const freq  = root * Math.pow(2, f.v);
+  const osc   = actx.createOscillator();
+  const env   = actx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  env.gain.value = 0;
+  osc.connect(env); env.connect(actx.destination);
+  osc.start();
+  const t = actx.currentTime;
+  env.gain.setTargetAtTime(0.5, t, 0.01);
+  env.gain.setTargetAtTime(0, t + 0.6, 0.15);
+  osc.stop(t + 2);
+}
+
+function playFracSweep(f) {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  const root = parseFloat(document.getElementById('rootSel').value);
+  const freq  = root * Math.pow(2, f.v);
+  const osc   = actx.createOscillator();
+  const env   = actx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  env.gain.value = 0;
+  osc.connect(env); env.connect(actx.destination);
+  osc.start();
+  const t = actx.currentTime;
+  const vol = Math.max(0.05, 0.45 / Math.sqrt(f.q));
+  const decay = Math.max(0.3, 1.2 / sweepSpeed);
+  env.gain.setTargetAtTime(vol, t, 0.005);
+  env.gain.setTargetAtTime(0, t + 0.08, decay * 0.15);
+  osc.stop(t + decay + 0.5);
+}
+
+// ── Sweep RAF loop
+function sweepFrame(ts) {
+  if (!sweeping) return;
+  if (sweepLastTime === null) sweepLastTime = ts;
+  const dt = Math.min((ts - sweepLastTime) / 1000, 0.1);
+  sweepLastTime = ts;
+
+  const prev = sweepAngle;
+  sweepAngle = (sweepAngle + sweepSpeed * dt) % 1;
+  const curr = sweepAngle;
+
+  // detect which fractions the sweep crossed this frame
+  const wrapped = curr < prev;
+  for (const f of fracs) {
+    const crossed = wrapped
+      ? (f.v > prev || f.v <= curr)
+      : (f.v > prev && f.v <= curr);
+    if (crossed) playFracSweep(f);
+  }
+
+  draw();
+  sweepRAF = requestAnimationFrame(sweepFrame);
+}
+
+function startSweep() {
+  sweeping = true;
+  sweepLastTime = null;
+  ensureAudio();
+  sweepRAF = requestAnimationFrame(sweepFrame);
+}
+
+function stopSweep() {
+  sweeping = false;
+  if (sweepRAF) { cancelAnimationFrame(sweepRAF); sweepRAF = null; }
+  sweepLastTime = null;
+  requestDraw();
+}
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const f = findFrac(e.clientX - rect.left, e.clientY - rect.top);
+  if (f) playFrac(f);
+});
+
+// ── n slider
+function subscript(n) {
+  const subs = '₀₁₂₃₄₅₆₇₈₉';
+  return String(n).split('').map(d => subs[+d]).join('');
+}
+
+function updateN() {
+  n = parseInt(document.getElementById('nSlider').value);
+  fracs = fareySeq(n);
+  document.getElementById('nVal').innerHTML = `F${subscript(n)} — <span id="nCount">${fracs.length}</span> fractions`;
+  updateLegend();
+  requestDraw();
+}
+
+document.getElementById('nSlider').addEventListener('input', updateN);
+
+// ── Toggles
+document.getElementById('btnNeighbors').addEventListener('click', e => {
+  showNeighbors = !showNeighbors;
+  e.target.classList.toggle('on', showNeighbors);
+  requestDraw();
+});
+document.getElementById('btnJI').addEventListener('click', e => {
+  showJI = !showJI;
+  e.target.classList.toggle('on', showJI);
+  requestDraw();
+});
+document.getElementById('btnSpokes').addEventListener('click', e => {
+  showSpokes = !showSpokes;
+  e.target.classList.toggle('on', showSpokes);
+  requestDraw();
+});
+
+document.getElementById('rootSel').addEventListener('change', () => { /* no redraw needed */ });
+
+// ── Sweep button
+document.getElementById('btnSweep').addEventListener('click', e => {
+  if (sweeping) {
+    stopSweep();
+    e.target.textContent = 'sweep';
+    e.target.classList.remove('sweep-on');
+    document.getElementById('sweepControls').style.display = 'none';
+  } else {
+    startSweep();
+    e.target.textContent = 'stop sweep';
+    e.target.classList.add('sweep-on');
+    document.getElementById('sweepControls').style.display = 'flex';
+  }
+});
+
+document.getElementById('sweepSpeed').addEventListener('input', e => {
+  sweepSpeed = parseFloat(e.target.value);
+  document.getElementById('sweepSpeedVal').textContent = sweepSpeed.toFixed(2) + ' rev/s';
+});
+
+// ── Legend
+function updateLegend() {
+  const maxQ = n;
+  const legendEl = document.getElementById('legend');
+  legendEl.innerHTML = '';
+  const steps = Math.min(maxQ, 8);
+  for (let q = 1; q <= steps; q++) {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    const dot = document.createElement('div');
+    dot.className = 'legend-dot';
+    dot.style.background = denColor(q);
+    const label = document.createElement('span');
+    label.textContent = `q=${q}`;
+    item.appendChild(dot); item.appendChild(label);
+    legendEl.appendChild(item);
+  }
+}
+
+// ── Init
+requestAnimationFrame(() => { updateN(); draw(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <title>pulse lattice</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.6rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 520px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.9;
+    }
+
+    canvas { display: block; cursor: pointer; }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem 2.2rem;
+      justify-content: center;
+      max-width: 680px;
+    }
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.38rem;
+      align-items: center;
+    }
+    .ctrl-label {
+      font-size: 0.57rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .ctrl-val {
+      font-size: 0.57rem;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+      min-width: 3em;
+      text-align: center;
+    }
+    input[type=range] { width: 130px; accent-color: var(--gold); }
+    select {
+      background: var(--bg2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.28rem 0.55rem;
+      font-size: 0.62rem;
+      font-family: Georgia, serif;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      background: transparent;
+      color: var(--dimmer);
+      border: 1px solid var(--border);
+      padding: 0.32rem 0.85rem;
+      font-family: Georgia, serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.13em;
+      font-style: italic;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+
+    .axes {
+      display: flex;
+      gap: 2.5rem;
+      font-size: 0.53rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
+<div class="header">
+  <h1 class="title">pulse lattice</h1>
+  <p class="sub">pitch ratios are rhythm ratios. the interval 3∶2 (perfect fifth) is the same mathematics as a hemiola — three pulses against two. click any node to activate it. the lattice is the same object in both domains.</p>
+</div>
+
+<canvas id="cv"></canvas>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">bpm</span>
+    <input type="range" id="bpmSlider" min="30" max="180" value="60" step="1">
+    <span class="ctrl-val" id="bpmVal">60</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">root pitch</span>
+    <select id="rootSel">
+      <option value="110">A2 · 110 Hz</option>
+      <option value="165">E3 · 165 Hz</option>
+      <option value="220" selected>A3 · 220 Hz</option>
+      <option value="293.66">D4 · 293.66 Hz</option>
+      <option value="330">E4 · 330 Hz</option>
+      <option value="440">A4 · 440 Hz</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">timbre</span>
+    <select id="timbreSel">
+      <option value="sine" selected>sine</option>
+      <option value="triangle">triangle</option>
+      <option value="sawtooth">sawtooth</option>
+    </select>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button id="btnClear">clear all</button>
+  <button id="btnRoot">root</button>
+  <button id="btnFifth">root + fifth</button>
+  <button id="btnTriad">major triad</button>
+  <button id="btnRow">middle row</button>
+</div>
+
+<div class="axes">
+  <span>→ × 3∶2 &nbsp;(perfect fifth)</span>
+  <span>↑ × 5∶4 &nbsp;(major third)</span>
+</div>
+
+<script>
+// ── Utilities
+function gcd(a, b) { a = Math.round(a); b = Math.round(b); return b === 0 ? a : gcd(b, a % b); }
+
+function computeRatio(x, y) {
+  let num = 1, den = 1;
+  if (x > 0)      { num *= Math.pow(3, x);  den *= Math.pow(2, x); }
+  else if (x < 0) { num *= Math.pow(2, -x); den *= Math.pow(3, -x); }
+  if (y > 0)      { num *= Math.pow(5, y);  den *= Math.pow(4, y); }
+  else if (y < 0) { num *= Math.pow(4, -y); den *= Math.pow(5, -y); }
+  // normalize to [1, 2)
+  while (num < den)       num *= 2;
+  while (num >= 2 * den)  den *= 2;
+  const g = gcd(Math.round(num), Math.round(den));
+  return { num: Math.round(num) / g, den: Math.round(den) / g, value: num / den };
+}
+
+// ── Node colors (hue varies with position, stays warm/cool)
+function nodeHue(x, y) {
+  if (x === 0 && y === 0) return 48; // gold
+  const angle = Math.atan2(y, x);
+  return ((angle * 180 / Math.PI) + 360) % 360;
+}
+function nodeColor(x, y, alpha) {
+  if (x === 0 && y === 0) return `rgba(212,192,112,${alpha})`;
+  const h = nodeHue(x, y);
+  return `hsla(${h},55%,68%,${alpha})`;
+}
+
+// ── Build node grid: x ∈ [-2..2], y ∈ [-1..1]
+const COLS = 5, ROWS = 3;
+const nodes = [];
+for (let yi = 0; yi < ROWS; yi++) {
+  for (let xi = 0; xi < COLS; xi++) {
+    const x = xi - 2;
+    const y = 1 - yi; // top row = y=1
+    const r = computeRatio(x, y);
+    nodes.push({ x, y, xi, yi, num: r.num, den: r.den, ratio: r.value,
+      active: false, osc: null, env: null, nextTime: 0, lastFired: -99 });
+  }
+}
+
+// ── Canvas
+const canvas = document.getElementById('cv');
+const dpr = window.devicePixelRatio || 1;
+const W = Math.min(window.innerWidth - 32, 620);
+const H = 280;
+canvas.width  = W * dpr;
+canvas.height = H * dpr;
+canvas.style.width  = W + 'px';
+canvas.style.height = H + 'px';
+const c = canvas.getContext('2d');
+c.scale(dpr, dpr);
+
+const NR = 27; // node radius
+const SX = Math.floor((W - 2 * NR - 40) / (COLS - 1));
+const SY = Math.floor((H - 2 * NR - 40) / (ROWS - 1));
+const GX = (W - SX * (COLS - 1)) / 2; // left edge of grid
+const GY = (H - SY * (ROWS - 1)) / 2; // top edge of grid
+
+function nodePos(xi, yi) {
+  return { cx: GX + xi * SX, cy: GY + yi * SY };
+}
+
+// ── Audio
+let actx = null, masterGain = null;
+
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = actx.createGain();
+  masterGain.gain.value = 0.55;
+  masterGain.connect(actx.destination);
+}
+
+function nodeFreq(node) {
+  return parseFloat(document.getElementById('rootSel').value) * node.ratio;
+}
+
+function nodePeriodSec(node) {
+  const bpm = parseFloat(document.getElementById('bpmSlider').value);
+  return 60 / (bpm * node.ratio);
+}
+
+function startNode(node) {
+  if (!actx) return;
+  stopNode(node);
+  const osc = actx.createOscillator();
+  const env = actx.createGain();
+  osc.type = document.getElementById('timbreSel').value;
+  osc.frequency.value = nodeFreq(node);
+  env.gain.value = 0;
+  osc.connect(env);
+  env.connect(masterGain);
+  osc.start();
+  node.osc = osc; node.env = env;
+  node.nextTime = actx.currentTime + 0.02;
+}
+
+function stopNode(node) {
+  if (node.osc) {
+    try { node.osc.stop(); } catch(e) {}
+    node.osc.disconnect(); node.env.disconnect();
+  }
+  node.osc = null; node.env = null;
+}
+
+function activateSet(coords) {
+  ensureAudio();
+  for (const n of nodes) {
+    const want = coords.some(([x,y]) => x === n.x && y === n.y);
+    if (want && !n.active) { n.active = true; startNode(n); }
+    if (!want && n.active) { n.active = false; stopNode(n); }
+  }
+}
+
+// ── Scheduler
+function schedule() {
+  if (!actx) return;
+  const now = actx.currentTime;
+  const horizon = now + 0.15;
+  for (const n of nodes) {
+    if (!n.active || !n.env) continue;
+    const period = nodePeriodSec(n);
+    while (n.nextTime < horizon) {
+      const t = n.nextTime;
+      if (t >= now - 0.01) {
+        n.env.gain.cancelScheduledValues(t);
+        n.env.gain.setTargetAtTime(0.65, t, 0.004);
+        n.env.gain.setTargetAtTime(0, t + 0.03, 0.065);
+        n.lastFired = t;
+      }
+      n.nextTime += period;
+    }
+  }
+}
+
+// ── Draw
+function draw() {
+  const now = actx ? actx.currentTime : 0;
+  c.clearRect(0, 0, W, H);
+
+  // connections
+  for (const n of nodes) {
+    const { cx: x1, cy: y1 } = nodePos(n.xi, n.yi);
+    if (n.xi < COLS - 1) {
+      const r2 = nodes[n.yi * COLS + n.xi + 1];
+      const { cx: x2, cy: y2 } = nodePos(r2.xi, r2.yi);
+      c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2);
+      c.strokeStyle = 'rgba(255,255,255,0.055)'; c.lineWidth = 1; c.stroke();
+    }
+    if (n.yi < ROWS - 1) {
+      const r2 = nodes[(n.yi + 1) * COLS + n.xi];
+      const { cx: x2, cy: y2 } = nodePos(r2.xi, r2.yi);
+      c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2);
+      c.strokeStyle = 'rgba(255,255,255,0.055)'; c.lineWidth = 1; c.stroke();
+    }
+  }
+
+  // nodes
+  for (const n of nodes) {
+    const { cx, cy } = nodePos(n.xi, n.yi);
+    const age  = now - n.lastFired;
+    const flash = (n.active && age >= 0 && age < 0.5) ? Math.pow(1 - age / 0.5, 1.6) : 0;
+
+    // glow
+    if (flash > 0.01) {
+      const grad = c.createRadialGradient(cx, cy, 0, cx, cy, NR * 2.4);
+      grad.addColorStop(0, nodeColor(n.x, n.y, flash * 0.55));
+      grad.addColorStop(1, nodeColor(n.x, n.y, 0));
+      c.beginPath(); c.arc(cx, cy, NR * 2.4, 0, Math.PI * 2);
+      c.fillStyle = grad; c.fill();
+    }
+
+    // fill
+    c.beginPath(); c.arc(cx, cy, NR, 0, Math.PI * 2);
+    c.fillStyle = n.active
+      ? nodeColor(n.x, n.y, 0.14 + flash * 0.45)
+      : 'rgba(255,255,255,0.025)';
+    c.fill();
+
+    // border
+    c.beginPath(); c.arc(cx, cy, NR, 0, Math.PI * 2);
+    c.strokeStyle = n.active
+      ? nodeColor(n.x, n.y, 0.55 + flash * 0.45)
+      : 'rgba(255,255,255,0.10)';
+    c.lineWidth = n.active ? 1.4 : 0.7;
+    c.stroke();
+
+    // ratio label
+    c.fillStyle = n.active
+      ? nodeColor(n.x, n.y, 0.88 + flash * 0.12)
+      : 'rgba(204,200,208,0.28)';
+    c.font = `${n.den > 9 ? 10.5 : 12}px Georgia, serif`;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText(`${n.num}∶${n.den}`, cx, cy - (n.active ? 5 : 0));
+
+    // BPM when active
+    if (n.active) {
+      const bpm = parseFloat(document.getElementById('bpmSlider').value);
+      c.fillStyle = nodeColor(n.x, n.y, 0.42 + flash * 0.3);
+      c.font = '8.5px Georgia, serif';
+      c.fillText(`${(bpm * n.ratio).toFixed(1)}`, cx, cy + 9);
+    }
+  }
+}
+
+// ── Click
+canvas.addEventListener('click', e => {
+  ensureAudio();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  for (const n of nodes) {
+    const { cx, cy } = nodePos(n.xi, n.yi);
+    if ((mx - cx) ** 2 + (my - cy) ** 2 <= NR * NR) {
+      n.active = !n.active;
+      if (n.active) startNode(n);
+      else stopNode(n);
+      break;
+    }
+  }
+});
+
+// ── Controls
+document.getElementById('bpmSlider').addEventListener('input', e => {
+  document.getElementById('bpmVal').textContent = e.target.value;
+});
+
+document.getElementById('rootSel').addEventListener('change', () => {
+  nodes.forEach(n => { if (n.osc) n.osc.frequency.value = nodeFreq(n); });
+});
+
+document.getElementById('timbreSel').addEventListener('change', () => {
+  ensureAudio();
+  nodes.forEach(n => {
+    if (n.active) { stopNode(n); startNode(n); }
+  });
+});
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  nodes.forEach(n => { n.active = false; stopNode(n); });
+});
+document.getElementById('btnRoot').addEventListener('click', () => {
+  activateSet([[0,0]]);
+});
+document.getElementById('btnFifth').addEventListener('click', () => {
+  activateSet([[0,0],[1,0]]);
+});
+document.getElementById('btnTriad').addEventListener('click', () => {
+  activateSet([[0,0],[1,0],[0,1]]);
+});
+document.getElementById('btnRow').addEventListener('click', () => {
+  activateSet([[-2,0],[-1,0],[0,0],[1,0],[2,0]]);
+});
+
+// ── Main loop
+function loop() {
+  schedule();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
