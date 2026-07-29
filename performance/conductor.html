@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
   <title>Conductor — Le Mondo</title>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -334,6 +337,7 @@ let roomCode     = '';
 // Audio (live synthesis)
 let audioCtx     = null;
 let bassOsc      = null;
+let bassGain     = null;
 let chordNodes   = [];
 let microNodes   = [];
 let mainFilter   = null;
@@ -402,6 +406,7 @@ async function loadSpec(specId) {
     playStartTime = null;
     lastSectionIdx = -1;
     lastLoopItemIdx = -1;
+    lastMp3SecIdx = -1;
     renderSectionList();
     updateTransportUI();
     broadcastLoad();
@@ -423,9 +428,10 @@ function play() {
   baseElapsed = getElapsed();
   playing = true;
   if (synthActive) resumeSynth();
-  // Resume mp3 if current section is an audio section
+  applyFilterAutomation();
+  // Resume mp3 if current section is an audio section (independent of synth)
   const curSec = spec.sections[getSectionIdx(baseElapsed)];
-  if (curSec?.audio?.src) applyMp3Section(curSec, baseElapsed);
+  if (curSec?.audio?.src) { lastMp3SecIdx = getSectionIdx(baseElapsed); applyMp3Section(curSec, baseElapsed); }
   scheduleRAF();
   broadcast({ type: 'play', startTime: playStartTime, baseElapsed });
   updateTransportUI();
@@ -437,6 +443,10 @@ function pause() {
   playStartTime = null;
   if (synthActive) pauseSynth();
   stopMp3();
+  // Freeze filter automation at current value
+  if (mainFilter && audioCtx) {
+    mainFilter.frequency.cancelScheduledValues(audioCtx.currentTime);
+  }
   cancelAnimationFrame(rafId);
   broadcast({ type: 'pause', elapsed: baseElapsed });
   updateTransportUI();
@@ -450,6 +460,7 @@ function seekTo(seconds) {
   lastLoopItemIdx = -1;
   lastSynthSectionIdx = -1;
   lastSynthLoopIdx = -1;
+  lastMp3SecIdx = -1;
   if (was) {
     playStartTime = Date.now();
     // Restart RAF so the new position takes effect on the very next frame
@@ -458,12 +469,10 @@ function seekTo(seconds) {
     scheduleRAF();
   }
   stopMp3();
+  applyFilterAutomation();
   if (synthActive) applyCurrentSection(baseElapsed, true);
-  // Resume mp3 at seeked position if current section is audio
-  if (was) {
-    const curSec = spec?.sections[getSectionIdx(baseElapsed)];
-    if (curSec?.audio?.src) applyMp3Section(curSec, baseElapsed);
-  }
+  // Mp3 transition (start/stop) runs regardless of synthActive
+  mp3Tick(baseElapsed);
   broadcast({
     type: 'jump', elapsed: baseElapsed, playing: was,
     startTime: was ? playStartTime : null, baseElapsed
@@ -497,6 +506,7 @@ function tick() {
     const elapsed = getElapsed();
     if (spec && elapsed >= spec.duration) { pause(); seekTo(0); return; }
     updateTransportUI(elapsed);
+    mp3Tick(elapsed);
     if (synthActive) synthTick(elapsed);
   } catch(e) { console.error('tick error', e); }
   if (playing) rafId = requestAnimationFrame(tick);
@@ -689,7 +699,7 @@ function initAudio() {
   bassOsc = audioCtx.createOscillator();
   bassOsc.type = 'sawtooth';
   bassOsc.frequency.value = 82.41;
-  const bassGain = audioCtx.createGain();
+  bassGain = audioCtx.createGain();
   bassGain.gain.value = 0.45;
   bassOsc.connect(bassGain); bassGain.connect(mainFilter);
   bassOsc.start();
@@ -741,9 +751,14 @@ function applyCurrentSection(elapsed, instant) {
   const xf = instant ? 0.05 : 1.5;
 
   if (sec.synth.silence || sec.synth.placeholder) {
-    masterGain.gain.setTargetAtTime(0.05, now, xf * 0.3);
-    // Audio section — start/seek mp3 if spec has audio field
-    if (sec.audio?.src) applyMp3Section(sec, elapsed);
+    // Silence all synth voices so mp3/placeholder surface is clean
+    if (bassGain) bassGain.gain.setTargetAtTime(0, now, xf * 0.3);
+    chordNodes.forEach(c => c.gain.gain.setTargetAtTime(0, now, xf * 0.3));
+    microNodes.forEach(m => m.gain.gain.setTargetAtTime(0, now, xf * 0.3));
+    masterGain.gain.setTargetAtTime(
+      parseFloat(document.getElementById('synth-gain').value),
+      now, xf * 0.3
+    );
     return;
   }
 
@@ -757,6 +772,7 @@ function applyCurrentSection(elapsed, instant) {
   if (bassNote && NOTES[bassNote]) {
     if (instant) bassOsc.frequency.setValueAtTime(NOTES[bassNote], now);
     else bassOsc.frequency.exponentialRampToValueAtTime(NOTES[bassNote], now + xf * 0.5);
+    if (bassGain) bassGain.gain.setTargetAtTime(0.45, now, xf * 0.3);
   }
 
   // Chords
@@ -771,9 +787,9 @@ function applyCurrentSection(elapsed, instant) {
     }
   });
 
-  // Filter
+  // Filter (skipped when spec defines a global filterAutomation)
   const flt = sec.synth.filter;
-  if (flt) {
+  if (flt && !spec.filterAutomation) {
     const freq = flt.sweepTo ? flt.freq : flt.freq;
     mainFilter.frequency.setValueAtTime(freq, now);
     if (flt.Q) mainFilter.Q.setValueAtTime(flt.Q, now);
@@ -782,6 +798,73 @@ function applyCurrentSection(elapsed, instant) {
 
 let lastSynthSectionIdx = -1;
 let lastSynthLoopIdx = -1;
+let lastMp3SecIdx = -1;
+
+// Runs every RAF tick and on seek — fires mp3 start/stop based on section
+// transitions. NOT gated by synthActive; mp3 playback is independent of the
+// synth toggle.
+function mp3Tick(elapsed) {
+  if (!spec) return;
+  const idx = getSectionIdx(elapsed);
+  const sec = spec.sections[idx];
+  if (idx !== lastMp3SecIdx) {
+    const oldSec = lastMp3SecIdx >= 0 ? spec.sections[lastMp3SecIdx] : null;
+    if (oldSec?.audio?.src && !sec.audio?.src) stopMp3();
+    if (sec.audio?.src) applyMp3Section(sec, elapsed);
+    lastMp3SecIdx = idx;
+  }
+}
+
+// Spec-driven filter automation. When spec.filterAutomation is present,
+// per-section filter.freq writes are suppressed and the whole cutoff arc
+// is scheduled on audioCtx from keyframes. Called on play() and seekTo().
+function applyFilterAutomation() {
+  if (!spec?.filterAutomation || !mainFilter || !audioCtx) return;
+  const kfs = spec.filterAutomation;
+  if (!kfs.length) return;
+  const now = audioCtx.currentTime;
+  const elapsed = getElapsed();
+
+  mainFilter.frequency.cancelScheduledValues(now);
+
+  // Interpolate current value at `elapsed`
+  let curVal = kfs[0].freq;
+  if (elapsed > kfs[kfs.length - 1].t) {
+    curVal = kfs[kfs.length - 1].freq;
+  } else if (elapsed > kfs[0].t) {
+    for (let i = 0; i < kfs.length - 1; i++) {
+      if (elapsed >= kfs[i].t && elapsed <= kfs[i+1].t) {
+        const span = kfs[i+1].t - kfs[i].t;
+        const frac = span > 0 ? (elapsed - kfs[i].t) / span : 0;
+        const ramp = kfs[i+1].ramp || 'linear';
+        if (ramp === 'exp') {
+          curVal = kfs[i].freq * Math.pow(kfs[i+1].freq / kfs[i].freq, frac);
+        } else if (ramp === 'set') {
+          curVal = kfs[i].freq;
+        } else {
+          curVal = kfs[i].freq + frac * (kfs[i+1].freq - kfs[i].freq);
+        }
+        break;
+      }
+    }
+  }
+
+  mainFilter.frequency.setValueAtTime(curVal, now);
+
+  // Schedule remaining keyframes from current position forward
+  for (let i = 0; i < kfs.length; i++) {
+    if (kfs[i].t <= elapsed) continue;
+    const when = now + (kfs[i].t - elapsed);
+    const ramp = kfs[i].ramp || 'linear';
+    if (ramp === 'exp') {
+      mainFilter.frequency.exponentialRampToValueAtTime(Math.max(1, kfs[i].freq), when);
+    } else if (ramp === 'set') {
+      mainFilter.frequency.setValueAtTime(kfs[i].freq, when);
+    } else {
+      mainFilter.frequency.linearRampToValueAtTime(kfs[i].freq, when);
+    }
+  }
+}
 
 function synthTick(elapsed) {
   if (!audioCtx) return;
@@ -789,19 +872,15 @@ function synthTick(elapsed) {
   const idx = getSectionIdx(elapsed);
   const sec = spec.sections[idx];
 
-  // Section change
+  // Section change (mp3 start/stop is handled by mp3Tick, not here)
   if (idx !== lastSynthSectionIdx) {
-    // Stop mp3 if leaving an audio section
-    const oldSec = lastSynthSectionIdx >= 0 ? spec.sections[lastSynthSectionIdx] : null;
-    if (oldSec?.audio?.src && !sec.audio?.src) stopMp3();
-
     applyCurrentSection(elapsed, false);
     lastSynthSectionIdx = idx;
     lastSynthLoopIdx = -1;
 
-    // Filter sweep (intro)
+    // Filter sweep (intro) — skipped when spec defines a global filterAutomation
     const flt = sec.synth?.filter;
-    if (flt?.sweepTo && !sec.synth?.loop) {
+    if (flt?.sweepTo && !sec.synth?.loop && !spec.filterAutomation) {
       const sectionElapsed = elapsed - sec.t;
       const remaining = Math.max(0, flt.sweepDuration - sectionElapsed);
       if (remaining > 0) {
@@ -838,7 +917,7 @@ function synthTick(elapsed) {
           c.gain.gain.setTargetAtTime(0.09, now, 0.3);
         }
       });
-      if (item.filter?.freq) mainFilter.frequency.setTargetAtTime(item.filter.freq, now, 0.3);
+      if (item.filter?.freq && !spec.filterAutomation) mainFilter.frequency.setTargetAtTime(item.filter.freq, now, 0.3);
       lastSynthLoopIdx = loopIdx;
     }
   }

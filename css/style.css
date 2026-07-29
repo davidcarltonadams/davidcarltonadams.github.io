@@ -179,6 +179,53 @@ footer {
 footer a { color: var(--text-3); }
 footer a:hover { color: var(--text-2); }
 
+/* ── Social icon links ──────────────────────────────────────── */
+.social-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+}
+.social-links a {
+  display: inline-flex;
+  color: var(--text-3);
+  line-height: 0;
+  padding: 0.2rem;
+  border-radius: var(--radius);
+  transition: color 0.15s var(--ease);
+}
+.social-links a:hover { color: var(--accent); text-decoration: none; }
+.social-links svg { width: 18px; height: 18px; display: block; }
+
+footer .social-links { margin-top: 1.1rem; }
+
+/* icon + label buttons (contact page) */
+.btn-social svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+/* nav variant — icon cluster after the text links */
+.nav-links li.nav-social {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: 0.4rem;
+  padding-left: 0.85rem;
+  border-left: 1px solid var(--border);
+}
+.nav-links li.nav-social a {
+  display: inline-flex;
+  color: var(--text-3);
+  line-height: 0;
+  padding: 0.25rem;
+}
+.nav-links li.nav-social a:hover { color: var(--accent); background: none; }
+.nav-links li.nav-social svg { width: 16px; height: 16px; display: block; }
+
+/* the bar gets crowded between the drawer breakpoint and full width —
+   icons still live in the footer, so drop them from the nav there */
+@media (max-width: 760px) {
+  .nav-links li.nav-social { display: none; }
+}
+
 /* ── Buttons ─────────────────────────────────────────────────── */
 .btn {
   display: inline-flex; align-items: center; gap: 0.4rem;
@@ -1022,6 +1069,18 @@ footer a:hover { color: var(--text-2); }
     letter-spacing: 0.05em;
   }
   .nav-links li:last-child a { border-bottom: none; }
+
+  /* icons return inside the open drawer, as a centered row */
+  .nav-links li.nav-social {
+    display: flex;
+    justify-content: center;
+    gap: 1.6rem;
+    margin: 0;
+    padding: 1rem 0 0.25rem;
+    border-left: none;
+  }
+  .nav-links li.nav-social a { border-bottom: none; padding: 0.25rem; }
+  .nav-links li.nav-social svg { width: 20px; height: 20px; }
 }
 
 /* ── Responsive tweaks ───────────────────────────────────────── */
