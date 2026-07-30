@@ -284,13 +284,13 @@ const WORKS = [
     instrumentation: "Two percussionists",
     forces: ["chamber", "percussion"],
     premiere: {
-      date: "2022-10-12",
-      date_display: "October 12, 2022",
-      performers: "Cameron Church, Sebastian Suarez-Solis",
-      venue: "Peabody Institute, Baltimore, MD"
+      date: "2022-07-15",
+      date_display: "July 15, 2022",
+      performers: "Cherri Chen, Kevin Yetter",
+      venue: "Princeton Record Exchange, Princeton, NJ"
     },
     links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=fDwkSb5FfcA", page: "communication-is-hard.html" },
-    notes: "Multiple versions.",
+    notes: "Multiple versions. Also performed at Small World Coffee (Princeton) the same day; Cameron Church + Sebastian Suarez-Solis at Peabody, 2022-10-12.",
     highlighted: false
   },
   {
@@ -529,6 +529,23 @@ const WORKS = [
     },
     links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=se4pHD-syio" },
     notes: "",
+    highlighted: false
+  },
+  {
+    id: "fardels-bear",
+    title: "Fardels Bear",
+    year: 2020,
+    duration: "",
+    instrumentation: "Electric guitars, electric bass, quarter-tone-offset keyboards, drum machine",
+    forces: ["solo", "electronics"],
+    premiere: {
+      date: "",
+      date_display: "",
+      performers: "David Carlton Adams (all parts)",
+      venue: "Self-recorded studio track"
+    },
+    links: { score: "", audio: "", video: "", page: "fardels-bear.html" },
+    notes: "24-EDO studio track, self-recorded 2020.",
     highlighted: false
   },
   {
