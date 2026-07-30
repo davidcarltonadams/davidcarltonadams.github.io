@@ -224,6 +224,7 @@
       <div class="detail-block">
         <h4>Links</h4>
         <div class="detail-links">
+          ${w.links.page ? `<a href="${escHtml(w.links.page)}" class="detail-link">About this piece</a>` : ""}
           ${w.links.score ? `<a href="${escHtml(w.links.score)}" target="_blank" rel="noopener" class="detail-link">Score</a>` : ""}
           ${w.links.audio ? `<a href="${escHtml(w.links.audio)}" target="_blank" rel="noopener" class="detail-link">Audio</a>` : ""}
           ${w.links.video ? `<a href="${escHtml(w.links.video)}" target="_blank" rel="noopener" class="detail-link">Video</a>` : ""}
