@@ -84,7 +84,7 @@ const WORKS = [
       performers: "Old Bay New Music Ensemble",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=YipecWHEUW0", page: "thinking-out-loud.html" },
+    links: { score: "assets/docs/scores/thinking-out-loud-sample.pdf", audio: "", video: "https://www.youtube.com/watch?v=YipecWHEUW0", page: "thinking-out-loud.html" },
     notes: "",
     highlighted: true
   },
@@ -102,7 +102,7 @@ const WORKS = [
       performers: "Kevin Rogers, Doug Machiz, David Carlton Adams",
       venue: "Walden School, Dublin, NH"
     },
-    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=lgpv50H1hr0", page: "words-from-a-friend.html" },
+    links: { score: "assets/docs/scores/words-from-a-friend-sample.pdf", audio: "", video: "https://www.youtube.com/watch?v=lgpv50H1hr0", page: "words-from-a-friend.html" },
     notes: "Multiple performances.",
     highlighted: false
   },
@@ -119,7 +119,7 @@ const WORKS = [
       performers: "Johannes Burghoff",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=QaxdHiLyVo8", page: "the-sum-of-its-parts.html" },
+    links: { score: "assets/docs/scores/the-sum-of-its-parts-sample.pdf", audio: "", video: "https://www.youtube.com/watch?v=QaxdHiLyVo8", page: "the-sum-of-its-parts.html" },
     notes: "",
     highlighted: false
   },
@@ -136,7 +136,7 @@ const WORKS = [
       performers: "Wet Ink Ensemble (Erin Lesser, Alex Mincek, Ian Antonio, Sam Pluta, David Carlton Adams)",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "assets/docs/play-nice.pdf", audio: "https://soundcloud.com/davidcarltonadams/play-nice/s-jiAXF6YLleI", video: "https://www.youtube.com/watch?v=8aDN6cvh8aU", page: "play-nice.html" },
+    links: { score: "assets/docs/scores/play-nice-sample.pdf", audio: "https://soundcloud.com/davidcarltonadams/play-nice/s-jiAXF6YLleI", video: "https://www.youtube.com/watch?v=8aDN6cvh8aU", page: "play-nice.html" },
     notes: "Performed by Wet Ink Ensemble.",
     highlighted: true
   },
@@ -221,7 +221,7 @@ const WORKS = [
       performers: "Hayley Camp, Elisheva Pront",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "https://soundcloud.com/davidcarltonadams/adams-what-did", video: "", page: "what-did-it-feel-like.html" },
+    links: { score: "assets/docs/scores/what-did-it-feel-like-sample.pdf", audio: "https://soundcloud.com/davidcarltonadams/adams-what-did", video: "", page: "what-did-it-feel-like.html" },
     notes: "Live premiere of work first composed in 2020.",
     highlighted: false
   },
@@ -238,7 +238,7 @@ const WORKS = [
       performers: "Cynthia Hu, Rachel Steelman",
       venue: "Johns Hopkins University, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "", page: "tarantula-nebula.html" },
+    links: { score: "assets/docs/scores/tarantula-nebula-sample.pdf", audio: "", video: "", page: "tarantula-nebula.html" },
     notes: "",
     highlighted: false
   },
@@ -289,7 +289,7 @@ const WORKS = [
       performers: "Cherri Chen, Kevin Yetter",
       venue: "Princeton Record Exchange, Princeton, NJ"
     },
-    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=fDwkSb5FfcA", page: "communication-is-hard.html" },
+    links: { score: "assets/docs/scores/communication-is-hard-sample.pdf", audio: "", video: "https://www.youtube.com/watch?v=fDwkSb5FfcA", page: "communication-is-hard.html" },
     notes: "Multiple versions. Also performed at Small World Coffee (Princeton) the same day; Cameron Church + Sebastian Suarez-Solis at Peabody, 2022-10-12.",
     highlighted: false
   },
@@ -357,7 +357,7 @@ const WORKS = [
       performers: "JACK Quartet (Chris Otto, Austin Wulliman, John Richards, Jay Campbell)",
       venue: "Lake Dunmore, VT"
     },
-    links: { score: "", audio: "https://soundcloud.com/davidcarltonadams/three-or-four-of-many", video: "https://www.youtube.com/watch?v=5tWE6UaFJI4", page: "three-or-four-of-many.html" },
+    links: { score: "assets/docs/scores/three-or-four-of-many-sample.pdf", audio: "https://soundcloud.com/davidcarltonadams/three-or-four-of-many", video: "https://www.youtube.com/watch?v=5tWE6UaFJI4", page: "three-or-four-of-many.html" },
     notes: "Performed by JACK Quartet.",
     highlighted: true
   },
@@ -391,7 +391,7 @@ const WORKS = [
       performers: "Elma Meijer, Michelle Pritchard, Sabien Canton",
       venue: "Netherlands"
     },
-    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=Njrx6aUSr0E", page: "tear.html" },
+    links: { score: "assets/docs/scores/tear-sample.pdf", audio: "", video: "https://www.youtube.com/watch?v=Njrx6aUSr0E", page: "tear.html" },
     notes: "",
     highlighted: false
   },
@@ -442,7 +442,7 @@ const WORKS = [
       performers: "David Carlton Adams, Mike Begay, Sam Kohler",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=mgsJjEMgH48", page: "anxiety-and-discovery.html" },
+    links: { score: "assets/docs/scores/anxiety-and-discovery-sample.pdf", audio: "", video: "https://www.youtube.com/watch?v=mgsJjEMgH48", page: "anxiety-and-discovery.html" },
     notes: "",
     highlighted: false
   },
@@ -459,7 +459,7 @@ const WORKS = [
       performers: "Talea Ensemble (Barry Crawford, Rane Moore, Chris Gross)",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "", audio: "", video: "https://www.youtube.com/watch?v=6JdOdQEHaiY", page: "on-the-thin-ice.html" },
+    links: { score: "assets/docs/scores/on-the-thin-ice-sample.pdf", audio: "", video: "https://www.youtube.com/watch?v=6JdOdQEHaiY", page: "on-the-thin-ice.html" },
     notes: "Performed by Talea Ensemble.",
     highlighted: false
   },
@@ -493,7 +493,7 @@ const WORKS = [
       performers: "Multiple performers (12 total)",
       venue: "Hybrid performance (recorded and live)"
     },
-    links: { score: "", audio: "https://soundcloud.com/davidcarltonadams/sets/annunciation-2-scenes", video: "", page: "annunciation.html" },
+    links: { score: "assets/docs/scores/annunciation-sample.pdf", audio: "https://soundcloud.com/davidcarltonadams/sets/annunciation-2-scenes", video: "", page: "annunciation.html" },
     notes: "",
     highlighted: true
   },
@@ -544,7 +544,7 @@ const WORKS = [
       performers: "David Carlton Adams (all parts)",
       venue: "Self-recorded studio track"
     },
-    links: { score: "", audio: "", video: "", page: "fardels-bear.html" },
+    links: { score: "assets/docs/scores/fardels-bear-sample.pdf", audio: "", video: "", page: "fardels-bear.html" },
     notes: "24-EDO studio track, self-recorded 2020.",
     highlighted: false
   },
@@ -595,7 +595,7 @@ const WORKS = [
       performers: "Emma Rocheleau, Hayley Camp",
       venue: "Zoom"
     },
-    links: { score: "", audio: "https://soundcloud.com/davidcarltonadams/adams-what-did", video: "", page: "what-did-it-feel-like.html" },
+    links: { score: "assets/docs/scores/what-did-it-feel-like-sample.pdf", audio: "https://soundcloud.com/davidcarltonadams/adams-what-did", video: "", page: "what-did-it-feel-like.html" },
     notes: "Live premiere 2023 (see separate entry).",
     highlighted: false
   },
