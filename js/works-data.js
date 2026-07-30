@@ -136,7 +136,7 @@ const WORKS = [
       performers: "Wet Ink Ensemble (Erin Lesser, Alex Mincek, Ian Antonio, Sam Pluta, David Carlton Adams)",
       venue: "Peabody Institute, Baltimore, MD"
     },
-    links: { score: "https://www.davidcarltonadams.com/s/David-Carlton-Adams-Play-Nice-2023-score-p9k4.pdf", audio: "https://soundcloud.com/davidcarltonadams/play-nice/s-jiAXF6YLleI", video: "https://www.youtube.com/watch?v=8aDN6cvh8aU" },
+    links: { score: "assets/docs/play-nice.pdf", audio: "https://soundcloud.com/davidcarltonadams/play-nice/s-jiAXF6YLleI", video: "https://www.youtube.com/watch?v=8aDN6cvh8aU", page: "play-nice.html" },
     notes: "Performed by Wet Ink Ensemble.",
     highlighted: true
   },
