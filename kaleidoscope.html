@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <title>Kaleidoscope — David Carlton Adams</title>
+  <meta name="description" content="Kaleidoscope — a multi-scene work for SuperCollider synthesis, live electronics, and dance. Choreography by Zoë Brielle Payne (ZBRI). Charm City Fringe Festival Spring 2026.">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Config shared with kaleidoscope-sound.html — edit kaleidoscope-config.js to update sections -->
+  <script src="kaleidoscope-config.js"></script>
+
+  <style>
+    /* ── Page-specific overrides ──────────────────────────────── */
+
+    .piece-header {
+      padding: 3rem 0 2rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2.5rem;
+    }
+
+    .piece-title {
+      font-family: var(--font-display);
+      font-size: clamp(2.4rem, 7vw, 4rem);
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
+      font-style: italic;
+      margin-bottom: 0.4rem;
+    }
+
+    .piece-meta {
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      color: var(--text-3);
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+    }
+
+    .piece-cast {
+      font-size: 0.88rem;
+      color: var(--text-2);
+      line-height: 1.9;
+    }
+
+    .piece-cast strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ── Mode toggle ─────────────────────────────────────────── */
+    .mode-toggle {
+      display: flex;
+      gap: 0;
+      margin-bottom: 2.5rem;
+      border: 1px solid var(--border-strong);
+      border-radius: 3px;
+      overflow: hidden;
+      width: fit-content;
+    }
+
+    .mode-btn {
+      padding: 0.55rem 1.4rem;
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--text-3);
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .mode-btn.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .mode-btn:not(.active):hover {
+      background: var(--bg-2);
+      color: var(--text);
+    }
+
+    /* ── Player (Listen mode) ────────────────────────────────── */
+    .player-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .section-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 1rem;
+    }
+
+    .track-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .track-row {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      padding: 0.65rem 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.1s, border-color 0.1s;
+      background: var(--bg);
+    }
+
+    .track-row:hover {
+      background: var(--bg-2);
+      border-color: var(--border-strong);
+    }
+
+    .track-row.active {
+      background: var(--accent-light);
+      border-color: var(--accent);
+    }
+
+    .track-play-btn {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.12s, transform 0.1s;
+    }
+
+    .track-play-btn:hover { background: var(--accent-hover); transform: scale(1.07); }
+    .track-play-btn:active { transform: scale(0.95); }
+
+    .play-icon, .pause-icon {
+      width: 0;
+      height: 0;
+      display: block;
+    }
+
+    .play-icon {
+      border-style: solid;
+      border-width: 6px 0 6px 10px;
+      border-color: transparent transparent transparent white;
+      margin-left: 2px;
+    }
+
+    .pause-icon {
+      width: 10px;
+      height: 12px;
+      display: flex;
+      gap: 3px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pause-bar {
+      width: 3px;
+      height: 12px;
+      background: white;
+      border-radius: 1px;
+    }
+
+    .track-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .track-name {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    .track-note {
+      font-size: 0.75rem;
+      color: var(--text-3);
+      margin-top: 0.1rem;
+    }
+
+    .track-duration {
+      font-size: 0.78rem;
+      color: var(--text-3);
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font-body);
+      white-space: nowrap;
+    }
+
+    /* ── Progress bar ───────────────────────────────────────── */
+    .main-transport {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.2rem;
+      margin-top: 1rem;
+    }
+
+    .now-playing-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 0.3rem;
+    }
+
+    .now-playing-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .progress-wrap {
+      position: relative;
+      height: 4px;
+      background: var(--border-strong);
+      border-radius: 2px;
+      cursor: pointer;
+      margin-bottom: 0.6rem;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.1s linear;
+      pointer-events: none;
+    }
+
+    .time-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--text-3);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Program note ───────────────────────────────────────── */
+    .program-note {
+      margin-top: 2.5rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .program-note h2 {
+      font-size: 0.65rem;
+      font-family: var(--font-body);
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 1rem;
+    }
+
+    .program-note p {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: var(--text-2);
+    }
+
+    /* ── Operator mode ──────────────────────────────────────── */
+    #operator-view { display: none; }
+
+    .operator-header {
+      background: #c05020;
+      color: white;
+      padding: 0.9rem 1.2rem;
+      border-radius: 4px;
+      margin-bottom: 1.8rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+
+    .operator-header strong { display: block; font-size: 1rem; margin-bottom: 0.2rem; }
+
+    .cue-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .cue-card {
+      border: 2px solid var(--border-strong);
+      border-radius: 5px;
+      padding: 1rem 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      transition: border-color 0.15s;
+    }
+
+    .cue-card.cue-active {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+
+    .cue-number {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 400;
+      color: var(--text-3);
+      min-width: 2.4rem;
+      line-height: 1;
+    }
+
+    .cue-card.cue-active .cue-number { color: var(--accent); }
+
+    .cue-info { flex: 1; }
+
+    .cue-name {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      font-weight: 500;
+      margin-bottom: 0.25rem;
+    }
+
+    .cue-note-op {
+      font-size: 0.8rem;
+      color: var(--text-3);
+    }
+
+    .cue-start-btn {
+      padding: 0.7rem 1.4rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+      transition: background 0.12s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    .cue-start-btn:hover { background: var(--accent-hover); }
+    .cue-start-btn:active { transform: scale(0.97); }
+    .cue-start-btn.playing { background: #c05020; }
+
+    .cue-stop-all {
+      margin-top: 1.2rem;
+      padding: 0.75rem 1.6rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: transparent;
+      border: 2px solid var(--border-strong);
+      border-radius: 3px;
+      cursor: pointer;
+      color: var(--text-2);
+      transition: border-color 0.12s, color 0.12s;
+    }
+
+    .cue-stop-all:hover {
+      border-color: #c05020;
+      color: #c05020;
+    }
+
+    /* ── iOS unlock overlay ─────────────────────────────────── */
+    #unlock-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    #unlock-overlay.visible { display: flex; }
+
+    .unlock-box {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      max-width: 320px;
+    }
+
+    .unlock-box p {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      margin-bottom: 1.4rem;
+      color: var(--text);
+    }
+
+    .unlock-btn {
+      padding: 0.9rem 2rem;
+      font-size: 1rem;
+      font-weight: 500;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 500px) {
+      .track-row { gap: 0.6rem; padding: 0.6rem; }
+      .cue-card { flex-wrap: wrap; }
+      .cue-start-btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────────────────── -->
+<nav aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-name">David Carlton Adams</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
+    <ul class="nav-links" role="list">
+      <li><a href="index.html">about</a></li>
+      <li><a href="works.html">works</a></li>
+      <li><a href="media.html">media</a></li>
+      <li><a href="teaching.html">teaching</a></li>
+      <li><a href="contact.html">contact</a></li>
+      <li><a href="tools.html">tools</a></li>
+      <li class="nav-social">
+        <a href="https://youtube.com/@davidcarltonadams" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.2" y="5.2" width="19.6" height="13.6" rx="4.2"/><path d="M10.3 9.2 15.3 12l-5 2.8Z" fill="currentColor"/></svg></a>
+        <a href="https://instagram.com/davidcarltonadams" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.1"/><circle cx="17.2" cy="6.9" r="0.9" fill="currentColor" stroke="none"/></svg></a>
+        <a href="https://linkedin.com/in/davidcarltonadams" target="_blank" rel="noopener" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7.6 10.6v6.2"/><circle cx="7.6" cy="7.7" r="0.95" fill="currentColor" stroke="none"/><path d="M11.6 16.8v-6.2M11.6 13.2c0-1.6 1-2.6 2.4-2.6s2.4 1 2.4 2.9v3.3"/></svg></a>
+        <a href="https://soundcloud.com/davidcarltonadams" target="_blank" rel="noopener" aria-label="SoundCloud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><g transform="translate(-1.8,-4) scale(1.2)" stroke-width="1.5"><path d="M2.5 13.8v3.4M5 12v5.2M7.5 10.6v6.6M10 12.6v4.6"/><path d="M12.5 17.2v-7.4a4 4 0 0 1 6.9 2.5 2.5 2.5 0 0 1-.5 4.9h-6.4Z"/></g></svg></a>
+      </li>
+    
+    </ul>
+  </div>
+</nav>
+
+<!-- ── iOS unlock overlay ─────────────────────────────────────── -->
+<div id="unlock-overlay" role="dialog" aria-modal="true" aria-label="Tap to enable audio">
+  <div class="unlock-box">
+    <p>tap to enable audio</p>
+    <button class="unlock-btn" id="unlock-btn">enable audio</button>
+  </div>
+</div>
+
+<!-- ── Main ─────────────────────────────────────────────────────── -->
+<main>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="piece-header">
+      <div class="piece-title">Kaleidoscope</div>
+      <div class="piece-meta">2026 · SuperCollider synthesis · live electronics · dance</div>
+      <div class="piece-cast">
+        <div><strong>Composer / Electronics / Viola</strong> — David Carlton Adams</div>
+        <div><strong>Choreographer / Director</strong> — Zoë Brielle Payne (ZBRI)</div>
+        <div><strong>Performers</strong> — Josette, Dallas, Anna</div>
+        <div style="margin-top:0.5rem; font-size:0.8rem; color:var(--text-3);">
+          Charm City Fringe Festival Spring 2026 · The Peale, Baltimore
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle" role="group" aria-label="View mode">
+      <button class="mode-btn active" id="btn-listen" onclick="setMode('listen')">listen</button>
+      <button class="mode-btn" id="btn-operator" onclick="setMode('operator')">operator</button>
+    </div>
+
+    <!-- ── LISTEN VIEW ──────────────────────────────────────────── -->
+    <div id="listen-view">
+
+      <div class="player-section">
+        <div class="section-label">sections</div>
+
+        <div class="track-list" id="track-list">
+          <!-- Rows injected by JS from SECTIONS config below -->
+        </div>
+
+        <!-- Main transport -->
+        <div class="main-transport" id="transport">
+          <div class="now-playing-label">now playing</div>
+          <div class="now-playing-title" id="np-title">—</div>
+          <div class="progress-wrap" id="progress-wrap">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <div class="time-row">
+            <span id="time-current">0:00</span>
+            <span id="time-total">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Program note -->
+      <div class="program-note">
+        <h2>program note</h2>
+        <p>
+          <em>Kaleidoscope</em> unfolds over 44 minutes of continuous sound,
+          its formal architecture governed by golden-ratio proportions —
+          a structure that mirrors the natural recursion of the work's
+          sonic materials. SuperCollider synthesis generates an evolving
+          field of timbres drawn from granular processing, spectral
+          manipulation, and microtonal tuning systems. Live viola traces
+          melodic lines through this field, sometimes leading, sometimes
+          dissolving into it.
+        </p>
+        <p style="margin-top:0.8rem;">
+          The dance is not illustration of the music, nor the music illustration
+          of the dance. Each follows its own logic. The collision — the
+          interference pattern — is the work.
+        </p>
+      </div>
+
+    </div><!-- /#listen-view -->
+
+    <!-- ── OPERATOR VIEW ──────────────────────────────────────────── -->
+    <div id="operator-view">
+
+      <div class="operator-header">
+        <strong>Operator Mode</strong>
+        Press START on each cue when signaled by the conductor or score.
+        Only one cue plays at a time — starting a new one stops the current one.
+      </div>
+
+      <div class="cue-grid" id="cue-grid">
+        <!-- Cards injected by JS -->
+      </div>
+
+      <button class="cue-stop-all" onclick="stopAll()">&#9632; stop all</button>
+
+    </div><!-- /#operator-view -->
+
+  </div><!-- /.container -->
+</main>
+
+<!-- ── Footer ───────────────────────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <span>© 2026 David Carlton Adams</span>
+    </div>
+  </div>
+  <div class="social-links" aria-label="Elsewhere">
+    <a href="https://youtube.com/@davidcarltonadams" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.2" y="5.2" width="19.6" height="13.6" rx="4.2"/><path d="M10.3 9.2 15.3 12l-5 2.8Z" fill="currentColor"/></svg></a>
+    <a href="https://instagram.com/davidcarltonadams" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.1"/><circle cx="17.2" cy="6.9" r="0.9" fill="currentColor" stroke="none"/></svg></a>
+    <a href="https://linkedin.com/in/davidcarltonadams" target="_blank" rel="noopener" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7.6 10.6v6.2"/><circle cx="7.6" cy="7.7" r="0.95" fill="currentColor" stroke="none"/><path d="M11.6 16.8v-6.2M11.6 13.2c0-1.6 1-2.6 2.4-2.6s2.4 1 2.4 2.9v3.3"/></svg></a>
+    <a href="https://soundcloud.com/davidcarltonadams" target="_blank" rel="noopener" aria-label="SoundCloud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><g transform="translate(-1.8,-4) scale(1.2)" stroke-width="1.5"><path d="M2.5 13.8v3.4M5 12v5.2M7.5 10.6v6.6M10 12.6v4.6"/><path d="M12.5 17.2v-7.4a4 4 0 0 1 6.9 2.5 2.5 2.5 0 0 1-.5 4.9h-6.4Z"/></g></svg></a>
+  </div>
+</footer>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   Sections come from kaleidoscope-config.js (shared with
+   kaleidoscope-sound.html). Edit that file to update the sequence.
+   ══════════════════════════════════════════════════════════════════ */
+
+// Normalize SEQUENCE from config into the format this player expects
+const SECTIONS = (typeof SEQUENCE !== 'undefined' ? SEQUENCE : []).map(s => ({
+  id:       s.id,
+  label:    s.label,
+  duration: s.duration || null,
+  src:      s.src,                          // full relative path from config
+  note:     s.type === 'interlude' ? 'interlude' : '',
+  opNote:   s.poetryNeeded
+              ? '⚠ Poetry playback needed before this cue — confirm with David'
+              : (s.id === 'scene-0' ? 'Begin on cue from David or stage manager.' : ''),
+}));
+/* ─────────────────────────────────────────────────────────────── */
+
+// ── State ─────────────────────────────────────────────────────────
+let currentIdx   = -1;
+let currentAudio = null;
+let mode         = 'listen';
+
+// ── Utilities ─────────────────────────────────────────────────────
+function fmt(sec) {
+  if (!sec || isNaN(sec)) return '—';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function audioPath(id) {
+  // Use the src from SEQUENCE config if available; fall back to constructed path
+  const sec = SECTIONS.find(s => s.id === id);
+  return sec && sec.src ? sec.src : 'audio/kaleidoscope/ccf/' + id + '.mp3';
+}
+
+// ── Build track list ──────────────────────────────────────────────
+function buildTrackList() {
+  const list = document.getElementById('track-list');
+  list.innerHTML = '';
+  SECTIONS.forEach((sec, i) => {
+    const row = document.createElement('div');
+    row.className = 'track-row';
+    row.id = 'track-' + i;
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-label', 'Play ' + sec.label);
+    row.innerHTML = `
+      <button class="track-play-btn" id="pbtn-${i}" onclick="togglePlay(${i})" aria-label="Play/pause ${sec.label}">
+        <span class="play-icon" id="icon-${i}"></span>
+      </button>
+      <div class="track-info">
+        <div class="track-name">${sec.label}</div>
+        ${sec.note ? `<div class="track-note">${sec.note}</div>` : ''}
+      </div>
+      <div class="track-duration" id="dur-${i}">${sec.duration ? fmt(sec.duration) : ''}</div>
+    `;
+    row.addEventListener('click', (e) => {
+      if (!e.target.closest('.track-play-btn')) togglePlay(i);
+    });
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePlay(i); }
+    });
+    list.appendChild(row);
+  });
+}
+
+// ── Build cue grid ────────────────────────────────────────────────
+function buildCueGrid() {
+  const grid = document.getElementById('cue-grid');
+  grid.innerHTML = '';
+  SECTIONS.forEach((sec, i) => {
+    const card = document.createElement('div');
+    card.className = 'cue-card';
+    card.id = 'cue-' + i;
+    card.innerHTML = `
+      <div class="cue-number">${i + 1}</div>
+      <div class="cue-info">
+        <div class="cue-name">${sec.label}</div>
+        ${sec.opNote ? `<div class="cue-note-op">${sec.opNote}</div>` : ''}
+      </div>
+      <button class="cue-start-btn" id="cbtn-${i}" onclick="cueStart(${i})">Start</button>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ── Playback ──────────────────────────────────────────────────────
+function togglePlay(idx) {
+  if (currentIdx === idx && currentAudio && !currentAudio.paused) {
+    currentAudio.pause();
+    setPlayIcon(idx, false);
+    return;
+  }
+  loadAndPlay(idx);
+}
+
+function cueStart(idx) {
+  loadAndPlay(idx);
+}
+
+function loadAndPlay(idx) {
+  stopAll(false); // stop without clearing cue active state yet
+
+  currentIdx = idx;
+  const sec = SECTIONS[idx];
+  const audio = new Audio(audioPath(sec.id));
+  currentAudio = audio;
+
+  audio.addEventListener('loadedmetadata', () => {
+    const el = document.getElementById('dur-' + idx);
+    if (el) el.textContent = fmt(audio.duration);
+    updateTransport();
+  });
+
+  audio.addEventListener('timeupdate', updateProgress);
+
+  audio.addEventListener('ended', () => {
+    setPlayIcon(idx, false);
+    setCueActive(idx, false);
+    document.getElementById('np-title').textContent = '—';
+    document.getElementById('progress-fill').style.width = '0%';
+    document.getElementById('time-current').textContent = '0:00';
+    // auto-advance to next section
+    if (idx + 1 < SECTIONS.length) {
+      loadAndPlay(idx + 1);
+    }
+  });
+
+  audio.addEventListener('error', () => {
+    console.warn('Audio not found:', audioPath(sec.id));
+    setPlayIcon(idx, false);
+    setCueActive(idx, false);
+    document.getElementById('np-title').textContent = sec.label + ' (file not found)';
+  });
+
+  const playPromise = audio.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      // Autoplay blocked — show iOS unlock overlay
+      document.getElementById('unlock-overlay').classList.add('visible');
+      document.getElementById('unlock-btn').onclick = () => {
+        document.getElementById('unlock-overlay').classList.remove('visible');
+        audio.play().catch(() => {});
+      };
+    });
+  }
+
+  // Update UI
+  document.querySelectorAll('.track-row').forEach(r => r.classList.remove('active'));
+  const row = document.getElementById('track-' + idx);
+  if (row) row.classList.add('active');
+  setPlayIcon(idx, true);
+
+  document.querySelectorAll('.cue-card').forEach(c => c.classList.remove('cue-active'));
+  const card = document.getElementById('cue-' + idx);
+  if (card) card.classList.add('cue-active');
+
+  document.querySelectorAll('.cue-start-btn').forEach(b => b.classList.remove('playing'));
+  const cbtn = document.getElementById('cbtn-' + idx);
+  if (cbtn) { cbtn.textContent = 'Playing…'; cbtn.classList.add('playing'); }
+
+  document.getElementById('np-title').textContent = sec.label;
+}
+
+function stopAll(clearState = true) {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  document.querySelectorAll('.track-row').forEach(r => r.classList.remove('active'));
+  document.querySelectorAll('.cue-card').forEach(c => c.classList.remove('cue-active'));
+  document.querySelectorAll('.cue-start-btn').forEach(b => {
+    b.textContent = 'Start'; b.classList.remove('playing');
+  });
+  for (let i = 0; i < SECTIONS.length; i++) setPlayIcon(i, false);
+  if (clearState) {
+    currentIdx = -1;
+    document.getElementById('np-title').textContent = '—';
+    document.getElementById('progress-fill').style.width = '0%';
+    document.getElementById('time-current').textContent = '0:00';
+  }
+}
+
+function setCueActive(idx, active) {
+  const card = document.getElementById('cue-' + idx);
+  if (!card) return;
+  card.classList.toggle('cue-active', active);
+  const btn = document.getElementById('cbtn-' + idx);
+  if (!btn) return;
+  if (!active) { btn.textContent = 'Start'; btn.classList.remove('playing'); }
+}
+
+// ── UI updates ────────────────────────────────────────────────────
+function setPlayIcon(idx, playing) {
+  const icon = document.getElementById('icon-' + idx);
+  if (!icon) return;
+  if (playing) {
+    icon.className = 'pause-icon';
+    icon.innerHTML = '<span class="pause-bar"></span><span class="pause-bar"></span>';
+  } else {
+    icon.className = 'play-icon';
+    icon.innerHTML = '';
+  }
+}
+
+function updateTransport() {
+  if (!currentAudio) return;
+  const sec = SECTIONS[currentIdx];
+  if (sec && currentAudio.duration) {
+    document.getElementById('time-total').textContent = fmt(currentAudio.duration);
+  }
+}
+
+function updateProgress() {
+  if (!currentAudio || !currentAudio.duration) return;
+  const pct = (currentAudio.currentTime / currentAudio.duration) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('time-current').textContent = fmt(currentAudio.currentTime);
+}
+
+// ── Seekbar ────────────────────────────────────────────────────────
+document.getElementById('progress-wrap').addEventListener('click', (e) => {
+  if (!currentAudio || !currentAudio.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pct  = (e.clientX - rect.left) / rect.width;
+  currentAudio.currentTime = pct * currentAudio.duration;
+});
+
+// ── Mode toggle ────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('listen-view').style.display   = m === 'listen'   ? '' : 'none';
+  document.getElementById('operator-view').style.display = m === 'operator' ? '' : 'none';
+  document.getElementById('btn-listen').classList.toggle('active',   m === 'listen');
+  document.getElementById('btn-operator').classList.toggle('active', m === 'operator');
+}
+
+// ── Nav toggle (matches rest of site) ─────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  buildTrackList();
+  buildCueGrid();
+
+  const toggle = document.querySelector('.nav-toggle');
+  const links  = document.querySelector('.nav-links');
+  if (toggle && links) {
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!open));
+      links.classList.toggle('open');
+    });
+  }
+});
+</script>
+</body>
+</html>
