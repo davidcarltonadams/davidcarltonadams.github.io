@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <title>David Carlton Adams — Professional Profile</title>
+  <meta name="description" content="Composer, performer, and educator. DMA, Peabody Institute (Johns Hopkins). Seeking Fall 2026 faculty position.">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── LinkedIn profile page styles ─────────────────────────── */
+
+    .li-header {
+      padding: 2.5rem 0 2rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2.5rem;
+    }
+
+    .li-header h1 {
+      margin-bottom: 0.4rem;
+    }
+
+    .li-headline {
+      font-family: var(--font-body);
+      font-size: 1.05rem;
+      color: var(--text-2);
+      margin-bottom: 0.5rem;
+      line-height: 1.5;
+    }
+
+    .li-location {
+      font-size: 0.875rem;
+      color: var(--text-3);
+      margin-bottom: 0;
+    }
+
+    .li-location a {
+      color: var(--text-3);
+    }
+
+    .li-location a:hover {
+      color: var(--accent);
+    }
+
+    /* ── Sections ──────────────────────────────────────────────── */
+
+    .li-section {
+      margin-bottom: 3rem;
+      padding-bottom: 3rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .li-section:last-child {
+      border-bottom: none;
+    }
+
+    .li-section > h2 {
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── About ─────────────────────────────────────────────────── */
+
+    .li-about p {
+      color: var(--text);
+      max-width: 68ch;
+    }
+
+    /* ── Featured ──────────────────────────────────────────────── */
+
+    .li-featured-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .li-featured-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.25rem;
+      text-decoration: none;
+      color: var(--text);
+      display: block;
+      transition: border-color 0.15s var(--ease), background 0.15s var(--ease);
+    }
+
+    .li-featured-card:hover {
+      border-color: var(--accent);
+      background: var(--accent-light);
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .li-featured-card .li-fc-label {
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 0.35rem;
+    }
+
+    .li-featured-card .li-fc-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 500;
+      line-height: 1.3;
+      margin-bottom: 0;
+    }
+
+    /* ── Entries (Experience, Education, Projects) ─────────────── */
+
+    .li-entries {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .li-entry {
+      padding-left: 1.25rem;
+      border-left: 2px solid var(--border);
+    }
+
+    .li-entry-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 500;
+      margin-bottom: 0.2rem;
+    }
+
+    .li-entry-org {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 0.15rem;
+    }
+
+    .li-entry-meta {
+      font-size: 0.8rem;
+      color: var(--text-3);
+      margin-bottom: 0.75rem;
+    }
+
+    .li-entry-bullets {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .li-entry-bullets li {
+      position: relative;
+      padding-left: 1.1em;
+      color: var(--text-2);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin-bottom: 0.3rem;
+    }
+
+    .li-entry-bullets li::before {
+      content: '·';
+      position: absolute;
+      left: 0;
+      color: var(--text-3);
+    }
+
+    .li-entry-desc {
+      font-size: 0.9rem;
+      color: var(--text-2);
+      max-width: 62ch;
+    }
+
+    .li-entry-studied {
+      font-size: 0.85rem;
+      color: var(--text-3);
+      margin-top: 0.4rem;
+    }
+
+    /* ── Skills ─────────────────────────────────────────────────── */
+
+    .li-skills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .li-skill {
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 0.3rem 0.75rem;
+      border-radius: 2rem;
+      letter-spacing: 0.01em;
+    }
+
+    .li-skill.featured-skill {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    /* ── Back note ─────────────────────────────────────────────── */
+
+    .li-note {
+      font-size: 0.8rem;
+      color: var(--text-3);
+      margin-top: 0.5rem;
+    }
+
+    /* ── Responsive ────────────────────────────────────────────── */
+
+    @media (max-width: 600px) {
+      .li-featured-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<nav aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-name">David Carlton Adams</a>
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+        <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
+    <ul class="nav-links" role="list">
+      <li><a href="index.html">about</a></li>
+      <li><a href="works.html">works</a></li>
+      <li><a href="media.html">media</a></li>
+      <li><a href="teaching.html">teaching</a></li>
+      <li><a href="contact.html">contact</a></li>
+      <li><a href="tools.html">tools</a></li>
+      <li class="nav-social">
+        <a href="https://youtube.com/@davidcarltonadams" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.2" y="5.2" width="19.6" height="13.6" rx="4.2"/><path d="M10.3 9.2 15.3 12l-5 2.8Z" fill="currentColor"/></svg></a>
+        <a href="https://instagram.com/davidcarltonadams" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.1"/><circle cx="17.2" cy="6.9" r="0.9" fill="currentColor" stroke="none"/></svg></a>
+        <a href="https://linkedin.com/in/davidcarltonadams" target="_blank" rel="noopener" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7.6 10.6v6.2"/><circle cx="7.6" cy="7.7" r="0.95" fill="currentColor" stroke="none"/><path d="M11.6 16.8v-6.2M11.6 13.2c0-1.6 1-2.6 2.4-2.6s2.4 1 2.4 2.9v3.3"/></svg></a>
+        <a href="https://soundcloud.com/davidcarltonadams" target="_blank" rel="noopener" aria-label="SoundCloud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><g transform="translate(-1.8,-4) scale(1.2)" stroke-width="1.5"><path d="M2.5 13.8v3.4M5 12v5.2M7.5 10.6v6.6M10 12.6v4.6"/><path d="M12.5 17.2v-7.4a4 4 0 0 1 6.9 2.5 2.5 2.5 0 0 1-.5 4.9h-6.4Z"/></g></svg></a>
+      </li>
+    
+    </ul>
+  </div>
+</nav>
+
+<main>
+  <div class="container">
+
+    <!-- ── Profile Header ───────────────────────────────────────── -->
+    <header class="li-header">
+      <h1>David Carlton Adams</h1>
+      <p class="li-headline">
+        Composer &amp; Music Theorist | Seeking Fall 2026 Faculty Position |
+        DMA, Peabody/JHU | Electroacoustic · Microtonal · Experimental
+      </p>
+      <p class="li-location">
+        Baltimore, MD &ensp;·&ensp;
+        <a href="https://davidcarltonadams.com" target="_blank" rel="noopener">davidcarltonadams.com</a>
+      </p>
+    </header>
+
+    <!-- ── About ────────────────────────────────────────────────── -->
+    <section class="li-section" aria-labelledby="about-heading">
+      <h2 id="about-heading">About</h2>
+      <div class="li-about">
+        <p>Composer, performer, and educator working at the intersection of experimental composition, rock music, and live electronics. I'm completing a DMA at Peabody Institute (Johns Hopkins), with an expected degree conferral of May 2026.</p>
+        <p>My music draws on a decade of work as a rock guitarist and recording engineer, a certificate in vocal performance, and doctoral training in microtonality, extended form, and electronics. The result is work that moves between acoustic chamber music, electroacoustic composition, and guitar-driven performance — sometimes in the same piece.</p>
+        <p>Recent compositions include works performed and premiered by Talea Ensemble, Wet Ink Ensemble, Ensemble Linea, JACK Quartet, Friction Quartet, and Old Bay New Music. I'm also a co-founder of the New Uncertainty Collective, an experimental music label and concert series based in Baltimore.</p>
+        <p>As an educator, I've taught the full theory sequence at Peabody (Theory 1–6), musicianship and composition at The Walden School, and Musicianship 2–3 at Towson University. I care about meeting students where they are — whether they're reading Ligeti scores or writing their first songs.</p>
+        <p>My background in chemical and nuclear engineering shapes how I think about compositional systems, tuning, and instrument design. I build and perform with Pedal Stool, a custom guitar-effects meta-instrument that can transform almost any sound source in real time.</p>
+        <p>I'm actively seeking faculty positions in composition and/or music theory for Fall 2026.</p>
+      </div>
+    </section>
+
+    <!-- ── Featured ─────────────────────────────────────────────── -->
+    <section class="li-section" aria-labelledby="featured-heading">
+      <h2 id="featured-heading">Featured</h2>
+      <div class="li-featured-grid">
+        <a href="https://davidcarltonadams.com" target="_blank" rel="noopener" class="li-featured-card">
+          <p class="li-fc-label">Website</p>
+          <p class="li-fc-title">David Carlton Adams — Composer &amp; Performer</p>
+        </a>
+        <a href="works.html" class="li-featured-card">
+          <p class="li-fc-label">Works</p>
+          <p class="li-fc-title">Scores &amp; Recordings</p>
+        </a>
+        <a href="https://newuncertaintycollective.com" target="_blank" rel="noopener" class="li-featured-card">
+          <p class="li-fc-label">Organization</p>
+          <p class="li-fc-title">New Uncertainty Collective</p>
+        </a>
+      </div>
+    </section>
+
+    <!-- ── Experience ────────────────────────────────────────────── -->
+    <section class="li-section" aria-labelledby="experience-heading">
+      <h2 id="experience-heading">Experience</h2>
+      <div class="li-entries">
+
+        <div class="li-entry">
+          <p class="li-entry-title">Composer, Performer, and Educator</p>
+          <p class="li-entry-org">Independent</p>
+          <p class="li-entry-meta">2014 – Present &ensp;·&ensp; Self-employed &ensp;·&ensp; Baltimore, MD (and formerly Austin, TX)</p>
+          <ul class="li-entry-bullets">
+            <li>Work spans chamber music, electroacoustic composition, and guitar-driven performance; recent compositions premiered by Talea Ensemble, Wet Ink Ensemble, Ensemble Linea, JACK Quartet, Friction Quartet, and Old Bay New Music.</li>
+            <li>Build and perform with Pedal Stool, a custom guitar-effects meta-instrument designed for real-time transformation of diverse sound sources.</li>
+            <li>Music rooted in alternative tunings, live electronics, and hybrid genre influences drawn from experimental, rock, and classical traditions.</li>
+          </ul>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title">Graduate Teaching Associate (Adjunct Professor)</p>
+          <p class="li-entry-org">Peabody Institute of the Johns Hopkins University</p>
+          <p class="li-entry-meta">August 2024 – Present &ensp;·&ensp; Part-time &ensp;·&ensp; Baltimore, MD</p>
+          <ul class="li-entry-bullets">
+            <li>Teach the full undergraduate music theory sequence (Theory 1–6), covering tonal harmony, counterpoint, post-tonal analysis, and form.</li>
+            <li>Courses include Music Now, an interdisciplinary survey of twentieth- and twenty-first-century music.</li>
+            <li>Advise student compositions and support undergraduate research in music theory.</li>
+          </ul>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title">Co-Founder</p>
+          <p class="li-entry-org">New Uncertainty Collective</p>
+          <p class="li-entry-meta">2024 – Present &ensp;·&ensp; Baltimore, MD</p>
+          <ul class="li-entry-bullets">
+            <li>Co-founded an independent experimental music label and concert series presenting emerging and established artists working at the edges of composed, improvised, and electronic music.</li>
+            <li>Organize and produce the Confluences concert series; handle booking, artist relations, logistics, and programming.</li>
+            <li>Manage label operations including releases, promotion, and community outreach.</li>
+          </ul>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title">Co-Director</p>
+          <p class="li-entry-org">Project Poetic Justice</p>
+          <p class="li-entry-meta">2024 – Present &ensp;·&ensp; Part-time &ensp;·&ensp; Washington, DC</p>
+          <ul class="li-entry-bullets">
+            <li>Co-direct an arts-in-corrections initiative bringing live music performance and music-making into a DC correctional facility.</li>
+            <li>Expanded programming from one to two housing units in Year 2; coordinate musicians and volunteers who receive honoraria for their participation.</li>
+            <li>Program and lead sessions integrating music theory, composition, and performance for incarcerated participants.</li>
+          </ul>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title">Adjunct Faculty, Department of Music</p>
+          <p class="li-entry-org">Towson University</p>
+          <p class="li-entry-meta">Fall 2024 &ensp;·&ensp; Part-time &ensp;·&ensp; Towson, MD</p>
+          <ul class="li-entry-bullets">
+            <li>Taught Musicianship 2 and Musicianship 3 (aural skills, sight-singing, dictation) to undergraduate music majors.</li>
+          </ul>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title">Faculty</p>
+          <p class="li-entry-org">The Walden School</p>
+          <p class="li-entry-meta">Summer 2024; Summer 2026 (expected) &ensp;·&ensp; Seasonal / Part-time &ensp;·&ensp; Dublin, NH</p>
+          <ul class="li-entry-bullets">
+            <li>Teach composition, rock music, and musicianship to pre-college and young adult students in an intensive summer creative music program.</li>
+            <li>Lead individual composition lessons, ensemble coaching, and group theory seminars.</li>
+          </ul>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title">Co-Director</p>
+          <p class="li-entry-org">Fast Forward Austin</p>
+          <p class="li-entry-meta">2017 – 2023 &ensp;·&ensp; Volunteer / Leadership &ensp;·&ensp; Austin, TX</p>
+          <ul class="li-entry-bullets">
+            <li>Co-directed one of Austin's primary new music concert series, presenting experimental and contemporary works by emerging and established composers.</li>
+            <li>Managed programming, logistics, artist relations, and community partnerships across six years of regular programming.</li>
+          </ul>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Education ─────────────────────────────────────────────── -->
+    <section class="li-section" aria-labelledby="education-heading">
+      <h2 id="education-heading">Education</h2>
+      <div class="li-entries">
+
+        <div class="li-entry">
+          <p class="li-entry-title">Doctor of Musical Arts (DMA) — Composition</p>
+          <p class="li-entry-org">Peabody Institute of the Johns Hopkins University</p>
+          <p class="li-entry-meta">2020 – 2026 (expected May 2026)</p>
+          <p class="li-entry-desc">Completing doctoral work in composition with a focus on microtonality, electroacoustic music, and extended formal structures. Defense passed February 13, 2026; degree conferral pending submission of final paper.</p>
+          <p class="li-entry-studied">Studied with: Felipe Lara (primary advisor). Doctoral committee: David Gutkin, Vid Smooke.</p>
+          <p class="li-entry-studied">Activities: Graduate Teaching Associate (Theory 1–6, Music Now); Co-Founder, New Uncertainty Collective; Co-Director, Project Poetic Justice.</p>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title">Master of Music (MM) — Composition</p>
+          <p class="li-entry-org">Peabody Institute of the Johns Hopkins University</p>
+          <p class="li-entry-meta">2020 – 2022</p>
+          <p class="li-entry-studied">Studied with: Oscar Bettison (primary). Also studied with Tony Arnold (voice/performance) and Wendel Patrick (electronic music and production).</p>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title">Bachelor of Music (BM) — Composition</p>
+          <p class="li-entry-org">The University of Texas at Austin — Butler School of Music</p>
+          <p class="li-entry-meta">2010 – 2014</p>
+          <p class="li-entry-studied">Studied with: Don Grantham (primary), Bruce Pennycook, Yevgeniy Sharlat. Certificate of Vocal Performance with David Small.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Projects ──────────────────────────────────────────────── -->
+    <section class="li-section" aria-labelledby="projects-heading">
+      <h2 id="projects-heading">Projects</h2>
+      <div class="li-entries">
+
+        <div class="li-entry">
+          <p class="li-entry-title">Project Poetic Justice</p>
+          <p class="li-entry-meta">2024 – Present</p>
+          <p class="li-entry-desc">A community-engaged arts-in-corrections initiative bringing live music and music-making to a DC correctional facility. Now in its second year, PPJ has expanded to two housing units and coordinates a team of musicians and volunteers. Programming integrates performance, music theory, and composition.</p>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title">Pedal Stool and the SALLT Ensemble</p>
+          <p class="li-entry-meta">2023 – Present</p>
+          <p class="li-entry-desc">Pedal Stool is a custom guitar-effects meta-instrument designed and built for real-time transformation of diverse sound sources — electric guitar, voice, synthesizer, or virtually anything else. The SALLT Ensemble is the performance context for this instrument, featured in the April 2026 spring residency finale at Le Mondo Arts in Baltimore. The instrument reflects an ongoing interest in building new tools for live electronic performance.</p>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title"><em>words (from a friend)</em></p>
+          <p class="li-entry-meta">Summer 2024</p>
+          <p class="li-entry-desc">A chamber work for violin, cello, and fretless electric guitar, premiered at The Walden School in the summer of 2024. The piece explores alternative tunings and the expressive possibilities of the fretless guitar as a voice within a classical string texture.</p>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title">Confluences Concert Series (New Uncertainty Collective)</p>
+          <p class="li-entry-meta">2024 – Present</p>
+          <p class="li-entry-desc">A recurring concert series in Baltimore presenting experimental and contemporary music by emerging and established artists. Co-produced and curated as part of ongoing work as co-founder of the New Uncertainty Collective.</p>
+        </div>
+
+        <div class="li-entry">
+          <p class="li-entry-title"><em>annunciation</em></p>
+          <p class="li-entry-meta">2020 – 2021</p>
+          <p class="li-entry-desc">An opera in scenes for voice, electronics, and remote performers, developed and premiered during the pandemic. The work involved live performers distributed across geographic locations, communicating and performing together in real time — an early experiment in the logistical and aesthetic possibilities of networked performance.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Skills ────────────────────────────────────────────────── -->
+    <section class="li-section" aria-labelledby="skills-heading">
+      <h2 id="skills-heading">Skills</h2>
+      <div class="li-skills">
+        <span class="li-skill featured-skill">Music Composition</span>
+        <span class="li-skill featured-skill">Music Theory</span>
+        <span class="li-skill featured-skill">Music Education</span>
+        <span class="li-skill">Electroacoustic Music</span>
+        <span class="li-skill">SuperCollider</span>
+        <span class="li-skill">Max/MSP</span>
+        <span class="li-skill">Music Production</span>
+        <span class="li-skill">Music Recording</span>
+        <span class="li-skill">Curriculum Development</span>
+        <span class="li-skill">Nonprofit Management</span>
+        <span class="li-skill">Cubase</span>
+        <span class="li-skill">Dorico</span>
+      </div>
+    </section>
+
+    <p class="li-note">
+      This page mirrors my <a href="https://linkedin.com/in/davidcarltonadams" target="_blank" rel="noopener">LinkedIn profile</a>.
+    </p>
+
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    <span>&copy; <span id="year"></span> David Carlton Adams</span>
+    &ensp;·&ensp;
+    <a id="footer-email" href="#">davidcarltonadams@gmail.com</a>
+  </div>
+  <div class="social-links" aria-label="Elsewhere">
+    <a href="https://youtube.com/@davidcarltonadams" target="_blank" rel="noopener" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2.2" y="5.2" width="19.6" height="13.6" rx="4.2"/><path d="M10.3 9.2 15.3 12l-5 2.8Z" fill="currentColor"/></svg></a>
+    <a href="https://instagram.com/davidcarltonadams" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.1"/><circle cx="17.2" cy="6.9" r="0.9" fill="currentColor" stroke="none"/></svg></a>
+    <a href="https://linkedin.com/in/davidcarltonadams" target="_blank" rel="noopener" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7.6 10.6v6.2"/><circle cx="7.6" cy="7.7" r="0.95" fill="currentColor" stroke="none"/><path d="M11.6 16.8v-6.2M11.6 13.2c0-1.6 1-2.6 2.4-2.6s2.4 1 2.4 2.9v3.3"/></svg></a>
+    <a href="https://soundcloud.com/davidcarltonadams" target="_blank" rel="noopener" aria-label="SoundCloud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><g transform="translate(-1.8,-4) scale(1.2)" stroke-width="1.5"><path d="M2.5 13.8v3.4M5 12v5.2M7.5 10.6v6.6M10 12.6v4.6"/><path d="M12.5 17.2v-7.4a4 4 0 0 1 6.9 2.5 2.5 2.5 0 0 1-.5 4.9h-6.4Z"/></g></svg></a>
+  </div>
+</footer>
+
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+<script src="js/nav.js"></script>
+<script src="js/email.js"></script>
+</body>
+</html>

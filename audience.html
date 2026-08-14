@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <title>audience — David Carlton Adams</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #060608;
+      font-family: Georgia, serif;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #pad-canvas {
+      display: block;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* ── Overlay: shown until first touch ───────────────────── */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.1rem;
+      pointer-events: none;
+      transition: opacity 0.7s;
+      z-index: 10;
+    }
+    #overlay.hidden { opacity: 0; }
+
+    #ov-label {
+      font-size: clamp(0.5rem, 2vw, 0.65rem);
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(212,204,196,0.18);
+    }
+    #ov-main {
+      font-size: clamp(1.4rem, 5vw, 2.2rem);
+      font-style: italic;
+      color: rgba(212,204,196,0.55);
+      text-align: center;
+      padding: 0 2rem;
+    }
+    #ov-sub {
+      font-size: clamp(0.5rem, 1.8vw, 0.65rem);
+      letter-spacing: 0.15em;
+      color: rgba(212,204,196,0.15);
+      text-align: center;
+    }
+
+    /* ── Corner info ─────────────────────────────────────────── */
+    #freq-display {
+      position: fixed;
+      bottom: 1rem; right: 1rem;
+      font-size: 0.55rem;
+      letter-spacing: 0.12em;
+      font-style: italic;
+      color: rgba(212,204,196,0.15);
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="pad-canvas"></canvas>
+
+<div id="overlay">
+  <p id="ov-label">audience instrument</p>
+  <p id="ov-main">touch to play</p>
+  <p id="ov-sub">drag to change sound</p>
+</div>
+
+<div id="freq-display"></div>
+
+<script>
+/* ── Presets ─────────────────────────────────────────────────── */
+const urlParams = new URLSearchParams(location.search);
+const PRESET = urlParams.get('preset') || 'default';
+
+const PRESETS = {
+  default: {
+    freqMin: 80,  freqMax: 1200,
+    distMax: 110,
+    filterMax: 4600,
+    reverbMix: 0.4,
+    dotR: 'rgba(130,118,200,',
+    bg: '#060608',
+  },
+  crisis: {
+    freqMin: 55, freqMax: 880,
+    distMax: 260,
+    filterMax: 3000,
+    reverbMix: 0.25,
+    dotR: 'rgba(210,55,55,',
+    bg: '#080304',
+  }
+};
+const C = PRESETS[PRESET] || PRESETS.default;
+
+document.body.style.background = C.bg;
+
+/* ── Canvas ──────────────────────────────────────────────────── */
+const canvas = document.getElementById('pad-canvas');
+const ctx    = canvas.getContext('2d');
+let DPR = 1;
+
+function resizeCanvas() {
+  DPR = window.devicePixelRatio || 1;
+  canvas.width  = window.innerWidth  * DPR;
+  canvas.height = window.innerHeight * DPR;
+  // setTransform resets + applies DPR so draw() uses logical pixels
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+/* ── Audio ───────────────────────────────────────────────────── */
+let actx, osc, shaper, filt, gainNode, dryGain, convolver, wetGain;
+let audioReady = false;
+
+function makeDistCurve(k) {
+  // soft-clip waveshaper; k=0 → bypass, k=400 → heavy clip
+  const n = 512, curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    curve[i] = k === 0 ? x : ((Math.PI + k) * x) / (Math.PI + k * Math.abs(x));
+  }
+  return curve;
+}
+
+function buildImpulse(ctx, dur, decay) {
+  const len = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+  }
+  return buf;
+}
+
+// Called synchronously inside a user gesture — critical for Safari
+function initAudio() {
+  if (audioReady) return;
+
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+
+  osc      = actx.createOscillator();
+  shaper   = actx.createWaveShaper();
+  filt     = actx.createBiquadFilter();
+  gainNode = actx.createGain();
+  dryGain  = actx.createGain();
+  wetGain  = actx.createGain();
+  convolver = actx.createConvolver();
+
+  osc.type = 'sawtooth';
+  osc.frequency.value = C.freqMin;
+
+  shaper.curve = makeDistCurve(0);
+  shaper.oversample = '4x';
+
+  filt.type = 'lowpass';
+  filt.frequency.value = 400;
+  filt.Q.value = 2.5;
+
+  gainNode.gain.value = 0.0001;
+
+  dryGain.gain.value = 1 - C.reverbMix;
+  wetGain.gain.value = C.reverbMix;
+  convolver.buffer   = buildImpulse(actx, 1.8, 2.5);
+
+  // osc → shaper → filt → gain → dry → out
+  //                                   → conv → wet → out
+  osc.connect(shaper);
+  shaper.connect(filt);
+  filt.connect(gainNode);
+  gainNode.connect(dryGain);
+  gainNode.connect(convolver);
+  convolver.connect(wetGain);
+  dryGain.connect(actx.destination);
+  wetGain.connect(actx.destination);
+
+  osc.start();
+
+  // Unlock suspended context (some browsers start suspended)
+  if (actx.state === 'suspended') actx.resume();
+
+  audioReady = true;
+}
+
+/* ── XY → audio ──────────────────────────────────────────────── */
+function logMap(t, lo, hi) { return lo * Math.pow(hi / lo, t); }
+
+function applyXY(nx, ny, instant) {
+  if (!audioReady) return;
+  const now = actx.currentTime;
+  const freq  = logMap(nx, C.freqMin, C.freqMax);
+  const fc    = logMap(ny * 0.9 + 0.1, 150, C.filterMax);
+  const amp   = 0.6 * ny + 0.02;
+  const dist  = C.distMax * (1 - ny * 0.75);
+
+  if (instant) {
+    gainNode.gain.cancelScheduledValues(now);
+    gainNode.gain.setValueAtTime(amp, now);
+    osc.frequency.setValueAtTime(freq, now);
+    filt.frequency.setValueAtTime(fc, now);
+  } else {
+    const tau = 0.025;
+    gainNode.gain.setTargetAtTime(amp, now, tau);
+    osc.frequency.setTargetAtTime(freq, now, tau);
+    filt.frequency.setTargetAtTime(fc, now, tau);
+  }
+
+  shaper.curve = makeDistCurve(dist);
+  document.getElementById('freq-display').textContent = Math.round(freq) + ' hz';
+}
+
+function releaseAudio() {
+  if (!audioReady) return;
+  const now = actx.currentTime;
+  gainNode.gain.cancelScheduledValues(now);
+  gainNode.gain.setTargetAtTime(0.0001, now, 0.1);
+  document.getElementById('freq-display').textContent = '';
+}
+
+/* ── Pointer state ───────────────────────────────────────────── */
+let active = false;
+let nx = 0.5, ny = 0.5;       // normalized: x right=1, y top=1
+let rdx = 0.5, rdy = 0.5;     // render (lerped)
+let trail = [];
+const TRAIL_LEN = 32;
+const overlay = document.getElementById('overlay');
+
+function norm(clientX, clientY) {
+  return {
+    nx: Math.max(0, Math.min(1, clientX / window.innerWidth)),
+    ny: Math.max(0, Math.min(1, 1 - clientY / window.innerHeight)),
+  };
+}
+
+function onStart(cx, cy) {
+  initAudio();                          // sync — must be in gesture handler
+  active = true;
+  overlay.classList.add('hidden');
+  trail = [];
+  ({ nx, ny } = norm(cx, cy));
+  applyXY(nx, ny, true);
+}
+
+function onMove(cx, cy) {
+  if (!active) return;
+  ({ nx, ny } = norm(cx, cy));
+  applyXY(nx, ny, false);
+  trail.push({ x: cx, y: cy, t: Date.now() });
+  if (trail.length > TRAIL_LEN) trail.shift();
+}
+
+function onEnd() {
+  active = false;
+  trail = [];
+  releaseAudio();
+}
+
+// Mouse
+canvas.addEventListener('mousedown',  e => onStart(e.clientX, e.clientY));
+canvas.addEventListener('mousemove',  e => { if (active) onMove(e.clientX, e.clientY); });
+canvas.addEventListener('mouseup',    onEnd);
+canvas.addEventListener('mouseleave', onEnd);
+
+// Touch — passive:false so we can preventDefault (blocks scroll/pinch)
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  onStart(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  onMove(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+canvas.addEventListener('touchend',    e => { e.preventDefault(); onEnd(); }, { passive: false });
+canvas.addEventListener('touchcancel', e => { e.preventDefault(); onEnd(); }, { passive: false });
+
+/* ── Render ──────────────────────────────────────────────────── */
+function draw() {
+  requestAnimationFrame(draw);
+
+  const W = window.innerWidth, H = window.innerHeight;
+  const LERP = 0.16;
+
+  // Lerp render position
+  rdx += (nx - rdx) * LERP;
+  rdy += ((1 - ny) - rdy) * LERP; // flip y: ny=1(top) → rdy near 0
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = C.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  if (active) {
+    const px = rdx * W, py = rdy * H;
+
+    // Trail
+    const now = Date.now();
+    for (let i = 0; i < trail.length; i++) {
+      const pt  = trail[i];
+      const age = (now - pt.t) / 500;
+      const a   = Math.max(0, (1 - age) * 0.22 * (i / trail.length));
+      const r   = 2 + (i / trail.length) * 20;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = C.dotR + a + ')';
+      ctx.fill();
+    }
+
+    // Outer glow
+    const glowR = Math.min(W, H) * (0.1 + ny * 0.06);
+    const grd = ctx.createRadialGradient(px, py, 0, px, py, glowR);
+    grd.addColorStop(0,   C.dotR + (0.16 + ny * 0.12) + ')');
+    grd.addColorStop(0.5, C.dotR + (0.05 + ny * 0.05) + ')');
+    grd.addColorStop(1,   C.dotR + '0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(px, py, glowR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Core dot
+    const dotR = 5 + ny * 4;
+    ctx.beginPath();
+    ctx.arc(px, py, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = C.dotR + (0.6 + ny * 0.4) + ')';
+    ctx.fill();
+
+    // Crosshair
+    ctx.strokeStyle = C.dotR + '0.06)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, py); ctx.lineTo(W, py);
+    ctx.moveTo(px, 0); ctx.lineTo(px, H);
+    ctx.stroke();
+  }
+
+  // Axis hints
+  ctx.fillStyle = 'rgba(212,204,196,0.05)';
+  ctx.font = '0.5rem Georgia, serif';
+  ctx.textBaseline = 'bottom';
+  ctx.textAlign = 'left';
+  ctx.fillText('← low', 14, H - 12);
+  ctx.textAlign = 'right';
+  ctx.fillText('high →', W - 14, H - 12);
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'right';
+  ctx.fillText('bright ↑', W - 14, 14);
+}
+draw();
+</script>
+</body>
+</html>
