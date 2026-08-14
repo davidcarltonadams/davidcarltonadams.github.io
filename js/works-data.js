@@ -544,7 +544,7 @@ const WORKS = [
       performers: "David Carlton Adams (all parts)",
       venue: "Self-recorded studio track"
     },
-    links: { score: "assets/docs/scores/fardels-bear-sample.pdf", audio: "", video: "", page: "fardels-bear.html" },
+    links: { score: "assets/docs/scores/fardels-bear-sample.pdf", audio: "https://soundcloud.com/davidcarltonadams/fardels-bear", video: "", page: "fardels-bear.html" },
     notes: "24-EDO studio track, self-recorded 2020.",
     highlighted: false
   },
