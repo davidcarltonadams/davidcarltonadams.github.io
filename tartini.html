@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <title>tartini</title>
+  <meta name="description" content="Two sine tones pushed through a nonlinear stage produce audible ghost pitches — difference and summation tones — labeled live on a spectrum plot.">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+      --col-a:  #8ab0c8;
+      --col-b:  #a0b888;
+      --col-d:  #d4c070;
+      --col-s:  #c8906a;
+      --col-h:  #b08acc;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.5rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 560px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.9;
+    }
+
+    canvas { display: block; cursor: default; border: 1px solid var(--border); }
+
+    .readout {
+      font-size: 0.6rem;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+      text-align: center;
+      max-width: 620px;
+      line-height: 1.8;
+    }
+    .readout .d { color: var(--col-d); }
+    .readout .s { color: var(--col-s); }
+    .readout .h { color: var(--col-h); }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem 2.2rem;
+      justify-content: center;
+      max-width: 700px;
+    }
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.38rem;
+      align-items: center;
+    }
+    .ctrl-label {
+      font-size: 0.57rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .ctrl-label.a { color: var(--col-a); }
+    .ctrl-label.b { color: var(--col-b); }
+    .ctrl-val {
+      font-size: 0.57rem;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+      min-width: 3.6em;
+      text-align: center;
+    }
+    input[type=range] { width: 150px; accent-color: var(--gold); }
+    input[type=range].a { accent-color: var(--col-a); }
+    input[type=range].b { accent-color: var(--col-b); }
+
+    .btn-row {
+      display: flex;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      background: transparent;
+      color: var(--dimmer);
+      border: 1px solid var(--border);
+      padding: 0.34rem 0.95rem;
+      font-family: Georgia, serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.13em;
+      font-style: italic;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button.on { color: var(--gold); border-color: rgba(212,192,112,0.45); }
+
+    .hint {
+      font-size: 0.53rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+      text-align: center;
+      max-width: 560px;
+    }
+  </style>
+</head>
+<body>
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
+<div class="header">
+  <h1 class="title">tartini</h1>
+  <p class="sub">two sine tones, summed and pushed through a nonlinear stage — a speaker driven hard, an eardrum, a fuzz circuit, all shrug the same way — and pitches appear that neither oscillator is playing. Giuseppe Tartini heard the loudest one, |f<sub>A</sub>&minus;f<sub>B</sub>|, on solo violin double-stops in 1714 and called it his "terzo suono," the third sound. its quieter twin f<sub>A</sub>+f<sub>B</sub> rings alongside it. this isn't synthesized separately — it's genuinely in the signal, the same intermodulation math your ear does to any two loud tones.</p>
+</div>
+
+<canvas id="cv"></canvas>
+<div class="readout" id="readout">&nbsp;</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label a">tone A · Hz</span>
+    <input type="range" class="a" id="freqA" min="150" max="900" step="1" value="264">
+    <span class="ctrl-val" id="freqAVal">264</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label a">gain A</span>
+    <input type="range" class="a" id="gainA" min="0" max="1" step="0.01" value="0.55">
+    <span class="ctrl-val" id="gainAVal">0.55</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label b">tone B · Hz</span>
+    <input type="range" class="b" id="freqB" min="150" max="900" step="1" value="350">
+    <span class="ctrl-val" id="freqBVal">350</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label b">gain B</span>
+    <input type="range" class="b" id="gainB" min="0" max="1" step="0.01" value="0.55">
+    <span class="ctrl-val" id="gainBVal">0.55</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">ghost amount</span>
+    <input type="range" id="ghost" min="0" max="1" step="0.01" value="0">
+    <span class="ctrl-val" id="ghostVal">0.00</span>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button id="btnPlay">listen</button>
+</div>
+
+<p class="hint">0 ghost = clean linear mix, no ghosts possible · turn it up to fold the sum through a soft nonlinear curve · "stop" fully kills both oscillators and closes the audio graph</p>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  tartini — audible combination tones (Tartini / difference tones)
+//  Two independent sine oscillators sum into a WaveShaperNode whose
+//  curve is (1-ghost)*identity + ghost*(x + k2*x^2 + k3*x^3), soft-
+//  clipped by tanh. The x^2 term is what actually produces sum/
+//  difference products via the trig product-to-sum identity applied
+//  to (sinA + sinB)^2; the x^3 term adds odd-order products like
+//  2fA-fB and 2fB-fA. At ghost=0 the curve is exact identity, so the
+//  mix is clean and no ghost tones exist in the signal — this is an
+//  honest nonlinearity, not oscillators faked in under those labels.
+// ─────────────────────────────────────────────────────────────
+
+const $ = id => document.getElementById(id);
+const FFT_SIZE = 8192;
+const MAXF = 2000; // Hz, absolute axis ceiling (fA+fB tops out at 1800)
+
+function getFA()    { return parseFloat($('freqA').value); }
+function getFB()    { return parseFloat($('freqB').value); }
+function getGainA() { return parseFloat($('gainA').value); }
+function getGainB() { return parseFloat($('gainB').value); }
+function getGhost() { return parseFloat($('ghost').value); }
+
+// ── The math (testable in isolation, no audio needed) ─────────
+function diffTone(fa, fb)   { return Math.abs(fa - fb); }
+function sumTone(fa, fb)    { return fa + fb; }
+function combo2AmB(fa, fb)  { return 2 * fa - fb; }   // 2fA - fB
+function combo2BmA(fa, fb)  { return 2 * fb - fa; }   // 2fB - fA
+function computeGhosts(fa, fb) {
+  return { diff: diffTone(fa, fb), sum: sumTone(fa, fb),
+           c1: combo2AmB(fa, fb), c2: combo2BmA(fa, fb) };
+}
+
+// dynamic spectrum axis — follows the content instead of pinning
+// 0–2000 Hz (at the default tones every line sits below ~620 Hz,
+// bunched into the left third of a fixed axis). Target = highest
+// visible line padded 15%, snapped to 100s; the drawn axis eases
+// toward it each frame so slider drags feel continuous.
+function axisTarget(fa, fb) {
+  const g = computeGhosts(fa, fb);
+  const m = Math.max(fa, fb, g.sum, g.c1, g.c2);
+  return Math.min(MAXF, Math.max(500, Math.ceil((m * 1.15) / 100) * 100));
+}
+let axisCur = axisTarget(getFA(), getFB());
+
+function freqToNote(freq) {
+  if (!(freq > 0)) return '—';
+  const NAMES = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+  const midi = 69 + 12 * Math.log2(freq / 440);
+  const rnd = Math.round(midi);
+  const cents = Math.round((midi - rnd) * 100);
+  const name = NAMES[((rnd % 12) + 12) % 12];
+  const oct = Math.floor(rnd / 12) - 1;
+  return name + oct + (cents !== 0 ? (cents > 0 ? '+' : '') + cents + '¢' : '');
+}
+
+// nonlinear curve: identity at ghost=0, grows a quadratic (sum/diff
+// generator) + cubic (higher-order product generator) term as ghost
+// rises, soft-clipped so it never blows out.
+function makeCurve(amt) {
+  const n = 4096;
+  const curve = new Float32Array(n);
+  const k2 = amt * 0.55, k3 = amt * 0.85;
+  const norm = Math.tanh(1 + amt * 0.6);
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    const y = x + k2 * x * x + k3 * x * x * x;
+    curve[i] = Math.tanh(y * (1 + amt * 0.6)) / norm;
+  }
+  return curve;
+}
+
+// ── Audio graph ─────────────────────────────────────────────
+let actx = null, master = null, analyser = null, shaper = null, sumGain = null;
+let oscA = null, oscB = null, gA = null, gB = null;
+let oscillators = [];      // tracked so stopAll() can be verified/tested
+let freqData = null;
+let running = false;
+
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  master = actx.createGain();
+  master.gain.value = 0;
+  master.connect(actx.destination);
+
+  analyser = actx.createAnalyser();
+  analyser.fftSize = FFT_SIZE;
+  analyser.smoothingTimeConstant = 0.6;
+  analyser.connect(master);
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+
+  shaper = actx.createWaveShaper();
+  shaper.oversample = '4x';
+  shaper.curve = makeCurve(getGhost());
+  shaper.connect(analyser);
+
+  sumGain = actx.createGain();
+  sumGain.gain.value = 1;
+  sumGain.connect(shaper);
+
+  oscA = actx.createOscillator(); oscA.type = 'sine';
+  oscA.frequency.value = getFA();
+  gA = actx.createGain(); gA.gain.value = getGainA();
+  oscA.connect(gA); gA.connect(sumGain); oscA.start();
+
+  oscB = actx.createOscillator(); oscB.type = 'sine';
+  oscB.frequency.value = getFB();
+  gB = actx.createGain(); gB.gain.value = getGainB();
+  oscB.connect(gB); gB.connect(sumGain); oscB.start();
+
+  oscillators = [oscA, oscB];
+}
+
+function start() {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  running = true;
+  master.gain.setTargetAtTime(0.55, actx.currentTime, 0.05);
+  updatePlayUI();
+}
+
+// Hard stop: actually stops + disconnects every node and closes the
+// context. Not a mute — a teardown. If actx never existed (headless
+// test, or page never unlocked audio) this is a safe no-op past
+// clearing the tracked array.
+function stopAll() {
+  running = false;
+  if (actx) {
+    for (const o of oscillators) {
+      try { o.stop(); } catch (e) {}
+      try { o.disconnect(); } catch (e) {}
+    }
+    try { gA && gA.disconnect(); } catch (e) {}
+    try { gB && gB.disconnect(); } catch (e) {}
+    try { sumGain && sumGain.disconnect(); } catch (e) {}
+    try { shaper && shaper.disconnect(); } catch (e) {}
+    try { analyser && analyser.disconnect(); } catch (e) {}
+    try { master && master.disconnect(); } catch (e) {}
+    try { actx.close && actx.close(); } catch (e) {}
+    actx = null; master = null; analyser = null; shaper = null; sumGain = null;
+    oscA = null; oscB = null; gA = null; gB = null; freqData = null;
+  }
+  oscillators = [];
+  updatePlayUI();
+}
+
+function updatePlayUI() {
+  $('btnPlay').textContent = running ? 'stop' : 'listen';
+  $('btnPlay').classList.toggle('on', running);
+}
+
+// ── Canvas ───────────────────────────────────────────────────
+const canvas = $('cv');
+const dpr = window.devicePixelRatio || 1;
+const W = Math.min(window.innerWidth - 32, 620);
+const H = 300;
+canvas.width = W * dpr; canvas.height = H * dpr;
+canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+const c = canvas.getContext('2d');
+c.scale(dpr, dpr);
+
+// staged/synthetic spectrum for pose mode (?pose=1) — no real audio
+// signal is required for a photogenic capture; gaussian bumps stand
+// in for what the analyser would show at that ghost setting.
+function synthSpectrum(fa, fb, ghost) {
+  const n = 1024;
+  const data = new Uint8Array(n);
+  const binHz = axisCur / n;
+  const g = computeGhosts(fa, fb);
+  const peaks = [
+    { f: fa,     amp: 235,               w: 2.2 },
+    { f: fb,     amp: 235,               w: 2.2 },
+    { f: g.diff, amp: 60 + 150 * ghost,  w: 3.2 },
+    { f: g.sum,  amp: 40 + 110 * ghost,  w: 3.2 },
+    { f: g.c1,   amp: ghost > 0.15 ? 25 + 70 * ghost : 0, w: 4 },
+    { f: g.c2,   amp: ghost > 0.15 ? 25 + 70 * ghost : 0, w: 4 },
+  ];
+  for (let i = 0; i < n; i++) {
+    const f = i * binHz;
+    let v = 4;
+    for (const p of peaks) {
+      if (!(p.f > 0) || p.amp <= 0) continue;
+      const d = (f - p.f) / p.w;
+      v = Math.max(v, p.amp * Math.exp(-d * d));
+    }
+    data[i] = Math.min(255, v);
+  }
+  return { data, binHz };
+}
+
+let posed = false;
+
+function currentSpectrum() {
+  if (actx && running) {
+    analyser.getByteFrequencyData(freqData);
+    return { data: freqData, binHz: actx.sampleRate / FFT_SIZE };
+  }
+  if (posed) return synthSpectrum(getFA(), getFB(), getGhost());
+  return null;
+}
+
+function ampAt(spec, freq) {
+  if (!spec || !(freq > 0)) return 0;
+  const idx = Math.round(freq / spec.binHz);
+  if (idx < 0 || idx >= spec.data.length) return 0;
+  return spec.data[idx];
+}
+
+function draw() {
+  // ease the axis toward its content-driven target
+  const axisT = axisTarget(getFA(), getFB());
+  axisCur += (axisT - axisCur) * 0.12;
+  if (Math.abs(axisT - axisCur) < 1) axisCur = axisT;
+
+  c.clearRect(0, 0, W, H);
+  c.fillStyle = '#08080b';
+  c.fillRect(0, 0, W, H);
+
+  const padL = 12, padR = 12, base = H - 26, top = 14;
+  const xOf = f => padL + (f / axisCur) * (W - padL - padR);
+
+  // axis
+  c.strokeStyle = 'rgba(255,255,255,0.08)';
+  c.lineWidth = 1;
+  c.beginPath(); c.moveTo(padL, base); c.lineTo(W - padR, base); c.stroke();
+  c.font = "8px 'SF Mono', monospace";
+  c.fillStyle = 'rgba(204,200,208,0.22)';
+  c.textAlign = 'center';
+  const tickStep = axisCur > 1200 ? 200 : 100;
+  for (let f = 0; f <= axisCur; f += tickStep) {
+    const x = xOf(f);
+    c.fillText(f, x, base + 11);
+    c.strokeStyle = 'rgba(255,255,255,0.05)';
+    c.beginPath(); c.moveTo(x, base); c.lineTo(x, base - 3); c.stroke();
+  }
+
+  const spec = currentSpectrum();
+
+  // bars
+  if (spec) {
+    c.fillStyle = 'rgba(204,200,208,0.30)';
+    const nBins = Math.min(spec.data.length, Math.ceil(axisCur / spec.binHz));
+    for (let i = 0; i < nBins; i++) {
+      const f = i * spec.binHz;
+      const x = xOf(f);
+      const v = spec.data[i] / 255;
+      const hgt = v * (base - top);
+      if (hgt < 0.5) continue;
+      c.fillRect(x, base - hgt, 1.1, hgt);
+    }
+  }
+
+  // labeled markers
+  const fa = getFA(), fb = getFB(), ghost = getGhost();
+  const g = computeGhosts(fa, fb);
+  const THRESH = 40;
+  const markers = [
+    { f: fa,      label: 'A',        col: 'rgba(138,176,200,ALPHA)', always: true  },
+    { f: fb,      label: 'B',        col: 'rgba(160,184,136,ALPHA)', always: true  },
+    { f: g.diff,  label: '|A−B|', col: 'rgba(212,192,112,ALPHA)', always: false },
+    { f: g.sum,   label: 'A+B',      col: 'rgba(200,144,106,ALPHA)', always: false },
+    { f: g.c1,    label: '2A−B', col: 'rgba(176,138,204,ALPHA)', always: false },
+    { f: g.c2,    label: '2B−A', col: 'rgba(176,138,204,ALPHA)', always: false },
+  ];
+  for (const m of markers) {
+    if (!(m.f > 0) || m.f > axisCur) continue;
+    const amp = ampAt(spec, m.f);
+    const lit = m.always || amp > THRESH;
+    const alpha = lit ? 0.95 : 0.16;
+    const x = xOf(m.f);
+    c.strokeStyle = m.col.replace('ALPHA', alpha);
+    c.lineWidth = lit ? 1.4 : 1;
+    c.beginPath(); c.moveTo(x, base); c.lineTo(x, top - 2); c.stroke();
+    c.fillStyle = m.col.replace('ALPHA', alpha);
+    c.font = lit ? "italic 9px Georgia, serif" : "italic 8px Georgia, serif";
+    c.fillText(m.label, x, top - 6);
+  }
+}
+
+function loop() {
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ── Readout ──────────────────────────────────────────────────
+function updateReadout() {
+  const fa = getFA(), fb = getFB();
+  const g = computeGhosts(fa, fb);
+  $('readout').innerHTML =
+    `difference <span class="d">${g.diff.toFixed(1)} Hz</span> (${freqToNote(g.diff)}) ` +
+    `&nbsp;·&nbsp; summation <span class="s">${g.sum.toFixed(1)} Hz</span> (${freqToNote(g.sum)})` +
+    (getGhost() > 0.15
+      ? ` &nbsp;·&nbsp; <span class="h">2A−B ${g.c1.toFixed(0)} Hz · 2B−A ${g.c2.toFixed(0)} Hz</span>`
+      : '');
+}
+
+// ── Controls ─────────────────────────────────────────────────
+$('freqA').addEventListener('input', e => {
+  $('freqAVal').textContent = e.target.value;
+  if (actx) oscA.frequency.setTargetAtTime(getFA(), actx.currentTime, 0.02);
+  updateReadout();
+});
+$('freqB').addEventListener('input', e => {
+  $('freqBVal').textContent = e.target.value;
+  if (actx) oscB.frequency.setTargetAtTime(getFB(), actx.currentTime, 0.02);
+  updateReadout();
+});
+$('gainA').addEventListener('input', e => {
+  $('gainAVal').textContent = parseFloat(e.target.value).toFixed(2);
+  if (actx) gA.gain.setTargetAtTime(getGainA(), actx.currentTime, 0.02);
+});
+$('gainB').addEventListener('input', e => {
+  $('gainBVal').textContent = parseFloat(e.target.value).toFixed(2);
+  if (actx) gB.gain.setTargetAtTime(getGainB(), actx.currentTime, 0.02);
+});
+$('ghost').addEventListener('input', e => {
+  $('ghostVal').textContent = parseFloat(e.target.value).toFixed(2);
+  if (shaper) shaper.curve = makeCurve(getGhost());
+  updateReadout();
+});
+$('btnPlay').addEventListener('click', () => { running ? stopAll() : start(); });
+
+// ── Pose (for headless thumbnail capture) ───────────────────
+// ?pose=1 seeds a dissonant pair + a mid-high ghost amount and
+// switches the spectrum to the synthetic renderer so the capture
+// shows real-looking peaks without needing an unlocked AudioContext.
+(function applyPose() {
+  if (typeof location === 'undefined') return;   // headless logic-test env
+  const params = new URLSearchParams(location.search);
+  if (params.get('pose') !== '1') return;
+  posed = true;
+  // 250/340 (~11/8, dissonant) keeps all six markers — A, B, diff,
+  // sum, 2A-B, 2B-A — well separated (90, 160, 250, 340, 430,
+  // 590 Hz), so nothing overlaps in the capture.
+  $('freqA').value = 250;  $('freqAVal').textContent = '250';
+  $('freqB').value = 340;  $('freqBVal').textContent = '340';
+  $('gainA').value = 0.6;  $('gainAVal').textContent = '0.60';
+  $('gainB').value = 0.6;  $('gainBVal').textContent = '0.60';
+  $('ghost').value = 0.62; $('ghostVal').textContent = '0.62';
+  axisCur = axisTarget(getFA(), getFB());   // no mid-ease frame in the capture
+})();
+
+updateReadout();
+</script>
+</body>
+</html>
