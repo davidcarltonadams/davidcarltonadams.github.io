@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="the shepard–risset accelerando — five pulse trains in 2:1 tempo octaves, accelerating forever, never getting faster. an endless rhythmic illusion.">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <title>risset</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.5rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 540px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.9;
+    }
+
+    canvas { display: block; cursor: pointer; }
+
+    .tempo-line {
+      font-size: 0.56rem;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+      min-height: 1em;
+    }
+    .fall-line {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+    }
+    .fall-line .neg { color: var(--gold); }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem 2.2rem;
+      justify-content: center;
+      max-width: 700px;
+    }
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.38rem;
+      align-items: center;
+    }
+    .ctrl-label {
+      font-size: 0.57rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .ctrl-val {
+      font-size: 0.57rem;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+      min-width: 3em;
+      text-align: center;
+    }
+    input[type=range] { width: 150px; accent-color: var(--gold); }
+    select {
+      background: var(--bg2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.28rem 0.55rem;
+      font-size: 0.62rem;
+      font-family: Georgia, serif;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      background: transparent;
+      color: var(--dimmer);
+      border: 1px solid var(--border);
+      padding: 0.32rem 0.85rem;
+      font-family: Georgia, serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.13em;
+      font-style: italic;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button.on { color: var(--gold); border-color: rgba(212,192,112,0.4); }
+
+    .hint {
+      font-size: 0.53rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
+<div class="header">
+  <h1 class="title">risset</h1>
+  <p class="sub">the shepard–risset accelerando. five pulse trains locked in tempo octaves — every layer exactly twice the speed of the one below — all accelerating together. a layer that races off the top fades to silence while a new one is born at the bottom, so the machine speeds up forever and never gets faster. escher's staircase, turned sideways into time. one doubling every 30 seconds; reverse for the slowing that never arrives.</p>
+</div>
+
+<canvas id="cv"></canvas>
+
+<div class="tempo-line" id="tempoLine">&nbsp;</div>
+<div class="fall-line" id="fallLine">doublings 0.0 · loudest layer 120 bpm</div>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">seconds per doubling</span>
+    <input type="range" id="rateSlider" min="10" max="90" value="30" step="1">
+    <span class="ctrl-val" id="rateVal">30</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">ticks</span>
+    <select id="pitchSel">
+      <option value="glide" selected>gliding · pitch follows tempo</option>
+      <option value="flat">flat · rhythm alone</option>
+    </select>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button id="btnPlay">play</button>
+  <button id="btnReverse">reverse</button>
+</div>
+
+<p class="hint">click the canvas to start · the circles are fixed tempo rulers — the players fall through them</p>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+//  risset — the shepard–risset accelerando
+//  N pulse trains at tempos TMIN·2^(u·N), u equally spaced by
+//  1/N, all drifting upward (or downward) in log-tempo. The
+//  loudness window sin²(πu) is zero at both seams, so wraps are
+//  silent and the sorted (tempo, amp) multiset is invariant
+//  under one full doubling: perpetual accelerando, no arrival.
+//  Σ amp = N/2 and Σ amp² = 3N/8, exactly, at every phase
+//  (roots-of-unity identities) — total loudness never changes
+//  while every layer changes constantly.
+//  Tick intervals use the closed form for ∫T·2^(Rt)dt = 1 beat,
+//  so scheduling stays exact even mid-acceleration.
+// ─────────────────────────────────────────────────────────────
+
+const N    = 5;          // layers = tempo octaves spanned
+const TMIN = 0.5;        // slowest audible tempo, Hz (30 bpm) → top 960 bpm
+const FMIN = 110;        // gliding-tick pitch floor, Hz
+const POCT = 4;          // pitch octaves the glide spans
+const FLAT = 220;        // flat-mode tick pitch, Hz
+
+const mod1 = x => ((x % 1) + 1) % 1;
+const uOf      = (i, oct) => mod1((i + oct) / N);
+const tempoOf  = u => TMIN * Math.pow(2, u * N);
+const ampOf    = u => Math.pow(Math.sin(Math.PI * u), 2);
+const pitchOf  = u => FMIN * Math.pow(2, u * POCT);
+// exact time to the next beat while tempo = T0·2^(R·t):
+// solve ∫₀^Δ T0·2^(Rt) dt = 1  →  Δ = log2(1 + R·ln2/T0) / R
+function nextInterval(T0, R) {
+  if (Math.abs(R) < 1e-9) return 1 / T0;
+  return Math.log2(1 + R * Math.LN2 / T0) / R;
+}
+
+let running   = false;
+let dir       = 1;        // 1 accelerando · -1 ritardando
+let secPerDbl = 30;       // seconds per tempo doubling
+let pitchMode = 'glide';
+let octV      = 0.37;     // visual octave counter (signed, unbounded) — seeded off the seam so the idle frame looks mid-flight
+const beats   = Array.from({ length: N }, (_, i) => i * 2.7);  // visual beat accumulators, scattered at idle
+const flash   = new Array(N).fill(0);   // tick flash envelopes
+
+// ── Audio ────────────────────────────────────────────────────
+let actx = null, master = null;
+const layers = [];        // { osc, tick, nextT }
+let octRef = 0, tRef = 0; // audio-clock anchor: oct(t) = octRef + R·(t − tRef)
+
+function rate() { return dir / secPerDbl; }   // signed octaves per second
+
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  master = actx.createGain();
+  master.gain.value = 0.0;
+  master.connect(actx.destination);
+  for (let i = 0; i < N; i++) {
+    const osc = actx.createOscillator();
+    const tick = actx.createGain();
+    tick.gain.value = 0;
+    osc.frequency.value = FLAT;
+    osc.connect(tick); tick.connect(master);
+    osc.start();                       // persistent pool — never re-started
+    layers.push({ osc, tick, nextT: 0 });
+  }
+}
+
+function reAnchor() {                  // pin oct(t) to the audio clock "now"
+  if (!actx) return;
+  octRef = octV; tRef = actx.currentTime;
+  const t0 = actx.currentTime + 0.05;
+  for (const L of layers) L.nextT = t0;
+}
+
+function octAt(t) { return octRef + rate() * (t - tRef); }
+
+function scheduleTicks() {
+  if (!actx || !running) return;
+  const now = actx.currentTime, R = rate();
+  for (let i = 0; i < N; i++) {
+    const L = layers[i];
+    if (L.nextT < now - 0.2) L.nextT = now;      // tab-hidden catch-up guard
+    while (L.nextT < now + 0.12) {
+      const t = L.nextT;
+      const u = uOf(i, octAt(t));
+      const T = tempoOf(u), a = ampOf(u);
+      if (a > 0.003) {
+        const f = pitchMode === 'glide' ? pitchOf(u) : FLAT;
+        const decay = Math.min(0.09, Math.max(0.02, 0.35 / T));
+        L.osc.frequency.setValueAtTime(f, t);
+        L.tick.gain.cancelScheduledValues(t);
+        L.tick.gain.setValueAtTime(0, t);
+        L.tick.gain.linearRampToValueAtTime(a * 0.5, t + 0.004);
+        L.tick.gain.setTargetAtTime(0, t + 0.004, decay);
+      }
+      L.nextT = t + nextInterval(T, R);
+    }
+  }
+}
+
+// ── Canvas ───────────────────────────────────────────────────
+const canvas = document.getElementById('cv');
+const dpr = window.devicePixelRatio || 1;
+const W = Math.min(window.innerWidth - 32, 620);
+const H = 400;
+canvas.width = W * dpr; canvas.height = H * dpr;
+canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+const c = canvas.getContext('2d');
+c.scale(dpr, dpr);
+
+const cx = W / 2, cy = H / 2;
+const rIn = 26, rOut = Math.min(W, H) / 2 - 26;
+const rOf = u => rOut - u * (rOut - rIn);      // fast layers fall inward
+
+function draw() {
+  c.clearRect(0, 0, W, H);
+
+  // fixed tempo rulers — one circle per doubling, they never move
+  c.font = "9px 'SF Mono', monospace";
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (let k = 0; k <= N; k++) {
+    const r = rOf(k / N);
+    c.strokeStyle = 'rgba(255,255,255,0.05)';
+    c.lineWidth = 1;
+    c.beginPath(); c.arc(cx, cy, r, 0, 2 * Math.PI); c.stroke();
+    c.fillStyle = 'rgba(204,200,208,0.22)';
+    c.fillText(Math.round(TMIN * Math.pow(2, k) * 60) + '', cx, cy - r - (k === N ? -1 : 7));
+  }
+
+  // the players — each layer a ring falling through the rulers
+  for (let i = 0; i < N; i++) {
+    const u = uOf(i, octV);
+    const a = ampOf(u);
+    const r = rOf(u);
+    c.strokeStyle = `rgba(212,192,112,${(a * 0.32).toFixed(3)})`;
+    c.lineWidth = 1.4;
+    c.beginPath(); c.arc(cx, cy, r, 0, 2 * Math.PI); c.stroke();
+
+    const th = mod1(beats[i] / 8) * 2 * Math.PI - Math.PI / 2;
+    const fx = cx + r * Math.cos(th), fy = cy + r * Math.sin(th);
+    const fl = flash[i];
+    c.fillStyle = `rgba(238,224,168,${Math.min(1, a * (0.30 + 0.70 * fl)).toFixed(3)})`;
+    c.beginPath(); c.arc(fx, fy, 2.6 + 2.6 * fl, 0, 2 * Math.PI); c.fill();
+  }
+
+  // direction cue
+  c.textAlign = 'left';
+  c.fillStyle = running ? 'rgba(212,192,112,0.75)' : 'rgba(204,200,208,0.15)';
+  c.font = "15px Georgia, serif";
+  c.fillText(dir === 1 ? '↻ forever faster' : '↺ forever slower', 12, H - 20);
+}
+
+function updateReadout() {
+  const tempos = [];
+  for (let i = 0; i < N; i++) tempos.push(tempoOf(uOf(i, octV)) * 60);
+  tempos.sort((a, b) => a - b);
+  document.getElementById('tempoLine').textContent =
+    tempos.map(t => Math.round(t)).join(' · ') + ' bpm — neighbors exactly 2:1';
+  // the loudest layer sits at u≈0.5 — mid-window, always mid-tempo
+  let best = 0, bestA = -1;
+  for (let i = 0; i < N; i++) {
+    const a = ampOf(uOf(i, octV));
+    if (a > bestA) { bestA = a; best = i; }
+  }
+  const loud = Math.round(tempoOf(uOf(best, octV)) * 60);
+  const dbl = Math.abs(octV).toFixed(1);
+  document.getElementById('fallLine').innerHTML =
+    `doublings <span class="neg">${dbl}</span> · loudest layer ${loud} bpm · ` +
+    (dir === 1 ? 'forever faster, never faster' : 'forever slower, never slower');
+}
+
+// ── Loop ─────────────────────────────────────────────────────
+let lastMs = 0;
+function loop(nowMs) {
+  const dt = lastMs ? Math.min(0.1, (nowMs - lastMs) / 1000) : 0;
+  lastMs = nowMs;
+  if (running) {
+    octV += rate() * dt;
+    for (let i = 0; i < N; i++) {
+      const T = tempoOf(uOf(i, octV));
+      const b0 = beats[i];
+      beats[i] += T * dt;
+      if (Math.floor(beats[i]) > Math.floor(b0)) flash[i] = 1;
+      flash[i] = Math.max(0, flash[i] - dt * 7);
+    }
+    scheduleTicks();
+  }
+  if (actx) master.gain.setTargetAtTime(running ? 0.30 : 0.0, actx.currentTime, 0.06);
+  draw();
+  updateReadout();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ── Controls ─────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function setRunning(on) {
+  running = on;
+  if (on) reAnchor();
+  $('btnPlay').textContent = on ? 'pause' : 'play';
+  $('btnPlay').classList.toggle('on', on);
+}
+function start() {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();   // iOS unlock
+  setRunning(!running);
+}
+
+$('btnPlay').addEventListener('click', start);
+canvas.addEventListener('click', () => {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  if (!running) setRunning(true);
+});
+$('btnReverse').addEventListener('click', () => {
+  dir = -dir;
+  $('btnReverse').classList.toggle('on', dir === -1);
+  if (running) reAnchor();               // keep oct(t) continuous at the turn
+});
+$('rateSlider').addEventListener('input', e => {
+  secPerDbl = parseInt(e.target.value, 10);
+  $('rateVal').textContent = secPerDbl;
+  if (running) reAnchor();
+});
+$('pitchSel').addEventListener('change', e => { pitchMode = e.target.value; });
+
+updateReadout();
+</script>
+</body>
+</html>
