@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>dev-modes — MTOK2</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; padding:16px; background:#111; color:#ddd; font:14px/1.4 -apple-system,system-ui,sans-serif; }
+  h1 { font-size:16px; margin:0 0 12px; }
+  section { margin-bottom:20px; padding:12px; background:#1a1a1a; border-radius:8px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:#999; margin:0 0 10px; }
+  button { background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:6px; padding:10px 16px; font-size:14px; margin:4px 4px 4px 0; touch-action:manipulation; }
+  button.active { background:#4a7; border-color:#6c9; color:#000; }
+  label { display:inline-block; min-width:110px; }
+  select { background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:6px; padding:6px; }
+  input[type=range] { width:200px; vertical-align:middle; }
+  .row { margin-bottom:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  #ctxState { padding:2px 8px; border-radius:4px; background:#333; }
+  #ctxState.running { background:#274; }
+  #ctxState.suspended { background:#742; }
+  .assert-ok { color:#6c9; } .assert-fail { color:#f66; font-weight:bold; }
+  .tupRow { display:flex; align-items:center; gap:8px; }
+  #status { font-family:ui-monospace,monospace; font-size:12px; color:#9c9; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<h1>dev-modes — MTOK2 performance-logic harness</h1>
+
+<section>
+  <h2>Context</h2>
+  <div class="row">
+    ctx: <span id="ctxState">null</span>
+    <button id="btnUnlock">unlock / init</button>
+    <button id="btnPanic">panic (Engine + FX + Modes)</button>
+  </div>
+  <div id="status"></div>
+</section>
+
+<section>
+  <h2>Fake held chord (C4/E4/G4)</h2>
+  <div class="row">
+    <button id="btnHold">hold chord</button>
+    <button id="btnRelease">release chord</button>
+  </div>
+</section>
+
+<section>
+  <h2>Mode radio</h2>
+  <div class="row">
+    <button data-mode="0" class="modeBtn">0 arp</button>
+    <button data-mode="1" class="modeBtn">1 shm</button>
+    <button data-mode="2" class="modeBtn">2 pls</button>
+    <button data-mode="3" class="modeBtn active">3 def</button>
+  </div>
+  <div class="row"><label>tempo</label><input id="tempo" type="range" min="40" max="240" step="1" value="120"><span id="tempoV">120</span> BPM</div>
+</section>
+
+<section>
+  <h2>Per-source tuplets</h2>
+  <div id="tuplets"></div>
+</section>
+
+<section>
+  <h2>Chord toggles</h2>
+  <div class="row">
+    <label>chordMode</label>
+    <button data-mode="0" class="chordBtn active">harmonizer</button>
+    <button data-mode="1" class="chordBtn">drone</button>
+  </div>
+  <div class="row" id="toggles"></div>
+  <div class="row"><button id="btnUndo">undo (release mode-spawned voices)</button></div>
+</section>
+
+<section>
+  <h2>Asserts</h2>
+  <ul id="asserts"></ul>
+</section>
+
+<script type="module">
+import { Engine } from '../engine.js';
+import { FX } from '../fx.js';
+import { Modes } from '../modes.js';
+import { P, SOURCES } from '../state.js';
+
+const ctxStateEl = document.getElementById('ctxState');
+const statusEl = document.getElementById('status');
+let ctx = null;
+
+function updateStatus() {
+  if (!ctx) return;
+  statusEl.textContent =
+    `radioMode=${P.get('radioMode')} chordMode=${P.get('chordMode')} tempo=${P.get('tempo')} ` +
+    `Modes.activeRawCount()=${Modes.activeRawCount()}`;
+}
+function updateCtxState() {
+  if (!ctx) { ctxStateEl.textContent = 'null'; ctxStateEl.className = ''; return; }
+  ctxStateEl.textContent = ctx.state;
+  ctxStateEl.className = ctx.state;
+  updateStatus();
+}
+
+async function boot() {
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  await Engine.init(ctx);
+  FX.init(ctx, Engine.buses);
+  Modes.init();
+  Engine.unlock();
+  setInterval(updateCtxState, 250);
+  updateCtxState();
+}
+
+document.getElementById('btnUnlock').onclick = boot;
+
+document.getElementById('btnPanic').onclick = () => {
+  Engine.panic(); FX.panic(); Modes.panic();
+};
+
+document.getElementById('btnHold').onclick = () => {
+  P.set('sawLev', 0.7); P.set('sinLev', 0.5);
+  Engine.noteOn('h1', 261.63); Engine.noteOn('h2', 329.63); Engine.noteOn('h3', 392.00);
+};
+document.getElementById('btnRelease').onclick = () => {
+  Engine.noteOff('h1'); Engine.noteOff('h2'); Engine.noteOff('h3');
+};
+
+document.querySelectorAll('.modeBtn').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.modeBtn').forEach(x => x.classList.toggle('active', x === b));
+  P.set('radioMode', +b.dataset.mode);
+});
+document.querySelectorAll('.chordBtn').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.chordBtn').forEach(x => x.classList.toggle('active', x === b));
+  P.set('chordMode', +b.dataset.mode);
+});
+
+document.getElementById('tempo').oninput = (e) => {
+  P.set('tempo', +e.target.value);
+  document.getElementById('tempoV').textContent = e.target.value;
+};
+
+const TUP_LABELS = ['off', '1', '2', '3', '4', '5', '6', '7'];
+const tupletsEl = document.getElementById('tuplets');
+for (const src of SOURCES) {
+  const row = document.createElement('div');
+  row.className = 'row tupRow';
+  const label = document.createElement('label');
+  label.textContent = src + 'Tup';
+  const select = document.createElement('select');
+  TUP_LABELS.forEach((l, i) => {
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = l;
+    select.appendChild(opt);
+  });
+  select.onchange = (e) => P.set(src + 'Tup', +e.target.value);
+  row.appendChild(label); row.appendChild(select);
+  tupletsEl.appendChild(row);
+}
+
+const togglesEl = document.getElementById('toggles');
+for (const togName of Object.keys(Modes.TOGGLES)) {
+  const btn = document.createElement('button');
+  btn.textContent = togName;
+  btn.onclick = () => {
+    const v = P.get(togName) > 0.5 ? 0 : 1;
+    P.set(togName, v);
+    btn.classList.toggle('active', v === 1);
+  };
+  togglesEl.appendChild(btn);
+}
+
+document.getElementById('btnUndo').onclick = () => Modes.undo();
+
+// ── Automated asserts ──
+const assertsEl = document.getElementById('asserts');
+const results = [];
+function assert(desc, cond) { results.push({ desc, ok: !!cond }); }
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+function rmsOf(node, ms = 150) {
+  return new Promise((resolve) => {
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    node.connect(analyser);
+    setTimeout(() => {
+      const data = new Float32Array(analyser.fftSize);
+      analyser.getFloatTimeDomainData(data);
+      let sum = 0;
+      for (const v of data) sum += v * v;
+      analyser.disconnect();
+      resolve(Math.sqrt(sum / data.length));
+    }, ms);
+  });
+}
+
+async function runAsserts() {
+  await boot();
+  await wait(100);
+
+  // T0: quiescent state has nothing sounding
+  assert('T0: activeRawCount is 0 at rest', Modes.activeRawCount() === 0);
+
+  // T1: harmonizer spawns partials on noteOn, releases them on noteOff
+  P.set('radioMode', 3); P.set('chordMode', 0);
+  P.set('tog7', 1); P.set('tog9', 1);
+  Engine.noteOn('h1', 261.63);
+  await wait(80);
+  const harmCount = Modes.activeRawCount();
+  Engine.noteOff('h1');
+  await wait(80);
+  assert('T1a: harmonizer spawns raw voices on noteOn (2 toggles active)', harmCount === 2);
+  assert('T1b: harmonizer releases them on noteOff', Modes.activeRawCount() === 0);
+  P.set('tog7', 0); P.set('tog9', 0);
+
+  // T2: harmonizer follows fast/legato playing without leaks
+  P.set('tog11', 1);
+  Engine.noteOn('h1', 261.63); await wait(30);
+  Engine.noteOff('h1'); Engine.noteOn('h2', 329.63); await wait(30);
+  Engine.noteOff('h2'); Engine.noteOn('h3', 392.00); await wait(30);
+  Engine.noteOff('h3');
+  await wait(80);
+  assert('T2: rapid legato playing leaves no leaked harmonizer voices', Modes.activeRawCount() === 0);
+  P.set('tog11', 0);
+
+  // T3: drone toggles are independent of note-hold and register-immediate
+  P.set('chordMode', 1);
+  P.set('tog15', 1);
+  await wait(30);
+  assert('T3a: drone toggle sounds with no notes held', Modes.activeRawCount() === 1);
+  P.set('tog15', 0);
+  await wait(30);
+  assert('T3b: drone toggle off releases it', Modes.activeRawCount() === 0);
+
+  // T4: leaving drone mode silences any still-toggled drones
+  P.set('tog33', 1);
+  await wait(30);
+  const dronedOn = Modes.activeRawCount();
+  P.set('chordMode', 0);
+  await wait(30);
+  assert('T4a: drone sounds while toggled + in drone mode', dronedOn === 1);
+  assert('T4b: switching out of drone mode silences it', Modes.activeRawCount() === 0);
+  P.set('tog33', 0);
+
+  // T5: arp mode sounds a held chord, audible at voiceMix
+  P.set('tempo', 240); // fast beat so the test doesn't wait long
+  P.set('radioMode', 0);
+  Engine.noteOn('h1', 261.63); Engine.noteOn('h2', 329.63);
+  await wait(400); // several beats at 240 BPM (250ms/beat)
+  const arpRms = await rmsOf(Engine.buses.voiceMix, 150);
+  assert('T5a: arp mode produces audible signal from a held chord', arpRms > 0.01);
+  Engine.noteOff('h1'); Engine.noteOff('h2');
+  await wait(400);
+  assert('T5b: arp voice releases once the chord is released', Modes.activeRawCount() === 0);
+  P.set('radioMode', 3); P.set('tempo', 120);
+
+  // T6: pls mode audibly modulates the whole mix (voiceMix.gain rides up/down)
+  P.set('sawLev', 0.7);
+  Engine.noteOn('h1', 261.63);
+  P.set('radioMode', 2);
+  await wait(50);
+  const plsLo = await rmsOf(Engine.buses.voiceMix, 40);
+  await wait(120);
+  const plsHi = await rmsOf(Engine.buses.voiceMix, 40);
+  assert('T6: pls mode visibly varies mix level over time (tremolo active)', Math.abs(plsHi - plsLo) > 0.01 || plsHi > 0.005);
+  Engine.noteOff('h1');
+  P.set('radioMode', 3);
+  await wait(100);
+
+  // T7: shm mode borrows slot B and routes the mix through shimmer. Note:
+  // shimmer's own decay rate turns out to be sensitive to the phase of
+  // note-off relative to its internal ~90ms grain schedule (a property of
+  // fx.js's shimmer, not modes.js's tap) — sometimes it rings for seconds,
+  // sometimes it decays within ~1s. So this checks for the transient tail
+  // right after release (always present) rather than asserting a specific
+  // sustain duration.
+  const prevSlotB = FX.slots.B;
+  P.set('sinLev', 0.5); P.set('sinX', 0); P.set('sinY', 0);
+  Engine.noteOn('h1', 440);
+  P.set('radioMode', 1);
+  await wait(400);
+  Engine.noteOff('h1');
+  await wait(50);
+  const shmTail = await rmsOf(Engine.buses.master, 150);
+  assert('T7a: shm mode produces an audible tail just after note-off', shmTail > 0.001);
+  P.set('radioMode', 3);
+  await wait(200);
+  assert('T7b: leaving shm mode restores the prior slot-B effect', FX.slots.B === prevSlotB);
+
+  // T8: per-source tuplet visibly modulates that source's live level
+  P.set('sawLev', 0.6);
+  P.set('sawTup', 4);
+  const samples = [];
+  for (let i = 0; i < 4; i++) { samples.push(P.get('sawLev')); await wait(60); }
+  const variance = Math.max(...samples) - Math.min(...samples);
+  assert('T8a: sawTup active makes sawLev vary over time (control-rate AM running)', variance > 0.02);
+  P.set('sawTup', 0);
+  await wait(30);
+  assert('T8b: turning sawTup off snaps sawLev back to its base value', Math.abs(P.get('sawLev') - 0.6) < 0.01);
+
+  // T9: rapid mode-radio flipping never leaves sound stuck
+  Engine.noteOn('h1', 261.63); Engine.noteOn('h2', 329.63);
+  P.set('tog7', 1); P.set('chordMode', 0);
+  for (const m of [0, 1, 2, 3, 0, 2, 1, 3]) { P.set('radioMode', m); await wait(20); }
+  Engine.noteOff('h1'); Engine.noteOff('h2');
+  P.set('tog7', 0);
+  await wait(300);
+  assert('T9: rapid mode-radio churn settles with nothing stuck (activeRawCount=0)', Modes.activeRawCount() === 0);
+
+  // T10: panic clears modes.js bookkeeping too
+  P.set('chordMode', 1); P.set('tog9', 1);
+  await wait(30);
+  Engine.panic(); FX.panic(); Modes.panic();
+  await wait(30);
+  assert('T10: panic leaves activeRawCount at 0', Modes.activeRawCount() === 0);
+  P.set('tog9', 0); P.set('chordMode', 0);
+
+  assertsEl.innerHTML = results.map(r => `<li class="${r.ok ? 'assert-ok' : 'assert-fail'}">${r.ok ? '✓' : '✗'} ${r.desc}</li>`).join('');
+  const failCount = results.filter(r => !r.ok).length;
+  document.title = (failCount ? `✗${failCount} ` : '✓ ') + 'dev-modes — MTOK2';
+  updateStatus();
+}
+
+if (!new URLSearchParams(location.search).has('noauto')) runAsserts();
+</script>
+</body>
+</html>

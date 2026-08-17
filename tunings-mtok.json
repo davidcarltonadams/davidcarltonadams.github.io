@@ -1,0 +1,56 @@
+{
+  "_comment": "MTOK2 scale-mode placeholder data. beta/gamma are David-decision PLACEHOLDERS (2026-08-15) — playable now, refined by ear later. A future David-authored table replaces the contents of an entry with no code change (website/js/mtok/tuning.js reads this shape as-is). If this file is absent or fails to parse, tuning.js falls back to plain alpha ratios for beta/gamma — never crashes.",
+  "_displayNames": "UI labels for the scale radio (David, 2026-08-16). The internal ids stay alpha/beta/gamma/qt forever; these replace them everywhere user-facing, because alpha/beta/gamma collide with Wendy Carlos's scales. Each name is the scale's own fundamental — and all four happen to land on a programming language, which is the joke: C (alpha, JI on C3), D (beta, upper row over D/G), Go (gamma, transposed to G), Qt (24-EDO quartertones).",
+  "alpha": {
+    "displayName": "C",
+    "_comment": "Ratio table lives in tuning.js (ALPHA_RATIOS, canonical from MTOK_B block 6). This entry exists only to carry the display name; tuning.js does not read it."
+  },
+  "qt": {
+    "displayName": "Qt",
+    "_comment": "24-EDO grid is generated in tuning.js (QT_DEGREE). Display name only — tuning.js does not read this entry."
+  },
+  "beta": {
+    "displayName": "D",
+    "placeholder": true,
+    "appliesToRow": "hi",
+    "_comment": "Only the 'hi'-suffixed pads of fqs/atri/bflsept (the SPEC's 'upper-microtonal-row') are re-tuned; every other pad (including fqs/atri/bflsept's own lo/med) stays plain alpha. Derivation: fqs-hi = G x 11/8 (undecimal over G) = 3/2 * 11/8 = 33/16. atri-hi = D x 7/4 (septimal over D) = 9/8 * 7/4 = 63/32. bflsept-hi = G x 7/4 (septimal over G), folded down one octave to stay in-register = (3/2 * 7/4) / 2 = 21/16.",
+    "overrides": {
+      "fqs": { "ratio": [33, 16], "cents": 1174.66, "derivation": "G x 11/8" },
+      "atri": { "ratio": [63, 32], "cents": 1153.98, "derivation": "D x 7/4" },
+      "bflsept": { "ratio": [21, 16], "cents": 470.78, "derivation": "(G x 7/4) / 2 [octave-folded]" }
+    }
+  },
+  "gamma": {
+    "displayName": "Go",
+    "placeholder": true,
+    "fundamental": "G3 = C3 * 3/2 = 196.215 Hz",
+    "_comment": "Every alpha pad (fixed physical position, cents-from-C3 given by its own alpha ratio) is snapped to whichever G-rooted alpha-ratio candidate (same 25 ratios, transposed to G, octave-folded into 0-1200c) lands nearest it. 'from' = which alpha ratio name supplied the new pitch; 'foldedCents' = that pitch's position in cents above C3; 'distFromOriginal' = how far the snap moved the pad from its own alpha position (cents) — flagged for David's ear pass. Sanity anchor (SPEC): eqs -> ~469c (7th partial of G, folded) -- got 470.78c via bflsept (7/4, septimal) transposed to G. Two collisions in this placeholder pass: dqfl/dqs both nearest 'fshqs' (130.2c); b/bqs both nearest 'e' (1088.3c) -- both pairs will need disambiguation once real gamma tables land.",
+    "assign": {
+      "c": { "from": "f", "foldedCents": 0, "distFromOriginal": 0 },
+      "cqs": { "from": "fqs", "foldedCents": 53.27, "distFromOriginal": 0 },
+      "cs": { "from": "fsh", "foldedCents": 92.18, "distFromOriginal": 12.8 },
+      "dqfl": { "from": "fshqs", "foldedCents": 130.23, "distFromOriginal": 20.4 },
+      "d": { "from": "g", "foldedCents": 203.91, "distFromOriginal": 0 },
+      "dqs": { "from": "fshqs", "foldedCents": 130.23, "distFromOriginal": 34.8 },
+      "eflqfl": { "from": "gsh", "foldedCents": 284.45, "distFromOriginal": 4.8 },
+      "efl": { "from": "atri", "foldedCents": 342.48, "distFromOriginal": 26.8 },
+      "eqfl": { "from": "atri", "foldedCents": 342.48, "distFromOriginal": 4.9 },
+      "e": { "from": "a", "foldedCents": 386.31, "distFromOriginal": 0 },
+      "eqs": { "from": "bflsept", "foldedCents": 470.78, "distFromOriginal": 35.7 },
+      "f": { "from": "bfl", "foldedCents": 519.55, "distFromOriginal": 21.5 },
+      "fqs": { "from": "bflqs", "foldedCents": 551.32, "distFromOriginal": 0 },
+      "fsh": { "from": "b", "foldedCents": 590.22, "distFromOriginal": 0 },
+      "fshqs": { "from": "bqs", "foldedCents": 611.73, "distFromOriginal": 16.5 },
+      "g": { "from": "c", "foldedCents": 701.96, "distFromOriginal": 0 },
+      "gqs": { "from": "cqs", "foldedCents": 755.23, "distFromOriginal": 9.7 },
+      "gsh": { "from": "cs", "foldedCents": 806.91, "distFromOriginal": 24.4 },
+      "atri": { "from": "dqfl", "foldedCents": 852.59, "distFromOriginal": 12.1 },
+      "a": { "from": "dqs", "foldedCents": 866.96, "distFromOriginal": 17.4 },
+      "bflsept": { "from": "eflqfl", "foldedCents": 991.16, "distFromOriginal": 22.3 },
+      "bfl": { "from": "efl", "foldedCents": 1017.6, "distFromOriginal": 0 },
+      "bflqs": { "from": "eqfl", "foldedCents": 1049.36, "distFromOriginal": 0 },
+      "b": { "from": "e", "foldedCents": 1088.27, "distFromOriginal": 0 },
+      "bqs": { "from": "e", "foldedCents": 1088.27, "distFromOriginal": 21.5 }
+    }
+  }
+}

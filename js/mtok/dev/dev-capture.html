@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>dev-capture — MTOK2</title>
+<style>
+  :root{--bg:#12131a;--pnl:#1b1d27;--ln:#2c2f3d;--tx:#dfe2ee;--txd:#888ea3;
+        --acc:#4a9eff;--grn:#4ade80;--org:#f59e0b;--red:#ef4444;--qt:#d4a843;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+  body{margin:0;background:var(--bg);color:var(--tx);
+       font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;padding:10px;}
+  h1{font-size:14px;margin:0 0 8px;color:var(--acc);font-weight:600;}
+  h2{font-size:11px;margin:0 0 6px;color:var(--txd);text-transform:uppercase;letter-spacing:.08em;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;}
+  .panel{background:var(--pnl);border:1px solid var(--ln);border-radius:6px;padding:8px;}
+  button{background:#262a38;color:var(--tx);border:1px solid var(--ln);border-radius:4px;
+         padding:7px 10px;font:inherit;cursor:pointer;margin:2px 2px 2px 0;touch-action:manipulation;}
+  button:active{background:var(--acc);color:#000;}
+  button.on{background:var(--grn);color:#000;}
+  button.danger{border-color:var(--red);color:#ffb4b4;}
+  .row{display:flex;align-items:center;gap:6px;margin:3px 0;}
+  .row label{width:96px;color:var(--txd);flex:none;font-size:11px;}
+  .row input[type=range]{flex:1;min-width:60px;}
+  .row .v{width:52px;text-align:right;color:var(--qt);font-size:11px;}
+  #status{display:flex;gap:14px;flex-wrap:wrap;padding:6px 8px;background:var(--pnl);
+          border:1px solid var(--ln);border-radius:6px;margin-bottom:8px;}
+  #status b{color:var(--grn);font-weight:600;}
+  #pad1,#pad2{height:130px;background:#0d0e14;border:1px solid var(--ln);border-radius:4px;
+       position:relative;touch-action:none;cursor:crosshair;margin-bottom:6px;}
+  #pad1 .dot,#pad2 .dot{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;
+            background:var(--acc);pointer-events:none;}
+  .meter{height:10px;background:#0d0e14;border:1px solid var(--ln);border-radius:4px;overflow:hidden;margin-top:4px;}
+  .meter i{display:block;height:100%;width:0%;background:var(--grn);}
+  #log{background:#0d0e14;border:1px solid var(--ln);border-radius:4px;padding:6px;
+       height:150px;overflow:auto;white-space:pre-wrap;font-size:11px;color:var(--txd);}
+  .pass{color:var(--grn);} .fail{color:var(--red);} .info{color:var(--acc);}
+  select{background:#262a38;color:var(--tx);border:1px solid var(--ln);border-radius:4px;padding:5px;font:inherit;}
+  .srcRow label{width:auto;margin-right:4px;}
+</style>
+</head>
+<body>
+
+<h1>dev-capture — MTOK2 capture + granular harness</h1>
+
+<div id="status">
+  <span>ctx: <b id="s-ctx">–</b></span>
+  <span>voices: <b id="s-voices">0</b></span>
+  <span>recording: <b id="s-rec">no</b></span>
+  <span>take: <b id="s-take">–</b></span>
+  <span>grains: <b id="s-grains">0</b></span>
+  <span>mic: <b id="s-mic">–</b></span>
+  <span>file: <b id="s-file">–</b></span>
+</div>
+
+<div class="grid">
+
+  <div class="panel">
+    <h2>transport</h2>
+    <button id="b-init">▶ init / unlock</button>
+    <button id="b-panic" class="danger">⏹ PANIC (Engine + Capture)</button>
+    <div style="margin-top:6px">
+      <h2>tone generator (gives the recorder something to hear)</h2>
+      <button id="b-chord-on">hold chord (C4 alpha triad)</button>
+    </div>
+    <div style="margin-top:6px">
+      <h2>recorder</h2>
+      <button id="b-rec">● REC</button>
+      <button id="b-undo">↺ UNDO (one level)</button>
+      <div class="meter"><i id="m-out"></i></div>
+      <div style="color:var(--txd);font-size:11px;margin-top:4px">out level (buses.master)</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>source (yellowModRad — 0-2 owned by fx.js, 3-5 = granular)</h2>
+    <div class="srcRow">
+      <label><input type="radio" name="src" value="0"> 0 vib+trem (fx.js)</label><br>
+      <label><input type="radio" name="src" value="1"> 1 reverb ctl (fx.js)</label><br>
+      <label><input type="radio" name="src" value="2"> 2 FM (fx.js)</label><br>
+      <label><input type="radio" name="src" value="3" checked> 3 synth buffer (this take)</label><br>
+      <label><input type="radio" name="src" value="4"> 4 mic</label><br>
+      <label><input type="radio" name="src" value="5"> 5 preselected file</label>
+    </div>
+    <div style="margin-top:6px">
+      <label class="row"><span style="width:96px">capLevel</span><input id="capLevel" type="range" min="0" max="1" step="0.01" value="0.7"><span class="v" id="capLevelV">0.70</span></label>
+      <label class="row"><span style="width:96px">capSpray</span><input id="capSpray" type="range" min="0" max="1" step="0.01" value="0.15"><span class="v" id="capSprayV">0.15</span></label>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>xy1 — position (x) / grain size (y)</h2>
+    <div id="pad1"><div class="dot" id="dot1"></div></div>
+    <h2>xy2 — density (x) / pitch (y)</h2>
+    <div id="pad2"><div class="dot" id="dot2"></div></div>
+  </div>
+
+  <div class="panel" style="grid-column:1/-1">
+    <h2>asserts</h2>
+    <button id="b-t1">T1 record → granulate audibly</button>
+    <button id="b-t2">T2 undo restores previous take</button>
+    <button id="b-t3">T3 mic denial leaves rest functional</button>
+    <button id="b-t4">T4 panic kills grains, recorder survives + re-arms</button>
+    <button id="b-clear">clear log</button>
+    <div id="log"></div>
+  </div>
+
+</div>
+
+<script type="module">
+import { Engine } from '../engine.js';
+import { Capture } from '../capture.js';
+import { P } from '../state.js';
+
+window.Engine = Engine; window.Capture = Capture; window.P = P;  // console/dev handles
+
+const $ = id => document.getElementById(id);
+const log = (msg, cls='') => {
+  const el = $('log');
+  el.innerHTML += `<span class="${cls}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+};
+const ok   = m => log('✓ ' + m, 'pass');
+const bad  = m => log('✗ ' + m, 'fail');
+const info = m => log('· ' + m, 'info');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ── init ───────────────────────────────────────────────────
+let started = false;
+async function boot() {
+  if (started) return;
+  started = true;
+  await Engine.init();
+  Capture.init(Engine.ctx, Engine.buses);
+  info('engine + capture ready · sampleRate ' + Engine.ctx.sampleRate);
+}
+$('b-init').onclick = boot;
+$('b-panic').onclick = () => { Engine.panic(); Capture.panic(); };
+
+// iOS ignores user-scalable=no since iOS 10: actively block pinch + double-tap
+// zoom, and blur buttons after tap so they don't look stuck-selected.
+document.addEventListener('gesturestart', e => e.preventDefault());
+let _lastTap = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - _lastTap < 350 && !e.target.closest('button,input,select,.dot')) e.preventDefault();
+  _lastTap = now;
+}, { passive: false });
+document.addEventListener('click', e => { if (e.target.closest('button')) e.target.closest('button').blur(); });
+['touchstart','mousedown','click'].forEach(e =>
+  document.addEventListener(e, () => { if (started) Engine.unlock(); }, {passive:true}));
+
+// ── status poll (analysers must reconnect after panic — see fx.js/engine.js
+// dev-harness precedent; we re-tap ours from Engine.buses.master fresh
+// whenever the reference changes) ──
+let analyser = null, analyserMaster = null;
+function ensureAnalyser() {
+  if (!Engine.ctx || !Engine.buses) return;
+  if (analyserMaster === Engine.buses.master) return;
+  analyserMaster = Engine.buses.master;
+  analyser = Engine.ctx.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.2;   // low, per fx.js/engine.js lesson: assertions need fast response
+  analyserMaster.connect(analyser);
+}
+setInterval(() => {
+  $('s-ctx').textContent = Engine.ctx ? Engine.ctx.state : 'null';
+  $('s-ctx').style.color = Engine.ctx && Engine.ctx.state === 'running' ? 'var(--grn)' : 'var(--org)';
+  $('s-voices').textContent = Engine.ready ? Engine.voiceCount() : 0;
+  if (!started) return;
+  $('s-rec').textContent = Capture.isRecording() ? `yes (${Capture.recordedSeconds().toFixed(1)}s)` : 'no';
+  $('s-take').textContent = Capture.buffer ? Capture.buffer.duration.toFixed(2) + 's' : '–';
+  $('s-grains').textContent = Capture.liveGrainCount();
+  $('s-mic').textContent = Capture.micStatus();
+  $('s-file').textContent = Capture.fileStatus();
+  ensureAnalyser();
+  if (analyser) {
+    const data = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(data);
+    let sum = 0; for (const v of data) sum += v * v;
+    const rms = Math.sqrt(sum / data.length);
+    $('m-out').style.width = Math.min(100, rms * 300) + '%';
+  }
+}, 120);
+
+// ── tone generator ──────────────────────────────────────────
+const C4 = 261.63;
+const TRIAD = [['t1', C4], ['t2', C4 * 3/2], ['t3', C4 * 7/4]];
+const chordBtn = $('b-chord-on');
+const chordOn = async (e) => { e.preventDefault(); await boot(); TRIAD.forEach(([k,f]) => Engine.noteOn(k, f, {x:.5,y:.5})); chordBtn.classList.add('on'); };
+const chordOff = (e) => { e?.preventDefault(); TRIAD.forEach(([k]) => Engine.noteOff(k)); chordBtn.classList.remove('on'); };
+chordBtn.addEventListener('pointerdown', chordOn);
+chordBtn.addEventListener('pointerup', chordOff);
+chordBtn.addEventListener('pointerleave', chordOff);
+chordBtn.addEventListener('pointercancel', chordOff);
+
+// ── recorder buttons ─────────────────────────────────────────
+$('b-rec').onclick = async () => {
+  await boot();
+  const next = !Capture.isRecording();
+  Capture.setRecButt(next ? 1 : 0);
+  $('b-rec').classList.toggle('on', next);
+  $('b-rec').textContent = next ? '■ STOP' : '● REC';
+};
+$('b-undo').onclick = () => { Capture.triggerUndo(); info('undo triggered'); };
+
+// ── source select ────────────────────────────────────────────
+document.querySelectorAll('input[name=src]').forEach(r => {
+  r.onchange = async () => { await boot(); P.set('yellowModRad', +r.value); };
+});
+
+// ── granular params ──────────────────────────────────────────
+$('capLevel').oninput = (e) => { Capture.params.set('capLevel', +e.target.value); $('capLevelV').textContent = (+e.target.value).toFixed(2); };
+$('capSpray').oninput = (e) => { Capture.params.set('capSpray', +e.target.value); $('capSprayV').textContent = (+e.target.value).toFixed(2); };
+
+function wirePad(el, dotId, xParam, yParam) {
+  const dot = $(dotId);
+  function set(clientX, clientY) {
+    const r = el.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+    const y = Math.max(0, Math.min(1, (clientY - r.top) / r.height));
+    P.set(xParam, x); P.set(yParam, 1 - y);
+    dot.style.left = (x * r.width) + 'px'; dot.style.top = (y * r.height) + 'px';
+  }
+  el.addEventListener('pointerdown', async (e) => { await boot(); el.setPointerCapture(e.pointerId); set(e.clientX, e.clientY); });
+  el.addEventListener('pointermove', (e) => { if (e.buttons) set(e.clientX, e.clientY); });
+}
+wirePad($('pad1'), 'dot1', 'xy1x', 'xy1y');
+wirePad($('pad2'), 'dot2', 'xy2x', 'xy2y');
+
+// ── asserts (real audio, measured via AnalyserNode) ──────────
+// PEAK-HOLD over repeated snapshots, not one instantaneous read: grains are
+// short (10-100ms) and periodic, so a single getFloatTimeDomainData() call
+// at the end of a fixed wait can land in a silent gap between grains and
+// read a false zero even while the engine is working correctly (same
+// "meters lie" lesson as REVIEW-mtok2-wave1's false-FAIL note — confirmed
+// during this WO's own testing: a single-snapshot rmsOf() reported silence
+// for a manually-verified-audible grain stream). Poll every ~15ms across
+// the whole window and report the loudest snapshot seen.
+function rmsOf(node, ctxRef, ms = 200) {
+  return new Promise((resolve) => {
+    const a = ctxRef.createAnalyser();
+    a.fftSize = 2048;
+    a.smoothingTimeConstant = 0;
+    node.connect(a);
+    const data = new Float32Array(a.fftSize);
+    let peakRms = 0;
+    const start = performance.now();
+    const poll = () => {
+      a.getFloatTimeDomainData(data);
+      let sum = 0; for (const v of data) sum += v * v;
+      peakRms = Math.max(peakRms, Math.sqrt(sum / data.length));
+      if (performance.now() - start < ms) {
+        setTimeout(poll, 15);
+      } else {
+        a.disconnect();
+        resolve(peakRms);
+      }
+    };
+    poll();
+  });
+}
+
+$('b-clear').onclick = () => { $('log').innerHTML = ''; };
+
+$('b-t1').onclick = async () => {
+  await boot();
+  info('T1: record 1.5s chord, stop, select source 3, granulate');
+  P.set('sawLev', 0.7); P.set('sinLev', 0.5);
+  Capture.setRecButt(1);
+  TRIAD.forEach(([k,f]) => Engine.noteOn(k, f, {x:.5,y:.5}));
+  await sleep(1500);
+  TRIAD.forEach(([k]) => Engine.noteOff(k));
+  Capture.setRecButt(0);
+  await sleep(50);
+  if (!Capture.buffer) { bad('no take captured'); return; }
+  ok(`take captured: ${Capture.buffer.duration.toFixed(2)}s`);
+  P.set('yellowModRad', 3);
+  P.set('xy1x', 0.3); P.set('xy1y', 0.4); P.set('xy2x', 0.5); P.set('xy2y', 0.5);
+  Capture.params.set('capLevel', 0.8);
+  await sleep(600);
+  const rms = await rmsOf(Engine.buses.master, Engine.ctx, 300);
+  rms > 0.01 ? ok(`granular audible at master, rms=${rms.toFixed(4)}`) : bad('granular silent, rms=' + rms.toFixed(4));
+
+  // position slider scrub check: rms should differ meaningfully between two positions
+  P.set('xy1x', 0.05);
+  await sleep(400);
+  const rmsA = await rmsOf(Engine.buses.master, Engine.ctx, 300);
+  P.set('xy1x', 0.9);
+  await sleep(400);
+  const rmsB = await rmsOf(Engine.buses.master, Engine.ctx, 300);
+  info(`position scrub: rms@0.05=${rmsA.toFixed(4)} rms@0.9=${rmsB.toFixed(4)} (should both be audible; exact match not expected — different chord content at each point)`);
+  P.set('yellowModRad', -1); // park (no fx.js mode matches, no granular mode matches — silences both cleanly)
+  await sleep(300);
+};
+
+$('b-t2').onclick = async () => {
+  await boot();
+  info('T2: record take A, record take B, undo → expect A back');
+  P.set('sawLev', 0.7); P.set('sinLev', 0);
+  Capture.setRecButt(1);
+  Engine.noteOn('u1', C4); await sleep(700); Engine.noteOff('u1');
+  Capture.setRecButt(0);
+  const takeA = Capture.buffer;
+  if (!takeA) { bad('take A not captured'); return; }
+  await sleep(100);
+
+  P.set('sawLev', 0); P.set('sinLev', 0.6);
+  Capture.setRecButt(1);
+  Engine.noteOn('u2', C4 * 3/2); await sleep(700); Engine.noteOff('u2');
+  Capture.setRecButt(0);
+  const takeB = Capture.buffer;
+  if (!takeB) { bad('take B not captured'); return; }
+  takeB !== takeA ? ok('take B is a distinct buffer from take A') : bad('take B === take A — recorder did not produce a new buffer');
+
+  Capture.triggerUndo();
+  Capture.buffer === takeA ? ok('undo restored take A') : bad('undo did not restore take A');
+  info('(verify by ear: select source 3, granulate — should sound like the sine note, not the saw note)');
+};
+
+$('b-t3').onclick = async () => {
+  await boot();
+  info('T3: select mic source (permission prompt should appear on iPad; here it likely denies/no-op headlessly) — engine must stay functional');
+  P.set('yellowModRad', 4);
+  await sleep(300);
+  info('mic status: ' + Capture.micStatus());
+  P.set('sawLev', 0.7); P.set('sinLev', 0.5);
+  Engine.noteOn('probe', C4);
+  await sleep(200);
+  const rms = await rmsOf(Engine.buses.voiceMix, Engine.ctx, 150);
+  Engine.noteOff('probe');
+  await sleep(300);
+  rms > 0.01 ? ok('synth voice still audible with mic selected/denied — rest of engine unaffected')
+             : bad('synth voice silent — mic denial broke something else');
+  P.set('yellowModRad', 3);
+};
+
+$('b-t4').onclick = async () => {
+  await boot();
+  info('T4: start a take, go granular, panic mid-grain, confirm grains die instantly + recorder re-arms');
+  P.set('sawLev', 0.7); P.set('sinLev', 0.5);
+  Capture.setRecButt(1);
+  Engine.noteOn('p1', C4); Engine.noteOn('p2', C4*3/2);
+  await sleep(1200);
+  Engine.noteOff('p1'); Engine.noteOff('p2');
+  Capture.setRecButt(0);
+  if (!Capture.buffer) { bad('no take to granulate'); return; }
+
+  P.set('yellowModRad', 3);
+  Capture.params.set('capLevel', 0.8);
+  await sleep(400);
+  // liveGrainCount() at one random instant is usually 0 by design — grains are
+  // short (10-100ms) against gaps of 25ms-1s, so poll briefly instead of
+  // reading a single snapshot (same lesson as the rmsOf() peak-hold above).
+  let grainsBefore = 0;
+  for (let i = 0; i < 15 && grainsBefore === 0; i++) { grainsBefore = Capture.liveGrainCount(); await sleep(20); }
+  grainsBefore > 0 ? ok(`granular running pre-panic (${grainsBefore} live grain(s) observed)`) : bad('no live grains observed before panic — nothing to test');
+
+  // Check liveGrainCount() SYNCHRONOUSLY right after panic() returns — this is
+  // a JS-level truth (the Set is cleared inside panic(), not audio-domain),
+  // so it isn't subject to the "meters lie" sampling-gap problem below.
+  // NOTE: scheduler ticks continue to run (by design — same "playable again"
+  // philosophy as Engine's own panic/T3 and fx.js's T8), so this only proves
+  // panic cleared what was live AT THAT INSTANT, not that grains stay silent
+  // forever after — they're expected to resume as soon as the next tick fires.
+  Engine.panic(); Capture.panic();
+  const grainsRightAfter = Capture.liveGrainCount();
+  grainsRightAfter === 0 ? ok('panic cleared every live grain synchronously (Set size 0 immediately after panic())')
+                         : bad(`grains survived the synchronous clear: ${grainsRightAfter}`);
+
+  // recorder re-arm check: start a fresh recording post-panic and confirm it captures
+  Capture.setRecButt(1);
+  Engine.noteOn('r1', C4);
+  await sleep(500);
+  Engine.noteOff('r1');
+  Capture.setRecButt(0);
+  await sleep(50);
+  (Capture.buffer && Capture.buffer.duration > 0.3) ? ok('recorder re-armed and captured a fresh take post-panic')
+                                                     : bad('recorder did not re-arm cleanly post-panic');
+
+  // granular resumes post-panic (grainOut re-tapped to fresh master) — this
+  // is EXPECTED to be audible again quickly, matching engine.js's own
+  // panic/T3 "still playable after panic" acceptance shape.
+  await sleep(200);
+  const rmsReplay = await rmsOf(Engine.buses.master, Engine.ctx, 500);
+  rmsReplay > 0.01 ? ok('granular resumes and is audible again post-panic (grainOut re-tapped to new master)')
+                    : bad('granular stayed silent post-panic — grainOut re-tap likely broken');
+  P.set('yellowModRad', -1);
+};
+
+info('ready — press "init / unlock" (iOS needs the gesture)');
+</script>
+</body>
+</html>

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>dev-engine — MTOK2</title>
+<style>
+  :root{--bg:#12131a;--pnl:#1b1d27;--ln:#2c2f3d;--tx:#dfe2ee;--txd:#888ea3;
+        --acc:#4a9eff;--grn:#4ade80;--org:#f59e0b;--red:#ef4444;--qt:#d4a843;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+  body{margin:0;background:var(--bg);color:var(--tx);
+       font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;padding:10px;}
+  h1{font-size:14px;margin:0 0 8px;color:var(--acc);font-weight:600;}
+  h2{font-size:11px;margin:0 0 6px;color:var(--txd);text-transform:uppercase;letter-spacing:.08em;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;}
+  .panel{background:var(--pnl);border:1px solid var(--ln);border-radius:6px;padding:8px;}
+  button{background:#262a38;color:var(--tx);border:1px solid var(--ln);border-radius:4px;
+         padding:7px 10px;font:inherit;cursor:pointer;margin:2px 2px 2px 0;touch-action:manipulation;}
+  button:active{background:var(--acc);color:#000;}
+  button.on{background:var(--grn);color:#000;}
+  button.danger{border-color:var(--red);color:#ffb4b4;}
+  .row{display:flex;align-items:center;gap:6px;margin:3px 0;}
+  .row label{width:96px;color:var(--txd);flex:none;font-size:11px;}
+  .row input[type=range]{flex:1;min-width:60px;}
+  .row .v{width:52px;text-align:right;color:var(--qt);font-size:11px;}
+  #status{display:flex;gap:14px;flex-wrap:wrap;padding:6px 8px;background:var(--pnl);
+          border:1px solid var(--ln);border-radius:6px;margin-bottom:8px;}
+  #status b{color:var(--grn);font-weight:600;}
+  #pad{height:150px;background:#0d0e14;border:1px solid var(--ln);border-radius:4px;
+       position:relative;touch-action:none;cursor:crosshair;}
+  #pad .dot{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;
+            background:var(--acc);pointer-events:none;}
+  #pad .org{background:var(--qt);opacity:.5;}
+  #log{background:#0d0e14;border:1px solid var(--ln);border-radius:4px;padding:6px;
+       height:150px;overflow:auto;white-space:pre-wrap;font-size:11px;color:var(--txd);}
+  .pass{color:var(--grn);} .fail{color:var(--red);} .info{color:var(--acc);}
+  select{background:#262a38;color:var(--tx);border:1px solid var(--ln);border-radius:4px;padding:5px;font:inherit;}
+</style>
+</head>
+<body>
+
+<h1>dev-engine — MTOK2 voice engine harness</h1>
+
+<div id="status">
+  <span>ctx: <b id="s-ctx">–</b></span>
+  <span>voices: <b id="s-voices">0</b></span>
+  <span>sustained: <b id="s-sus">0</b></span>
+  <span>held(): <b id="s-held">0</b></span>
+  <span>wavetable: <b id="s-wt">–</b></span>
+  <span>beat: <b id="s-beat">–</b></span>
+</div>
+
+<div class="grid">
+
+  <div class="panel">
+    <h2>transport</h2>
+    <button id="b-init">▶ init / unlock</button>
+    <button id="b-panic" class="danger">⏹ PANIC</button>
+    <button id="b-ped">pedal ↓</button>
+    <div style="margin-top:6px">
+      <h2>keys (hold to sound)</h2>
+      <div id="keys"></div>
+    </div>
+    <div style="margin-top:6px">
+      <h2>chord — C3 alpha (1/1 3/2 7/4 11/8 13/8)</h2>
+      <button id="b-chord-on">chord on</button>
+      <button id="b-chord-off">chord off</button>
+      <button id="b-chord10">10-voice chord on</button>
+      <button id="b-chord10off">10-voice off</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>per-source (<select id="src-sel"></select>)</h2>
+    <div id="src-ctl"></div>
+  </div>
+
+  <div class="panel">
+    <h2>globals</h2>
+    <div id="glob-ctl"></div>
+    <div class="row">
+      <label>regSelect</label>
+      <select id="reg-sel">
+        <option value="0">0.5×</option><option value="1" selected>1×</option>
+        <option value="2">2×</option><option value="3">4×</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>key-XY (drag = relative from origin)</h2>
+    <div>
+      <button class="xy on" data-m="filter">filter</button>
+      <button class="xy" data-m="vibrato">vibrato</button>
+      <button class="xy" data-m="overdrive">overdrive</button>
+    </div>
+    <div id="pad"><div class="dot org" id="dot-org" hidden></div><div class="dot" id="dot" hidden></div></div>
+    <div style="color:var(--txd);font-size:11px;margin-top:4px">
+      press = noteOn (C4, keyId <code>xy</code>), drag = updateXY, release = noteOff
+    </div>
+  </div>
+
+  <div class="panel" style="grid-column:1/-1">
+    <h2>asserts</h2>
+    <button id="b-t1">T1 voice count returns to 0</button>
+    <button id="b-t2">T2 pedal cycle leaves nothing stuck</button>
+    <button id="b-t3">T3 panic silences + still playable</button>
+    <button id="b-t4">T4 per-osc ADSR independence (listen)</button>
+    <button id="b-t5">T5 ampEnvAmt sweep (listen)</button>
+    <button id="b-t6">T6 filtEnvAmt sweep (listen)</button>
+    <button id="b-clear">clear log</button>
+    <div id="log"></div>
+  </div>
+
+</div>
+
+<script type="module">
+import { Engine } from '../engine.js';
+import { P, SOURCES } from '../state.js';
+
+window.Engine = Engine; window.P = P; window.SOURCES = SOURCES;  // console/dev handles
+
+const $ = id => document.getElementById(id);
+const log = (msg, cls='') => {
+  const el = $('log');
+  el.innerHTML += `<span class="${cls}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+};
+const ok   = m => log('✓ ' + m, 'pass');
+const bad  = m => log('✗ ' + m, 'fail');
+const info = m => log('· ' + m, 'info');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ── init ───────────────────────────────────────────────────
+let started = false;
+async function boot() {
+  if (started) return;
+  started = true;
+  await Engine.init();
+  Engine.tick((t, i) => { $('s-beat').textContent = i; });
+  $('s-wt').textContent = Engine.wavetableStubbed() ? 'STUB (sine)' : 'wavetable.js';
+  info('engine ready · sampleRate ' + Engine.ctx.sampleRate);
+}
+$('b-init').onclick = boot;
+// PANIC button — was never wired (CC fix 2026-08-15, David's iPad report).
+$('b-panic').onclick = () => { Engine.panic(); };
+// iOS ignores user-scalable=no since iOS 10: actively block pinch + double-tap
+// zoom, and blur buttons after tap so they don't look stuck-selected.
+document.addEventListener('gesturestart', e => e.preventDefault());
+let _lastTap = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - _lastTap < 350 && !e.target.closest('button,input,select,.pad,.key')) e.preventDefault();
+  _lastTap = now;
+}, { passive: false });
+document.addEventListener('click', e => { if (e.target.closest('button')) e.target.closest('button').blur(); });
+// any gesture unlocks, PoC pattern
+['touchstart','mousedown','click'].forEach(e =>
+  document.addEventListener(e, () => { if (started) Engine.unlock(); }, {passive:true}));
+
+setInterval(() => {
+  $('s-ctx').textContent    = Engine.ctx ? Engine.ctx.state : 'null';
+  $('s-ctx').style.color    = Engine.ctx && Engine.ctx.state === 'running' ? 'var(--grn)' : 'var(--org)';
+  $('s-voices').textContent = Engine.ready ? Engine.voiceCount() : 0;
+  $('s-sus').textContent    = Engine.ready ? Engine.sustainedCount() : 0;
+  $('s-held').textContent   = Engine.ready ? Engine.held().length : 0;
+}, 120);
+
+// ── keys ───────────────────────────────────────────────────
+const C3 = 130.81;
+const KEYS = [
+  ['C3',  C3],        ['G3',  C3*3/2],  ['Bb3', C3*7/4],  ['F#3', C3*11/8],
+  ['A3',  C3*13/8],   ['C4',  C3*2],    ['E4',  C3*2*5/4],['G4',  C3*3],
+];
+for (const [name, hz] of KEYS) {
+  const b = document.createElement('button');
+  b.textContent = name;
+  const on  = e => { e.preventDefault(); boot().then(() => Engine.noteOn(name, hz, {x:0.5, y:0.5})); b.classList.add('on'); };
+  const off = e => { e.preventDefault(); Engine.noteOff(name); b.classList.remove('on'); };
+  b.addEventListener('pointerdown', on);
+  b.addEventListener('pointerup', off);
+  b.addEventListener('pointerleave', off);
+  b.addEventListener('pointercancel', off);
+  $('keys').appendChild(b);
+}
+
+const CHORD = [['c', C3], ['g', C3*3/2], ['bf', C3*7/4], ['fs', C3*11/8], ['a', C3*13/8]];
+$('b-chord-on').onclick  = () => boot().then(() => CHORD.forEach(([k,f]) => Engine.noteOn('ch-'+k, f, {x:.5,y:.5})));
+$('b-chord-off').onclick = () => CHORD.forEach(([k]) => Engine.noteOff('ch-'+k));
+
+const CHORD10 = [1, 9/8, 5/4, 11/8, 3/2, 13/8, 7/4, 15/8, 2, 9/4];
+$('b-chord10').onclick    = () => boot().then(() => CHORD10.forEach((r,i) => Engine.noteOn('t'+i, C3*r, {x:.5,y:.5})));
+$('b-chord10off').onclick = () => CHORD10.forEach((_,i) => Engine.noteOff('t'+i));
+
+// ── pedal ──────────────────────────────────────────────────
+let pedalDown = false;
+$('b-ped').onclick = () => {
+  pedalDown = !pedalDown;
+  Engine.pedal(pedalDown);
+  $('b-ped').classList.toggle('on', pedalDown);
+  $('b-ped').textContent = pedalDown ? 'pedal ↑ (held)' : 'pedal ↓';
+};
+
+// ── sliders ────────────────────────────────────────────────
+function slider(host, name, label, min, max) {
+  const meta = P.meta(name) || [0,''];
+  const lo = min ?? 0, hi = max ?? 1;
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = `<label title="${meta[1]}">${label || name}</label>
+    <input type="range" min="${lo}" max="${hi}" step="${(hi-lo)/500}" value="${P.get(name)}">
+    <span class="v">${(+P.get(name)).toFixed(3)}</span>`;
+  const inp = row.querySelector('input'), out = row.querySelector('.v');
+  inp.oninput = () => { P.set(name, +inp.value); out.textContent = (+inp.value).toFixed(3); };
+  host.appendChild(row);
+  return { set: v => { inp.value = v; P.set(name, v); out.textContent = (+v).toFixed(3); } };
+}
+
+// per-source block
+const sel = $('src-sel');
+SOURCES.forEach(s => sel.add(new Option(s, s)));
+sel.value = 'saw';
+function renderSrc() {
+  const s = sel.value, host = $('src-ctl');
+  host.innerHTML = '';
+  ['Lev','A','D','S','R','X','Y'].forEach(sfx => slider(host, s + sfx, s + sfx));
+}
+sel.onchange = renderSrc;
+renderSrc();
+
+// globals
+const G = $('glob-ctl');
+const gAmp  = slider(G, 'ampEnvAmt');
+const gFilt = slider(G, 'filtEnvAmt');
+slider(G, 'tanh'); slider(G, 'gain'); slider(G, 'lpf'); slider(G, 'hpf');
+slider(G, 'masterVol'); slider(G, 'faderPW'); slider(G, 'greenPot4', 'pan');
+slider(G, 'pedalReleaseTime'); slider(G, 'tempo', 'tempo', 40, 240);
+$('reg-sel').onchange = e => P.set('regSelect', +e.target.value);
+
+// ── key-XY modes + pad ─────────────────────────────────────
+document.querySelectorAll('button.xy').forEach(b => {
+  b.onclick = () => {
+    const m = b.dataset.m;
+    if (Engine.keyXYModes.has(m)) {
+      if (Engine.keyXYModes.size > 1) { Engine.keyXYModes.delete(m); b.classList.remove('on'); }
+    } else { Engine.keyXYModes.add(m); b.classList.add('on'); }
+  };
+});
+
+const pad = $('pad');
+let padActive = false;
+const padXY = e => {
+  const r = pad.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, r };
+};
+pad.addEventListener('pointerdown', async e => {
+  e.preventDefault(); pad.setPointerCapture(e.pointerId);
+  await boot();
+  const {x, y, r} = padXY(e);
+  Engine.noteOn('xy', C3 * 2, {x, y});
+  padActive = true;
+  for (const [id, el] of [['dot-org', null], ['dot', null]]) {
+    const d = $(id); d.hidden = false; d.style.left = (x*r.width)+'px'; d.style.top = (y*r.height)+'px';
+  }
+});
+pad.addEventListener('pointermove', e => {
+  if (!padActive) return;
+  const {x, y, r} = padXY(e);
+  Engine.updateXY('xy', x, y);
+  const d = $('dot'); d.style.left = (x*r.width)+'px'; d.style.top = (y*r.height)+'px';
+});
+const padUp = () => {
+  if (!padActive) return;
+  padActive = false; Engine.noteOff('xy');
+  $('dot').hidden = true; $('dot-org').hidden = true;
+};
+pad.addEventListener('pointerup', padUp);
+pad.addEventListener('pointercancel', padUp);
+
+// ── asserts ────────────────────────────────────────────────
+$('b-clear').onclick = () => { $('log').innerHTML = ''; };
+
+$('b-t1').onclick = async () => {
+  await boot();
+  info('T1: 3 notes on → off → wait for release tail');
+  ['a1','a2','a3'].forEach((k,i) => Engine.noteOn(k, C3*(1+i*0.5), {x:.5,y:.5}));
+  await sleep(300);
+  if (Engine.voiceCount() === 3) ok('3 voices live'); else bad('expected 3 live, got ' + Engine.voiceCount());
+  ['a1','a2','a3'].forEach(k => Engine.noteOff(k));
+  await sleep(Math.max(600, (Math.max(...SOURCES.map(s => P.get(s+'R'))) * 10 + 1) * 1000));
+  Engine.voiceCount() === 0 ? ok('voice count back to 0') : bad('leaked ' + Engine.voiceCount() + ' voice(s)');
+};
+
+$('b-t2').onclick = async () => {
+  await boot();
+  info('T2: pedal down → 4 notes on/off → pedal up');
+  Engine.pedal(true);
+  for (let i = 0; i < 4; i++) { Engine.noteOn('p'+i, C3*(1+i*0.25), {x:.5,y:.5}); await sleep(80); }
+  ['p0','p1','p2','p3'].forEach(k => Engine.noteOff(k));
+  await sleep(200);
+  Engine.sustainedCount() === 4 ? ok('4 voices sustaining under pedal')
+                                : bad('sustained = ' + Engine.sustainedCount() + ' (expected 4)');
+  Engine.held().length === 0 ? ok('held() empty — keys are up') : bad('held() = ' + Engine.held().length);
+  Engine.pedal(false); pedalDown = false;
+  $('b-ped').classList.remove('on'); $('b-ped').textContent = 'pedal ↓';
+  await sleep(2500);
+  Engine.voiceCount() === 0 ? ok('pedal-up released everything') : bad('stuck: ' + Engine.voiceCount());
+};
+
+$('b-t3').onclick = async () => {
+  await boot();
+  info('T3: chord → panic → replay');
+  CHORD10.forEach((r,i) => Engine.noteOn('x'+i, C3*r, {x:.5,y:.5}));
+  await sleep(600);
+  const t0 = performance.now();
+  Engine.panic();
+  const dt = performance.now() - t0;
+  Engine.voiceCount() === 0 ? ok(`panic cleared all voices in ${dt.toFixed(1)} ms`)
+                            : bad('panic left ' + Engine.voiceCount());
+  await sleep(400);
+  Engine.noteOn('post', C3*2, {x:.5,y:.5});
+  await sleep(600);
+  Engine.voiceCount() === 1 ? ok('engine playable after panic (listen: should sound)')
+                            : bad('post-panic noteOn failed');
+  Engine.noteOff('post');
+};
+
+$('b-t4').onclick = async () => {
+  await boot();
+  info('T4 (ears): slow sine under fast saw — you should hear the sine fade in late');
+  P.set('sawLev', 0.6); P.set('sawA', 0.001); P.set('sawD', 0.05); P.set('sawS', 0.3);
+  P.set('sinLev', 0.8); P.set('sinA', 0.35);  P.set('sinD', 0.1);  P.set('sinS', 1.0);
+  renderSrc();
+  Engine.noteOn('adsr', C3*2, {x:.5,y:.5});
+  await sleep(3000);
+  Engine.noteOff('adsr');
+  info('T4 done — was the sine late? (unverified by code)');
+};
+
+$('b-t5').onclick = async () => {
+  await boot();
+  info('T5 (ears): ampEnvAmt 1 → 0 → 1 mid-note; should crossfade, no clicks');
+  Engine.noteOn('ae', C3*2, {x:.5,y:.5});
+  for (const v of [1,.75,.5,.25,0,.25,.5,.75,1]) { gAmp.set(v); await sleep(350); }
+  Engine.noteOff('ae');
+  info('T5 done');
+};
+
+$('b-t6').onclick = async () => {
+  await boot();
+  info('T6 (ears): filtEnvAmt 0 → 1, lpf low; attack should open the filter');
+  const lpfPrev = P.get('lpf');
+  P.set('lpf', 0.25); gFilt.set(1);
+  Engine.noteOn('fe', C3*2, {x:.5,y:.5});
+  await sleep(1500); Engine.noteOff('fe'); await sleep(800);
+  gFilt.set(0);
+  Engine.noteOn('fe2', C3*2, {x:.5,y:.5});
+  await sleep(1500); Engine.noteOff('fe2');
+  P.set('lpf', lpfPrev);
+  info('T6 done — first note should sweep, second should not');
+};
+
+info('ready — press "init / unlock" (iOS needs the gesture)');
+</script>
+</body>
+</html>
