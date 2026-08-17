@@ -1,39 +1,34 @@
-// MTOK2 — control surface assembly + boot (WO-ui).
-// Builds the zone layout, binds every widget to the param store, drives the
-// keyboard, and runs the boot-time param-coverage audit.
+// MTOK2 v2b — full-fidelity surface assembly + boot (CC, 2026-08-16).
+// Every control is placed from mtok-layout.json — machine-extracted frames,
+// colors, and label text from David's own TouchOSC file (mtok_adsr_2026-03-15
+// .tosc, 860×640 canvas) — scaled to the viewport and letterboxed. The zone
+// grid of v2a is gone; the keyboard canvas underlays the whole stage and the
+// DOM widgets float above it at their original coordinates.
 //
-// Checkpoint 1 (playable): layout, widgets, keyboard, boot flow, XY pads,
-// chord toggles, filters, master. Deferred to pass 2 and listed by the audit:
-// tuplet ratio dials, tempo, preset slots, green pots detail, REC/ML/undo.
+// Params invented AFTER TouchOSC (lpq, noiseType, chordMode, keyXY togs,
+// pedal, tempo, granular sources…) have no home in the original geometry —
+// they live in the two letterbox margin strips, explicitly marked as
+// post-TouchOSC, until David re-places them.
 
-import { P, SOURCES } from './state.js?v=6';
-import { Tuning } from './tuning.js?v=6';
-import Engine from './engine.js?v=6';
-import FX from './fx.js?v=6';
-import { Modes } from './modes.js?v=6';
-import Capture from './capture.js?v=6';
-import { Dial, Fader, Radio, Toggle, XYPad, Dead, Btn, BOUND, el, blurLater } from './ui-controls.js?v=6';
-import * as KB from './ui-keyboard.js?v=6';
+import { P, SOURCES } from './state.js?v=7';
+import { Tuning } from './tuning.js?v=7';
+import Engine from './engine.js?v=7';
+import FX from './fx.js?v=7';
+import { Modes } from './modes.js?v=7';
+import Capture from './capture.js?v=7';
+import { Dial, Fader, Radio, Toggle, XYPad, Dead, Btn, BOUND, el, blurLater } from './ui-controls.js?v=7';
+import * as KB from './ui-keyboard.js?v=7';
+import { Layout, CANVAS } from './ui-layout.js?v=7';
 
-// TouchOSC color language (layout screenshot, 2026-01-29) — David's muscle
-// memory is keyed to these hues, so they are load-bearing, not decoration.
 const SRC_COLOR = {
-  saw:   '#e05a7a',   // pink
-  pwm:   '#e0b040',   // amber
-  tri:   '#7b5ce0',   // violet
-  sin:   '#c8ccdd',   // white/grey
-  wt:    '#40c8c0',   // teal
-  noise: '#6fbf5a',   // green (the unlabeled 6th ADSR row)
+  saw: '#e05a7a', pwm: '#e0b040', tri: '#7b5ce0',
+  sin: '#c8ccdd', wt: '#40c8c0', noise: '#6fbf5a',
 };
-const SRC_LABEL = { saw: 'Saw', pwm: 'PWM', tri: 'Tri', sin: '∿', wt: 'WT', noise: 'Nz' };
-const YELLOW = '#d8b845', GREEN = '#5ab06a', PURPLE = '#9a6ad0', ORANGE = '#d88a3a', RED = '#c0392b';
+const YELLOW = '#d8b845', GREEN = '#5ab06a', PURPLE = '#9a6ad0', RED = '#c0392b';
 
-// Tuning display names (David, 2026-08-16). Internal ids stay alpha/beta/
-// gamma/qt; nothing user-facing says them, because they collide with Wendy
-// Carlos's scales. Each label is the scale's own fundamental, and all four
-// land on a programming language — C, D, Go, Qt. `displayName` in
-// tunings-mtok.json is the source of truth; this mirrors it so a missing or
-// malformed JSON degrades to the right labels rather than to the old names.
+// Tuning display names (David, 2026-08-16): C, D, Go, Qt — every scale's own
+// fundamental, and all four land on a programming language. Internal ids stay
+// alpha/beta/gamma/qt. tunings-mtok.json displayName overrides these.
 const SCALE_FALLBACK = {
   alpha: { label: 'C',  title: 'C — 25-pad just intonation on C3' },
   beta:  { label: 'D',  title: 'D — upper row re-tuned over D/G' },
@@ -44,322 +39,283 @@ const SCALE_FALLBACK = {
 const $ = id => document.getElementById(id);
 
 // ═══════════════════════════════════════════════════════════
-// ZONE BUILDERS
+// LAYOUT → WIDGET MAPPING
 // ═══════════════════════════════════════════════════════════
 
-function zone(id, title, cls = '') {
-  const z = el('section', 'zone ' + cls);
-  z.id = 'z-' + id;
-  if (title) z.append(el('h2', 'zone-t', title));
-  return z;
+// .tosc control name → state.js param, where they differ.
+const RENAMES = {
+  gainFaderRed: 'gain', feedbackFaderPink: 'feedback',
+  hpfader: 'hpf', lpfader: 'lpf', radialTanH: 'tanh',
+  filtEnvDial: 'filtEnvAmt', ampEnvDial: 'ampEnvAmt',
+  sqTup: 'pwmTup',            // the PWM source is 'sq' in the original tuplet row
+};
+
+// Non-key XY pads: name → [px, py, ptouch, color, label]
+const XY_SPECIAL = {
+  xyYellow1: ['xy1x', 'xy1y', 'xy1touch', YELLOW, 'xy 1'],
+  xyYellow2: ['xy2x', 'xy2y', 'xy2touch', YELLOW, 'xy 2'],
+  greenXY:   ['greenXYx', 'greenXYy', 'greenXYtouch', GREEN, 'green'],
+  loblue:    ['loBluex', 'loBluey', 'loBluetouch', '#4a6ee0', 'G'],
+  lopurp:    ['loPurpx', 'loPurpy', 'loPurptouch', PURPLE, 'C'],
+};
+
+// Radio option sets. Order = the ORIGINAL's visual order (radioScale runs
+// qt→α top-to-bottom in the .tosc, hence the descending values).
+function radioOptions(name) {
+  switch (name) {
+    case 'radioScale':
+      return [3, 2, 1, 0].map(v => {
+        const id = Tuning.SCALES[v];
+        return {
+          value: v,
+          label: (window.__mtokNames?.[id]?.displayName) || SCALE_FALLBACK[id].label,
+          badge: Tuning.isPlaceholder(id) ? '*' : null,
+          title: SCALE_FALLBACK[id].title + (Tuning.isPlaceholder(id) ? ' — placeholder table' : ''),
+        };
+      });
+    case 'radioMode':
+      return [{ value: 0, label: 'arp' }, { value: 1, label: 'shm' },
+              { value: 2, label: 'pls' }, { value: 3, label: 'def' }];
+    case 'regSelect':
+      return [{ value: 0, label: '−8' }, { value: 1, label: '0' },
+              { value: 2, label: '+8' }, { value: 3, label: '+15' }];
+    case 'dplusRadio':
+      return [{ value: 0, label: '13' }, { value: 1, label: 'qt' }, { value: 2, label: '7' }];
+    case 'yellowModRad': // original 3 modes here; granular 3-5 live in the aux strip
+      return [{ value: 0, label: 'v/t' }, { value: 1, label: 'vrb' }, { value: 2, label: 'FM' }];
+    case 'greenModRad':
+      return [{ value: 0, label: 'tmp' }, { value: 1, label: 'draw' }, { value: 2, label: 'mod' }];
+    case 'loBlueRad':
+    case 'loPurpRad':
+      return [{ value: 0, label: '1' }, { value: 1, label: '2' }, { value: 2, label: '3' }];
+    case 'wavetableRadio':
+      return [{ value: 0, label: '∿' }, { value: 1, label: 'sw' },
+              { value: 2, label: 'sq' }, { value: 3, label: 'cx' }];
+    case 'radioPreset':
+      return Array.from({ length: 6 }, (_, i) => ({ value: i, label: String(i + 1), title: 'slot ' + (i + 1) }));
+    default: return null;
+  }
 }
 
-// Per-osc ADSR matrix: 6 rows (one per source, color-coded) × a/d/s/r/x/y.
-function buildADSR() {
-  const z = zone('adsr', null, 'z-adsr');
-  const grid = el('div', 'adsr-grid');
-  grid.append(el('div', 'adsr-corner', ''));
-  for (const h of ['a', 'd', 's', 'r', 'x', 'y']) grid.append(el('div', 'adsr-head', h));
-  for (const src of SOURCES) {
-    const tag = el('div', 'adsr-src', SRC_LABEL[src]);
-    tag.style.color = SRC_COLOR[src];
-    grid.append(tag);
-    for (const sfx of ['A', 'D', 'S', 'R', 'X', 'Y']) {
-      grid.append(Dial({ param: src + sfx, label: '', color: SRC_COLOR[src], size: 44 }));
+// ═══════════════════════════════════════════════════════════
+// STAGE
+// ═══════════════════════════════════════════════════════════
+
+let S = 1;                                   // px per .tosc unit
+let noiseRowMap = null;                      // radialN → noiseA/D/S/R/X/Y (by x order)
+let presetRadioEl = null;
+
+function abs(c, node) {
+  const d = el('div', 'abs');
+  d.style.left = (c.x * S) + 'px';
+  d.style.top = (c.y * S) + 'px';
+  d.style.width = (c.w * S) + 'px';
+  d.style.height = (c.h * S) + 'px';
+  if (node) d.append(node);
+  return d;
+}
+
+function buildNoiseRowMap() {
+  // radial2/5/10/15/20/25 are the unlabeled 6th ADSR row (noise) — assign
+  // a/d/s/r/x/y positionally by x, not by trusting the numeric suffixes.
+  const row = Layout.all()
+    .filter(c => /^radial(2|5|10|15|20|25)$/.test(c.name || ''))
+    .sort((a, b) => a.x - b.x);
+  noiseRowMap = new Map(row.map((c, i) => [c.name + '@' + c.x, 'noise' + ['A', 'D', 'S', 'R', 'X', 'Y'][i]]));
+}
+
+function paramFor(c) {
+  const n = c.name || '';
+  if (noiseRowMap.has(n + '@' + c.x)) return noiseRowMap.get(n + '@' + c.x);
+  if (RENAMES[n]) return RENAMES[n];
+  return P.names().includes(n) ? n : null;
+}
+
+const seenNames = new Set();                 // duplicate names (tog33 ×2): first binds
+
+function widgetFor(c) {
+  const name = c.name || '';
+  const color = c.color || '#8a8ab0';
+  const vertical = c.h > c.w;
+  const dup = seenNames.has(name);
+  seenNames.add(name);
+
+  if (c.type === 'LABEL' || c.type === 'TEXT') {
+    if (/S\s*C\s*R\s*A\s*M/.test(c.text || '')) {  // the SCRAM label IS the panic surface
+      return Btn({ label: 'SCRAM', cls: 'scram', color: RED,
+        onTap: () => { KB.releaseAllVisuals(); panicAll(); updateVoiceCount(); } });
     }
+    const d = el('div', 'lab', c.text || '');
+    d.style.color = color;
+    d.style.fontSize = Math.max(7, Math.min(13, c.h * S * 0.62)) + 'px';
+    return d;
   }
-  z.append(grid);
-  return z;
-}
 
-function buildTuning() {
-  const z = zone('tuning', 'Tuning', 'z-tuning');
-  z.append(Radio({
-    param: 'radioScale', vertical: true, color: ORANGE,
-    options: Tuning.SCALES.map((id, i) => ({
-      value: i,
-      label: (window.__mtokNames?.[id]?.displayName) || SCALE_FALLBACK[id].label,
-      badge: Tuning.isPlaceholder(id) ? '*' : null,
-      title: SCALE_FALLBACK[id].title + (Tuning.isPlaceholder(id) ? ' — placeholder table' : ''),
-    })),
-  }));
-  z.append(Radio({
-    param: 'dplusRadio', label: 'D+', color: ORANGE,
-    options: [{ value: 0, label: '13' }, { value: 1, label: 'qt' }, { value: 2, label: '7' }],
-  }));
-  z.append(Dial({ param: 'tanh', label: 'tanh', color: GREEN, size: 44 }));
-  return z;
-}
-
-function buildInstruments() {
-  const z = zone('inst', 'Instruments', 'z-inst');
-  const row = el('div', 'inst-row');
-  for (const src of SOURCES) {
-    const cell = el('div', 'inst-cell');
-    cell.append(Dial({ param: src + 'Lev', label: SRC_LABEL[src], color: SRC_COLOR[src], size: 42 }));
-    row.append(cell);
+  if (c.type === 'XY') {
+    const sp = XY_SPECIAL[name];
+    if (sp) return XYPad({ px: sp[0], py: sp[1], ptouch: sp[2], color: sp[3], label: sp[4] });
+    return Dead({ label: name, why: 'unassigned in original layout', color: '#555' }); // xy5
   }
-  z.append(row);
-  const wtRow = el('div', 'row');
-  z.append(Fader({ param: 'faderPW', label: 'PW', color: SRC_COLOR.pwm }));
-  wtRow.append(Fader({ param: 'wtFader', label: 'wavetable', color: SRC_COLOR.wt }));
-  wtRow.append(Dial({ param: 'wth', label: 'wth', color: SRC_COLOR.wt, size: 40 }));
-  z.append(wtRow);
-  z.append(Radio({
-    param: 'wavetableRadio', color: SRC_COLOR.wt,
-    options: [
-      { value: 0, label: '∿/saw' }, { value: 1, label: 'saw/sq' },
-      { value: 2, label: 'sq/cplx' }, { value: 3, label: 'cplx/draw' },
-    ],
-  }));
-  z.append(Radio({
-    param: 'noiseType', color: SRC_COLOR.noise,
-    options: [{ value: 0, label: 'wht' }, { value: 1, label: 'pnk' }, { value: 2, label: 'brn' }],
-  }));
-  return z;
-}
 
-function buildMode() {
-  const z = zone('mode', 'Mode', 'z-mode');
-  z.append(Radio({
-    param: 'radioMode', vertical: true, color: '#4a8ee0',
-    options: [
-      { value: 0, label: 'arp' }, { value: 1, label: 'shm' },
-      { value: 2, label: 'pls' }, { value: 3, label: 'def' },
-    ],
-  }));
-  z.append(Dial({ param: 'ampEnvAmt', label: 'ampEnv', color: '#4a8ee0', size: 46 }));
-  z.append(Dial({ param: 'filtEnvAmt', label: 'filtEnv', color: '#4a8ee0', size: 46 }));
-  return z;
-}
-
-function buildYellow() {
-  const z = zone('yellow', null, 'z-yellow');
-  const pads = el('div', 'xy-pair');
-  pads.append(XYPad({ px: 'xy1x', py: 'xy1y', ptouch: 'xy1touch', label: 'xy 1', color: YELLOW }));
-  pads.append(XYPad({ px: 'xy2x', py: 'xy2y', ptouch: 'xy2touch', label: 'xy 2', color: YELLOW }));
-  z.append(pads);
-  z.append(Radio({
-    param: 'yellowModRad', color: YELLOW,
-    options: [{ value: 0, label: 'vib/trem' }, { value: 1, label: 'verb' }, { value: 2, label: 'FM' },
-              // 3-5 = capture.js granular sources (synth take / mic / file)
-              { value: 3, label: 'syn' }, { value: 4, label: 'mic' }, { value: 5, label: 'file' }],
-  }));
-  return z;
-}
-
-function buildGreen() {
-  const z = zone('green', null, 'z-green');
-  z.append(XYPad({ px: 'greenXYx', py: 'greenXYy', ptouch: 'greenXYtouch', label: 'green', color: GREEN }));
-  z.append(Radio({
-    param: 'greenModRad', color: GREEN,
-    options: [{ value: 0, label: 'tempo' }, { value: 1, label: 'wt draw' }, { value: 2, label: 'mod' }],
-  }));
-  const pots = el('div', 'pot-row');
-  for (let i = 1; i <= 6; i++) {
-    pots.append(Dial({
-      param: 'greenPot' + i, label: i === 4 ? 'pan' : 'p' + i, color: GREEN, size: 40,
-    }));
+  if (c.type === 'RADIAL') {
+    const p = paramFor(c);
+    if (!p) return Dead({ label: name, why: 'unmapped', color });
+    return Dial({ param: p, label: '', color, size: Math.min(c.w, c.h) * S,
+                  ...(p === 'tempo' ? { min: 40, max: 240, int: true } : {}) });
   }
-  z.append(pots);
-  return z;
-}
 
-function buildFilters() {
-  const z = zone('filt', 'RLPF / HPF', 'z-filt');
-  // Two columns rather than one tall stack: keeps every fader ≥40px on its
-  // short axis, which a six-high single column cannot do in this cell.
-  const g = el('div', 'filt-grid');
-  // Resonance sits beside its cutoff, TouchOSC-style, not stacked in the list.
-  const lp = el('div', 'row');
-  lp.append(Fader({ param: 'lpf', label: 'RLPF', color: '#c0553a' }));
-  lp.append(Dial({ param: 'lpq', label: 'Q', color: '#c0553a', size: 40 }));
-  g.append(lp);
-  g.append(Fader({ param: 'hpf', label: 'HPF', color: '#c0553a' }));
-  g.append(Fader({ param: 'rolloff', label: 'rolloff', color: PURPLE }));
-  g.append(Fader({ param: 'gain', label: 'gain', color: RED }));
-  g.append(Fader({ param: 'feedback', label: 'feedback', color: RED }));
-  g.append(Fader({ param: 'fader5', label: 'verb lvl', color: '#4a8ee0' }));
-  z.append(g);
-  return z;
-}
-
-function buildChords() {
-  const z = zone('chord', 'Chord', 'z-chord');
-  const row = el('div', 'tog-row');
-  for (const [p, l] of [['tog7', '7'], ['tog9', '9'], ['tog11', '11'], ['tog13', '13'],
-                        ['tog15', '15'], ['tog33', '33'], ['togP5', 'P5'], ['togP5qs', 'P5↑']]) {
-    row.append(Toggle({ param: p, label: l, color: '#4a8ee0' }));
+  if (c.type === 'FADER') {
+    const p = paramFor(c);
+    if (!p) return Dead({ label: name, why: 'unmapped', color });
+    return Fader({ param: p, label: '', color, vertical });
   }
-  z.append(row);
-  z.append(Radio({
-    param: 'chordMode', color: '#4a8ee0',
-    options: [{ value: 0, label: 'harm' }, { value: 1, label: 'drone' }],
-  }));
-  return z;
-}
 
-function buildExpression() {
-  const z = zone('expr', 'Key XY / Pedal', 'z-expr');
-  const row = el('div', 'tog-row');
-  row.append(Toggle({ param: 'keyXYFilter', label: 'filt', color: '#c0553a' }));
-  row.append(Toggle({ param: 'keyXYVib', label: 'vib', color: YELLOW }));
-  row.append(Toggle({ param: 'keyXYDrive', label: 'drive', color: RED }));
-  z.append(row);
-  z.append(Radio({
-    param: 'keyXYStyle', label: 'style', color: '#8a8ab0',
-    options: [
-      { value: 0, label: 'rel' },
-      { value: 1, label: 'abs', title: 'spec pending — inert' },
-    ],
-  }));
-  z.append(Toggle({ param: 'pedal', label: 'pedal', color: GREEN, momentary: true }));
-  z.append(Fader({ param: 'pedalReleaseTime', label: 'release', color: GREEN }));
-  return z;
-}
-
-function buildRegister() {
-  const z = zone('reg', 'Register', 'z-reg');
-  z.append(Radio({
-    param: 'regSelect', color: '#8a6a3a',
-    options: [{ value: 0, label: '−8ᵛᵃ' }, { value: 1, label: '0' },
-              { value: 2, label: '+8ᵛᵃ' }, { value: 3, label: '+15ᵐᵃ' }],
-  }));
-  return z;
-}
-
-function buildMaster() {
-  const z = zone('master', null, 'z-master');
-  z.append(Fader({ param: 'masterVol', label: 'vol', color: ORANGE, vertical: true, tall: true }));
-  z.append(Btn({
-    label: 'SCRAM', cls: 'scram', color: RED,
-    onTap: () => { KB.releaseAllVisuals(); panicAll(); updateVoiceCount(); },
-  }));
-  return z;
-}
-
-// PANIC CONTRACT (fx.js RESULTS deviation 2, extended by modes/capture):
-// Engine.panic() severs every outgoing edge from voiceMix and rebuilds
-// buses.master — FX.panic(), Modes.panic(), Capture.panic() MUST follow, in
-// that order, every time, to re-tap their nodes and clear bookkeeping.
-// One function so no call site drifts.
-function panicAll() { Engine.panic(); FX.panic(); Modes.panic(); Capture.panic(); }
-
-// Tuplet ratio per source — an int index into {off, 1..7}, so the dial is
-// stepped rather than continuous.
-const TUP_LABEL = i => i === 0 ? 'off' : String(i);
-
-function buildTuplets() {
-  const z = zone('tup', 'Tup', 'z-tup');
-  const row = el('div', 'tup-row');
-  for (const src of SOURCES) {
-    row.append(Dial({
-      param: src + 'Tup', label: SRC_LABEL[src], color: SRC_COLOR[src], size: 40,
-      min: 0, max: 7, int: true, fmtFn: TUP_LABEL,
-    }));
+  if (c.type === 'BUTTON') {
+    if (name === 'recButt') return recButton(color);
+    if (name === 'undoButton') return Btn({ label: '↺', color,
+      onTap: () => Capture.triggerUndo() });
+    if (name === 'mlButton') return Dead({ label: 'ML', why: 'ML — wave 3', color });
+    const p = !dup && /^tog/.test(name) && P.names().includes(name) ? name : null;
+    if (p) return Toggle({ param: p, label: name.replace(/^tog/, '').replace('P5qs', 'P5↑'), color });
+    return Dead({ label: '·', why: name + ' — unassigned in original', color: '#555' });
   }
-  z.append(row);
-  z.append(Dial({
-    param: 'tempo', label: 'BPM', color: '#4a8ee0', size: 40,
-    min: 40, max: 240, int: true, fmtFn: v => v + '',
-  }));
-  return z;
+
+  if (c.type === 'RADIO') {
+    if (dup) return Dead({ label: '·', why: name + ' (duplicate)', color: '#555' });
+    const opts = radioOptions(name);
+    if (!opts) return Dead({ label: name, why: 'unmapped', color });
+    const r = Radio({ param: name, color, vertical, options: opts });
+    if (name === 'radioPreset') presetRadioEl = r;
+    return r;
+  }
+
+  return Dead({ label: name, why: c.type, color });
 }
 
-// Drone pads (MTOK_B block 8) + their reserved mode radios. Pads publish
-// loBlue*/loPurp* x/y/touch; fx.js subscribes and drives droneUpdate/Release.
-// x = pitch bend (±1 oct around base), y = amp — wide-and-short suits the
-// x-dominant gesture, but 36px tall is a guess: judge on glass (David).
-function buildDrones() {
-  const z = zone('drone', 'Drones', 'z-drone');
-  z.append(Radio({
-    param: 'loBlueRad', label: 'blue', color: '#4a6ee0',
-    options: [{ value: 0, label: '1' }, { value: 1, label: '2' }, { value: 2, label: '3' }],
-  }));
-  z.append(XYPad({ px: 'loBluex', py: 'loBluey', ptouch: 'loBluetouch', label: 'G', color: '#4a6ee0' }));
-  z.append(XYPad({ px: 'loPurpx', py: 'loPurpy', ptouch: 'loPurptouch', label: 'C', color: PURPLE }));
-  z.append(Radio({
-    param: 'loPurpRad', label: 'purp', color: PURPLE,
-    options: [{ value: 0, label: '1' }, { value: 1, label: '2' }, { value: 2, label: '3' }],
-  }));
-  return z;
-}
-
-// ── presets ────────────────────────────────────────────────
-const SLOTS = 6;
-const slotKey = i => 'mtok2.preset.' + i;
-
-function slotFilled(i) {
-  try { return !!localStorage.getItem(slotKey(i)); } catch (_) { return false; }
-}
-
-function buildPresets(refresh) {
-  const z = zone('presets', 'Presets', 'z-presets');
-  const radio = Radio({
-    param: 'radioPreset', color: '#a8b04a',
-    options: Array.from({ length: SLOTS }, (_, i) => ({
-      value: i, label: String(i + 1), title: 'slot ' + (i + 1),
-    })),
-  });
-  z.append(radio);
-
-  const mark = () => radio.querySelectorAll('.radio-btn').forEach((b, i) =>
-    b.classList.toggle('filled', slotFilled(i)));
-
-  const row = el('div', 'row');
-  row.append(Btn({
-    label: 'save', color: '#a8b04a',
-    onTap: () => {
-      try {
-        localStorage.setItem(slotKey(P.get('radioPreset')), JSON.stringify(P.snapshot()));
-        mark();
-      } catch (e) { console.warn('[mtok2] preset save failed:', e); }
-    },
-  }));
-  row.append(Btn({
-    label: 'load', color: '#a8b04a',
-    onTap: () => {
-      const raw = (() => { try { return localStorage.getItem(slotKey(P.get('radioPreset'))); } catch (_) { return null; } })();
-      if (!raw) return;
-      try {
-        const obj = JSON.parse(raw);
-        // Never let a snapshot move the slot selector out from under the tap.
-        delete obj.radioPreset;
-        P.load(obj);
-        refresh();
-      } catch (e) { console.warn('[mtok2] preset load failed:', e); }
-    },
-  }));
-  z.append(row);
-  mark();
-  return z;
-}
-
-// REC + undo drive capture.js directly (its own CP store, not P — see its
-// RESULTS' CAPTURE_PARAMS proposal, pending David). ML stays inert.
-function buildWave2() {
-  const z = zone('w2', null, 'z-w2');
-  const row = el('div', 'tog-row');
+function recButton(color) {
   const rec = el('button', 'tog');
   rec.type = 'button';
-  rec.style.setProperty('--dc', RED);
+  rec.style.setProperty('--dc', color || RED);
   rec.append(el('span', null, 'REC'));
   rec.addEventListener('click', () => {
     const on = !rec.classList.contains('on');
     rec.classList.toggle('on', on);
-    Capture.setRecButt(on ? 1 : 0); // rising edge arms, falling edge finalizes the take
+    Capture.setRecButt(on ? 1 : 0);  // rising edge arms, falling edge finalizes
     blurLater(rec);
   });
-  row.append(rec);
-  row.append(Dead({ label: 'ML', color: GREEN }));
-  const undo = el('button', 'tog');
-  undo.type = 'button';
-  undo.style.setProperty('--dc', '#8a8ab0');
-  undo.append(el('span', null, '↺'));
-  undo.addEventListener('click', () => { Capture.triggerUndo(); blurLater(undo); });
-  row.append(undo);
-  z.append(row);
-  return z;
+  return rec;
+}
+
+function buildStage() {
+  const stage = $('stage');
+  const wrapEl = $('stage-wrap');
+  const availW = wrapEl.clientWidth, availH = wrapEl.clientHeight;
+  S = Math.min(availW / CANVAS.w, availH / CANVAS.h);
+  stage.style.width = (CANVAS.w * S) + 'px';
+  stage.style.height = (CANVAS.h * S) + 'px';
+
+  // rebuild from scratch (resize/orientation): drop stale widget registrations
+  BOUND.clear();
+  seenNames.clear();
+  presetRadioEl = null;
+  const layer = $('controls');
+  layer.textContent = '';
+  buildNoiseRowMap();
+
+  for (const c of Layout.all()) {
+    // Every XY that isn't a named special is a key — the canvas owns it.
+    if (c.type === 'XY' && !(c.name in XY_SPECIAL) && c.name !== 'xy5') continue;
+    layer.append(abs(c, widgetFor(c)));
+  }
+  // The panic surface must always win the z-order — an unassigned original
+  // button ('·' Dead) overlaps the SCRAM frame and would steal taps.
+  const scram = layer.querySelector('.btn.scram');
+  if (scram) scram.parentElement.style.zIndex = '5';
+  buildAux();
+  markPresetSlots();
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUX STRIPS — post-TouchOSC params, letterbox margins
+// ═══════════════════════════════════════════════════════════
+
+function auxItem(label, node) {
+  const d = el('div', 'aux-item');
+  if (label) d.append(el('div', 'aux-l', label));
+  d.append(node);
+  return d;
+}
+
+function buildAux() {
+  const L = $('aux-left'), R = $('aux-right');
+  L.textContent = ''; R.textContent = '';
+  L.append(
+    auxItem('pedal', Toggle({ param: 'pedal', label: '▁', color: GREEN, momentary: true })),
+    auxItem('keyXY', el('div', 'aux-col')),
+  );
+  const kx = L.querySelector('.aux-col');
+  kx.append(
+    Toggle({ param: 'keyXYFilter', label: 'flt', color: '#c0553a' }),
+    Toggle({ param: 'keyXYVib', label: 'vib', color: YELLOW }),
+    Toggle({ param: 'keyXYDrive', label: 'drv', color: RED }),
+  );
+  L.append(
+    auxItem('style', Radio({ param: 'keyXYStyle', color: '#8a8ab0', vertical: true,
+      options: [{ value: 0, label: 'rel' }, { value: 1, label: 'abs', title: 'spec pending — inert' }] })),
+    auxItem('chord', Radio({ param: 'chordMode', color: '#4a8ee0', vertical: true,
+      options: [{ value: 0, label: 'hrm' }, { value: 1, label: 'drn' }] })),
+  );
+  R.append(
+    auxItem('Q', Dial({ param: 'lpq', label: '', color: '#c0553a', size: 38 })),
+    // 'rolloff' exists only as a label strip in the .tosc — no control behind it
+    auxItem('rolloff', Dial({ param: 'rolloff', label: '', color: PURPLE, size: 38 })),
+    auxItem('noise', Radio({ param: 'noiseType', color: SRC_COLOR.noise, vertical: true,
+      options: [{ value: 0, label: 'wht' }, { value: 1, label: 'pnk' }, { value: 2, label: 'brn' }] })),
+    auxItem('nzLev', Dial({ param: 'noiseLev', label: '', color: SRC_COLOR.noise, size: 38 })),
+    auxItem('nzTup', Dial({ param: 'noiseTup', label: '', color: SRC_COLOR.noise, size: 38, min: 0, max: 7, int: true })),
+    auxItem('wtTup', Dial({ param: 'wtTup', label: '', color: SRC_COLOR.wt, size: 38, min: 0, max: 7, int: true })),
+    auxItem('BPM', Dial({ param: 'tempo', label: '', color: '#4a8ee0', size: 38, min: 40, max: 240, int: true })),
+    auxItem('gran', Radio({ param: 'yellowModRad', color: YELLOW, vertical: true,
+      options: [{ value: 3, label: 'syn' }, { value: 4, label: 'mic' }, { value: 5, label: 'file' }] })),
+    auxItem('preset', el('div', 'aux-col')),
+  );
+  const pr = R.querySelector('.aux-col:last-of-type');
+  pr.append(
+    Btn({ label: 'sv', color: '#a8b04a', onTap: savePreset }),
+    Btn({ label: 'ld', color: '#a8b04a', onTap: loadPreset }),
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// PRESETS (6 localStorage slots, shared with v2a on purpose)
+// ═══════════════════════════════════════════════════════════
+
+const slotKey = i => 'mtok2.preset.' + i;
+const slotFilled = i => { try { return !!localStorage.getItem(slotKey(i)); } catch (_) { return false; } };
+
+function markPresetSlots() {
+  if (!presetRadioEl) return;
+  presetRadioEl.querySelectorAll('.radio-btn').forEach((b, i) =>
+    b.classList.toggle('filled', slotFilled(i)));
+}
+
+function savePreset() {
+  try {
+    localStorage.setItem(slotKey(P.get('radioPreset')), JSON.stringify(P.snapshot()));
+    markPresetSlots();
+  } catch (e) { console.warn('[mtok2] preset save failed:', e); }
+}
+
+function loadPreset() {
+  const raw = (() => { try { return localStorage.getItem(slotKey(P.get('radioPreset'))); } catch (_) { return null; } })();
+  if (!raw) return;
+  try {
+    const obj = JSON.parse(raw);
+    delete obj.radioPreset;      // never move the slot selector out from under the tap
+    P.load(obj);
+    KB.releaseAllVisuals();
+    KB.resizeKeyboard();
+  } catch (e) { console.warn('[mtok2] preset load failed:', e); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -375,19 +331,20 @@ function updateCtxBadge() {
 }
 
 function updateVoiceCount() {
-  const v = $('voice-count');
-  if (v) v.textContent = Engine.voiceCount() + ' v';
+  const b = $('voice-count');
+  if (b) b.textContent = Engine.voiceCount() + ' v';
 }
 
-// SPEC acceptance #3: every param in state.js gets exactly one bound control,
-// or is listed as an exception. Machine-checked at boot so the RESULTS list is
-// observed rather than remembered.
+// yellowModRad is deliberately double-bound: the original 3-mode radio in the
+// layout plus the post-TouchOSC granular sources (3-5) in the aux strip.
+const MULTI_OK = new Set(['yellowModRad']);
+
 function auditCoverage() {
   const unbound = [], multi = [];
   for (const name of P.names()) {
     const b = BOUND.get(name);
     if (!b || !b.length) unbound.push(name);
-    else if (b.length > 1 && b[0].kind !== 'xy') multi.push(name + '×' + b.length);
+    else if (b.length > 1 && b[0].kind !== 'xy' && !MULTI_OK.has(name)) multi.push(name + '×' + b.length);
   }
   const smallest = KB.smallestTarget();
   const report = { unbound, multi, smallestKeyPx: Math.round(smallest) };
@@ -405,12 +362,16 @@ function auditCoverage() {
   return report;
 }
 
+// PANIC CONTRACT (fx.js RESULTS deviation 2, extended by modes/capture):
+// Engine.panic() severs every outgoing edge from voiceMix and rebuilds
+// buses.master — FX.panic(), Modes.panic(), Capture.panic() MUST follow, in
+// that order, every time. One function so no call site drifts.
+function panicAll() { Engine.panic(); FX.panic(); Modes.panic(); Capture.panic(); }
+
 async function startAudio() {
   const overlay = $('unlock');
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // iOS belt-and-suspenders: a silent one-sample buffer forces the unlock
-    // even when resume() alone leaves the context suspended. (PoC)
     try {
       const b = ctx.createBuffer(1, 1, ctx.sampleRate);
       const s = ctx.createBufferSource();
@@ -435,48 +396,34 @@ async function startAudio() {
 }
 
 export async function boot() {
-  // tunings-mtok.json is WO-tuning's file — read-only here, and only for
-  // display names. A missing/renamed field must never break the surface.
   try {
     const r = await fetch('./tunings-mtok.json');
     if (r.ok) window.__mtokNames = await r.json();
   } catch (_) {}
+  await Layout.ready;
 
-  const surface = $('surface');
-  // A preset load rewrites the scale/register, so the keyboard must rebuild.
-  const refresh = () => { KB.releaseAllVisuals(); KB.resizeKeyboard(); };
-
-  surface.append(
-    buildTuning(), buildADSR(), buildInstruments(), buildMode(),
-    buildYellow(), buildGreen(), buildFilters(), buildChords(),
-    buildExpression(), buildRegister(), buildWave2(), buildMaster(),
-    buildPresets(refresh), buildTuplets(), buildDrones(),
-  );
-
-  // Keyboard fit toggle — the full 3-octave staircase is wider than an iPad,
-  // so it scrolls by default; "fit" squeezes it all into view at the cost of
-  // finger-sized targets. David picks per situation.
-  $('fit-btn').addEventListener('click', (e) => {
-    KB.setFitMode(!KB.isFitMode());
-    e.currentTarget.classList.toggle('on', KB.isFitMode());
-    blurLater(e.currentTarget);
-    auditCoverage();
-  });
-
-  KB.setVoiceChangeHandler(updateVoiceCount);
+  buildStage();
 
   // Double-rAF: first frame starts layout, second measures it. iPadOS Safari
   // does not settle 100vh + flex in one frame. (PoC)
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    KB.initKeyboard($('kb-canvas'), $('kb-wrap'));
+    KB.initKeyboard($('kb-canvas'), $('stage'));
     document.querySelectorAll('.xy').forEach(x => x._resize && x._resize());
     auditCoverage();
   }));
 
+  KB.setVoiceChangeHandler(updateVoiceCount);
+
+  let resizeT = null;
   window.addEventListener('resize', () => {
-    KB.releaseAllVisuals();
-    KB.resizeKeyboard();
-    document.querySelectorAll('.xy').forEach(x => x._resize && x._resize());
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => {
+      KB.releaseAllVisuals();
+      buildStage();
+      KB.resizeKeyboard();
+      document.querySelectorAll('.xy').forEach(x => x._resize && x._resize());
+      auditCoverage();
+    }, 250);
   });
   window.addEventListener('pointerup', KB.globalPointerUp, { passive: true });
   window.addEventListener('pointercancel', KB.globalPointerUp, { passive: true });

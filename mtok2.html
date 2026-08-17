@@ -7,12 +7,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0a0a10">
-<title>MTOK 2 — microtonal control surface</title>
+<title>MTOK 2b — microtonal control surface</title>
 <style>
 :root{
-  --bg:#0a0a10; --panel:#14141e; --panel2:#1a1a26; --line:#2a2a3a;
+  --bg:#0a0a10; --panel:#14141e; --line:#2a2a3a;
   --txt:#d8d8e8; --dim:#7a7a95; --acc:#4a9eff;
-  --gap:6px;
 }
 *{margin:0;padding:0;box-sizing:border-box;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
@@ -21,55 +20,44 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
   font:12px/1.2 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   overscroll-behavior:none;}
 
-/* ── page frame ─────────────────────────────────────────── */
-#app{display:grid;grid-template-rows:26px auto 1fr;height:100%;gap:var(--gap);padding:var(--gap);}
-
+/* ── page frame: topbar + letterboxed stage + margin strips ── */
+#app{display:grid;grid-template-rows:24px 1fr;height:100%;gap:4px;padding:4px;}
 #topbar{display:flex;align-items:center;gap:10px;padding:0 4px;font-size:11px;}
 #topbar .name{color:var(--acc);font-weight:600;letter-spacing:.06em;}
 #topbar .sp{flex:1;}
-.badge{padding:2px 7px;border:1px solid var(--line);border-radius:3px;color:var(--dim);}
+.badge{padding:1px 7px;border:1px solid var(--line);border-radius:3px;color:var(--dim);}
 .badge[data-state="running"]{color:#5ab06a;border-color:#2d5a35;}
 .badge[data-state="suspended"]{color:#d88a3a;border-color:#5a4020;}
 .badge.warn{color:#d88a3a;border-color:#5a4020;}
-#fit-btn{background:var(--panel2);border:1px solid var(--line);color:var(--dim);
-  border-radius:3px;padding:3px 9px;font:inherit;font-size:11px;touch-action:manipulation;}
-#fit-btn.on{color:var(--acc);border-color:#2a5580;}
 
-/* ── zone grid: iPad landscape 1180×820 logical ─────────── */
-#surface{
-  display:grid;gap:var(--gap);
-  grid-template-columns:96px 306px 200px 140px 1fr 1fr 78px;
-  grid-template-rows:280px 104px 56px 46px;
-  grid-template-areas:
-    "tuning  adsr    inst    mode    yellow yellow master"
-    "reg     filt    expr    chord   green  green  master"
-    "w2      filt    expr    chord   green  green  master"
-    "presets presets tup     tup     drone  drone  drone";
-}
-#z-presets{grid-area:presets} #z-tup{grid-area:tup} #z-drone{grid-area:drone}
-#z-presets,#z-tup,#z-drone{flex-direction:row;align-items:center;gap:6px;}
-#z-presets .zone-t,#z-tup .zone-t,#z-drone .zone-t{align-self:center;flex:0 0 auto;}
-#z-presets .radio,#z-drone .radio{width:auto;flex:0 0 auto;flex-direction:row;
-  align-items:center;gap:3px;}
-#z-presets .radio-row,#z-drone .radio-row{flex-wrap:nowrap;}
-/* drone pads: wide short bend strips inside the 46px bottom row. The mode
-   radios are reserved/inert — keep them tiny so the pads get the width. */
-#z-drone .xy{min-height:0;height:100%;flex:1 1 80px;}
-#z-drone .radio-btn{min-width:20px;min-height:24px;padding:2px;font-size:9px;}
-#z-presets .row{width:auto;}
-#z-presets .btn{width:auto;min-width:44px;}
-.radio-btn.filled{border-color:var(--dc);color:var(--txt);}
-.tup-row{display:flex;gap:4px;align-items:center;}
-#z-tuning{grid-area:tuning} #z-adsr{grid-area:adsr} #z-inst{grid-area:inst}
-#z-mode{grid-area:mode} #z-yellow{grid-area:yellow} #z-green{grid-area:green}
-#z-master{grid-area:master} #z-reg{grid-area:reg} #z-filt{grid-area:filt}
-#z-expr{grid-area:expr} #z-chord{grid-area:chord} #z-w2{grid-area:w2}
+#stage-wrap{position:relative;display:flex;align-items:center;justify-content:center;
+  min-height:0;}
+#stage{position:relative;background:#000;}
+#kb-canvas{position:absolute;inset:0;display:block;touch-action:none;z-index:0;}
+#controls{position:absolute;inset:0;z-index:1;pointer-events:none;}
+/* wrappers are full-frame and often larger than the widget they center —
+   they must pass pointers through; only the widget itself catches them */
+.abs{position:absolute;display:flex;align-items:center;justify-content:center;
+  min-width:0;min-height:0;pointer-events:none;}
+.abs > *{max-width:100%;max-height:100%;pointer-events:auto;}
 
-.zone{background:var(--panel);border:1px solid var(--line);border-radius:5px;
-  padding:4px;display:flex;flex-direction:column;gap:3px;align-items:center;
-  min-width:0;min-height:0;overflow:hidden;}
-.zone-t{font-size:9px;font-weight:500;color:var(--dim);letter-spacing:.09em;
-  text-transform:uppercase;align-self:flex-start;padding-left:2px;}
+/* .tosc labels: colored text, click-through so they never block a key */
+.lab{pointer-events:none !important;width:100%;height:100%;display:flex;
+  align-items:center;justify-content:center;text-align:center;
+  white-space:pre-line;line-height:1.05;text-shadow:0 1px 2px #000;}
+.abs:has(> .lab){pointer-events:none;}
+
+/* aux margin strips — post-TouchOSC params, awaiting real placement */
+.aux{position:absolute;top:0;bottom:0;width:54px;display:flex;
+  flex-direction:column;gap:4px;align-items:center;overflow:hidden;
+  padding:2px 1px;}
+#aux-left{left:0;} #aux-right{right:0;}
+.aux-item{display:flex;flex-direction:column;align-items:center;gap:1px;width:100%;}
+.aux-l{font-size:7px;color:var(--dim);letter-spacing:.05em;text-transform:uppercase;}
+.aux-col{display:flex;flex-direction:column;gap:2px;width:100%;align-items:center;}
+.aux .tog,.aux .btn{min-width:30px;min-height:22px;width:90%;font-size:9px;}
+.aux .radio{width:90%;}
+.aux .radio-btn{min-width:0;min-height:18px;font-size:8px;padding:1px;}
 
 /* ── dial ───────────────────────────────────────────────── */
 .dial{position:relative;width:var(--dsz);height:var(--dsz);flex:0 0 auto;
@@ -87,11 +75,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
 .dial.live .dial-fill{opacity:1;}
 
 /* ── fader ──────────────────────────────────────────────── */
-.fader{position:relative;width:100%;height:26px;flex:0 0 auto;
+.fader{position:relative;width:100%;height:100%;
   background:#1c1c28;border:1px solid var(--line);border-radius:3px;
   overflow:hidden;touch-action:none;}
-.fader.vert{width:26px;height:100%;flex:1 1 auto;}
-.fader.tall{min-height:120px;}
 .fader-fill{position:absolute;left:0;bottom:0;top:0;width:0;background:var(--dc);opacity:.5;}
 .fader.vert .fader-fill{top:auto;width:100%;height:0;}
 .fader-label{position:absolute;inset:0;display:flex;align-items:center;
@@ -105,70 +91,34 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
 .fader.live .fader-fill{opacity:.75;}
 
 /* ── radio / toggle / button ────────────────────────────── */
-.radio{width:100%;display:flex;flex-direction:column;gap:2px;}
+.radio{width:100%;height:100%;display:flex;flex-direction:column;gap:1px;}
 .radio-label{font-size:8px;color:var(--dim);}
-.radio-row{display:flex;gap:2px;flex-wrap:wrap;}
+.radio-row{display:flex;gap:1px;flex:1 1 auto;min-height:0;}
 .radio.vert .radio-row{flex-direction:column;}
 .radio-btn,.tog,.btn{
-  flex:1 1 auto;min-width:34px;min-height:30px;padding:3px 4px;
+  flex:1 1 auto;min-width:0;min-height:0;padding:1px 2px;
   background:#1c1c28;border:1px solid var(--line);border-radius:3px;
-  color:var(--dim);font:inherit;font-size:10px;line-height:1.1;
+  color:var(--dim);font:inherit;font-size:9px;line-height:1.05;
   touch-action:manipulation;display:inline-flex;align-items:center;
   justify-content:center;gap:1px;}
-.radio.vert .radio-btn{min-height:32px;}
-.radio-btn.on,.tog.on{background:color-mix(in srgb,var(--dc) 26%,#1c1c28);
+.radio-btn.on,.tog.on{background:color-mix(in srgb,var(--dc) 30%,#1c1c28);
   border-color:var(--dc);color:#fff;}
-.radio-btn .badge{border:0;padding:0;color:var(--dc);font-size:8px;}
-.tog{min-width:34px;min-height:34px;}
-.tog-row{display:flex;flex-wrap:wrap;gap:2px;width:100%;}
+.radio-btn .badge{border:0;padding:0;color:var(--dc);font-size:7px;}
+.radio-btn.filled{border-color:var(--dc);color:var(--txt);}
+.abs .tog,.abs .btn{width:100%;height:100%;}
 .tog.dead{opacity:.4;border-style:dashed;}
 .tog.dead.nope{animation:shake .26s;}
 @keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
-.btn{width:100%;}
 .btn.scram{background:#3a1010;border-color:#7a2020;color:#e08080;
-  writing-mode:vertical-rl;min-height:96px;font-weight:600;letter-spacing:.22em;}
-
-/* ── ADSR matrix ────────────────────────────────────────── */
-.adsr-grid{display:grid;grid-template-columns:22px repeat(6,1fr);
-  grid-auto-rows:1fr;gap:1px;width:100%;height:100%;align-items:center;
-  justify-items:center;}
-.adsr-grid > .adsr-head:first-of-type{}
-.adsr-head{font-size:9px;color:var(--dim);}
-.adsr-corner{}
-.adsr-src{font-size:9px;font-weight:600;}
-.adsr-grid .dial{--dsz:42px;width:42px;height:42px;}
-
-.row{display:flex;align-items:center;gap:4px;width:100%;}
-.row .fader{flex:1 1 auto;}
-
-.filt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:100%;
-  flex:1 1 auto;min-height:0;align-content:stretch;}
-.filt-grid .fader{height:100%;min-height:40px;}
-.filt-grid .row{height:100%;}
-#z-w2 .tog{min-width:26px;min-height:26px;font-size:9px;}
-
-/* ── instruments / pots ─────────────────────────────────── */
-.inst-row{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;width:100%;
-  justify-items:center;}
-.inst-cell{display:flex;align-items:center;justify-content:center;}
-.pot-row{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;width:100%;
-  justify-items:center;}
+  writing-mode:vertical-rl;font-weight:600;letter-spacing:.22em;}
 
 /* ── XY pads ────────────────────────────────────────────── */
-.xy{position:relative;flex:1 1 auto;width:100%;min-height:60px;
+.xy{position:relative;width:100%;height:100%;min-height:0;
   background:#0d1408;border:1px solid var(--dc);border-radius:4px;
   touch-action:none;overflow:hidden;}
-#z-yellow .xy{background:#141004;}
 .xy-canvas{display:block;width:100%;height:100%;}
 .xy-label{position:absolute;left:4px;top:3px;font-size:9px;color:var(--dc);
   opacity:.65;pointer-events:none;}
-.xy-pair{display:flex;gap:var(--gap);width:100%;flex:1 1 auto;min-height:0;}
-
-/* ── keyboard ───────────────────────────────────────────── */
-#kb-wrap{position:relative;overflow-x:auto;overflow-y:hidden;
-  background:#0d0d14;border:1px solid var(--line);border-radius:5px;
-  min-height:0;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;}
-#kb-canvas{display:block;touch-action:none;}
 
 /* ── unlock overlay ─────────────────────────────────────── */
 #unlock{position:fixed;inset:0;z-index:50;background:rgba(6,6,12,.94);
@@ -183,17 +133,21 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
 
 <div id="app">
   <div id="topbar">
-    <span class="name">MTOK 2</span>
+    <span class="name">MTOK 2b</span>
     <span class="badge" id="ctx-badge" data-state="null">ctx:null</span>
     <span class="badge" id="voice-count">0 v</span>
     <span class="badge" id="audit-badge">—</span>
     <span class="sp"></span>
-    <button type="button" id="fit-btn">fit</button>
   </div>
 
-  <div id="surface"></div>
-
-  <div id="kb-wrap"><canvas id="kb-canvas"></canvas></div>
+  <div id="stage-wrap">
+    <div class="aux" id="aux-left"></div>
+    <div id="stage">
+      <canvas id="kb-canvas"></canvas>
+      <div id="controls"></div>
+    </div>
+    <div class="aux" id="aux-right"></div>
+  </div>
 </div>
 
 <div id="unlock">
@@ -203,8 +157,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
 
 <script>
 // ── iOS gesture guards (wave-1 field report, 2026-08-15) ──────────────
-// user-scalable=no has been ignored since iOS 10, so pinch-zoom and the
-// double-tap-to-zoom gesture have to be refused explicitly.
 ['gesturestart','gesturechange','gestureend'].forEach(t =>
   document.addEventListener(t, e => e.preventDefault(), {passive:false}));
 let _lastTap = 0;
@@ -214,11 +166,10 @@ document.addEventListener('touchend', e => {
   _lastTap = now;
 }, {passive:false});
 document.addEventListener('dblclick', e => e.preventDefault(), {passive:false});
-// Rubber-band scroll of the page itself (the keyboard does its own scrolling).
-document.addEventListener('touchmove', e => {
-  if (!e.target.closest('#kb-wrap')) e.preventDefault();
-}, {passive:false});
+// v2b: nothing on the page scrolls — refuse page-level touchmove everywhere.
+// (Widget + keyboard drags run on pointer events / their own touch handlers.)
+document.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
 </script>
-<script type="module" src="./js/mtok/ui.js?v=6"></script>
+<script type="module" src="./js/mtok/ui.js?v=7"></script>
 </body>
 </html>

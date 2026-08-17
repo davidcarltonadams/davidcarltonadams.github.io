@@ -22,10 +22,10 @@
 // per-source AudioParam (or gain node) modes.js can drive with an actual
 // oscillator, same as pls mode does on buses.voiceMix.gain. See RESULTS.
 
-import { P, SOURCES } from './state.js?v=6';
-import { Engine } from './engine.js?v=6';
-import { FX } from './fx.js?v=6';
-import { Tuning } from './tuning.js?v=6';
+import { P, SOURCES } from './state.js?v=7';
+import { Engine } from './engine.js?v=7';
+import { FX } from './fx.js?v=7';
+import { Tuning } from './tuning.js?v=7';
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 const SMOOTH = 0.02;

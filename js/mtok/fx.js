@@ -17,9 +17,9 @@
 // (b) reconnect the two per-slot return gains to the CURRENT buses.master.
 // Whoever wires the panic button (ui.js) needs to call both.
 
-import { P } from './state.js?v=6';
-import { Engine } from './engine.js?v=6';
-import { Tuning } from './tuning.js?v=6';
+import { P } from './state.js?v=7';
+import { Engine } from './engine.js?v=7';
+import { Tuning } from './tuning.js?v=7';
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 const linexp = (v, inLo, inHi, lo, hi) => {
