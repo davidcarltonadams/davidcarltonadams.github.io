@@ -10,7 +10,7 @@
 // touch-action:none on every widget surface (CSS) — required or iOS Safari
 // steals the drag for scrolling.
 
-import { P } from './state.js?v=6';
+import { P } from './state.js?v=7';
 
 // param name -> [widget descriptors] (audited by ui.js; >1 or 0 is a finding)
 export const BOUND = new Map();

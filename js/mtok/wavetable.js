@@ -3,10 +3,10 @@
 // paint. Owns params: wavetableRadio, wtFader, wth (reserved).
 // Contract: SPEC-mtok2-web-2026-08-15.md.
 
-import { P } from './state.js?v=6';
+import { P } from './state.js?v=7';
 
 // ?v= busts Safari's module cache — bump when the worklet file changes.
-const WORKLET_URL = new URL('./wavetable-worklet.js?v=6', import.meta.url).href;
+const WORKLET_URL = new URL('./wavetable-worklet.js?v=7', import.meta.url).href;
 const TABLE_SIZE = 2048;
 const VERSION = 5;   // surfaced as Wavetable.VERSION for cache diagnostics
 const PAIRS = [[0, 1], [1, 2], [2, 3], [3, 4]];

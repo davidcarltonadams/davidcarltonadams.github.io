@@ -31,7 +31,7 @@
 // acceptance. Whoever wires the panic button (ui.js) must call
 // `Engine.panic(); FX.panic(); Capture.panic();` together.
 
-import { P } from './state.js?v=6';
+import { P } from './state.js?v=7';
 
 const clamp  = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 const lin    = (v, lo, hi) => lo + clamp(v, 0, 1) * (hi - lo);

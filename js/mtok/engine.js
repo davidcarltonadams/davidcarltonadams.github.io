@@ -8,7 +8,7 @@
 // master chain is just voiceMix (+ fx returns) → masterVol → destination. Per-note
 // filtEnvAmt sweep and the key-XY filter/overdrive modes are impossible otherwise.
 
-import { P, SOURCES } from './state.js?v=6';
+import { P, SOURCES } from './state.js?v=7';
 
 // ═══════════════════════════════════════════════════════════
 // MAPPINGS (ported from SC)
@@ -161,7 +161,7 @@ function init(audioCtx) {
     // missing module, or a browser without AudioWorklet, degrades to a sine stub
     // instead of breaking the engine.
     try {
-      const mod = await import('./wavetable.js?v=6');  // ?v= matches wavetable.js — busts Safari's stale module cache
+      const mod = await import('./wavetable.js?v=7');  // ?v= matches wavetable.js — busts Safari's stale module cache
       if (typeof mod?.Wavetable?.createSource !== 'function') throw new Error('no createSource');
       await mod.Wavetable.load(ctx);          // registers the worklet; rejects if unsupported
       WT = mod; wtStubbed = false;

@@ -7,19 +7,15 @@
 //
 // Keys drive Engine.noteOn / noteOff / updateXY. No audio nodes here.
 
-import { P } from './state.js?v=6';
-import { Tuning } from './tuning.js?v=6';
-import Engine from './engine.js?v=6';
+import { P } from './state.js?v=7';
+import { Tuning } from './tuning.js?v=7';
+import Engine from './engine.js?v=7';
+import { Layout, CANVAS, keyIdFor } from './ui-layout.js?v=7';
 
-// Column width units by key type, and the vertical band map. Bands are
-// fractions of keyboard height; a column's topmost element stretches to 0 and
-// its lowest non-sub element stretches to MAIN_BOTTOM, so the staircase has
-// no gaps whatever subset of rows a given note actually has.
-const COL_UNITS = { nat: 1.6, acc: 1.15, qt: 1.0 };
-const BAND = { hi: 0.00, med: 0.16, lo: 0.32, main: 0.48 };
-const BAND_ORDER = ['hi', 'med', 'lo', 'main'];
-const MAIN_BOTTOM = 0.82;
-const UNIT_PX = 42;                       // qt pads land at 42px, naturals at 67
+// v2b (2026-08-16): key rects come straight from the .tosc extraction —
+// David's own geometry, overlapping accidentals and all — scaled to the
+// stage. The synthetic column/band model is gone; the hit-test's reversed
+// layer walk (qt > acc > nat) was built for overlap and now earns it.
 const MIN_TOUCH = 40;                     // acceptance floor for finger targets
 
 const KC = {
@@ -28,10 +24,18 @@ const KC = {
   qt:  { bg: ['#1e1a0c', '#161208'], act: ['#6a4010', '#3a2008'], txt: '#c09848', brd: '#080400' },
 };
 
+// Authentic fill from the control's own TouchOSC color: dark shade at rest,
+// the true color on strike. Falls back to KC when the extraction has none.
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = (sh) => Math.min(255, Math.round(((n >> sh) & 255) * f));
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+
 let cv, cx, dpr = 1, wrap;
 let keyRects = [];
 let logicalW = 0, logicalH = 0;
-let fitMode = false;                      // true = squeeze all 3 octaves in view
+let warnedMisses = false;
 
 // Live touches. Two maps because iOS Safari has historically fired one family
 // or the other, never reliably both — PoC pattern, kept verbatim.
@@ -46,48 +50,58 @@ let pointerEventsWorking = false;
 function buildKeyRects(W, H) {
   const scaleId = Tuning.SCALES[P.get('radioScale')] || 'alpha';
   const keys = Tuning.keyboard(scaleId, { dplusRadio: P.get('dplusRadio') });
+  const byId = new Map(keys.map(k => [k.id, k]));
 
-  // Columns in encounter order; each holds every pad of one noteKey.
-  const cols = new Map();
-  for (const k of keys) {
-    if (!cols.has(k.noteKey)) cols.set(k.noteKey, { keys: [], type: k.type, oct: k.oct });
-    cols.get(k.noteKey).keys.push(k);
-  }
+  const sx = W / CANVAS.w, sy = H / CANVAS.h;
 
-  const unitPx = fitMode
-    ? W / [...cols.values()].reduce((s, c) => s + COL_UNITS[c.type], 0)
-    : UNIT_PX;
+  // The .tosc reuses a few pad names (copy-paste duplicates: bqfl0lo ×2,
+  // bfl2hi ×2 — in SC those pads literally played the same note) and has two
+  // singles standing in for lo/hi pairs (bqfl2, bqs2). Claim ids left-to-
+  // right: exact id first, then octave-bump for duplicates, then the lo/hi
+  // sibling chosen by vertical position (hi rows sit higher). Misassignment
+  // risk is low-stakes — lo/hi of one column share a frequency outside beta.
+  const claim = (c) => {
+    const n = keyIdFor(c.name);
+    if (byId.has(n)) return n;
+    const m = n.match(/^(.*?)([0-2])(hi|lo|med|sub)?$/);
+    if (!m) return null;
+    for (let o = 0; o < 3; o++) {
+      const cand = m[1] + o + (m[3] || '');
+      if (byId.has(cand)) return cand;
+    }
+    const sfxOrder = c.y < CANVAS.h * 0.4 ? ['hi', 'lo'] : ['lo', 'hi'];
+    for (const sfx of sfxOrder) {
+      for (let o = +m[2]; o < 3; o++) {
+        if (byId.has(m[1] + o + sfx)) return m[1] + o + sfx;
+      }
+    }
+    return null;
+  };
 
   const rects = [];
-  let x = 0;
-  for (const [, col] of cols) {
-    const w = COL_UNITS[col.type] * unitPx;
-
-    const sub = col.keys.find(k => k.row === 'sub');
-    const stack = col.keys
-      .filter(k => k.row !== 'sub')
-      .sort((a, b) => BAND_ORDER.indexOf(a.row) - BAND_ORDER.indexOf(b.row));
-
-    stack.forEach((k, i) => {
-      const top = i === 0 ? 0 : BAND[k.row] * H;
-      const bottom = i === stack.length - 1 ? MAIN_BOTTOM * H : BAND[stack[i + 1].row] * H;
-      rects.push(mkRect(k, x, top, w, bottom - top, col.oct));
+  const pads = Layout.ofType('XY').slice().sort((a, b) => a.x - b.x);
+  for (const c of pads) {
+    const id = claim(c);
+    if (!id) continue;                       // non-key XY (yellow/green/drone/xy5)
+    const k = byId.get(id);
+    byId.delete(id);
+    rects.push({
+      x: c.x * sx, y: c.y * sy, w: c.w * sx, h: c.h * sy,
+      key: k, type: k.type, row: k.row, oct: k.oct, color: c.color,
+      octStart: false, active: false, modAmt: 0,
     });
-
-    if (sub) rects.push(mkRect(sub, x, MAIN_BOTTOM * H, w, (1 - MAIN_BOTTOM) * H, col.oct));
-
-    x += w;
   }
-  logicalW = x;
+  // Any tuning id with no pad in the .tosc means the extraction and the
+  // model disagree — say so once rather than silently dropping keys.
+  // Known/expected residue: eqfl1, eqfl2 (the original layout genuinely
+  // omits them — tuning WO's finding) + one leftover of each lo/hi pair a
+  // single pad stands in for.
+  if (byId.size && !warnedMisses) {
+    warnedMisses = true;
+    console.info('[kb] tuning ids with no .tosc pad:', [...byId.keys()].join(' '));
+  }
+  logicalW = W;
   return rects;
-}
-
-function mkRect(k, x, y, w, h, oct) {
-  return {
-    x, y, w, h, key: k, type: k.type, row: k.row, oct,
-    octStart: k.noteKey === 'c' + oct || (oct === 0 && k.noteKey === 'e0'),
-    active: false, modAmt: 0,
-  };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -132,12 +146,7 @@ export function resizeKeyboard() {
   cx = cv.getContext('2d');
   cx.scale(dpr, dpr);                    // safe: setting .width reset ctx state
   drawKeyboard();
-  // Open on the middle octave, where two hands land naturally.
-  requestAnimationFrame(() => { if (!fitMode) wrap.scrollLeft = logicalW / 3; });
 }
-
-export function setFitMode(on) { fitMode = !!on; resizeKeyboard(); }
-export function isFitMode() { return fitMode; }
 
 // Smallest rendered touch target — reported by the boot audit.
 export function smallestTarget() {
@@ -156,7 +165,11 @@ export function drawKeyboard() {
 function drawKey(r) {
   const { x, y, w, h, active, modAmt, type } = r;
   const col = KC[type], c = cx;
-  const [t0, t1] = active ? col.act : col.bg;
+  // authentic palette: the pad's own tosc color, dark at rest / lit on strike
+  const [t0, t1] = r.color
+    ? (active ? [shade(r.color, 1.35), shade(r.color, 0.9)]
+              : [shade(r.color, 0.42), shade(r.color, 0.26)])
+    : (active ? col.act : col.bg);
   const gr = c.createLinearGradient(x, y, x, y + h);
   gr.addColorStop(0, t0); gr.addColorStop(1, t1);
 
