@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>dev-wavetable — MTOK2</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; padding:16px; background:#111; color:#ddd; font:14px/1.4 -apple-system,system-ui,sans-serif; }
+  h1 { font-size:16px; margin:0 0 12px; }
+  section { margin-bottom:20px; padding:12px; background:#1a1a1a; border-radius:8px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:#999; margin:0 0 10px; }
+  button { background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:6px; padding:10px 16px; font-size:14px; margin:4px 4px 4px 0; touch-action:manipulation; }
+  button.active { background:#4a7; border-color:#6c9; color:#000; }
+  label { display:inline-block; min-width:150px; }
+  input[type=range] { width:220px; vertical-align:middle; }
+  .row { margin-bottom:8px; display:flex; align-items:center; gap:10px; }
+  #ctxState { padding:2px 8px; border-radius:4px; background:#333; }
+  #ctxState.running { background:#274; }
+  #ctxState.suspended { background:#742; }
+  canvas { background:#000; border:1px solid #333; border-radius:4px; touch-action:none; display:block; }
+  .checklist { font-size:13px; color:#aaa; }
+  .checklist li { margin-bottom:4px; }
+  .warn { color:#e94; }
+  html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+</style>
+</head>
+<body>
+<h1>dev-wavetable — MTOK2 wavetable oscillator harness</h1>
+
+<section>
+  <h2>Context</h2>
+  <div class="row">
+    ctx: <span id="ctxState">null</span>
+    <button id="btnUnlock">unlock / resume audio</button>
+    <button id="btnPanic">panic (rebuild ctx)</button>
+  </div>
+  <div id="workletWarning" class="warn" style="display:none">AudioWorklet unavailable on this browser/device — wavetable oscillator disabled (reported per SPEC, not crashed).</div>
+  <div class="row" style="font-size:12px;color:#8ac;">diag: <span id="diag">loading…</span> · out-meter <span id="meter">—</span></div>
+</section>
+
+<section>
+  <h2>Play</h2>
+  <div class="row">
+    <button id="btnHold">hold wavetable tone (A4=440)</button>
+    <button id="btnRef">hold reference OscillatorNode sine (A4=440)</button>
+  </div>
+  <div class="row">
+    <label>test freq (Hz)</label>
+    <input id="freqSlider" type="range" min="55" max="1760" step="1" value="440">
+    <span id="freqVal">440</span>
+  </div>
+</section>
+
+<section>
+  <h2>Pair / Morph</h2>
+  <div class="row">
+    <label>pair (wavetableRadio)</label>
+    <button data-pair="0" class="pairBtn active">0 sine↔saw</button>
+    <button data-pair="1" class="pairBtn">1 saw↔square</button>
+    <button data-pair="2" class="pairBtn">2 square↔complex</button>
+    <button data-pair="3" class="pairBtn">3 complex↔drawable</button>
+  </div>
+  <div class="row">
+    <label>morph (wtFader)</label>
+    <input id="morphSlider" type="range" min="0" max="1" step="0.001" value="0">
+    <span id="morphVal">0.000</span>
+  </div>
+</section>
+
+<section>
+  <h2>Drawable table (buf4) — pointer-drag to paint</h2>
+  <canvas id="drawCanvas" width="640" height="160"></canvas>
+  <div class="row"><button id="btnClear">clear drawable</button></div>
+</section>
+
+<section>
+  <h2>Manual checklist (per SPEC acceptance)</h2>
+  <ul class="checklist">
+    <li>[ ] Morph sine↔saw is smooth, click-free, while sounding.</li>
+    <li>[ ] At morph=0, wavetable tone is beat-free against reference sine (hold both, listen for beating).</li>
+    <li>[ ] Pitch accurate across register (sweep freq slider low/mid/high).</li>
+    <li>[ ] Drawing on canvas while a note sounds on pair 3 audibly reshapes timbre in real time.</li>
+    <li>[ ] Panic rebuilds cleanly — no console errors, no zombie processors (check devtools).</li>
+    <li>[ ] AudioWorklet-unavailable path reports (doesn't crash) — verify by stubbing <code>audioWorklet</code> undefined in console then reloading.</li>
+  </ul>
+</section>
+
+<script>
+// iOS ignores user-scalable=no: block pinch + double-tap zoom (CC 2026-08-15).
+document.addEventListener('gesturestart', e => e.preventDefault());
+let _lastTap = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - _lastTap < 350 && !e.target.closest('button,input,select,canvas')) e.preventDefault();
+  _lastTap = now;
+}, { passive: false });
+document.addEventListener('click', e => { if (e.target.closest('button')) e.target.closest('button').blur(); });
+</script>
+<script type="module">
+import { P } from '../state.js?v=5';
+import { Wavetable } from '../wavetable.js?v=5';
+
+let actx = null;
+let wtNode = null, wtGain = null;
+let refOsc = null, refGain = null;
+let meterAn = null;
+
+// ── diagnostics (CC 2026-08-15: iPad silent-wavetable triage) ──
+// Reads: module version (STALE-CACHE if Safari served the old file), the
+// supported() verdict, sample rate, and any swallowed error. The out-meter
+// shows whether the worklet is PRODUCING signal even if the device is silent.
+const diagEl = document.getElementById('diag');
+const meterEl = document.getElementById('meter');
+function updateDiag(extra) {
+  const v = Wavetable.VERSION ? 'wt v' + Wavetable.VERSION : 'wt STALE-CACHE(v1)';
+  diagEl.textContent = `${v} · supported:${Wavetable.supported()} · mode:${Wavetable.mode || '—'} · sr:${actx ? actx.sampleRate : '—'}`
+    + (extra ? ' · ' + extra : '');
+}
+window.addEventListener('error', e => updateDiag('ERR: ' + e.message));
+window.addEventListener('unhandledrejection', e => updateDiag('REJ: ' + (e.reason && e.reason.message || e.reason)));
+updateDiag();
+
+const ctxStateEl = document.getElementById('ctxState');
+const workletWarning = document.getElementById('workletWarning');
+
+function updateCtxDisplay() {
+  const s = actx ? actx.state : 'null';
+  ctxStateEl.textContent = 'ctx:' + s;
+  ctxStateEl.className = s;
+  updateDiag();
+}
+
+function ensureCtx() {
+  if (!actx) {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    actx.onstatechange = updateCtxDisplay;
+  }
+  updateCtxDisplay();
+  if (actx.state !== 'running') {
+    actx.resume().then(updateCtxDisplay).catch(() => {});
+    // iOS belt-and-suspenders: silent 1-sample buffer forces unlock (pattern from mtok.html)
+    try {
+      const buf = actx.createBuffer(1, 1, actx.sampleRate);
+      const src = actx.createBufferSource();
+      src.buffer = buf;
+      src.connect(actx.destination);
+      src.start(0);
+    } catch (_) {}
+  }
+  return Wavetable.load(actx).then(() => {
+    workletWarning.style.display = 'none';
+  }).catch(err => {
+    workletWarning.style.display = 'block';
+    workletWarning.textContent = err.message;
+    throw err;
+  });
+}
+
+document.getElementById('btnUnlock').addEventListener('click', () => { ensureCtx().catch(() => {}); });
+document.addEventListener('touchstart', () => { if (!actx) ensureCtx().catch(() => {}); }, { capture: true, once: true });
+
+function stopWt() {
+  if (wtGain) { try { wtGain.gain.setTargetAtTime(0, actx.currentTime, 0.01); } catch (_) {} }
+  if (wtNode) { const n = wtNode; setTimeout(() => { try { n.stop(); } catch (_) {} }, 50); wtNode = null; }
+}
+function stopRef() {
+  if (refGain) { try { refGain.gain.setTargetAtTime(0, actx.currentTime, 0.01); } catch (_) {} }
+  if (refOsc) { const o = refOsc; setTimeout(() => { try { o.stop(); o.disconnect(); } catch (_) {} }, 50); refOsc = null; }
+}
+
+const btnHold = document.getElementById('btnHold');
+const btnRef = document.getElementById('btnRef');
+const freqSlider = document.getElementById('freqSlider');
+const freqVal = document.getElementById('freqVal');
+
+function currentFreq() { return parseFloat(freqSlider.value); }
+freqSlider.addEventListener('input', () => {
+  freqVal.textContent = freqSlider.value;
+  const f = currentFreq();
+  if (wtNode) wtNode.frequency.setTargetAtTime(f, actx.currentTime, 0.01);
+  if (refOsc) refOsc.frequency.setTargetAtTime(f, actx.currentTime, 0.01);
+});
+
+function startWt() {
+  ensureCtx().then(() => {
+    if (wtNode) return;
+    wtNode = Wavetable.createSource(actx, currentFreq());
+    wtGain = actx.createGain();
+    wtGain.gain.value = 0;
+    wtNode.connect(wtGain).connect(actx.destination);
+    wtGain.gain.setTargetAtTime(0.3, actx.currentTime, 0.01);
+    meterAn = actx.createAnalyser(); meterAn.fftSize = 1024;
+    wtGain.connect(meterAn);
+  }).catch(() => {});
+}
+
+btnHold.addEventListener('pointerdown', () => { btnHold.classList.add('active'); startWt(); });
+btnHold.addEventListener('pointerup', () => { btnHold.classList.remove('active'); stopWt(); });
+btnHold.addEventListener('pointerleave', () => { btnHold.classList.remove('active'); stopWt(); });
+
+btnRef.addEventListener('pointerdown', () => {
+  btnRef.classList.add('active');
+  ensureCtx().then(() => {
+    if (refOsc) return;
+    refOsc = actx.createOscillator();
+    refOsc.type = 'sine';
+    refOsc.frequency.value = currentFreq();
+    refGain = actx.createGain();
+    refGain.gain.value = 0;
+    refOsc.connect(refGain).connect(actx.destination);
+    refOsc.start();
+    refGain.gain.setTargetAtTime(0.3, actx.currentTime, 0.01);
+  }).catch(() => {});
+});
+btnRef.addEventListener('pointerup', () => { btnRef.classList.remove('active'); stopRef(); });
+btnRef.addEventListener('pointerleave', () => { btnRef.classList.remove('active'); stopRef(); });
+
+// ---- Pair / morph ----
+document.querySelectorAll('.pairBtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pairBtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    P.set('wavetableRadio', parseInt(btn.dataset.pair, 10));
+  });
+});
+
+const morphSlider = document.getElementById('morphSlider');
+const morphVal = document.getElementById('morphVal');
+morphSlider.addEventListener('input', () => {
+  const v = parseFloat(morphSlider.value);
+  morphVal.textContent = v.toFixed(3);
+  P.set('wtFader', v);
+});
+
+// ---- Drawable canvas ----
+const canvas = document.getElementById('drawCanvas');
+const ctx2d = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+function renderCanvas() {
+  ctx2d.clearRect(0, 0, W, H);
+  ctx2d.strokeStyle = '#4a7';
+  ctx2d.beginPath();
+  const mirror = Wavetable.drawableMirror;
+  for (let i = 0; i < mirror.length; i++) {
+    const x = (i / mirror.length) * W;
+    const y = H / 2 - mirror[i] * (H / 2 - 4);
+    if (i === 0) ctx2d.moveTo(x, y); else ctx2d.lineTo(x, y);
+  }
+  ctx2d.stroke();
+  ctx2d.strokeStyle = '#333';
+  ctx2d.beginPath(); ctx2d.moveTo(0, H / 2); ctx2d.lineTo(W, H / 2); ctx2d.stroke();
+}
+
+let painting = false;
+function paintAt(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+  Wavetable.draw(x, y);
+  renderCanvas();
+}
+canvas.addEventListener('pointerdown', (e) => { painting = true; ensureCtx().catch(() => {}); paintAt(e.clientX, e.clientY); });
+canvas.addEventListener('pointermove', (e) => { if (painting) paintAt(e.clientX, e.clientY); });
+window.addEventListener('pointerup', () => { painting = false; });
+
+document.getElementById('btnClear').addEventListener('click', () => { Wavetable.clear(); renderCanvas(); });
+
+// ---- Panic ----
+document.getElementById('btnPanic').addEventListener('click', () => {
+  stopWt(); stopRef();
+  if (actx) { try { actx.close(); } catch (_) {} }
+  actx = null;
+  updateCtxDisplay();
+  ensureCtx().catch(() => {});
+});
+
+// rAF loop keeps the canvas live in case the worklet-side draw diverges (it won't,
+// mirror is local) — cheap enough, also redraws after clear/panic.
+const meterBuf = new Float32Array(1024);
+function raf() {
+  renderCanvas();
+  if (meterAn) {
+    meterAn.getFloatTimeDomainData(meterBuf);
+    let s = 0; for (let i = 0; i < meterBuf.length; i++) s += meterBuf[i] * meterBuf[i];
+    meterEl.textContent = Math.sqrt(s / meterBuf.length).toFixed(3);
+  }
+  requestAnimationFrame(raf);
+}
+requestAnimationFrame(raf);
+</script>
+</body>
+</html>

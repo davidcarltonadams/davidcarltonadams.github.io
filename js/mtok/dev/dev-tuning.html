@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>dev-tuning — MTOK2</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; padding:16px; background:#111; color:#ddd; font:14px/1.4 -apple-system,system-ui,sans-serif; }
+  h1 { font-size:16px; margin:0 0 12px; }
+  section { margin-bottom:20px; padding:12px; background:#1a1a1a; border-radius:8px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:#999; margin:0 0 10px; }
+  button { background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:6px; padding:8px 14px; font-size:13px; margin:4px 4px 4px 0; touch-action:manipulation; }
+  button.active { background:#4a7; border-color:#6c9; color:#000; }
+  table { border-collapse:collapse; font-size:12px; width:100%; }
+  th, td { border:1px solid #333; padding:3px 6px; text-align:left; white-space:nowrap; }
+  th { background:#222; position:sticky; top:0; }
+  .type-nat { color:#eee; } .type-acc { color:#9cf; } .type-qt { color:#fc9; }
+  .row-main { } .row-sub { color:#888; } .row-lo,.row-med,.row-hi { color:#bcf; }
+  .scroll { max-height:420px; overflow:auto; border:1px solid #333; border-radius:4px; }
+  .assert-ok { color:#6c9; } .assert-fail { color:#f66; font-weight:bold; }
+  .summary { font-size:13px; margin-bottom:8px; }
+  code { background:#222; padding:1px 5px; border-radius:3px; }
+</style>
+</head>
+<body>
+<h1>dev-tuning — MTOK2 tuning engine + keyboard model harness</h1>
+
+<section>
+  <h2>Scale mode</h2>
+  <div id="scaleBtns"></div>
+  <div class="summary" id="summary"></div>
+</section>
+
+<section>
+  <h2>Keyboard model dump</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>id</th><th>noteKey</th><th>label</th><th>ratio/cents</th><th>freq (Hz)</th><th>row</th><th>oct</th><th>type</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Asserts</h2>
+  <ul id="asserts"></ul>
+</section>
+
+<script>
+// iOS ignores user-scalable=no: block pinch zoom (text stays selectable here).
+document.addEventListener('gesturestart', e => e.preventDefault());
+</script>
+<script type="module">
+import { Tuning } from '../tuning.js';
+
+const scaleBtnsEl = document.getElementById('scaleBtns');
+const tbody = document.getElementById('tbody');
+const summaryEl = document.getElementById('summary');
+const assertsEl = document.getElementById('asserts');
+
+let currentScale = 'alpha';
+
+function render(scaleId) {
+  currentScale = scaleId;
+  [...scaleBtnsEl.children].forEach(b => b.classList.toggle('active', b.dataset.scale === scaleId));
+  const keys = Tuning.keyboard(scaleId);
+  summaryEl.innerHTML = `<b>${scaleId}</b> — ${keys.length} ids, ${new Set(keys.map(k=>k.noteKey)).size} noteKeys, placeholder=${Tuning.isPlaceholder(scaleId)}`;
+  tbody.innerHTML = keys.map(k => `<tr class="row-${k.row}"><td>${k.id}</td><td>${k.noteKey}</td><td>${k.label}</td><td>${k.ratioStr}</td><td>${k.freq.toFixed(3)}</td><td>${k.row}</td><td>${k.oct}</td><td class="type-${k.type}">${k.type}</td></tr>`).join('');
+}
+
+['alpha', 'beta', 'gamma', 'qt'].forEach(id => {
+  const b = document.createElement('button');
+  b.textContent = id;
+  b.dataset.scale = id;
+  b.onclick = () => render(id);
+  scaleBtnsEl.appendChild(b);
+});
+
+// ── Asserts ──────────────────────────────────────────────────
+const results = [];
+function assert(desc, cond) { results.push({ desc, ok: !!cond }); }
+function approx(a, b, tol) { return Math.abs(a - b) <= tol; }
+
+async function runAsserts() {
+  await Tuning.ready;
+
+  // Alpha: ~regKey pad name coverage + uniqueness
+  const alphaKeys = Tuning.keyboard('alpha');
+  const ids = alphaKeys.map(k => k.id);
+  assert('alpha: no duplicate ids', new Set(ids).size === ids.length);
+  assert('alpha: id count matches ported ~regKey shape count (133)', ids.length === 133);
+
+  // Alpha frequencies vs MTOK_B block 6 dictionary — hardcoded expected Hz
+  const expectedHz = {
+    c1: 261.62, d1: 294.3225, g1: 392.43,             // oct1: root*2*ratio
+    e0: 163.5125, a0: 218.01666666666668,             // oct0: root*ratio
+    c2: 523.24, b2lo: 981.075,                        // oct2: root*4*ratio
+    cs1lo: 277.97125, bqs1lo: 496.66921875,           // exact fractions
+  };
+  const byId = Object.fromEntries(alphaKeys.map(k => [k.id, k.freq]));
+  for (const [id, hz] of Object.entries(expectedHz)) {
+    assert(`alpha: ${id} = ${hz.toFixed(3)} Hz (<0.01 Hz)`, id in byId && approx(byId[id], hz, 0.01));
+  }
+  assert('alpha: corrected cs1/cs2 present (block-8 bug: original used csh1/csh2)', 'cs1lo' in byId && 'cs2hi' in byId);
+  assert('alpha: eqfl1 present (missing from original block 8)', 'eqfl1' in byId);
+
+  // QT: 24 keys/octave, correct cents
+  const qtKeys = Tuning.keyboard('qt');
+  const uniqDegrees = new Set(Object.values(Tuning.QT_DEGREE));
+  assert('qt: 24 unique EDO degrees assigned', uniqDegrees.size === 24);
+  // every qt key's cents-from-its-own-octave-root is a multiple of 50 (within float tol)
+  assert('qt: every key sits on a 50c grid point', qtKeys.every(k => {
+    const octMult = [1,2,4][k.oct];
+    const cents = 1200 * Math.log2(k.freq / (Tuning.ROOT_C3 * octMult));
+    return approx(cents % 50, 0, 0.05) || approx(cents % 50, 50, 0.05);
+  }));
+
+  // dplusRadio: switching mode changes dqs1's freq
+  const dqsFreqs = [0, 1, 2].map(mode => Tuning.keyboard('alpha', { dplusRadio: mode }).find(k => k.id === 'dqs1').freq);
+  assert('dplusRadio: 3 distinct freqs for dqs1 across modes 0/1/2', new Set(dqsFreqs.map(f=>f.toFixed(4))).size === 3);
+
+  // JSON-driven placeholders present after ready
+  const gammaKeys = Tuning.keyboard('gamma');
+  const eqsGamma = gammaKeys.find(k => k.id === 'eqs1');
+  const eqsCentsFromC = 1200 * Math.log2(eqsGamma.freq / (Tuning.ROOT_C3 * 2));
+  assert('gamma: eqs pads land ~469c (7th partial of G, folded)', approx(eqsCentsFromC, 469, 5));
+  const betaKeys = Tuning.keyboard('beta');
+  const fqsHi = betaKeys.find(k => k.id === 'fqs1hi');
+  const fqsLo = betaKeys.find(k => k.id === 'fqs1lo');
+  assert('beta: fqs-hi retuned, fqs-lo unchanged from alpha', Math.abs(fqsHi.freq - fqsLo.freq) > 5);
+  assert('beta: fqs-lo still equals plain alpha fqs', approx(fqsLo.freq, Tuning.ROOT_C3*2*(11/8), 0.01));
+
+  // JSON absent/malformed -> alpha fallback, no crash (simulate by re-deriving
+  // with the internal beta/gamma tables forced null via a broken import URL)
+  let fallbackOk = false;
+  try {
+    const mod = await import('../tuning.js?cachebust=' + Date.now());
+    // Can't easily force a 404 on the real file without a server-side toggle;
+    // instead verify the *documented* degrade path directly: before ready,
+    // keyboard('gamma') must never throw and must return alpha-shaped data.
+    const preReady = mod.Tuning.keyboard('gamma');
+    fallbackOk = Array.isArray(preReady) && preReady.length === 133;
+  } catch (e) { fallbackOk = false; }
+  assert('malformed/pre-load state: keyboard(gamma) never throws, returns full alpha-shaped array', fallbackOk);
+
+  assertsEl.innerHTML = results.map(r => `<li class="${r.ok ? 'assert-ok' : 'assert-fail'}">${r.ok ? '✓' : '✗'} ${r.desc}</li>`).join('');
+  const failCount = results.filter(r => !r.ok).length;
+  document.title = (failCount ? `✗${failCount} ` : '✓ ') + 'dev-tuning — MTOK2';
+}
+
+render('alpha');
+runAsserts();
+</script>
+</body>
+</html>

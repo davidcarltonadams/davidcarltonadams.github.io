@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>dev-fx — MTOK2</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; padding:16px; background:#111; color:#ddd; font:14px/1.4 -apple-system,system-ui,sans-serif; }
+  h1 { font-size:16px; margin:0 0 12px; }
+  section { margin-bottom:20px; padding:12px; background:#1a1a1a; border-radius:8px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:#999; margin:0 0 10px; }
+  button { background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:6px; padding:10px 16px; font-size:14px; margin:4px 4px 4px 0; touch-action:manipulation; }
+  button.active { background:#4a7; border-color:#6c9; color:#000; }
+  label { display:inline-block; min-width:150px; }
+  select { background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:6px; padding:6px; }
+  input[type=range] { width:220px; vertical-align:middle; }
+  .row { margin-bottom:8px; display:flex; align-items:center; gap:10px; }
+  #ctxState { padding:2px 8px; border-radius:4px; background:#333; }
+  #ctxState.running { background:#274; }
+  #ctxState.suspended { background:#742; }
+  .pad { width:160px; height:160px; background:#000; border:1px solid #444; border-radius:8px; position:relative; touch-action:none; }
+  .pad .dot { position:absolute; width:10px; height:10px; margin:-5px; border-radius:50%; background:#6c9; left:50%; top:50%; }
+  .drone { width:120px; height:80px; background:#222; border:1px solid #444; border-radius:8px; touch-action:none; display:inline-block; text-align:center; line-height:80px; }
+  .drone.active { background:#274; }
+  .assert-ok { color:#6c9; } .assert-fail { color:#f66; font-weight:bold; }
+</style>
+</head>
+<body>
+<h1>dev-fx — MTOK2 FX rack harness</h1>
+
+<section>
+  <h2>Context</h2>
+  <div class="row">
+    ctx: <span id="ctxState">null</span>
+    <button id="btnUnlock">unlock / init</button>
+    <button id="btnPanic">panic (Engine.panic + FX.panic)</button>
+  </div>
+</section>
+
+<section>
+  <h2>Source tone</h2>
+  <div class="row"><button id="btnHold">hold test chord (saw + sine, A4/E5)</button></div>
+  <div class="row">
+    <label>sawX (send A)</label><input id="sawX" type="range" min="0" max="1" step="0.01" value="0"><span id="sawXv">0</span>
+  </div>
+  <div class="row">
+    <label>sinY (send B)</label><input id="sinY" type="range" min="0" max="1" step="0.01" value="0"><span id="sinYv">0</span>
+  </div>
+</section>
+
+<section>
+  <h2>Rack</h2>
+  <div class="row">
+    <label>slot A</label>
+    <select id="slotA"><option value="delay">delay</option><option value="reverb">reverb</option><option value="shimmer">shimmer</option></select>
+    <label>slot B</label>
+    <select id="slotB"><option value="delay">delay</option><option value="reverb" selected>reverb</option><option value="shimmer">shimmer</option></select>
+  </div>
+  <div class="row"><label>feedback (delay)</label><input id="feedback" type="range" min="0" max="1" step="0.01" value="0.3"><span id="feedbackV">0.3</span></div>
+  <div class="row"><label>fader5 (reverb level)</label><input id="fader5" type="range" min="0" max="1" step="0.01" value="0.5"><span id="fader5V">0.5</span></div>
+</section>
+
+<section>
+  <h2>Yellow XY (yellowModRad)</h2>
+  <div class="row">
+    <button data-mode="0" class="modeBtn active">0 vib+trem</button>
+    <button data-mode="1" class="modeBtn">1 reverb ctrl</button>
+    <button data-mode="2" class="modeBtn">2 FM</button>
+  </div>
+  <div class="row">
+    <div>xy1 <div class="pad" id="pad1"><div class="dot"></div></div></div>
+    <div>xy2 <div class="pad" id="pad2"><div class="dot"></div></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Drone pads</h2>
+  <div class="row">
+    <div class="drone" id="dronePurp" data-pad="lopurp">lopurp (C-1)</div>
+    <div class="drone" id="droneBlue" data-pad="loblue">loblue (G-1)</div>
+  </div>
+</section>
+
+<section>
+  <h2>Asserts</h2>
+  <ul id="asserts"></ul>
+</section>
+
+<script type="module">
+import { Engine } from '../engine.js';
+import { FX } from '../fx.js';
+import { P } from '../state.js';
+
+const ctxStateEl = document.getElementById('ctxState');
+let ctx = null;
+
+function updateCtxState() {
+  if (!ctx) { ctxStateEl.textContent = 'null'; ctxStateEl.className = ''; return; }
+  ctxStateEl.textContent = ctx.state;
+  ctxStateEl.className = ctx.state;
+}
+
+document.getElementById('btnUnlock').onclick = async () => {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    await Engine.init(ctx);
+    FX.init(ctx, Engine.buses);
+    setInterval(updateCtxState, 300);
+  }
+  Engine.unlock();
+  updateCtxState();
+};
+
+document.getElementById('btnPanic').onclick = () => {
+  Engine.panic();
+  FX.panic();
+};
+
+document.getElementById('btnHold').onmousedown = document.getElementById('btnHold').ontouchstart = (e) => {
+  e.preventDefault?.();
+  P.set('sawLev', 0.7); P.set('sinLev', 0.5);
+  Engine.noteOn('t1', 440); Engine.noteOn('t2', 659.25);
+};
+document.getElementById('btnHold').onmouseup = document.getElementById('btnHold').ontouchend = () => {
+  Engine.noteOff('t1'); Engine.noteOff('t2');
+};
+
+document.getElementById('sawX').oninput = (e) => { P.set('sawX', +e.target.value); document.getElementById('sawXv').textContent = e.target.value; };
+document.getElementById('sinY').oninput = (e) => { P.set('sinY', +e.target.value); document.getElementById('sinYv').textContent = e.target.value; };
+document.getElementById('feedback').oninput = (e) => { P.set('feedback', +e.target.value); document.getElementById('feedbackV').textContent = e.target.value; };
+document.getElementById('fader5').oninput = (e) => { P.set('fader5', +e.target.value); document.getElementById('fader5V').textContent = e.target.value; };
+
+document.getElementById('slotA').onchange = (e) => FX.assign('A', e.target.value);
+document.getElementById('slotB').onchange = (e) => FX.assign('B', e.target.value);
+
+document.querySelectorAll('.modeBtn').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.modeBtn').forEach(x => x.classList.toggle('active', x === b));
+  P.set('yellowModRad', +b.dataset.mode);
+});
+
+function wirePad(el, xParam, yParam) {
+  const dot = el.querySelector('.dot');
+  function set(clientX, clientY) {
+    const r = el.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+    const y = Math.max(0, Math.min(1, (clientY - r.top) / r.height));
+    P.set(xParam, x); P.set(yParam, 1 - y);
+    dot.style.left = (x * 100) + '%'; dot.style.top = (y * 100) + '%';
+  }
+  el.addEventListener('pointerdown', (e) => { el.setPointerCapture(e.pointerId); set(e.clientX, e.clientY); });
+  el.addEventListener('pointermove', (e) => { if (e.buttons) set(e.clientX, e.clientY); });
+}
+wirePad(document.getElementById('pad1'), 'xy1x', 'xy1y');
+wirePad(document.getElementById('pad2'), 'xy2x', 'xy2y');
+
+function wireDrone(el) {
+  const padId = el.dataset.pad;
+  function set(clientX, clientY) {
+    const r = el.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+    const y = Math.max(0, Math.min(1, (clientY - r.top) / r.height));
+    FX.droneUpdate(padId, x, y);
+    el.classList.add('active');
+  }
+  el.addEventListener('pointerdown', (e) => { el.setPointerCapture(e.pointerId); set(e.clientX, e.clientY); });
+  el.addEventListener('pointermove', (e) => { if (e.buttons) set(e.clientX, e.clientY); });
+  el.addEventListener('pointerup', () => { FX.droneRelease(padId); el.classList.remove('active'); });
+}
+wireDrone(document.getElementById('dronePurp'));
+wireDrone(document.getElementById('droneBlue'));
+
+// ── Automated asserts (real audio, measured via AnalyserNode) ──
+const assertsEl = document.getElementById('asserts');
+const results = [];
+function assert(desc, cond) { results.push({ desc, ok: !!cond }); }
+
+function rmsOf(node, ctx, ms = 200) {
+  return new Promise((resolve) => {
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    node.connect(analyser);
+    setTimeout(() => {
+      const data = new Float32Array(analyser.fftSize);
+      analyser.getFloatTimeDomainData(data);
+      let sum = 0;
+      for (const v of data) sum += v * v;
+      analyser.disconnect();
+      resolve(Math.sqrt(sum / data.length));
+    }, ms);
+  });
+}
+
+async function runAsserts() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  await Engine.init(ctx);
+  FX.init(ctx, Engine.buses);
+  Engine.unlock();
+  await new Promise(r => setTimeout(r, 200));
+  updateCtxState();
+  setInterval(updateCtxState, 300);
+
+  // T1: silent at rest
+  const restRms = await rmsOf(Engine.buses.master, ctx, 150);
+  assert('T1: silent at rest (rms<0.001)', restRms < 0.001);
+
+  // T2: per-source sends verifiably independent — saw dry-only vs sine wet-only
+  P.set('sawLev', 0.7); P.set('sinLev', 0); P.set('sawX', 0); P.set('sawY', 0);
+  Engine.noteOn('probe', 440);
+  await new Promise(r => setTimeout(r, 150));
+  const sawDryRms = await rmsOf(Engine.buses.voiceMix, ctx, 150);
+  const sawSendRms = await rmsOf(Engine.buses.fxSendA, ctx, 150);
+  Engine.noteOff('probe');
+  await new Promise(r => setTimeout(r, 300));
+  assert('T2a: saw dry present at voiceMix with sawX=0', sawDryRms > 0.02);
+  assert('T2b: fxSendA silent when sawX=0 (no leak)', sawSendRms < 0.001);
+
+  P.set('sawLev', 0); P.set('sinLev', 0.5); P.set('sinX', 1.0);
+  Engine.noteOn('probe2', 440);
+  await new Promise(r => setTimeout(r, 150));
+  const sinSendRms = await rmsOf(Engine.buses.fxSendA, ctx, 150);
+  Engine.noteOff('probe2');
+  await new Promise(r => setTimeout(r, 300));
+  assert('T2c: fxSendA carries sine when sinX=1 (send independent of saw)', sinSendRms > 0.01);
+  P.set('sinX', 0); P.set('sawLev', 0.7); P.set('sinLev', 0.5);
+
+  // T3: feedback fader — audible regeneration, stable (no runaway) at max
+  FX.assign('A', 'delay');
+  P.set('sawX', 1.0); P.set('feedback', 1.0); // max
+  Engine.noteOn('probe3', 440);
+  await new Promise(r => setTimeout(r, 300));
+  Engine.noteOff('probe3');
+  await new Promise(r => setTimeout(r, 400)); // let feedback ring after note-off
+  const tailRms = await rmsOf(Engine.buses.master, ctx, 150);
+  await new Promise(r => setTimeout(r, 1500));
+  const laterRms = await rmsOf(Engine.buses.master, ctx, 150);
+  assert('T3a: delay feedback produces an audible tail after note-off', tailRms > 0.01);
+  assert('T3b: feedback at max does not grow over time (no runaway)', laterRms <= tailRms * 1.5 && laterRms < 2.0);
+  P.set('feedback', 0.3); P.set('sawX', 0);
+
+  // T4: mode-0 click-free switch — no discontinuity spike when switching yellowModRad
+  P.set('yellowModRad', 1);
+  await new Promise(r => setTimeout(r, 50));
+  Engine.noteOn('probe4', 440);
+  const beforeSwitch = await rmsOf(Engine.buses.master, ctx, 80);
+  P.set('yellowModRad', 0);
+  const afterSwitch = await rmsOf(Engine.buses.master, ctx, 80);
+  Engine.noteOff('probe4');
+  await new Promise(r => setTimeout(r, 300));
+  assert('T4: mode switch does not spike level (ratio<3x)', afterSwitch < beforeSwitch * 3 + 0.05);
+
+  // T5: mode 0 vibrato tracks xy1 — rate change is audible as spectral variance
+  P.set('yellowModRad', 0);
+  P.set('xy1x', 0.1); P.set('xy1y', 1.0); // slow rate, full depth
+  Engine.noteOn('probe5', 440);
+  await new Promise(r => setTimeout(r, 300));
+  const modOnRms = await rmsOf(Engine.buses.master, ctx, 150);
+  Engine.noteOff('probe5');
+  await new Promise(r => setTimeout(r, 300));
+  assert('T5: mode 0 with xy1 active produces signal at master (chorus tap audible)', modOnRms > 0.01);
+  P.set('xy1x', 0.5); P.set('xy1y', 0.5);
+
+  // T6: shimmer self-oscillates, doesn't blow up
+  FX.assign('B', 'shimmer');
+  P.set('sawX', 0); P.set('sinY', 1.0); P.set('sinLev', 0.5);
+  Engine.noteOn('probe6', 440);
+  await new Promise(r => setTimeout(r, 400));
+  Engine.noteOff('probe6');
+  await new Promise(r => setTimeout(r, 800));
+  const shimmerRms = await rmsOf(Engine.buses.master, ctx, 200);
+  await new Promise(r => setTimeout(r, 1500));
+  const shimmerLaterRms = await rmsOf(Engine.buses.master, ctx, 200);
+  assert('T6a: shimmer sustains a wash after note-off', shimmerRms > 0.0008);
+  assert('T6b: shimmer does not blow up (stays bounded)', shimmerLaterRms < 1.5 && shimmerLaterRms <= shimmerRms * 3 + 0.1);
+  P.set('sinY', 0);
+
+  // T7: panic kills all tails, including feedback loops. The delay's own
+  // delay line (max ~0.34s) still drains whatever was already in flight when
+  // feedback got zeroed — that's an expected, bounded residual, not a bug —
+  // so the "fully silent" check waits past that, and an earlier check just
+  // confirms the tail is decaying (not static/regenerating) right away.
+  FX.assign('A', 'delay'); P.set('sawX', 1.0); P.set('feedback', 0.9);
+  Engine.noteOn('probe7', 440);
+  await new Promise(r => setTimeout(r, 300));
+  Engine.panic(); FX.panic();
+  const soonRms = await rmsOf(Engine.buses.master, ctx, 100);
+  await new Promise(r => setTimeout(r, 350));
+  const decayingRms = await rmsOf(Engine.buses.master, ctx, 100);
+  assert('T7a: post-panic residual is decaying, not sustaining (feedback was zeroed)', decayingRms < soonRms * 0.5);
+  await new Promise(r => setTimeout(r, 400));
+  const postPanicLaterRms = await rmsOf(Engine.buses.master, ctx, 200);
+  assert('T7b: fully silent ~750ms after panic (past the delay line drain time)', postPanicLaterRms < 0.001);
+  P.set('sawX', 0); P.set('feedback', 0.3);
+
+  // T8: playable again after panic (returns reconnected to the fresh master)
+  FX.assign('A', 'delay'); P.set('sawX', 0.8);
+  Engine.noteOn('probe8', 440);
+  await new Promise(r => setTimeout(r, 200));
+  const playableAfterPanicRms = await rmsOf(Engine.buses.master, ctx, 150);
+  Engine.noteOff('probe8');
+  await new Promise(r => setTimeout(r, 300));
+  assert('T8: still playable (and FX returns still connected) after panic', playableAfterPanicRms > 0.02);
+  P.set('sawX', 0);
+
+  // T9: drone pads
+  FX.droneUpdate('lopurp', 0.5, 0.8);
+  await new Promise(r => setTimeout(r, 200));
+  const droneRms = await rmsOf(Engine.buses.voiceMix, ctx, 150);
+  assert('T9a: drone pad produces sound', droneRms > 0.01);
+  FX.droneRelease('lopurp');
+  await new Promise(r => setTimeout(r, 500));
+  const droneReleasedRms = await rmsOf(Engine.buses.voiceMix, ctx, 150);
+  assert('T9b: drone pad releases when lifted (no pedal)', droneReleasedRms < droneRms * 0.5);
+
+  assertsEl.innerHTML = results.map(r => `<li class="${r.ok ? 'assert-ok' : 'assert-fail'}">${r.ok ? '✓' : '✗'} ${r.desc}</li>`).join('');
+  const failCount = results.filter(r => !r.ok).length;
+  document.title = (failCount ? `✗${failCount} ` : '✓ ') + 'dev-fx — MTOK2';
+}
+
+runAsserts();
+</script>
+</body>
+</html>
