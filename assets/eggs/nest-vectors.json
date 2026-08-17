@@ -1,0 +1,726 @@
+{
+  "_meta": {
+    "dims": [
+      "ratio",
+      "rhythm",
+      "psychoacoustics",
+      "illusion",
+      "process",
+      "visible_math",
+      "playable",
+      "score"
+    ],
+    "dim_labels": {
+      "ratio": "ratio",
+      "rhythm": "rhythm",
+      "psychoacoustics": "psychoacoustics",
+      "illusion": "illusion",
+      "process": "process",
+      "visible_math": "visible math",
+      "playable": "playable",
+      "score": "score"
+    },
+    "generated": "2026-08-17",
+    "note": "RECONSTRUCTED, not original. The hand-curated 8-dim scores from egg-lab sessions were never persisted to a data file - nest.html only baked the 2D MDS projection, a top-3 tag summary per egg, and pairwise cosine-similarity edges. Vectors here are rebuilt from those top-3 tags (rank-weighted 0.9/0.75/0.6, baseline 0.25 elsewhere) so this file can serve as the canonical store going forward. Every entry is flagged reconstructed:true. Re-score by hand (egg-lab section 5) to replace a reconstructed entry with a real one; drop the flag when that happens.",
+    "source_of_truth": "nest.html DATA block (davidcarltonadams.github.io main, as of generation date)"
+  },
+  "eggs": [
+    {
+      "id": "diamond",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.6,
+        "playable": 0.75,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "Partch's tonality diamond · O- and U-tonalities",
+      "reconstructed": true
+    },
+    {
+      "id": "lattice",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.75,
+        "playable": 0.6,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "5-limit lattice · fifths × thirds",
+      "reconstructed": true
+    },
+    {
+      "id": "septimal",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.75,
+        "playable": 0.6,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "7-limit isometric lattice",
+      "reconstructed": true
+    },
+    {
+      "id": "tuning",
+      "vector": {
+        "ratio": 0.75,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.25,
+        "playable": 0.9,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "microtonal keyboard · five systems",
+      "reconstructed": true
+    },
+    {
+      "id": "canon",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.6,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.9,
+        "visible_math": 0.25,
+        "playable": 0.75,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "canon machine · draw, add voices",
+      "reconstructed": true
+    },
+    {
+      "id": "lissajous",
+      "vector": {
+        "ratio": 0.75,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.9,
+        "playable": 0.6,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "every ratio has a shape",
+      "reconstructed": true
+    },
+    {
+      "id": "partials",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.6,
+        "playable": 0.75,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "harmonic series explorer",
+      "reconstructed": true
+    },
+    {
+      "id": "sound",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.75,
+        "playable": 0.9,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "interactive sound field",
+      "reconstructed": true
+    },
+    {
+      "id": "score",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.75,
+        "visible_math": 0.25,
+        "playable": 0.25,
+        "score": 0.9
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "performance instructions, random",
+      "reconstructed": true
+    },
+    {
+      "id": "notation",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.75,
+        "visible_math": 0.6,
+        "playable": 0.25,
+        "score": 0.9
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "procedural score generator",
+      "reconstructed": true
+    },
+    {
+      "id": "drone",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.6,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.25,
+        "playable": 0.75,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "JI drone machine",
+      "reconstructed": true
+    },
+    {
+      "id": "spectrogram",
+      "vector": {
+        "ratio": 0.75,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.9,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "mic FFT with JI partial markers",
+      "reconstructed": true
+    },
+    {
+      "id": "clock",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.9,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.75,
+        "visible_math": 0.6,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "synchronized performance clock",
+      "reconstructed": true
+    },
+    {
+      "id": "mtok",
+      "vector": {
+        "ratio": 0.75,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.25,
+        "playable": 0.9,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "microtonal keyboard, XY expression",
+      "reconstructed": true
+    },
+    {
+      "id": "fugue",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.9,
+        "visible_math": 0.25,
+        "playable": 0.75,
+        "score": 0.6
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "fugue machine · subject → answer",
+      "reconstructed": true
+    },
+    {
+      "id": "undertone",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.6,
+        "playable": 0.75,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "the mirror of the overtone series",
+      "reconstructed": true
+    },
+    {
+      "id": "spiral",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.75,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "spiral of fifths · the comma visible",
+      "reconstructed": true
+    },
+    {
+      "id": "sumtones",
+      "vector": {
+        "ratio": 0.6,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.9,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.25,
+        "playable": 0.75,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "Tartini's combination tones",
+      "reconstructed": true
+    },
+    {
+      "id": "beating",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.9,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.75,
+        "playable": 0.6,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "interference · the third rhythm",
+      "reconstructed": true
+    },
+    {
+      "id": "modes",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.25,
+        "playable": 0.9,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "same notes, different homes",
+      "reconstructed": true
+    },
+    {
+      "id": "consonance",
+      "vector": {
+        "ratio": 0.75,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.9,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.6,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "the harmonic landscape, plotted",
+      "reconstructed": true
+    },
+    {
+      "id": "temperament",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.6,
+        "playable": 0.75,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "drag the fifth · WTK playback",
+      "reconstructed": true
+    },
+    {
+      "id": "stern-brocot",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.75,
+        "playable": 0.6,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "every rational exactly once",
+      "reconstructed": true
+    },
+    {
+      "id": "sequence",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.75,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.6,
+        "visible_math": 0.25,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "JI sequencer · dwell or resolve",
+      "reconstructed": true
+    },
+    {
+      "id": "drift",
+      "vector": {
+        "ratio": 0.75,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.9,
+        "visible_math": 0.25,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "generative ambient · tuning breathes",
+      "reconstructed": true
+    },
+    {
+      "id": "phase",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.9,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.75,
+        "visible_math": 0.6,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "two tempos, one pattern",
+      "reconstructed": true
+    },
+    {
+      "id": "eikosany",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.75,
+        "playable": 0.6,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "combination-product sets",
+      "reconstructed": true
+    },
+    {
+      "id": "euclidean",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.9,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.75,
+        "playable": 0.6,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "E(n,k) rhythm rings",
+      "reconstructed": true
+    },
+    {
+      "id": "pulse",
+      "vector": {
+        "ratio": 0.75,
+        "rhythm": 0.9,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.6,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "pitch ratios are rhythm ratios",
+      "reconstructed": true
+    },
+    {
+      "id": "sculptor",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.6,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.9,
+        "playable": 0.75,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "harmonics build the waveform",
+      "reconstructed": true
+    },
+    {
+      "id": "farey",
+      "vector": {
+        "ratio": 0.75,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.9,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "fractions around the circle",
+      "reconstructed": true
+    },
+    {
+      "id": "escher",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.75,
+        "illusion": 0.9,
+        "process": 0.25,
+        "visible_math": 0.6,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "endless rising · the illusion",
+      "reconstructed": true
+    },
+    {
+      "id": "rhythm",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.9,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.75,
+        "playable": 0.6,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "polyrhythm orrery · six planets, one bar",
+      "reconstructed": true
+    },
+    {
+      "id": "comma",
+      "vector": {
+        "ratio": 0.9,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.75,
+        "process": 0.6,
+        "visible_math": 0.25,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "the pump · harmony that really sinks",
+      "reconstructed": true
+    },
+    {
+      "id": "clutch",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.75,
+        "illusion": 0.9,
+        "process": 0.25,
+        "visible_math": 0.6,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "duet · escher × comma, rate-locked",
+      "reconstructed": true
+    },
+    {
+      "id": "night-shift",
+      "vector": {
+        "ratio": 0.75,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.9,
+        "visible_math": 0.6,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "JI nocturne · the machine plays to an empty room",
+      "reconstructed": true
+    },
+    {
+      "id": "flicker",
+      "vector": {
+        "ratio": 0.6,
+        "rhythm": 0.9,
+        "psychoacoustics": 0.75,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.25,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": true,
+      "desc": "unhatched · accelerate a pulse until it becomes a tone",
+      "reconstructed": true
+    },
+    {
+      "id": "tartini",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.9,
+        "illusion": 0.6,
+        "process": 0.25,
+        "visible_math": 0.25,
+        "playable": 0.75,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "combination tones, genuinely in the signal · Tartini's terzo suono",
+      "reconstructed": true
+    },
+    {
+      "id": "risset",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.75,
+        "psychoacoustics": 0.6,
+        "illusion": 0.9,
+        "process": 0.25,
+        "visible_math": 0.25,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": false,
+      "desc": "shepard–risset accelerando · forever faster, never faster",
+      "reconstructed": true
+    },
+    {
+      "id": "vuza",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.75,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.9,
+        "visible_math": 0.6,
+        "playable": 0.25,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": true,
+      "desc": "unhatched · rhythm canons that tile time",
+      "reconstructed": true
+    },
+    {
+      "id": "brush",
+      "vector": {
+        "ratio": 0.25,
+        "rhythm": 0.25,
+        "psychoacoustics": 0.25,
+        "illusion": 0.25,
+        "process": 0.25,
+        "visible_math": 0.9,
+        "playable": 0.75,
+        "score": 0.25
+      },
+      "scored_date": "2026-08-17",
+      "ghost": true,
+      "desc": "unhatched · draw a spectrum, hear it",
+      "reconstructed": true
+    }
+  ]
+}
