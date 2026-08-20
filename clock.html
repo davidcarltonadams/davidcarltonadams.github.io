@@ -138,7 +138,7 @@
 
     .input-hint {
       font-size: 0.47rem;
-      color: rgba(212,204,196,0.15);
+      color: rgba(212,204,196,0.38);
       margin-top: 0.2rem;
       font-style: italic;
     }
@@ -387,7 +387,7 @@
       border-color: var(--border);
       background: var(--ghost);
     }
-    .timeline-chip.past { color: rgba(212,204,196,0.2); }
+    .timeline-chip.past { color: rgba(212,204,196,0.45); }
 
     /* ══════════════════════════════════════════════
        PERFORMER VIEW
@@ -506,7 +506,7 @@
       transform: translateX(-50%);
       font-size: 0.47rem;
       letter-spacing: 0.12em;
-      color: rgba(212,204,196,0.1);
+      color: rgba(212,204,196,0.38);
       font-style: italic;
       white-space: nowrap;
     }
@@ -536,7 +536,7 @@
   <div class="setup-opts">
     <label>room code</label>
     <input type="text" id="room-input" maxlength="8" placeholder="auto" autocomplete="off" spellcheck="false">
-    <label>session password&nbsp;<span style="font-size:0.45rem;color:rgba(212,204,196,0.15)">(optional — all performers)</span></label>
+    <label>session password&nbsp;<span style="font-size:0.45rem;color:rgba(212,204,196,0.38)">(optional — all performers)</span></label>
     <input type="text" id="session-pw" maxlength="20" placeholder="none" autocomplete="off">
   </div>
 
@@ -957,7 +957,7 @@ function renderSetup() {
     const pwRow = document.createElement('div');
     pwRow.style.cssText = 'grid-column:1/-1;display:flex;gap:0.5rem;align-items:center;margin-top:0.3rem';
     pwRow.innerHTML = `
-      <span style="font-size:0.47rem;color:rgba(212,204,196,0.2);letter-spacing:0.1em;text-transform:uppercase">lock</span>
+      <span style="font-size:0.47rem;color:rgba(212,204,196,0.45);letter-spacing:0.1em;text-transform:uppercase">lock</span>
       <input type="text" class="f-pw" value="${s.password}" placeholder="optional password to reveal content" maxlength="20"
              style="flex:1;font-size:0.62rem;padding:0.25rem 0.4rem">
     `;
@@ -1143,7 +1143,7 @@ async function initPerformer(roomCode) {
     if (stored !== pwHash) {
       const val = prompt('session password:');
       if (!val || await sha256Hex(val) !== pwHash) {
-        document.body.innerHTML = '<p style="color:#666;font-family:Georgia;padding:2rem;font-style:italic">incorrect password.</p>';
+        document.body.innerHTML = '<p style="color:#999;font-family:Georgia;padding:2rem;font-style:italic">incorrect password.</p>';
         return;
       }
       sessionStorage.setItem('dcaclock-pw-' + roomCode, pwHash);
