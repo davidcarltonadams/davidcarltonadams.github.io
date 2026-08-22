@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="thirty one-line text scores, drawn one at a time — prose instructions for listening, tuning and silence that you perform yourself.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -25,12 +26,25 @@
       -webkit-user-select: none;
     }
 
+    /* ── Back to the nest ───────────────────────────────────── */
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
     /* ── Score text ─────────────────────────────────────────── */
     #score-text {
       max-width: min(640px, 88vw);
       text-align: center;
       padding: 2rem;
       transition: opacity 0.5s ease;
+      /* it is a text score: people need to quote it */
+      user-select: text;
+      -webkit-user-select: text;
+      cursor: text;
     }
 
     .instruction {
@@ -61,11 +75,10 @@
       transition: opacity 0.5s ease;
     }
 
-    /* ── Random button ──────────────────────────────────────── */
-    #random-btn {
+    /* ── Controls: prev, random, auto ───────────────────────── */
+    #prev-btn, #random-btn, #auto-btn {
       position: fixed;
       bottom: 1.6rem;
-      right: 2rem;
       font-size: 1rem;
       color: rgba(212,204,196,0.38);
       background: none;
@@ -77,7 +90,20 @@
       line-height: 1;
     }
 
-    #random-btn:hover { color: rgba(212,204,196,0.65); }
+    #prev-btn   { right: 4.2rem; }
+    #random-btn { right: 2rem; }
+
+    #auto-btn {
+      left: 2rem;
+      font-size: 0.55rem;
+      font-style: italic;
+      letter-spacing: 0.2em;
+    }
+
+    #prev-btn:hover, #random-btn:hover, #auto-btn:hover { color: rgba(212,204,196,0.65); }
+
+    #prev-btn[disabled] { opacity: 0.3; cursor: default; }
+    #auto-btn[aria-pressed="true"] { color: rgba(212,204,196,0.72); }
 
     /* ── Fade state ─────────────────────────────────────────── */
     .fade-out { opacity: 0; }
@@ -85,12 +111,16 @@
 </head>
 <body>
 
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
 <div id="score-text" aria-live="polite">
   <p class="instruction" id="instruction-el"></p>
 </div>
 
 <p id="score-meta"></p>
+<button id="prev-btn" title="previous score" aria-label="previous score">‹</button>
 <button id="random-btn" title="random score" aria-label="load random score">↻</button>
+<button id="auto-btn" title="advance on its own every 5 minutes" aria-label="auto-advance" aria-pressed="false">auto</button>
 
 <script src="js/scores-data.js"></script>
 <script>
@@ -98,21 +128,33 @@ const textEl  = document.getElementById('score-text');
 const instrEl = document.getElementById('instruction-el');
 const metaEl  = document.getElementById('score-meta');
 const btn     = document.getElementById('random-btn');
+const prevBtn = document.getElementById('prev-btn');
+const autoBtn = document.getElementById('auto-btn');
 
 const AUTO_MS = 5 * 60 * 1000; // 5 minutes
 let autoTimer = null;
+let autoOn    = false; // opt-in: nothing moves unless you ask it to
 let current   = 0;
+let depth     = 0;     // how many entries we have pushed onto history
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
 function formatText(raw) { return raw.split('\n').join('<br>'); }
 
-function show(idx, animate) {
+// nav: 'push' for a move the reader made (Back steps through them),
+//      'replace' for the unattended timer, 'none' when history moved us.
+function show(idx, animate, nav) {
   const s = SCORES[idx];
   const render = () => {
     instrEl.innerHTML = formatText(s.text);
-    metaEl.textContent = pad(s.id) + ' — ' + s.category;
-    history.replaceState(null, '', '?n=' + pad(s.id));
+    metaEl.textContent = pad(s.id) + ' of ' + SCORES.length + ' — ' + s.category;
+    const url = '?n=' + pad(s.id);
+    if (nav === 'push') {
+      history.pushState({ depth: ++depth }, '', url);
+    } else if (nav === 'replace') {
+      history.replaceState({ depth: depth }, '', url);
+    }
+    syncPrev();
     textEl.classList.remove('fade-out');
   };
   if (animate) {
@@ -123,6 +165,8 @@ function show(idx, animate) {
   }
 }
 
+function syncPrev() { prevBtn.disabled = depth === 0; }
+
 function randomIndex(avoid) {
   if (SCORES.length === 1) return 0;
   let n;
@@ -130,30 +174,69 @@ function randomIndex(avoid) {
   return n;
 }
 
-function loadRandom() {
+function loadRandom(nav) {
   current = randomIndex(current);
-  show(current, true);
+  show(current, true, nav);
   resetTimer();
+}
+
+function goPrev() {
+  if (depth > 0) history.back();
 }
 
 function resetTimer() {
   clearTimeout(autoTimer);
-  autoTimer = setTimeout(loadRandom, AUTO_MS);
+  if (autoOn) autoTimer = setTimeout(() => loadRandom('replace'), AUTO_MS);
 }
 
-// Click anywhere (except button) or press space/enter/arrow = random
+function setAuto(on) {
+  autoOn = on;
+  autoBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  autoBtn.textContent = on ? 'auto on' : 'auto';
+  resetTimer();
+}
+
+// Click anywhere (except the controls) or press space/enter/right = random.
+// A click that ends a selection is someone copying the score, not advancing.
 document.addEventListener('click', e => {
-  if (e.target !== btn) loadRandom();
+  if (e.target.closest && e.target.closest('button')) return;
+  const sel = window.getSelection && window.getSelection();
+  if (sel && String(sel).length) return;
+  loadRandom('push');
 });
 document.addEventListener('keydown', e => {
   if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') {
     e.preventDefault();
-    loadRandom();
+    loadRandom('push');
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    goPrev();
   }
 });
 btn.addEventListener('click', e => {
   e.stopPropagation();
-  loadRandom();
+  loadRandom('push');
+});
+prevBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  goPrev();
+});
+autoBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  setAuto(!autoOn);
+});
+
+// Back/forward: the URL is the score, so render whatever it now says
+window.addEventListener('popstate', e => {
+  depth = (e.state && e.state.depth) || 0;
+  const id    = parseInt(new URLSearchParams(window.location.search).get('n'), 10);
+  const found = SCORES.findIndex(s => s.id === id);
+  if (found >= 0) {
+    current = found;
+    show(current, true, 'none');
+  }
+  syncPrev();
+  resetTimer();
 });
 
 // Init: honour ?n= param or pick random
@@ -166,8 +249,8 @@ if (nParam) {
 } else {
   current = randomIndex(-1);
 }
-show(current, false);
-resetTimer();
+show(current, false, 'replace');
+setAuto(false);
 </script>
 
 </body>

@@ -26,6 +26,6 @@ fugue,Fugue Machine,fugue.html,raw,2026-05,1.0,2026-08-22,pulled
 mtok,MTOK,mtok.html,raw,2024,2.0,2026-05,beta
 rhythm,Polyrhythm Clock,rhythm.html,raw,2025,1.0,2026-04,beta
 clock,Performance Clock,clock.html,raw,2024,1.0,2026-04,alpha
-score,Performance Instructions,score.html,raw,2024,1.0,2026-04,alpha
-notation,Generated Score,notation.html,raw,2024,1.0,2026-04,alpha
+text-score,Text Score,text-score.html,raw,2024,1.1,2026-08-22,alpha
+spontaneous-text-score,Spontaneous Text Score,spontaneous-text-score.html,raw,2024,1.1,2026-08-22,alpha
 audience,Audience Instrument,audience.html,raw,2024,1.0,2026-04,alpha

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="click anywhere to draw a text score from a seeded grammar of verbs, objects and consequences — the seed lives in the url, so any score can be recovered exactly.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -21,9 +22,15 @@
       justify-content: center;
       overflow: hidden;
       cursor: pointer;
-      user-select: none;
-      -webkit-user-select: none;
     }
+
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
 
     #score-text {
       max-width: min(640px, 88vw);
@@ -52,6 +59,18 @@
       white-space: nowrap;
     }
 
+    #copy-link {
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: none;
+      padding: 0 0 0 0.4rem;
+      letter-spacing: inherit;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+    #copy-link:hover { color: rgba(212,204,196,0.65); }
+
     #random-btn {
       position: fixed;
       bottom: 1.6rem;
@@ -73,20 +92,27 @@
 </head>
 <body>
 
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
 <div id="score-text" aria-live="polite">
   <p class="instruction" id="instruction-el"></p>
 </div>
 
-<p id="score-meta">generated</p>
+<p id="score-meta"><span id="seed-value">seed —</span><button id="copy-link" title="copy a link to this score" aria-label="copy a link to this score">copy link</button></p>
 <button id="random-btn" title="generate another" aria-label="generate another text score">↻</button>
 
 <script>
-// ── Seeded PRNG (xorshift) ─────────────────────────────────────────────────
+// ── Seeded PRNG (Marsaglia xorshift32, triple 13/17/5) ─────────────────────
+// >>> everywhere: a signed >> would sign-extend and break the recurrence.
+// Divisor is 2^32, not 2^32-1, so the output is uniform on [0,1) and can
+// never return exactly 1 (which would index one past the end of a pool).
 function makeRng(seed) {
   let s = (seed ^ 0xDEADBEEF) >>> 0 || 1;
   return function() {
-    s ^= s << 13; s ^= s >> 17; s ^= s << 5;
-    return (s >>> 0) / 0xFFFFFFFF;
+    s ^= s << 13; s >>>= 0;
+    s ^= s >>> 17;
+    s ^= s << 5;  s >>>= 0;
+    return s / 0x100000000;
   };
 }
 
@@ -372,8 +398,8 @@ function pick(rng, arr) {
   return arr[Math.floor(rng() * arr.length)];
 }
 
-function pickDiff(rng, arr, avoid) {
-  const filtered = arr.filter(x => x !== avoid);
+function pickDiff(rng, arr, ...avoid) {
+  const filtered = arr.filter(x => !avoid.includes(x));
   return filtered.length ? filtered[Math.floor(rng() * filtered.length)] : arr[0];
 }
 
@@ -413,7 +439,9 @@ function tEquation(rng) {
 function tEquation3(rng) {
   const a = pick(rng, P.eq_a);
   const b = pickDiff(rng, P.eq_b, a.toLowerCase());
-  const c = pickDiff(rng, P.eq_b, b);
+  // c must differ from BOTH earlier terms, or the chain closes on itself
+  // and reads "Sound = breath = sound."
+  const c = pickDiff(rng, P.eq_b, b, a.toLowerCase());
   return a + ' = ' + b + ' = ' + c + '.';
 }
 
@@ -448,32 +476,63 @@ function generate(seed) {
 const textEl  = document.getElementById('score-text');
 const instrEl = document.getElementById('instruction-el');
 const btn     = document.getElementById('random-btn');
+const seedEl  = document.getElementById('seed-value');
+const copyEl  = document.getElementById('copy-link');
 
 let currentSeed = null;
+// bumped on every show(); a fade callback that isn't holding the current
+// token belongs to a superseded score and must not touch the DOM
+let fadeToken = 0;
 
 function fmt(raw) { return raw.split('\n').join('<br>'); }
 
-function show(seed, animate) {
+function randomSeed() { return Math.floor(Math.random() * 0xFFFFFF); }
+
+// 0 is a perfectly good seed — only a non-number means "no seed given"
+function parseSeed(raw) {
+  if (raw === null || raw === undefined) return null;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function paint(seed, text) {
+  instrEl.innerHTML = fmt(text);
+  seedEl.textContent = 'seed ' + seed;
+  copyEl.textContent = 'copy link';
+}
+
+function show(seed, animate, push) {
   currentSeed = seed;
   const text = generate(seed);
-  history.replaceState(null, '', '?s=' + seed);
+  const url = '?s=' + seed;
+  if (push) history.pushState({ s: seed }, '', url);
+  else      history.replaceState({ s: seed }, '', url);
+  const token = ++fadeToken;
   if (animate) {
     textEl.classList.add('fade-out');
     setTimeout(() => {
-      instrEl.innerHTML = fmt(text);
+      if (token !== fadeToken) return;   // a newer score already landed
+      paint(seed, text);
       textEl.classList.remove('fade-out');
     }, 500);
   } else {
-    instrEl.innerHTML = fmt(text);
+    paint(seed, text);
   }
 }
 
 function next() {
-  show(Math.floor(Math.random() * 0xFFFFFF), true);
+  show(randomSeed(), true, true);
 }
 
 // ── Interactions ───────────────────────────────────────────────────────────
-document.addEventListener('click', e => { if (e.target !== btn) next(); });
+document.addEventListener('click', e => {
+  if (e.target === btn || e.target === copyEl) return;
+  // the score is selectable text now; don't wipe a selection someone is
+  // in the middle of copying
+  const sel = window.getSelection && window.getSelection();
+  if (sel && String(sel).length) return;
+  next();
+});
 document.addEventListener('keydown', e => {
   if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') {
     e.preventDefault(); next();
@@ -481,12 +540,31 @@ document.addEventListener('keydown', e => {
 });
 btn.addEventListener('click', e => { e.stopPropagation(); next(); });
 
+copyEl.addEventListener('click', e => {
+  e.stopPropagation();
+  const link = location.origin && location.origin !== 'null'
+    ? location.origin + location.pathname + '?s=' + currentSeed
+    : location.href;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link)
+      .then(() => { copyEl.textContent = 'copied'; })
+      .catch(() => { copyEl.textContent = 'copy failed'; });
+  } else {
+    copyEl.textContent = 'copy failed';
+  }
+});
+
+window.addEventListener('popstate', e => {
+  const seed = (e.state && typeof e.state.s === 'number')
+    ? e.state.s
+    : parseSeed(new URLSearchParams(location.search).get('s'));
+  show(seed === null ? randomSeed() : seed, true, false);
+});
+
 // ── Init ───────────────────────────────────────────────────────────────────
 const params = new URLSearchParams(window.location.search);
-const s = params.get('s');
-show(s ? (parseInt(s, 10) || Math.floor(Math.random() * 0xFFFFFF))
-       : Math.floor(Math.random() * 0xFFFFFF),
-     false);
+const initialSeed = parseSeed(params.get('s'));
+show(initialSeed === null ? randomSeed() : initialSeed, false, false);
 </script>
 </body>
 </html>
