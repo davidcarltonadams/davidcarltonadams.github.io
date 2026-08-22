@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="an endless rising tone you can steer: a Shepard-Risset glissando under a fixed brightness bell, steppable through any equal division of the octave.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -85,6 +86,18 @@
       text-align: center;
     }
     input[type=range] { width: 150px; accent-color: var(--gold); }
+    input[type=number] {
+      background: var(--bg2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.28rem 0.4rem;
+      width: 4.4em;
+      font-size: 0.62rem;
+      font-family: 'SF Mono','Fira Code',monospace;
+      letter-spacing: 0.05em;
+      outline: none;
+    }
+    .edo-row { display: flex; gap: 0.4rem; align-items: center; }
     select {
       background: var(--bg2);
       color: var(--text);
@@ -152,18 +165,26 @@
   </div>
   <div class="ctrl-group stepped-only">
     <span class="ctrl-label">scale · steps/degree</span>
-    <select id="edoSel">
-      <option value="12" selected>12 · standard</option>
-      <option value="5">5 · slendro-ish</option>
-      <option value="7">7</option>
-      <option value="19">19</option>
-      <option value="22">22 · shruti</option>
-      <option value="24">24 · quarter-tones</option>
-      <option value="31">31</option>
-      <option value="43">43 · equal (EDO)</option>
-      <option value="53">53</option>
-      <option value="partch">43 · Partch (unequal JI)</option>
-    </select>
+    <div class="edo-row">
+      <select id="edoSel">
+        <option value="12" selected>12 · standard</option>
+        <option value="5">5 · slendro-ish</option>
+        <option value="7">7</option>
+        <option value="19">19</option>
+        <option value="22">22 · shruti</option>
+        <option value="24">24 · quarter-tones</option>
+        <option value="31">31</option>
+        <option value="43">43 · equal (EDO)</option>
+        <option value="53">53</option>
+        <option value="partch">43 · Partch (unequal JI)</option>
+        <option value="custom">custom · any n</option>
+      </select>
+      <input type="number" id="edoNum" min="2" max="120" step="1" value="12" aria-label="equal divisions of the octave (2 to 120)">
+    </div>
+  </div>
+  <div class="ctrl-group stepped-only">
+    <span class="ctrl-label">degree</span>
+    <span class="ctrl-val" id="degVal">0 / 12</span>
   </div>
   <div class="ctrl-group">
     <span class="ctrl-label">voices · octaves</span>
@@ -180,9 +201,10 @@
 <div class="btn-row">
   <button id="btnPlay">play</button>
   <button id="btnReverse">reverse</button>
+  <button id="btnStop">stop</button>
 </div>
 
-<p class="hint">click the canvas to start · reverse flips ascent ↔ descent</p>
+<p class="hint">click the canvas to start · reverse flips ascent ↔ descent · esc stops and frees the voices</p>
 
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -234,10 +256,11 @@ let stepAccum = 0;               // fractional-step accumulator (stepped mode)
 
 // ── Audio ────────────────────────────────────────────────────
 let actx = null, master = null, running = false;
-let voices = [];                 // { osc, gain }
+let voices = [];                 // { osc, gain, lastF, lastG }
+let lastMaster = null;           // last master-gain target actually scheduled
 
 function ensureAudio() {
-  if (actx) return;
+  if (actx) { if (!voices.length) buildVoices(); return; }
   actx = new (window.AudioContext || window.webkitAudioContext)();
   master = actx.createGain();
   master.gain.value = 0.0;
@@ -256,8 +279,23 @@ function buildVoices() {
     g.gain.value = 0;
     osc.connect(g); g.connect(master);
     osc.start();
-    voices.push({ osc, gain: g });
+    voices.push({ osc, gain: g, lastF: null, lastG: null });
   }
+  lastMaster = null;
+}
+
+// hard stop: silence, stop and free every oscillator, park the context.
+// ensureAudio() rebuilds the bank on the next start, so this is a real
+// teardown and not a pause wearing a stop's clothes.
+function stopAll() {
+  setRunning(false);
+  if (!actx) return;
+  try { master.gain.cancelScheduledValues(actx.currentTime); } catch(e){}
+  master.gain.value = 0;
+  for (const v of voices) { try { v.osc.stop(); } catch(e){} v.osc.disconnect(); v.gain.disconnect(); }
+  voices = [];
+  lastMaster = null;
+  if (actx.state === 'running') actx.suspend();
 }
 
 function voiceFreq(x) { return FMIN * Math.pow(2, N * x); }
@@ -269,7 +307,7 @@ function bell(x) {
 }
 
 function updateAudio(dt) {
-  if (!actx) return;
+  if (!actx || !voices.length) return;
   // advance phase
   if (running) {
     if (mode === 'glide') {
@@ -304,28 +342,42 @@ function updateAudio(dt) {
     fTau = Math.min(0.018, Math.max(0.0025, dwell * 0.10));
     gTau = Math.min(0.024, Math.max(0.004,  dwell * 0.12));
   }
-  // set each voice
+  // set each voice — only when the target actually moved. setTargetAtTime
+  // schedules an event, it does not assign: firing it unconditionally queued
+  // ~2 events per voice per frame forever, even while paused.
   const t = actx.currentTime;
   for (let k = 0; k < voices.length; k++) {
+    const v = voices[k];
     const x = (((phase + k / N) % 1) + 1) % 1;
     const f = voiceFreq(x);
     const a = bell(x);
-    voices[k].osc.frequency.setTargetAtTime(f, t, fTau);
-    voices[k].gain.gain.setTargetAtTime(a * a, t, gTau); // a^2 = softer edges
+    const g = a * a;                                   // a^2 = softer edges
+    if (f !== v.lastF) { v.osc.frequency.setTargetAtTime(f, t, fTau); v.lastF = f; }
+    if (g !== v.lastG) { v.gain.gain.setTargetAtTime(g, t, gTau);     v.lastG = g; }
   }
   // master fade to avoid click on start/stop
-  master.gain.setTargetAtTime(running ? 0.32 : 0.0, t, 0.05);
+  const mTarget = running ? 0.32 : 0.0;
+  if (mTarget !== lastMaster) { master.gain.setTargetAtTime(mTarget, t, 0.05); lastMaster = mTarget; }
 }
 
 // ── Canvas ───────────────────────────────────────────────────
 const canvas = document.getElementById('cv');
-const dpr = window.devicePixelRatio || 1;
-const W = Math.min(window.innerWidth - 32, 620);
-const H = 320;
-canvas.width = W * dpr; canvas.height = H * dpr;
-canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
 const c = canvas.getContext('2d');
-c.scale(dpr, dpr);
+let dpr = 1, W = 620, H = 320;
+
+// re-measure on resize / monitor change: dpr can shift when the window moves
+// between displays, so it is read here rather than captured once.
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  W = Math.min(window.innerWidth - 32, 620);
+  H = 320;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.scale(dpr, dpr);
+}
+resize();
+window.addEventListener('resize', resize);
 
 const PADX = 74;                 // left gutter for labels
 const yOf = x => H - 18 - x * (H - 36);   // x in [0,1] → y (bottom→top)
@@ -401,6 +453,22 @@ function draw() {
   c.font = "13px Georgia, serif"; c.textAlign = 'left'; c.textBaseline = 'middle';
   const up = rate >= 0;
   c.fillText(up ? '↑ rising' : '↓ falling', 12, up ? 24 : H - 24);
+
+  // stepped mode is otherwise opaque — say which degree of the scale we are on
+  if (mode === 'step') {
+    const label = degreeLabel();
+    c.font = "9px 'SF Mono', monospace";
+    c.fillStyle = 'rgba(212,192,112,0.45)';
+    c.fillText(label, 12, up ? H - 24 : 24);
+    if ($('degVal').textContent !== label) $('degVal').textContent = label;
+  }
+}
+
+// "7 / 12 · 700¢" — degree index, scale size, and the degree's pitch above 1/1
+function degreeLabel() {
+  const cents = currentScaleCents();
+  const d = ((deg % cents.length) + cents.length) % cents.length;
+  return d + ' / ' + cents.length + ' · ' + Math.round(cents[d]) + '\u00A2';
 }
 
 // ── Loop ─────────────────────────────────────────────────────
@@ -437,15 +505,48 @@ function fmtRate() {
   $('rateLabel').textContent = mode === 'glide' ? 'glide · semitones/sec' : 'clock · steps/sec';
 }
 
+// stepped scale selection. currentScaleCents() was always general; the presets
+// are shortcuts into it, and the number box is the general door.
+const EDO_MIN = 2, EDO_MAX = 120;
+const PRESET_EDOS = [5, 7, 12, 19, 22, 24, 31, 43, 53];
+
+function setEdo(n) {
+  if (!Number.isFinite(n)) return null;
+  const e = Math.max(EDO_MIN, Math.min(EDO_MAX, Math.round(n)));
+  scaleId = String(e);
+  deg = 0; stepAccum = 0;
+  if ($('edoNum').value !== String(e)) $('edoNum').value = e;
+  $('edoSel').value = PRESET_EDOS.includes(e) ? String(e) : 'custom';
+  $('degVal').textContent = degreeLabel();
+  return e;
+}
+
+function updateSteppedUI() {
+  const o = mode === 'step' ? '1' : '0.32';
+  document.querySelectorAll('.stepped-only').forEach(el => { el.style.opacity = o; });
+}
+
 $('rateSlider').addEventListener('input', e => { rate = parseFloat(e.target.value); fmtRate(); });
 $('modeSel').addEventListener('change', e => {
   mode = e.target.value; stepAccum = 0; fmtRate();
-  $('edoSel').closest('.ctrl-group').style.opacity = mode === 'step' ? '1' : '0.32';
+  updateSteppedUI();
 });
-$('edoSel').addEventListener('change', e => { scaleId = e.target.value; deg = 0; stepAccum = 0; });
+$('edoSel').addEventListener('change', e => {
+  const v = e.target.value;
+  if (v === 'partch') { scaleId = 'partch'; deg = 0; stepAccum = 0; $('degVal').textContent = degreeLabel(); return; }
+  if (v === 'custom') { setEdo(parseFloat($('edoNum').value)); return; }
+  setEdo(parseInt(v, 10));
+});
+// live while typing only when the value is already in range, so a half-typed
+// "1" on the way to "17" does not get clamped out from under the caret
+$('edoNum').addEventListener('input', e => {
+  const n = parseInt(e.target.value, 10);
+  if (Number.isFinite(n) && n >= EDO_MIN && n <= EDO_MAX) setEdo(n);
+});
+$('edoNum').addEventListener('change', e => { setEdo(parseFloat(e.target.value)); });
 $('voxSlider').addEventListener('input', e => {
   N = parseInt(e.target.value, 10); $('voxVal').textContent = N;
-  if (actx) buildVoices();
+  if (actx && voices.length) buildVoices();   // don't resurrect a stopped bank
 });
 $('sigSlider').addEventListener('input', e => {
   SIGMA = parseFloat(e.target.value); $('sigVal').textContent = SIGMA.toFixed(2);
@@ -455,10 +556,13 @@ $('btnPlay').addEventListener('click', () => { ensureAudio(); if (actx.state ===
 $('btnReverse').addEventListener('click', () => {
   rate = -rate; $('rateSlider').value = rate; fmtRate();
 });
+$('btnStop').addEventListener('click', stopAll);
 canvas.addEventListener('click', () => { ensureAudio(); if (actx.state === 'suspended') actx.resume(); if (!running) setRunning(true); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') stopAll(); });
 
 // init
-$('edoSel').closest('.ctrl-group').style.opacity = '0.32';
+updateSteppedUI();
+$('degVal').textContent = degreeLabel();
 fmtRate();
 </script>
 </body>

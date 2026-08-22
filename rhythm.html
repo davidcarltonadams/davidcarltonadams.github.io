@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="a polyrhythm orrery: six orbits divide one bar by their own integers, and each track clicks at the pitch its ratio names">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -196,14 +197,20 @@
 // ─────────────────────────────────────────────────────────────
 
 // fast planets orbit inside, like a real orrery (Mercury rule)
+// no pitch column: a track's click pitch is its live ratio over 110 Hz,
+// so changing the ratio moves the rhythm and the interval together.
 const TRACK_DEFS = [
-  { ratio: 7, pitch: 770,  color: '#eee0a8' },
-  { ratio: 6, pitch: 660,  color: '#d4c070' },
-  { ratio: 5, pitch: 550,  color: '#c0985a' },
-  { ratio: 4, pitch: 440,  color: '#b8a887' },
-  { ratio: 3, pitch: 330,  color: '#9a91a0' },
-  { ratio: 2, pitch: 220,  color: '#787a88' },
+  { ratio: 7, color: '#eee0a8' },
+  { ratio: 6, color: '#d4c070' },
+  { ratio: 5, color: '#c0985a' },
+  { ratio: 4, color: '#b8a887' },
+  { ratio: 3, color: '#9a91a0' },
+  { ratio: 2, color: '#787a88' },
 ];
+
+// the ratio IS the interval — one bar-fundamental of 110 Hz, harmonic n
+const FUND = 110;
+const trackPitch = t => t.ratio * FUND;
 
 // ── Audio ────────────────────────────────────────────────────
 let actx = null, master = null;
@@ -315,7 +322,7 @@ function tick() {
       for (let b = beatCounters[i] + 1; b <= upto; b++) {
         const when = startTime + b * period;
         if (when >= now) {
-          if (!t.muted) playClick(t.pitch, when);
+          if (!t.muted) playClick(trackPitch(t), when);
           const ii = i;
           setTimeout(() => { flashEnd[ii] = actx.currentTime + 0.12; },
                      Math.max(0, (when - now) * 1000));
@@ -349,6 +356,8 @@ function align() {
 }
 function tap() {
   const now = Date.now();
+  // a gap over 2s isn't a tempo — it starts a fresh series
+  if (tapTimes.length && now - tapTimes[tapTimes.length - 1] > 2000) tapTimes = [];
   tapTimes.push(now);
   if (tapTimes.length > 6) tapTimes.shift();
   if (tapTimes.length >= 2) {

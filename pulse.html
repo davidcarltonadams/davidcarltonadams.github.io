@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="a 3·5 just-intonation lattice played as pulse and as pitch at once: each node's raw tempo ratio is the interval ratio pitch hears octave-folded.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -132,7 +133,7 @@
 
 <div class="header">
   <h1 class="title">pulse lattice</h1>
-  <p class="sub">pitch ratios are rhythm ratios. the interval 3∶2 (perfect fifth) is the same mathematics as a hemiola — three pulses against two. click any node to activate it. the lattice is the same object in both domains.</p>
+  <p class="sub">pitch ratios are rhythm ratios. the fifth's node sounds a 3∶2 and pulses three times to the root's once — pitch folds the octaves away, rhythm keeps them. click any node to activate it. the lattice is the same object in both domains.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -166,6 +167,7 @@
 
 <div class="btn-row">
   <button id="btnClear">clear all</button>
+  <button id="btnAlign">align</button>
   <button id="btnRoot">root</button>
   <button id="btnFifth">root + fifth</button>
   <button id="btnTriad">major triad</button>
@@ -173,8 +175,8 @@
 </div>
 
 <div class="axes">
-  <span>→ × 3∶2 &nbsp;(perfect fifth)</span>
-  <span>↑ × 5∶4 &nbsp;(major third)</span>
+  <span>→ pulse × 3 &nbsp;(perfect fifth, 3∶2)</span>
+  <span>↑ pulse × 5 &nbsp;(major third, 5∶4)</span>
 </div>
 
 <script>
@@ -182,16 +184,18 @@
 function gcd(a, b) { a = Math.round(a); b = Math.round(b); return b === 0 ? a : gcd(b, a % b); }
 
 function computeRatio(x, y) {
+  // the raw lattice coordinate: 3^x · 5^y, no octaves folded in. this is the
+  // RHYTHM ratio — pulse streams have no octave equivalence to collapse.
   let num = 1, den = 1;
-  if (x > 0)      { num *= Math.pow(3, x);  den *= Math.pow(2, x); }
-  else if (x < 0) { num *= Math.pow(2, -x); den *= Math.pow(3, -x); }
-  if (y > 0)      { num *= Math.pow(5, y);  den *= Math.pow(4, y); }
-  else if (y < 0) { num *= Math.pow(4, -y); den *= Math.pow(5, -y); }
-  // normalize to [1, 2)
-  while (num < den)       num *= 2;
-  while (num >= 2 * den)  den *= 2;
-  const g = gcd(Math.round(num), Math.round(den));
-  return { num: Math.round(num) / g, den: Math.round(den) / g, value: num / den };
+  if (x > 0)      num *= Math.pow(3, x);  else if (x < 0) den *= Math.pow(3, -x);
+  if (y > 0)      num *= Math.pow(5, y);  else if (y < 0) den *= Math.pow(5, -y);
+  const raw = num / den;
+  // the same coordinate normalized to [1, 2) — the PITCH representative
+  let pn = num, pd = den;
+  while (pn < pd)       pn *= 2;
+  while (pn >= 2 * pd)  pd *= 2;
+  const g = gcd(Math.round(pn), Math.round(pd));
+  return { num: Math.round(pn) / g, den: Math.round(pd) / g, value: pn / pd, raw };
 }
 
 // ── Node colors (hue varies with position, stays warm/cool)
@@ -214,42 +218,66 @@ for (let yi = 0; yi < ROWS; yi++) {
     const x = xi - 2;
     const y = 1 - yi; // top row = y=1
     const r = computeRatio(x, y);
-    nodes.push({ x, y, xi, yi, num: r.num, den: r.den, ratio: r.value,
+    nodes.push({ x, y, xi, yi, num: r.num, den: r.den, ratio: r.value, raw: r.raw,
       active: false, osc: null, env: null, nextTime: 0, lastFired: -99 });
   }
 }
 
 // ── Canvas
 const canvas = document.getElementById('cv');
-const dpr = window.devicePixelRatio || 1;
-const W = Math.min(window.innerWidth - 32, 620);
-const H = 280;
-canvas.width  = W * dpr;
-canvas.height = H * dpr;
-canvas.style.width  = W + 'px';
-canvas.style.height = H + 'px';
 const c = canvas.getContext('2d');
-c.scale(dpr, dpr);
 
 const NR = 27; // node radius
-const SX = Math.floor((W - 2 * NR - 40) / (COLS - 1));
-const SY = Math.floor((H - 2 * NR - 40) / (ROWS - 1));
-const GX = (W - SX * (COLS - 1)) / 2; // left edge of grid
-const GY = (H - SY * (ROWS - 1)) / 2; // top edge of grid
+let W, H, SX, SY, GX, GY; // GX/GY = left/top edge of the grid
+
+function layout() {
+  const dpr = window.devicePixelRatio || 1;
+  W = Math.min(window.innerWidth - 32, 620);
+  H = 280;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  c.setTransform(dpr, 0, 0, dpr, 0, 0); // resetting width wipes the transform
+  SX = Math.floor((W - 2 * NR - 40) / (COLS - 1));
+  SY = Math.floor((H - 2 * NR - 40) / (ROWS - 1));
+  GX = (W - SX * (COLS - 1)) / 2;
+  GY = (H - SY * (ROWS - 1)) / 2;
+}
+layout();
+window.addEventListener('resize', layout);
 
 function nodePos(xi, yi) {
   return { cx: GX + xi * SX, cy: GY + yi * SY };
 }
 
 // ── Audio
-let actx = null, masterGain = null;
+let actx = null, masterGain = null, limiter = null;
+
+// each voice flashes to VOICE_PEAK; the biggest preset (middle row) is five of
+// them, and after align they fire in phase. master gain is sized so that worst
+// case sums to unity exactly, and the limiter catches hand-picked sets larger
+// than any preset.
+const VOICE_PEAK  = 0.65;
+const MAX_VOICES  = 5;
+const MASTER_GAIN = 1 / (VOICE_PEAK * MAX_VOICES);
 
 function ensureAudio() {
-  if (actx) return;
-  actx = new (window.AudioContext || window.webkitAudioContext)();
-  masterGain = actx.createGain();
-  masterGain.gain.value = 0.55;
-  masterGain.connect(actx.destination);
+  if (!actx) {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = actx.createGain();
+    masterGain.gain.value = MASTER_GAIN;
+    limiter = actx.createDynamicsCompressor();
+    limiter.threshold.value = -1.5;
+    limiter.knee.value      = 0;
+    limiter.ratio.value     = 20;
+    limiter.attack.value    = 0.002;
+    limiter.release.value   = 0.12;
+    masterGain.connect(limiter);
+    limiter.connect(actx.destination);
+  }
+  // iOS hands back a suspended context until a gesture resumes it
+  if (actx.state === 'suspended') actx.resume();
 }
 
 function nodeFreq(node) {
@@ -258,7 +286,7 @@ function nodeFreq(node) {
 
 function nodePeriodSec(node) {
   const bpm = parseFloat(document.getElementById('bpmSlider').value);
-  return 60 / (bpm * node.ratio);
+  return 60 / (bpm * node.raw); // raw, not octave-reduced: see computeRatio
 }
 
 function startNode(node) {
@@ -293,6 +321,16 @@ function activateSet(coords) {
   }
 }
 
+// ── Align: re-phase every voice onto one common downbeat
+function alignVoices() {
+  ensureAudio();
+  const t0 = actx.currentTime + 0.06;
+  for (const n of nodes) {
+    n.nextTime = t0;
+    if (n.env) n.env.gain.cancelScheduledValues(t0);
+  }
+}
+
 // ── Scheduler
 function schedule() {
   if (!actx) return;
@@ -305,7 +343,7 @@ function schedule() {
       const t = n.nextTime;
       if (t >= now - 0.01) {
         n.env.gain.cancelScheduledValues(t);
-        n.env.gain.setTargetAtTime(0.65, t, 0.004);
+        n.env.gain.setTargetAtTime(VOICE_PEAK, t, 0.004);
         n.env.gain.setTargetAtTime(0, t + 0.03, 0.065);
         n.lastFired = t;
       }
@@ -380,7 +418,7 @@ function draw() {
       const bpm = parseFloat(document.getElementById('bpmSlider').value);
       c.fillStyle = nodeColor(n.x, n.y, 0.42 + flash * 0.3);
       c.font = '8.5px Georgia, serif';
-      c.fillText(`${(bpm * n.ratio).toFixed(1)}`, cx, cy + 9);
+      c.fillText(`${(bpm * n.raw).toFixed(1)}`, cx, cy + 9);
     }
   }
 }
@@ -421,6 +459,7 @@ document.getElementById('timbreSel').addEventListener('change', () => {
 document.getElementById('btnClear').addEventListener('click', () => {
   nodes.forEach(n => { n.active = false; stopNode(n); });
 });
+document.getElementById('btnAlign').addEventListener('click', alignVoices);
 document.getElementById('btnRoot').addEventListener('click', () => {
   activateSet([[0,0]]);
 });

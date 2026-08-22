@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="play the syntonic comma pump: four chords tuned by pure intervals only, and hear the key sink 21.5 cents every time it comes home">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -200,9 +201,11 @@
 <div class="btn-row">
   <button id="btnPlay">play</button>
   <button id="btnReverse">reverse</button>
+  <button id="btnStop">stop</button>
+  <button id="btnReset">reset</button>
 </div>
 
-<p class="hint">click the canvas to start · gold bars are notes held over from the previous chord — the pure links the comma sneaks through</p>
+<p class="hint">click the canvas to start · esc stops and frees the voices · gold bars are notes held over from the previous chord — the pure links the comma sneaks through</p>
 
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -231,6 +234,12 @@ const PURE = {
   Dm: [10/9, 4/3, 5/3, 20/9],          // D4 F4 A4 D5 — holds A4
   G:  [10/9, 40/27, 50/27, 20/9],      // D4 G4 B4 D5 — holds D4 D5
 };
+// corrected mode holds the same voicings, but moves the comma out of Ca's
+// ratios and into the base: Ca sits a comma below the anchor, everything
+// else sits on it. CORR.Ca × 80/81 === PURE.Ca, so the pure link from G
+// into the arrival still holds at literally the same frequency.
+const CORR = { ...PURE, Ca: PURE.Ca.map(r => r * 81 / 80) };  // 1 · 3/2 · 2 · 5/2
+
 const st = n => Math.pow(2, n / 12);
 const TEMP = {
   Ca: [st(0), st(7), st(12), st(16)],
@@ -255,6 +264,7 @@ let dir     = 1;           // 1 forward (sinks), -1 reverse (climbs)
 let running = false;
 
 let base   = 1;            // current tonic as ratio of original C
+const ANCHOR = 1;          // corrected mode: the tonic the base snaps back to
 let idx    = 1;            // start on Cc, skip the phantom arrival
 let cycles = 0;
 let prevFreqs = null;
@@ -309,7 +319,7 @@ function ensureAudio() {
 }
 
 function chordFreqs(name, b) {
-  const table = mode === 'tempered' ? TEMP : PURE;
+  const table = mode === 'tempered' ? TEMP : mode === 'corrected' ? CORR : PURE;
   const eb = mode === 'tempered' ? 1 : b;   // tempered never drifts
   return table[name].map(r => C4 * r * eb);
 }
@@ -327,6 +337,13 @@ function advance(now) {
     if (mode === 'pure') {
       if (dir === 1 && SEQ[idx] === 'Cc') { base *= COMMA; cycles++; }
       if (dir === -1 && SEQ[idx] === 'Ca') { base /= COMMA; cycles++; }
+    } else if (mode === 'corrected') {
+      // the drift is real: the base sinks a comma while we stand on the
+      // arrival, and is hauled back the moment we leave it. That haul is
+      // the 21.5¢ step you hear at the settle — the comma, paid out loud,
+      // in the one place a tuner would have had to pay it.
+      base = SEQ[idx] === 'Ca' ? ANCHOR * COMMA : ANCHOR;
+      if (SEQ[idx] === (dir === 1 ? 'Cc' : 'Ca')) cycles++;
     } else if (SEQ[idx] === (dir === 1 ? 'Cc' : 'Ca')) {
       cycles++;            // count cycles even when anchored
     }
@@ -363,18 +380,28 @@ function updateReadout() {
     `cycle ${cycles} · tonic <span class="neg">${s}¢</span>` +
     (mode === 'pure'
       ? ` · ${dir === 1 ? '−' : '+'}${CENTS_PER_CYCLE.toFixed(1)}¢ per turn`
+      : mode === 'corrected'
+      ? ` · ${CENTS_PER_CYCLE.toFixed(1)}¢ snap at the settle`
       : '');
 }
 
 // ── Canvas ───────────────────────────────────────────────────
 const canvas = document.getElementById('cv');
-const dpr = window.devicePixelRatio || 1;
-const W = Math.min(window.innerWidth - 32, 620);
-const H = 340;
-canvas.width = W * dpr; canvas.height = H * dpr;
-canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
 const c = canvas.getContext('2d');
-c.scale(dpr, dpr);
+const H = 340;
+let W = 620;
+
+// re-measured on load and on every resize/rotate; setTransform rather than
+// scale so the dpr factor replaces the old one instead of compounding
+function sizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  W = Math.min(window.innerWidth - 32, 620);
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);
 
 const PPO = 96;            // pixels per octave
 const WINDOW_MS = 26000;   // visible history
@@ -481,6 +508,51 @@ function start() {
   setRunning(!running);
 }
 
+// stop = silence AND teardown: the four oscillators are stopped, unhooked
+// and dropped along with the context. The cached PeriodicWaves belonged to
+// that context, so they go too; ensureAudio() rebuilds the lot on next play.
+function stopAll() {
+  setRunning(false);
+  if (!actx) return;
+  const dead = actx, oscs = voices, m = master;
+  const t = dead.currentTime;
+  m.gain.cancelScheduledValues(t);
+  m.gain.setTargetAtTime(0, t, 0.02);
+  actx = null; master = null; voices = [];
+  for (const k in waves) delete waves[k];
+  setTimeout(() => {
+    for (const osc of oscs) { osc.stop(); osc.disconnect(); }
+    m.disconnect();
+    dead.close();
+  }, 120);
+}
+
+// back to the state the page loads in — silent, pure, forward, cycle 0
+function reset() {
+  stopAll();
+  mode = 'pure'; dir = 1; bpm = 121; tone = 'organ';
+  base = 1; idx = 1; cycles = 0; primed = false; prevFreqs = null;
+  history.length = 0;
+  cam = 0.55;
+  $('modeSel').value = 'pure';
+  $('toneSel').value = 'organ';
+  $('bpmSlider').value = '121';
+  $('bpmVal').textContent = '121';
+  $('btnReverse').classList.remove('on');
+  updateReadout();
+}
+
+// a mode change re-tunes everything behind it, so the trail on screen no
+// longer describes what you are hearing — clear it rather than mislead
+function setMode(name) {
+  mode = name;
+  history.length = 0;
+  cycles = 0;
+  prevFreqs = null;
+  base = (mode === 'corrected' && SEQ[idx] === 'Ca') ? ANCHOR * COMMA : 1;
+  updateReadout();
+}
+
 $('btnPlay').addEventListener('click', start);
 canvas.addEventListener('click', () => {
   ensureAudio();
@@ -492,11 +564,12 @@ $('btnReverse').addEventListener('click', () => {
   $('btnReverse').classList.toggle('on', dir === -1);
   updateReadout();
 });
-$('modeSel').addEventListener('change', e => {
-  mode = e.target.value;
-  if (mode !== 'pure') { base = 1; }   // corrected/tempered re-anchor
-  updateReadout();
+$('btnStop').addEventListener('click', stopAll);
+$('btnReset').addEventListener('click', reset);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') stopAll();
 });
+$('modeSel').addEventListener('change', e => setMode(e.target.value));
 $('bpmSlider').addEventListener('input', e => {
   bpm = parseInt(e.target.value, 10);
   $('bpmVal').textContent = bpm;

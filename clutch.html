@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="run a shepard staircase and a comma pump off one clock at the same cents per second — one drifts away for real, the other only seems to.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -81,6 +82,7 @@
       line-height: 1.9;
     }
     .verdict .gold { color: var(--gold); }
+    .verdict .fold { color: var(--dimmer); font-style: italic; }
 
     .controls {
       display: flex;
@@ -179,11 +181,12 @@
 <div class="btn-row">
   <button id="btnPlay">play</button>
   <button id="btnReverse">reverse</button>
+  <button id="btnReset" title="back to the state the page loaded in">reset</button>
   <button id="btnMuteL" class="voice" title="escher — the staircase, left channel">escher <span class="side">· staircase</span></button>
   <button id="btnMuteR" class="voice" title="comma — the pump, right channel">comma <span class="side">· pump</span></button>
 </div>
 
-<p class="hint">click the canvas to start · escher sounds left, comma sounds right · a lit button is sounding, a struck-through one is muted</p>
+<p class="hint">click the canvas to start · escher sounds left, comma sounds right · a lit button is sounding, a struck-through one is muted · esc stops and frees the audio</p>
 
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -210,7 +213,6 @@ const PURE = {
   G:  [10/9, 40/27, 50/27, 20/9],
 };
 const SEQ = ['Ca', 'Cc', 'Am', 'Dm', 'G'];
-const LABEL = { Ca: 'C', Cc: 'C', Am: 'Am', Dm: 'Dm', G: 'G' };
 
 let bpm = 121;
 let dir = 1;
@@ -315,8 +317,11 @@ function advance(atTime, wallMs) {
 // ── escher motion + audio ────────────────────────────────────
 function updateEscher(dt) {
   if (running) {
-    // locked to the pump: cents/sec → octaves/sec → band units
-    phase += dir * (centsPerSec() / 1200) / NB * dt;
+    // locked to the pump: cents/sec → octaves/sec → band units.
+    // escherFreq rises with x, and dir === 1 is the falling direction
+    // (base *= 80/81 in advance()), so the increment is negated — the
+    // staircase has to descend *with* the pump or the pairing is a lie.
+    phase -= dir * (centsPerSec() / 1200) / NB * dt;
     phase = ((phase % 1) + 1) % 1;
   }
   if (!actx) return;
@@ -468,16 +473,27 @@ function draw(now) {
 }
 
 // ── verdict line ─────────────────────────────────────────────
+// The staircase's real net displacement, read off the live phase.
+// The glissando's spectrum is invariant under one whole octave of
+// glide (phase + 1/NB reindexes the voices onto themselves), so its
+// position folds into ±600¢ and can never accumulate. That fold is
+// the illusion, measured: it tracks the pump exactly until it wraps.
+function staircaseCents() {
+  const cents = ((((phase * NB) % 1) + 1) % 1) * 1200;
+  return cents > 600 ? cents - 1200 : cents;
+}
+const signed = v =>
+  (v <= -0.05 ? '−' : v >= 0.05 ? '+' : '±') + Math.abs(v).toFixed(1);
+
 function verdict() {
   const el = document.getElementById('verdict');
   if (!running && cycles === 0) { el.textContent = 'press play'; return; }
   const rate = (dir === 1 ? '−' : '+') + centsPerSec().toFixed(1);
-  const drift = 1200 * Math.log2(base);
-  const s = (drift <= -0.05 ? '−' : drift >= 0.05 ? '+' : '±') + Math.abs(drift).toFixed(1);
   el.innerHTML =
     `both fall at <span class="gold">${rate}¢/s</span> · ` +
-    `distance travelled — staircase: <span class="gold">±0.0¢</span> · ` +
-    `pump: <span class="gold">${s}¢</span> · cycle ${cycles}`;
+    `net displacement — staircase: <span class="gold">${signed(staircaseCents())}¢</span> ` +
+    `<span class="fold">(folds)</span> · ` +
+    `pump: <span class="gold">${signed(1200 * Math.log2(base))}¢</span> · cycle ${cycles}`;
 }
 
 // ── Beat scheduler ───────────────────────────────────────────
@@ -577,6 +593,48 @@ paintVoice('btnMuteR', muteR);
 $('bpmSlider').addEventListener('input', e => {
   bpm = parseInt(e.target.value, 10);
   $('bpmVal').textContent = bpm;
+});
+
+// ── stop path ────────────────────────────────────────────────
+// Ten oscillators run continuously from the moment audio exists, so
+// pause alone only closes the gain. This tears the graph down.
+function freeAudio() {
+  if (!actx) return;
+  for (const v of eVoices) {
+    try { v.osc.stop(); } catch (e) {}
+    v.osc.disconnect(); v.gain.disconnect();
+  }
+  for (const osc of cVoices) {
+    try { osc.stop(); } catch (e) {}
+    osc.disconnect();
+  }
+  eVoices = []; cVoices = [];
+  try { actx.close(); } catch (e) {}
+  actx = null; master = null;
+  panL = panR = gainL = gainR = null;
+  lastAudio = 0; nextBeatTime = 0;
+}
+function stopAll() {
+  setRunning(false);
+  freeAudio();
+  verdict();
+}
+// back to the state the page loaded in — ensureAudio rebuilds the
+// graph from scratch on the next play
+function resetAll() {
+  stopAll();
+  base = 1; idx = 1; cycles = 0; primed = false; prevFreqs = null;
+  history.length = 0;
+  phase = 0;
+  dir = 1; $('btnReverse').classList.remove('on');
+  bpm = 121; $('bpmSlider').value = 121; $('bpmVal').textContent = 121;
+  muteL = false; muteR = false;
+  paintVoice('btnMuteL', false); paintVoice('btnMuteR', false);
+  verdict();
+}
+$('btnReset').addEventListener('click', resetAll);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { stopAll(); }
 });
 </script>
 </body>

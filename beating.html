@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="hear and see two close pitches interfere: the beat rate is their frequency difference, and the cents readout names the interval you are hearing">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -89,6 +90,9 @@
       outline: none;
       cursor: pointer;
     }
+    .freq-slider:focus-visible { outline: 1px solid var(--dim); outline-offset: 6px; }
+    .freq-slider.a:focus-visible { outline-color: var(--col-a); }
+    .freq-slider.b:focus-visible { outline-color: var(--col-b); }
     .freq-slider.a::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--col-a); }
     .freq-slider.b::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--col-b); }
     .freq-slider.a::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: var(--col-a); border: none; }
@@ -131,6 +135,7 @@
       transition: color 0.12s, border-color 0.12s;
     }
     .preset-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.22); }
+    .preset-btn:focus-visible { outline: 1px solid var(--col-beat); outline-offset: 2px; color: var(--text); }
 
     /* ── Beat display ─────────────────────────── */
     .beat-display {
@@ -154,6 +159,15 @@
       color: var(--dimmer);
       font-style: italic;
       margin-top: 0.3rem;
+    }
+
+    .beat-cents {
+      font-size: 0.58rem;
+      letter-spacing: 0.12em;
+      color: var(--dimmer);
+      font-style: italic;
+      font-variant-numeric: tabular-nums;
+      margin-top: 0.35rem;
     }
 
     .beat-desc {
@@ -201,6 +215,7 @@
     }
     .play-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.22); }
     .play-btn.on { color: var(--col-beat); border-color: var(--col-beat); }
+    .play-btn:focus-visible { outline: 1px solid var(--col-beat); outline-offset: 3px; color: var(--text); }
 
     .hint {
       font-size: 0.54rem;
@@ -213,7 +228,7 @@
 </head>
 <body>
 
-<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:#332;text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
+<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:#332;text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}.eggs-back:focus-visible{color:#aaa;outline:1px solid #aaa;outline-offset:3px}</style>
 <a href="eggs.html" class="eggs-back">← eggs</a>
 
 <div class="header">
@@ -263,6 +278,7 @@
   <div class="beat-rate" id="beat-rate">3.0</div>
   <div class="beat-label">beats per second</div>
   <div class="beat-desc" id="beat-desc"></div>
+  <div class="beat-cents" id="beat-cents"></div>
 </div>
 
 <div class="wave-wrap">
@@ -316,9 +332,13 @@ function stopAudio() {
   if (!oscA) return;
   gainA.gain.setTargetAtTime(0, ac.currentTime, 0.04);
   gainB.gain.setTargetAtTime(0, ac.currentTime, 0.04);
-  const oa = oscA, ob = oscB;
-  setTimeout(() => { try { oa.stop(); ob.stop(); } catch(e){} }, 300);
-  oscA = oscB = null;
+  const oa = oscA, ob = oscB, ga = gainA, gb = gainB;
+  setTimeout(() => {
+    try { oa.stop(); ob.stop(); } catch(e){}
+    // release the whole graph, not just the oscillators
+    try { oa.disconnect(); ob.disconnect(); ga.disconnect(); gb.disconnect(); } catch(e){}
+  }, 300);
+  oscA = oscB = gainA = gainB = null;
 }
 
 function updateFreqs() {
@@ -352,7 +372,31 @@ function beatDesc(rate) {
   return 'roughness — perceived as timbral dissonance, not separate pulses';
 }
 
+// ── Interval readout ──────────────────────────────────────
+function centsBetween(fa, fb) {
+  if (!(fa > 0) || !(fb > 0)) return 0;
+  return 1200 * Math.log2(fb / fa);
+}
+
 // ── Waveform drawing ──────────────────────────────────────
+// Nyquist is the floor, not the target: two samples per cycle draws a
+// zigzag, not a wave. 24 keeps the fastest tone on screen legible, with
+// a hard cap so a 4-second window at 880 Hz still renders instantly.
+const SAMPLES_PER_CYCLE = 24;
+const MAX_SAMPLES = 32000;
+const MIN_SAMPLES = 1024;
+
+function showTimeFor(beat) {
+  // ~2.5 beat cycles (or 0.5 s minimum, 4 s maximum)
+  const beatPeriod = beat > 0.05 ? 1 / beat : 2;
+  return Math.min(Math.max(beatPeriod * 2.5, 0.5), 4);
+}
+
+function sampleCount(showTime, fa, fb) {
+  const cycles = showTime * Math.max(fa, fb);
+  return Math.min(Math.max(Math.floor(cycles * SAMPLES_PER_CYCLE), MIN_SAMPLES), MAX_SAMPLES);
+}
+
 function drawWave() {
   const fa = getFA(), fb = getFB();
   const beat = Math.abs(fb - fa);
@@ -367,13 +411,11 @@ function drawWave() {
   g.fillStyle = '#07080c';
   g.fillRect(0, 0, w, h);
 
-  // Show ~2 beat cycles (or 1s minimum, 4s maximum)
-  const beatPeriod = beat > 0.05 ? 1 / beat : 2;
-  const showTime = Math.min(Math.max(beatPeriod * 2.5, 0.5), 4);
+  const showTime = showTimeFor(beat);
 
   document.getElementById('wave-time-label').textContent = showTime.toFixed(2) + ' s';
 
-  const samples = Math.floor(w * 2);
+  const samples = sampleCount(showTime, fa, fb);
   const midY = h / 2;
   const amp  = h * 0.38;
   const avgF = (fa + fb) / 2;
@@ -439,6 +481,12 @@ function drawWave() {
   const rate = beat;
   document.getElementById('beat-rate').textContent = rate < 0.05 ? '0' : rate.toFixed(1);
   document.getElementById('beat-desc').textContent = beatDesc(rate);
+
+  const cents = centsBetween(fa, fb);
+  document.getElementById('beat-cents').textContent =
+    Math.abs(cents) < 0.05
+      ? 'unison · 0.0 \u00a2'
+      : 'B is ' + (cents > 0 ? '+' : '\u2212') + Math.abs(cents).toFixed(1) + ' \u00a2 from A';
 }
 
 // ── Controls ──────────────────────────────────────────────

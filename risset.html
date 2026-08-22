@@ -175,7 +175,7 @@
   <button id="btnReverse">reverse</button>
 </div>
 
-<p class="hint">click the canvas to start · the circles are fixed tempo rulers — the players fall through them</p>
+<p class="hint">click the canvas or press space to play · esc stops · the circles are fixed tempo rulers — the players fall through them</p>
 
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -214,16 +214,31 @@ let running   = false;
 let dir       = 1;        // 1 accelerando · -1 ritardando
 let secPerDbl = 30;       // seconds per tempo doubling
 let pitchMode = 'glide';
-let octV      = 0.37;     // visual octave counter (signed, unbounded) — seeded off the seam so the idle frame looks mid-flight
 const beats   = Array.from({ length: N }, (_, i) => i * 2.7);  // visual beat accumulators, scattered at idle
 const flash   = new Array(N).fill(0);   // tick flash envelopes
 
 // ── Audio ────────────────────────────────────────────────────
 let actx = null, master = null;
 const layers = [];        // { osc, tick, nextT }
-let octRef = 0, tRef = 0; // audio-clock anchor: oct(t) = octRef + R·(t − tRef)
+
+// ── The drift, in closed form ────────────────────────────────
+// One anchored line — oct(t) = octRef + R·(t − tRef) — read by BOTH
+// the tick scheduler and the drawing. Stepping the picture forward
+// frame by frame instead (octV += R·dt) makes it a different function
+// of time from the one the audio clock was scheduled against, and the
+// two slide apart as the frame errors pile up. So: evaluate, never
+// integrate. Anchor seeded off the seam so the idle frame looks mid-flight.
+let octRef = 0.37;        // signed, unbounded — doublings since the anchor
+let tRef   = 0;           // the anchor, on the audio clock
 
 function rate() { return dir / secPerDbl; }   // signed octaves per second
+function clock() { return actx ? actx.currentTime : tRef; }
+function octAt(t) { return octRef + rate() * (t - tRef); }
+// while paused the clock keeps running but the drift does not
+function frameTime() { return running ? clock() : tRef; }
+// layer i's place in the loudness window at time t — the one shared
+// quantity: canvas radius and tick pitch are both functions of it
+const uAt = (i, t) => uOf(i, octAt(t));
 
 function ensureAudio() {
   if (actx) return;
@@ -242,14 +257,13 @@ function ensureAudio() {
   }
 }
 
-function reAnchor() {                  // pin oct(t) to the audio clock "now"
+function reAnchor() {                  // re-pin oct(t) to the clock "now"
+  octRef = octAt(frameTime());         // freeze at the value showing right now
+  tRef   = clock();
   if (!actx) return;
-  octRef = octV; tRef = actx.currentTime;
   const t0 = actx.currentTime + 0.05;
   for (const L of layers) L.nextT = t0;
 }
-
-function octAt(t) { return octRef + rate() * (t - tRef); }
 
 function scheduleTicks() {
   if (!actx || !running) return;
@@ -259,7 +273,7 @@ function scheduleTicks() {
     if (L.nextT < now - 0.2) L.nextT = now;      // tab-hidden catch-up guard
     while (L.nextT < now + 0.12) {
       const t = L.nextT;
-      const u = uOf(i, octAt(t));
+      const u = uAt(i, t);
       const T = tempoOf(u), a = ampOf(u);
       if (a > 0.003) {
         const f = pitchMode === 'glide' ? pitchOf(u) : FLAT;
@@ -289,7 +303,7 @@ const cx = W / 2, cy = H / 2;
 const rIn = 26, rOut = Math.min(W, H) / 2 - 26;
 const rOf = u => rOut - u * (rOut - rIn);      // fast layers fall inward
 
-function draw() {
+function draw(t) {
   c.clearRect(0, 0, W, H);
 
   // fixed tempo rulers — one circle per doubling, they never move
@@ -304,9 +318,10 @@ function draw() {
     c.fillText(Math.round(TMIN * Math.pow(2, k) * 60) + '', cx, cy - r - (k === N ? -1 : 7));
   }
 
-  // the players — each layer a ring falling through the rulers
+  // the players — each layer a ring falling through the rulers.
+  // same uAt() the tick scheduler reads, so ring and pitch never diverge
   for (let i = 0; i < N; i++) {
-    const u = uOf(i, octV);
+    const u = uAt(i, t);
     const a = ampOf(u);
     const r = rOf(u);
     c.strokeStyle = `rgba(212,192,112,${(a * 0.32).toFixed(3)})`;
@@ -327,20 +342,20 @@ function draw() {
   c.fillText(dir === 1 ? '↻ forever faster' : '↺ forever slower', 12, H - 20);
 }
 
-function updateReadout() {
+function updateReadout(t) {
   const tempos = [];
-  for (let i = 0; i < N; i++) tempos.push(tempoOf(uOf(i, octV)) * 60);
+  for (let i = 0; i < N; i++) tempos.push(tempoOf(uAt(i, t)) * 60);
   tempos.sort((a, b) => a - b);
   document.getElementById('tempoLine').textContent =
-    tempos.map(t => Math.round(t)).join(' · ') + ' bpm — neighbors exactly 2:1';
+    tempos.map(x => Math.round(x)).join(' · ') + ' bpm — neighbors exactly 2:1';
   // the loudest layer sits at u≈0.5 — mid-window, always mid-tempo
   let best = 0, bestA = -1;
   for (let i = 0; i < N; i++) {
-    const a = ampOf(uOf(i, octV));
+    const a = ampOf(uAt(i, t));
     if (a > bestA) { bestA = a; best = i; }
   }
-  const loud = Math.round(tempoOf(uOf(best, octV)) * 60);
-  const dbl = Math.abs(octV).toFixed(1);
+  const loud = Math.round(tempoOf(uAt(best, t)) * 60);
+  const dbl = Math.abs(octAt(t)).toFixed(1);
   document.getElementById('fallLine').innerHTML =
     `doublings <span class="neg">${dbl}</span> · loudest layer ${loud} bpm · ` +
     (dir === 1 ? 'forever faster, never faster' : 'forever slower, never slower');
@@ -351,10 +366,11 @@ let lastMs = 0;
 function loop(nowMs) {
   const dt = lastMs ? Math.min(0.1, (nowMs - lastMs) / 1000) : 0;
   lastMs = nowMs;
+  const t = frameTime();          // one time value for the whole frame
   if (running) {
-    octV += rate() * dt;
+    // only the flash phase is stepped — the drift itself is read, not summed
     for (let i = 0; i < N; i++) {
-      const T = tempoOf(uOf(i, octV));
+      const T = tempoOf(uAt(i, t));
       const b0 = beats[i];
       beats[i] += T * dt;
       if (Math.floor(beats[i]) > Math.floor(b0)) flash[i] = 1;
@@ -363,8 +379,8 @@ function loop(nowMs) {
     scheduleTicks();
   }
   if (actx) master.gain.setTargetAtTime(running ? 0.30 : 0.0, actx.currentTime, 0.06);
-  draw();
-  updateReadout();
+  draw(t);
+  updateReadout(t);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -373,8 +389,8 @@ requestAnimationFrame(loop);
 const $ = id => document.getElementById(id);
 
 function setRunning(on) {
+  reAnchor();               // freeze oct at "now" before the flag flips, either way
   running = on;
-  if (on) reAnchor();
   $('btnPlay').textContent = on ? 'pause' : 'play';
   $('btnPlay').classList.toggle('on', on);
 }
@@ -384,25 +400,50 @@ function start() {
   setRunning(!running);
 }
 
+// hard stop — free the oscillator pool and drop the context. play rebuilds.
+function stopAll() {
+  setRunning(false);
+  if (!actx) return;
+  const t = actx.currentTime;
+  master.gain.cancelScheduledValues(t);
+  master.gain.setValueAtTime(0, t);
+  for (const L of layers) {
+    try { L.osc.stop(t); } catch (e) { /* already stopped */ }
+    L.osc.disconnect(); L.tick.disconnect();
+  }
+  layers.length = 0;
+  const dying = actx;
+  actx = null; master = null;
+  dying.close();
+}
+
 $('btnPlay').addEventListener('click', start);
-canvas.addEventListener('click', () => {
-  ensureAudio();
-  if (actx.state === 'suspended') actx.resume();
-  if (!running) setRunning(true);
-});
+canvas.addEventListener('click', start);
 $('btnReverse').addEventListener('click', () => {
+  if (running) reAnchor();               // keep oct(t) continuous at the turn
   dir = -dir;
   $('btnReverse').classList.toggle('on', dir === -1);
-  if (running) reAnchor();               // keep oct(t) continuous at the turn
 });
 $('rateSlider').addEventListener('input', e => {
+  if (running) reAnchor();               // re-pin before the slope changes
   secPerDbl = parseInt(e.target.value, 10);
   $('rateVal').textContent = secPerDbl;
-  if (running) reAnchor();
 });
 $('pitchSel').addEventListener('change', e => { pitchMode = e.target.value; });
 
-updateReadout();
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.key === ' ') {
+    // a focused button or select owns the spacebar — don't steal its activation
+    const el = document.activeElement, tag = el && el.tagName ? el.tagName.toLowerCase() : '';
+    if (tag === 'button' || tag === 'select' || tag === 'input' || tag === 'textarea') return;
+    e.preventDefault();
+    start();
+  } else if (e.key === 'Escape') {
+    stopAll();
+  }
+});
+
+updateReadout(frameTime());
 </script>
 </body>
 </html>
