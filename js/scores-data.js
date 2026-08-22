@@ -1,4 +1,4 @@
-// scores-data.js — graphic score prompts for davidcarltonadams.com/score.html
+// scores-data.js — graphic score prompts for davidcarltonadams.com/text-score.html
 // Edit any text here; IDs are stable for linking (?n=01 etc.)
 // Each entry: { id (1–30), category, text (use \n for line breaks) }
 

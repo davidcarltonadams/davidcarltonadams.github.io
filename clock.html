@@ -329,7 +329,7 @@
     }
     .cond-section-label {
       font-size: clamp(1.2rem, 4vw, 2.2rem);
-      color: var(--dim);
+      color: var(--text);
       letter-spacing: 0.05em;
     }
 
@@ -425,7 +425,7 @@
       font-size: min(18vw, 16vh);
       font-weight: normal;
       line-height: 1;
-      color: var(--dim);
+      color: var(--text);
       letter-spacing: 0.02em;
       margin-bottom: 0.5rem;
       min-height: 1.2em;
@@ -1110,8 +1110,8 @@ function initConductor(roomCode) {
       broadcast(msg);
       pauseBtn.textContent = 'pause';
     } else {
-      state.paused  = true;
       state.pausedAt = getElapsed();
+      state.paused  = true;
       const msg = { type: 'pause', elapsed: state.pausedAt };
       broadcast(msg);
       pauseBtn.textContent = 'resume';

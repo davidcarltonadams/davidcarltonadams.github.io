@@ -6,7 +6,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<title>Canon Machine — David Carlton Adams</title>
+<title>Canon Loop Machine — David Carlton Adams</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
 
@@ -111,7 +111,7 @@
 </head>
 <body>
 <div class="app">
-  <h1>Canon Machine</h1>
+  <h1>Canon Loop Machine</h1>
   <div class="sub">draw a subject · rests are empty columns · stack pitches for double stops · add voices at any distance and interval · space = play/stop</div>
 
   <div class="main">
@@ -217,32 +217,6 @@
         <button class="add-v" id="btn-add">+ add voice</button>
       </div>
 
-      <div class="cg" id="fugue-panel">
-        <div class="cg-t">mode</div>
-        <div class="r">
-          <button class="btn sm active" id="btn-mode-canon">canon</button>
-          <button class="btn sm" id="btn-mode-fugue">fugue</button>
-        </div>
-        <div id="fugue-opts" style="display:none">
-          <div class="r" style="margin-top:0.3rem">
-            <span class="l">key</span>
-            <select id="fugue-key">
-              <option value="0">C</option><option value="7">G</option>
-              <option value="2">D</option><option value="9">A</option>
-              <option value="4">E</option><option value="11">B</option>
-              <option value="6">F♯/G♭</option><option value="1">D♭</option>
-              <option value="8">A♭</option><option value="3">E♭</option>
-              <option value="10">B♭</option><option value="5">F</option>
-            </select>
-          </div>
-          <div class="r">
-            <span class="l">answer</span>
-            <button class="btn sm active" id="btn-ans-real">real</button>
-            <button class="btn sm" id="btn-ans-tonal">tonal</button>
-          </div>
-          <div id="fugue-status" style="font-size:0.5rem;color:var(--txddd);margin-top:0.3rem"></div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -473,7 +447,6 @@ let notaDirty=true;
 let viewOctave=0;
 let swingRatio=0.5;   // 0.5=even … 0.875=double-dotted
 let oscType='triangle';
-let fugueMode=false, fugueKeyRoot=0, answerType='real', answerGrid=null;
 function markNotaDirty(){ notaDirty=true; scheduleAutoSave(); }
 
 const voices = [{ offset:0, transCents:0, color:VCOL[0], muted:false }];
@@ -548,11 +521,8 @@ function sched() {
       if(v.muted) return;
       if(!loop && curStep < v.offset) return;
       const pat=((curStep-v.offset)%numSteps+numSteps)%numSteps;
-      const useFugue = fugueMode && v.gridSource==='answer' && answerGrid;
-      const srcGrid  = useFugue ? answerGrid : grid;
-      const effTrans = useFugue ? 0 : v.transCents;
       for(let p=0;p<numRows;p++) {
-        if(srcGrid[p]&&srcGrid[p][pat]) playNote(p,effTrans,nextT);
+        if(grid[p]&&grid[p][pat]) playNote(p,v.transCents,nextT);
       }
     });
     nextT+=swingDur(curStep);
@@ -624,7 +594,7 @@ function gpos(e) {
 }
 function gpaint(e) {
   const {s,p}=gpos(e);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ grid[p][s]=paintV; if(fugueMode&&answerType==='tonal') computeAnswerGrid(); markNotaDirty(); }
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ grid[p][s]=paintV; markNotaDirty(); }
 }
 gc.addEventListener('mousedown',e=>{
   const {s,p}=gpos(e);
@@ -938,12 +908,11 @@ function switchTuning(t) {
   resizeG();
   $('scale-sel').disabled=!TUNINGS[t].scaleFilter;
   if(!TUNINGS[t].scaleFilter) scale=SCALES.chromatic;
-  if(fugueMode&&answerType==='tonal') computeAnswerGrid();
   markNotaDirty();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SWING + FUGUE HELPERS
+// SWING
 // ═══════════════════════════════════════════════════════════════════════════════
 function swingLabel(r) {
   if(r<0.51) return 'even';
@@ -952,64 +921,6 @@ function swingLabel(r) {
   if(r<0.71) return 'triplet';
   if(r<0.81) return 'dotted';
   return '2×dot';
-}
-
-function rowNearestCents(targetCents) {
-  let best=0, bestDist=Infinity;
-  for(let i=0;i<numRows;i++) {
-    const d=Math.abs(TUNINGS[curTuning].rowCents(i)-targetCents);
-    if(d<bestDist){ bestDist=d; best=i; }
-  }
-  return best;
-}
-
-function computeAnswerGrid() {
-  if(answerType!=='tonal'||curTuning!=='12'){ answerGrid=null; return; }
-  answerGrid=Array.from({length:numRows},()=>new Array(numSteps).fill(false));
-  for(let p=0;p<numRows;p++) {
-    for(let s=0;s<numSteps;s++) {
-      if(!grid[p]||!grid[p][s]) continue;
-      const scaleDeg=((Math.round(TUNINGS[curTuning].rowCents(p)/100)-fugueKeyRoot)%12+12)%12;
-      const shift=scaleDeg<5?700:500;
-      const ar=rowNearestCents(TUNINGS[curTuning].rowCents(p)+shift);
-      if(ar>=0&&ar<numRows) answerGrid[ar][s]=true;
-    }
-  }
-}
-
-function ensureComesVoice() {
-  if(voices.length<2) {
-    voices.push({
-      offset:parseInt($('dist-n').value)||4,
-      transCents:answerType==='real'?700:0,
-      color:VCOL[1], muted:false,
-      gridSource:answerType==='tonal'?'answer':null,
-    });
-  } else {
-    voices[1].gridSource=answerType==='tonal'?'answer':null;
-    voices[1].transCents=answerType==='real'?700:0;
-  }
-  buildVoicesUI();
-  markNotaDirty();
-}
-
-const KEY_NAMES=['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
-function buildFugueUI() {
-  $('fugue-opts').style.display=fugueMode?'':'none';
-  $('btn-mode-canon').classList.toggle('active',!fugueMode);
-  $('btn-mode-fugue').classList.toggle('active',fugueMode);
-  $('btn-ans-real').classList.toggle('active',answerType==='real');
-  $('btn-ans-tonal').classList.toggle('active',answerType==='tonal');
-  if(!fugueMode) return;
-  ensureComesVoice();
-  computeAnswerGrid();
-  const st=$('fugue-status');
-  if(answerType==='tonal'&&curTuning!=='12')
-    st.textContent='tonal answer requires 12-TET — falling back to real';
-  else if(answerType==='tonal')
-    st.textContent='tonal in '+KEY_NAMES[fugueKeyRoot];
-  else
-    st.textContent='real answer — P5 (700¢)';
 }
 
 function seed() {
@@ -1042,7 +953,7 @@ function scheduleAutoSave() {
 function saveGrid() {
   const state = {
     v: 1, tuning: curTuning, numSteps, bpm, swingRatio, oscType,
-    voices: voices.map(v => ({offset:v.offset, transCents:v.transCents, muted:!!v.muted, gridSource:v.gridSource||null})),
+    voices: voices.map(v => ({offset:v.offset, transCents:v.transCents, muted:!!v.muted})),
     grid: grid.map(row => row ? [...row] : null),
   };
   try {
@@ -1082,7 +993,7 @@ function loadGrid() {
     if(s.voices && s.voices.length > 0) {
       voices.length = 0;
       s.voices.forEach((v,i) => {
-        voices.push({offset:v.offset||0, transCents:v.transCents||0, color:VCOL[i%VCOL.length], muted:!!v.muted, gridSource:v.gridSource||null});
+        voices.push({offset:v.offset||0, transCents:v.transCents||0, color:VCOL[i%VCOL.length], muted:!!v.muted});
       });
       buildVoicesUI();
     }
@@ -1101,7 +1012,7 @@ $('btn-loop').addEventListener('click',()=>{
   $('btn-loop').classList.toggle('active',loop);
   $('btn-loop').textContent=loop?'↺ loop':'→ once';
 });
-$('btn-clear').addEventListener('click',()=>{ for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false); answerGrid=null; markNotaDirty(); });
+$('btn-clear').addEventListener('click',()=>{ for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false); markNotaDirty(); });
 $('btn-seed').addEventListener('click',seed);
 
 $('bpm-n').addEventListener('input',e=>{ const v=parseInt(e.target.value); if(v>=20&&v<=400){ bpm=v; $('bpm-r').value=v; } });
@@ -1162,12 +1073,6 @@ $('swing-r').addEventListener('input',e=>{
 
 $('osc-sel').addEventListener('change',e=>{ oscType=e.target.value; });
 
-$('btn-mode-canon').addEventListener('click',()=>{ fugueMode=false; buildFugueUI(); });
-$('btn-mode-fugue').addEventListener('click',()=>{ fugueMode=true; buildFugueUI(); });
-$('btn-ans-real').addEventListener('click',()=>{ answerType='real'; if(fugueMode) buildFugueUI(); });
-$('btn-ans-tonal').addEventListener('click',()=>{ answerType='tonal'; if(fugueMode) buildFugueUI(); });
-$('fugue-key').addEventListener('change',e=>{ fugueKeyRoot=parseInt(e.target.value); if(fugueMode) buildFugueUI(); });
-
 $('btn-add').addEventListener('click',()=>{
   if(voices.length>=VCOL.length) return;
   voices.push({
@@ -1193,7 +1098,6 @@ buildIntervals();
 curTuning=$('tuning-sel').value;
 switchTuning(curTuning);
 buildVoicesUI();
-buildFugueUI();
 seed(); // show something immediately; loadGrid() below will overwrite if saved state exists
 
 // Load tunings.json (K3, Vallotti, DCA Beta, any custom entries David added),
