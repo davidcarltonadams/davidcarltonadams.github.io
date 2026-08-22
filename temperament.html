@@ -537,18 +537,24 @@ const WELL = [
   },
   {
     // Lehman-Bach, 2004: Bradley Lehman's reading of the spiral drawn on the
-    // 1722 Well-Tempered Clavier title page (Early Music 33, 2005). The shape
-    // is five fifths at ⅙ PC, three pure, three at 1/12 PC, and a closing
-    // fifth wide by 1/12 PC — which is what the circle demands once the other
+    // 1722 Well-Tempered Clavier title page (Early Music 33, Feb + May 2005).
+    // Five fifths at ⅙ PC, three pure, three at 1/12 PC, and a closing fifth
+    // wide by 1/12 PC — the wide one is what the circle demands once the other
     // eleven are set.
-    // UNVERIFIED: the 5 / 3 / 3 / 1 shape is Lehman's, but the *rotation* —
-    // where the ⅙-comma block starts — was not checked against the printed
-    // articles, only reasoned from the closure and from C major coming out
-    // purest (392.2¢). Rotating the block one fifth either way also closes.
-    // Check the articles before trusting the key colours of this one.
+    // The ⅙-comma block starts at F–C, so the pure fifths land on E–B, B–F♯,
+    // F♯–C♯ and the naturals match Vallotti — which is how Lehman describes
+    // his own tuning procedure. C and F come out equally the purest keys
+    // (392.2¢), grading to 405.9¢ at E; no third is left fully Pythagorean.
+    // Chain order below starts at C, so F–C is the LAST slot, not the first.
+    // Caveat worth keeping in mind: Lehman's decoding of the squiggle is one
+    // proposal among several — O'Donnell (Early Music 34/4, 2006) reads the
+    // same ornament differently, and Lindley & Ortgies published a critique
+    // alongside it. This is a plausible reconstruction, not settled fact.
     name: 'Lehman-Bach · 2004',
-    fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6,  P5-PC/6,  P5,
-             P5,      P5,      P5-PC/12, P5-PC/12, P5-PC/12, P5+PC/12],
+    //        C–G      G–D      D–A      A–E       E–B   B–F♯
+    fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6,  P5,   P5,
+    //        F♯–C♯    C♯–G♯     G♯–E♭     E♭–B♭     B♭–F      F–C
+             P5,      P5-PC/12, P5-PC/12, P5-PC/12, P5+PC/12, P5-PC/6],
   },
 ];
 
