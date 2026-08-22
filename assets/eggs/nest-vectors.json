@@ -162,7 +162,7 @@
       "reconstructed": true
     },
     {
-      "id": "score",
+      "id": "text-score",
       "vector": {
         "ratio": 0.25,
         "rhythm": 0.25,
@@ -179,7 +179,7 @@
       "reconstructed": true
     },
     {
-      "id": "notation",
+      "id": "spontaneous-text-score",
       "vector": {
         "ratio": 0.25,
         "rhythm": 0.25,

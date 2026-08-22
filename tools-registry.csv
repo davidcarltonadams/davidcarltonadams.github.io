@@ -21,8 +21,8 @@ sumtones,Combination Tones,sumtones.html,egg,2025,1.0,2026-04,beta
 beating,Beating,beating.html,egg,2025,1.0,2026-04,beta
 modes,Modes,modes.html,egg,2025,1.0,2026-04,beta
 consonance,Consonance,consonance.html,egg,2026-04,1.0,2026-04-29,beta
-canon,Canon Machine,canon.html,raw,2026-05,2.3,2026-05-10,alpha
-fugue,Fugue Machine,fugue.html,raw,2026-05,1.0,2026-05-07,alpha
+canon,Canon Loop Machine,canon.html,raw,2026-05,2.4,2026-08-22,alpha
+fugue,Fugue Machine,fugue.html,raw,2026-05,1.0,2026-08-22,pulled
 mtok,MTOK,mtok.html,raw,2024,2.0,2026-05,beta
 rhythm,Polyrhythm Clock,rhythm.html,raw,2025,1.0,2026-04,beta
 clock,Performance Clock,clock.html,raw,2024,1.0,2026-04,alpha
