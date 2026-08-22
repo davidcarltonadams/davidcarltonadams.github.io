@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="press and drag a low sawtooth through a resonant lowpass and watch the spectrum move — the filter you hear, drawn as you sweep it.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -100,11 +101,35 @@
     }
     body.expanded .header-block,
     body.expanded #hint,
+    body.expanded #stop-btn,
     body.expanded #err { display: none; }
     body.expanded #stage { width: 100vw; height: 100vh; overflow: hidden; }
     body.expanded #expand-btn { top: 10px; right: 10px; }
     body.expanded canvas { border: none; }
     body.expanded .al { opacity: 0.15; }
+
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    #stop-btn {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 2px;
+      color: #d8cfc7;
+      opacity: 0.35;
+      font-family: Georgia, serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      padding: 0.3rem 1rem;
+      cursor: pointer;
+      transition: opacity 0.2s, border-color 0.2s;
+    }
+    #stop-btn:hover { opacity: 0.75; border-color: rgba(255,255,255,0.3); }
 
     #hint {
       font-size: 0.58rem;
@@ -123,14 +148,16 @@
 </head>
 <body>
 
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
 <div class="header-block">
-  <h1>welcome &mdash; david carlton adams</h1>
+  <h1>sound</h1>
   <div class="sub">an interactive sound field</div>
 </div>
 
 <div id="stage">
   <canvas id="cv"></canvas>
-  <div class="al" id="al-left">silent</div>
+  <div class="al" id="al-left">closed</div>
   <div class="al" id="al-right">open</div>
   <div class="al" id="al-top">resonant</div>
   <div class="al" id="al-bottom">quiet</div>
@@ -138,6 +165,7 @@
 </div>
 
 <div id="hint">press &amp; drag &mdash; release to silence</div>
+<button id="stop-btn" title="stop and free the audio (esc)">◼ silence</button>
 <div id="err"></div>
 
 <script>
@@ -265,6 +293,29 @@ try {
     audioLive = false;
   }
 
+  // full stop: fade out, stop both oscillators, tear the context down.
+  // the next press rebuilds the graph from scratch.
+  function silence() {
+    if (!ac) return;
+    const dying = ac, t = ac.currentTime;
+
+    vol.gain.cancelScheduledValues(t);
+    vol.gain.setTargetAtTime(0, t, 0.04);
+    acGain.gain.cancelScheduledValues(t);
+    acGain.gain.setTargetAtTime(0, t, 0.04);
+    osc.stop(t + 0.3);
+    acOsc.stop(t + 0.3);
+    setTimeout(() => { try { dying.close(); } catch (e) {} }, 400);
+
+    ac = osc = filt = vol = acOsc = acGain = scope = null;
+    scopeBuf = freqBuf = null;
+    held = false;
+    audioLive = false;
+    ready = false;
+    if (raf) { cancelAnimationFrame(raf); raf = null; }
+    draw();
+  }
+
   // ── draw ─────────────────────────────────────────────────────────
   function loop() { raf = requestAnimationFrame(loop); draw(); }
   function idle() { if (!raf) draw(); }
@@ -307,18 +358,22 @@ try {
       // drawn as filled area from canvas bottom — like an EQ plugin
       scope.getByteFrequencyData(freqBuf);
 
-      g.beginPath();
-      g.moveTo(0, H);
+      // one pass builds both paths: the top polyline (stroked) and the
+      // same polyline closed down to the baseline (filled)
+      const curve = new Path2D();   // top edge only
+      const area  = new Path2D();   // curve + baseline, closed
+      area.moveTo(0, H);            // left edge stays vertical at x = 0
       for (let xi = 0; xi < W; xi++) {
         const freq   = xToLogHz(xi, W);
         const bin    = Math.round(freq * binCount * 2 / sampleRate);
         const clamped= Math.min(bin, binCount - 1);
         const amp    = freqBuf[clamped] / 255;           // 0–1
         const y      = H - amp * H * 0.85;
-        xi === 0 ? g.moveTo(0, y) : g.lineTo(xi, y);
+        xi === 0 ? curve.moveTo(0, y) : curve.lineTo(xi, y);
+        area.lineTo(xi, y);
       }
-      g.lineTo(W, H);
-      g.closePath();
+      area.lineTo(W, H);
+      area.closePath();
 
       // filled gradient — glows from bottom
       const specGrad = g.createLinearGradient(0, 0, 0, H);
@@ -326,21 +381,12 @@ try {
       specGrad.addColorStop(0.5, `rgba(${cr},${cg},${cb}, 0.25)`);
       specGrad.addColorStop(1,   `rgba(${cr},${cg},${cb}, 0.05)`);
       g.fillStyle = specGrad;
-      g.fill();
+      g.fill(area);
 
       // glowing outline along the top edge of the spectrum
-      g.beginPath();
-      for (let xi = 0; xi < W; xi++) {
-        const freq   = xToLogHz(xi, W);
-        const bin    = Math.round(freq * binCount * 2 / sampleRate);
-        const clamped= Math.min(bin, binCount - 1);
-        const amp    = freqBuf[clamped] / 255;
-        const y      = H - amp * H * 0.85;
-        xi === 0 ? g.moveTo(0, y) : g.lineTo(xi, y);
-      }
       g.strokeStyle = `rgba(${cr + 40},${cg + 40},${cb + 20}, 0.85)`;
       g.lineWidth   = 1.5;
-      g.stroke();
+      g.stroke(curve);
 
       // ── time-domain waveform (centred, like an oscilloscope) ─────
       scope.getByteTimeDomainData(scopeBuf);
@@ -467,6 +513,9 @@ try {
   canvas.addEventListener('touchstart', e => { e.preventDefault(); begin(e); }, { passive: false });
   canvas.addEventListener('touchmove',  e => { e.preventDefault(); drag(e);  }, { passive: false });
   canvas.addEventListener('touchend',   e => { e.preventDefault(); end();    }, { passive: false });
+
+  document.getElementById('stop-btn').addEventListener('click', () => silence());
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') silence(); });
 
 } catch(err) {
   document.getElementById('err').style.display = 'block';

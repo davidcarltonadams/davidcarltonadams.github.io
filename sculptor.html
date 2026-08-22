@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="build a waveform one harmonic at a time with signed amplitude sliders, and hear why sign, not just strength, is what makes a triangle a triangle.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -228,7 +229,7 @@ const NAMES = [
   'octave',
 ];
 
-// harmonic amplitudes (0–1)
+// harmonic amplitudes (−1–1; sign is phase, and it is what separates triangle from square)
 const amps = new Array(NUM_H).fill(0);
 amps[0] = 1; // start with fundamental
 
@@ -256,7 +257,7 @@ function drawWaveform() {
     const t = i / N;
     let v = 0;
     for (let h = 0; h < NUM_H; h++) {
-      if (amps[h] > 0.001) v += amps[h] * Math.sin(2 * Math.PI * (h + 1) * t);
+      if (Math.abs(amps[h]) > 0.001) v += amps[h] * Math.sin(2 * Math.PI * (h + 1) * t);
     }
     samples[i] = v;
   }
@@ -307,6 +308,7 @@ function drawWaveform() {
 // ── Build harmonic rows
 const rowsEl = document.getElementById('harmonicRows');
 const sliders = [];
+const valSpans = [];
 for (let h = 0; h < NUM_H; h++) {
   const row = document.createElement('div');
   row.className = 'h-row';
@@ -317,13 +319,14 @@ for (let h = 0; h < NUM_H; h++) {
 
   const slider = document.createElement('input');
   slider.type = 'range'; slider.className = 'h-slider';
-  slider.min = 0; slider.max = 1; slider.step = 0.01;
+  slider.min = -1; slider.max = 1; slider.step = 0.01;
   slider.value = amps[h];
   sliders.push(slider);
 
   const val = document.createElement('span');
   val.className = 'h-val';
   val.textContent = amps[h].toFixed(2);
+  valSpans.push(val);
 
   const name = document.createElement('span');
   name.className = 'h-name';
@@ -352,22 +355,26 @@ const PRESETS = {
     if (h % 2 !== 0) return 0;
     const k = h / 2;
     return (k % 2 === 0 ? 1 : -1) / ((h + 1) ** 2);
-  }).map(v => Math.abs(v)),
+  }),
   clear:    () => new Array(NUM_H).fill(0),
 };
 
+// normalize to peak 1 while KEEPING sign — a triangle's alternating signs
+// are the whole difference between it and a square
+function applyPreset(name) {
+  const preset = PRESETS[name]();
+  const peak = Math.max(...preset.map(Math.abs), 0.001);
+  for (let h = 0; h < NUM_H; h++) {
+    amps[h] = Math.max(-1, Math.min(1, preset[h] / peak));
+    sliders[h].value = amps[h];
+    valSpans[h].textContent = amps[h].toFixed(2);
+  }
+  drawWaveform();
+  syncOscillators();
+}
+
 document.querySelectorAll('.preset-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const preset = PRESETS[btn.dataset.preset]();
-    const peak = Math.max(...preset.map(Math.abs), 0.001);
-    for (let h = 0; h < NUM_H; h++) {
-      amps[h] = Math.min(1, preset[h] / peak);
-      sliders[h].value = amps[h];
-      sliders[h].nextElementSibling.textContent = amps[h].toFixed(2);
-    }
-    drawWaveform();
-    syncOscillators();
-  });
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
 });
 
 // ── Audio
@@ -413,7 +420,7 @@ function syncOscillators() {
   if (!playing || !actx) return;
   for (let h = 0; h < NUM_H; h++) {
     if (!oscNodes[h]) continue;
-    oscNodes[h].gain.gain.value = amps[h] * 0.6;
+    oscNodes[h].gain.gain.setTargetAtTime(amps[h] * 0.6, actx.currentTime, 0.02);
   }
 }
 

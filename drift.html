@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="sine voices wander the just-intonation lattice one simple ratio at a time, so you hear how prime limit and tenney height shape a chord.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -312,9 +313,9 @@ function limitColor(lim) { return LIMIT_HEX[lim] || '#cc4444'; }
 
 let audioCtx = null, masterGain = null;
 let droneOsc = null, droneGain = null;
-let voices = [];        // { osc, gain, p, q, fund, accent }
+let voices = [];        // { osc, gain, p, q, fund, accent, timer }
 let playing = false;
-let timers = [];
+let timers = [];        // stagger timers only; drift chains live on v.timer
 
 function ensureCtx() {
   if (audioCtx) return;
@@ -383,43 +384,64 @@ function startAll() {
   // Drone
   if (document.getElementById('droneCheck').checked) startDrone(fund);
 
-  const starts = startRatiosFor(lim);
-  for (let i = 0; i < nv; i++) {
-    const [p, q] = starts[i] || [1,1];
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = fund * p / q;
-    g.gain.value = 0.17;
-    osc.connect(g);
-    g.connect(masterGain);
-    osc.start();
-    voices.push({ osc, gain: g, p, q, fund, accent: ACCENTS[i % ACCENTS.length] });
-  }
+  for (let i = 0; i < nv; i++) addVoice(i, fund, lim);
 
   updateStatus();
 
   // Stagger voice drift starts
-  for (let i = 0; i < nv; i++) {
+  voices.forEach((v, i) => {
     const delay = i * 2000 + Math.random() * 1000;
-    setTimeout(() => { if (playing) { moveVoice(i); scheduleNext(i); } }, delay);
-  }
+    timers.push(setTimeout(() => {
+      if (playing && voices.includes(v)) { moveVoice(v); scheduleNext(v); }
+    }, delay));
+  });
 }
 
-function scheduleNext(i) {
+// One voice, built and wired. Index picks its start ratio and accent.
+function addVoice(i, fund, lim) {
+  const [p, q] = startRatiosFor(lim)[i] || [1,1];
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = fund * p / q;
+  g.gain.value = 0.17;
+  osc.connect(g);
+  g.connect(masterGain);
+  osc.start();
+  const v = { osc, gain: g, p, q, fund, accent: ACCENTS[i % ACCENTS.length], timer: null };
+  voices.push(v);
+  return v;
+}
+
+// Fade a single voice out and free it, leaving the rest playing.
+const VOICE_FADE = 0.6;   // seconds
+
+function dropVoice(v) {
+  clearTimeout(v.timer);
+  const idx = voices.indexOf(v);
+  if (idx >= 0) voices.splice(idx, 1);
+  const t = audioCtx.currentTime;
+  try {
+    v.gain.gain.cancelScheduledValues(t);
+    v.gain.gain.setValueAtTime(Math.max(v.gain.gain.value, 0.0001), t);
+    v.gain.gain.exponentialRampToValueAtTime(0.0001, t + VOICE_FADE);
+  } catch (e) {}
+  try { v.osc.stop(t + VOICE_FADE + 0.02); } catch (e) {}
+  v.osc.onended = () => { try { v.osc.disconnect(); v.gain.disconnect(); } catch (e) {} };
+}
+
+function scheduleNext(v) {
   const ms = parseInt(document.getElementById('speedSlider').value) * 1000;
   const jitter = (Math.random() - 0.5) * ms * 0.35;
-  const t = setTimeout(() => {
-    if (!playing || i >= voices.length) return;
-    moveVoice(i);
-    scheduleNext(i);
+  v.timer = setTimeout(() => {
+    if (!playing || !voices.includes(v)) return;
+    moveVoice(v);
+    scheduleNext(v);
   }, ms + jitter);
-  timers.push(t);
 }
 
-function moveVoice(i) {
-  if (!playing || i >= voices.length) return;
-  const v = voices[i];
+function moveVoice(v) {
+  if (!playing || !voices.includes(v)) return;
   const lim = parseInt(document.getElementById('primeLimit').value);
   const nbrs = getNeighbors(v.p, v.q, lim);
   if (!nbrs.length) return;
@@ -446,6 +468,7 @@ function moveVoice(i) {
 function stopAll() {
   timers.forEach(clearTimeout);
   timers = [];
+  voices.forEach(v => clearTimeout(v.timer));
   if (droneOsc) { try { droneOsc.stop(); } catch(e){} droneOsc = null; droneGain = null; }
   voices.forEach(v => { try { v.osc.stop(); } catch(e){} });
   voices = [];
@@ -468,6 +491,44 @@ function togglePlay() {
   }
 }
 
+// ─── Live control changes ─────────────────────────────────────────────────────
+// speed, prime limit and volume are read at use-time, so they need no handler.
+// voice count and fundamental own persistent state, so they get one.
+
+document.getElementById('voiceCount').addEventListener('change', e => {
+  if (!playing) return;
+  const nv = parseInt(e.target.value);
+  const fund = parseFloat(document.getElementById('fundSelect').value);
+  const lim = parseInt(document.getElementById('primeLimit').value);
+  while (voices.length > nv) dropVoice(voices[voices.length - 1]);
+  while (voices.length < nv) {
+    const v = addVoice(voices.length, fund, lim);
+    scheduleNext(v);
+  }
+  updateStatus();
+});
+
+document.getElementById('fundSelect').addEventListener('change', e => {
+  if (!playing) return;
+  const fund = parseFloat(e.target.value);
+  const t = audioCtx.currentTime;
+  voices.forEach(v => {
+    v.fund = fund;
+    glideTo(v.osc.frequency, fund * v.p / v.q, t);
+  });
+  if (droneOsc) glideTo(droneOsc.frequency, fund, t);
+});
+
+// Ramp a frequency param from wherever it is now, so a mid-drift retune
+// doesn't jump — and so the drift ramp already scheduled gets cancelled.
+const FUND_GLIDE = 0.9;   // seconds
+
+function glideTo(param, target, t) {
+  param.cancelScheduledValues(t);
+  param.setValueAtTime(param.value, t);
+  param.linearRampToValueAtTime(target, t + FUND_GLIDE);
+}
+
 // ─── Status display ───────────────────────────────────────────────────────────
 
 function updateStatus() {
@@ -477,16 +538,18 @@ function updateStatus() {
   if (playing && document.getElementById('droneCheck').checked) {
     chips.push(`<div class="v-chip v-drone">
       <span class="v-ratio" style="color:rgba(255,255,255,0.4)">1/1</span>
-      <span class="v-detail">0.0¢ · drone</span>
+      <span class="v-detail">0.0¢ · <span style="color:${limitColor(1)}">1-limit</span> · drone</span>
     </div>`);
   }
 
   voices.forEach(v => {
     const cents = ratioCents(v.p, v.q);
     const lim = ratioLimit(v.p, v.q);
+    // Border + ratio keep the voice's trail colour; the limit tag carries
+    // the prime-limit colour, so the chip says both who and what.
     chips.push(`<div class="v-chip" style="border-color:${v.accent.hex}44">
       <span class="v-ratio" style="color:${v.accent.hex}">${v.p}/${v.q}</span>
-      <span class="v-detail">${cents.toFixed(1)}¢ · ${lim}-limit</span>
+      <span class="v-detail">${cents.toFixed(1)}¢ · <span style="color:${limitColor(lim)}">${lim}-limit</span></span>
     </div>`);
   });
 
@@ -496,21 +559,22 @@ function updateStatus() {
 // ─── Canvas ───────────────────────────────────────────────────────────────────
 
 const cv = document.getElementById('cv');
-const gx = cv.getContext('2d');
+const gx = cv.getContext('2d', { willReadFrequently: true });   // animate() getImageData's every frame
 const CH = 300;
 const LW = 46;   // left label panel width
 
-// JI reference lines
+// JI reference lines — every c is 1200·log2(ratio), one decimal.
+// 9/2 (2603.9¢) is omitted: it lies above CENTS_MAX and has no line to draw.
 const REFS = [
-  {c:0,    t:'1/1'},  {c:204,  t:'9/8'},  {c:231,  t:'8/7'},
-  {c:267,  t:'7/6'},  {c:316,  t:'6/5'},  {c:386,  t:'5/4'},
-  {c:435,  t:'9/7'},  {c:498,  t:'4/3'},  {c:551,  t:'11/8'},
-  {c:583,  t:'7/5'},  {c:617,  t:'10/7'}, {c:649,  t:'16/11'},
-  {c:702,  t:'3/2'},  {c:765,  t:'14/9'}, {c:814,  t:'8/5'},
-  {c:884,  t:'5/3'},  {c:933,  t:'12/7'}, {c:969,  t:'7/4'},
-  {c:996,  t:'16/9'}, {c:1088, t:'15/8'}, {c:1200, t:'2/1'},
-  {c:1404, t:'9/4'},  {c:1586, t:'5/2'},  {c:1902, t:'3/1'},
-  {c:2088, t:'15/4'}, {c:2204, t:'9/2'},  {c:2400, t:'4/1'},
+  {c:0.0,    t:'1/1'},  {c:203.9,  t:'9/8'},  {c:231.2,  t:'8/7'},
+  {c:266.9,  t:'7/6'},  {c:315.6,  t:'6/5'},  {c:386.3,  t:'5/4'},
+  {c:435.1,  t:'9/7'},  {c:498.0,  t:'4/3'},  {c:551.3,  t:'11/8'},
+  {c:582.5,  t:'7/5'},  {c:617.5,  t:'10/7'}, {c:648.7,  t:'16/11'},
+  {c:702.0,  t:'3/2'},  {c:764.9,  t:'14/9'}, {c:813.7,  t:'8/5'},
+  {c:884.4,  t:'5/3'},  {c:933.1,  t:'12/7'}, {c:968.8,  t:'7/4'},
+  {c:996.1,  t:'16/9'}, {c:1088.3, t:'15/8'}, {c:1200.0, t:'2/1'},
+  {c:1403.9, t:'9/4'},  {c:1586.3, t:'5/2'},  {c:1902.0, t:'3/1'},
+  {c:2288.3, t:'15/4'}, {c:2400.0, t:'4/1'},
 ];
 
 function cy(cents) {

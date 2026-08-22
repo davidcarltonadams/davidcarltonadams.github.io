@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="layer euclidean rhythms and hear them interfere — bjorklund's algorithm spaces n pulses as evenly as possible across k steps">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -188,12 +189,12 @@
 <div class="explain-wrap">
   <button class="explain-toggle" onclick="toggleExplain()">? what is this</button>
   <div class="explain-body" id="explainBody">
-    <p>The <strong>Euclidean rhythm</strong> E(n,k) distributes n onsets as evenly as possible across k equal time slots. The algorithm is identical to the one Euclid described for finding greatest common divisors — it was discovered to underlie world rhythm by Godfried Toussaint in 2005.</p>
-    <p>These patterns appear independently wherever humans distribute rhythm optimally over a cycle. <strong>E(3,8)</strong> is the <em>tresillo</em> of Cuban and Brazilian music. <strong>E(5,8)</strong> is the <em>cinquillo</em>. <strong>E(3,7)</strong> is the Bulgarian <em>ruchenitza</em>. <strong>E(4,9)</strong> is the Turkish <em>aksak</em>. <strong>E(7,8)</strong> is the Bulgarian <em>horo</em>.</p>
+    <p>The <strong>Euclidean rhythm</strong> E(n,k) distributes n onsets as evenly as possible across k equal time slots. Bjorklund's construction for it is Euclid's greatest-common-divisor algorithm in disguise — Godfried Toussaint showed in 2005 that the patterns it produces are the ones world rhythm already uses. (Toussaint writes the pair the other way round, as E(k,n).)</p>
+    <p>These patterns appear independently wherever humans distribute rhythm evenly over a cycle. <strong>E(3,8)</strong> is the <em>tresillo</em> of Cuban and Brazilian music. <strong>E(5,8)</strong> is the <em>cinquillo</em>. <strong>E(3,7)</strong> is the Bulgarian <em>ruchenitza</em>. <strong>E(4,9)</strong> is the Turkish <em>aksak</em>. <strong>E(5,16)</strong> is the Brazilian <em>bossa nova</em>. Plenty of other pairs make good rhythms without carrying a name.</p>
     <p>Stack multiple layers to create <strong>polyrhythmic interference patterns</strong>. Full coincidence — all layers landing on beat 1 simultaneously — recurs every LCM(k₁, k₂, …) steps. Try E(3,8) + E(5,8) + E(7,12) and listen for when the grid snaps back.</p>
     <span class="math">E(3,8) = [●○○●○○●○]  tresillo · Cuba, Brazil, West Africa</span>
     <span class="math">E(5,8) = [●○●●○●●○]  cinquillo · Cuba</span>
-    <span class="math">E(7,8) = [●○●●●●●●]  horo · Bulgaria</span>
+    <span class="math">E(3,7) = [●○●○●○○]  ruchenitza · Bulgaria</span>
   </div>
 </div>
 
@@ -202,26 +203,50 @@
 
 // ─── Euclidean algorithm ─────────────────────────────────────────────────────
 
+// Bjorklund's construction — the recursive pairing Toussaint identifies with
+// Euclid's gcd: repeatedly fold the shorter list of groups into the longer one
+// until fewer than two remainder groups are left. Always begins on a pulse.
+
 function euclidean(n, k) {
   if (n <= 0) return Array(k).fill(0);
   if (n >= k) return Array(k).fill(1);
-  const pat = [];
-  let b = 0;
-  for (let i = 0; i < k; i++) {
-    b += n;
-    if (b >= k) { b -= k; pat.push(1); }
-    else pat.push(0);
+  let head = [], tail = [];
+  for (let i = 0; i < n; i++)     head.push([1]);
+  for (let i = 0; i < k - n; i++) tail.push([0]);
+  while (tail.length > 1) {
+    const m = Math.min(head.length, tail.length);
+    const paired = [];
+    for (let i = 0; i < m; i++) paired.push([...head[i], ...tail[i]]);
+    const rest = head.length > m ? head.slice(m) : tail.slice(m);
+    head = paired;
+    tail = rest;
   }
-  const first = pat.indexOf(1);
-  return first > 0 ? [...pat.slice(first), ...pat.slice(0, first)] : pat;
+  return [].concat(...head, ...tail);
 }
 
+// A handful of traditional rhythms are the Euclidean necklace read from a
+// different starting step. Where k-1 pulses fall in k steps, Bjorklund leaves
+// the single rest last; the tradition puts it second. Values rotate right.
+
+const ROT = { '2/3':2, '3/4':2, '5/6':2, '7/8':2 };
+
+function pattern(n, k) {
+  const pat = euclidean(n, k);
+  const r   = (ROT[`${n}/${k}`] || 0) % k;
+  return r ? [...pat.slice(k - r), ...pat.slice(0, k - r)] : pat;
+}
+
+// Names Toussaint (2005) attaches to these necklaces. A blank means the
+// pattern is real but carries no single traditional name worth asserting.
+// E(4,8) is plain alternate steps and E(4,11) is a Zappa metre, not folk
+// rhythms; neither gets a name.
+
 const KNOWN = {
-  '2/3':'','3/4':'waltz','3/5':'','3/7':'ruchenitza','3/8':'tresillo',
-  '4/7':'','4/8':'son clave','4/9':'aksak','4/11':'',
-  '5/6':'','5/7':'nawruz','5/8':'cinquillo','5/16':'bossa nova',
-  '7/8':'horo','7/9':'','7/12':'west african','7/16':'samba',
-  '9/16':'afro-cuban','11/24':'adowa','13/24':'gahu',
+  '2/3':'','3/4':'cumbia','3/5':'','3/7':'ruchenitza','3/8':'tresillo',
+  '4/7':'','4/8':'','4/9':'aksak','4/11':'',
+  '5/6':'york-samai','5/7':'nawakhat','5/8':'cinquillo','5/16':'bossa nova',
+  '7/8':'bendir','7/9':'','7/12':'west african bell','7/16':'samba',
+  '9/16':'central african','11/24':'aka pygmy','13/24':'aka pygmy',
 };
 
 function pname(n, k) {
@@ -247,24 +272,39 @@ const layers = [
   { n:4, k:12, pitchIdx:4, muted:false },
   { n:7, k:16, pitchIdx:5, muted:false },
 ];
-layers.forEach(L => { L.pattern = euclidean(L.n, L.k); L.step = -1; });
+layers.forEach(L => { L.pattern = pattern(L.n, L.k); L.step = -1; });
 
 let flashes     = layers.map(L => new Float32Array(L.k));
 let centerFlash = 0;
 
 function resetLayer(li) {
   const L = layers[li];
-  L.pattern = euclidean(L.n, L.k);
+  L.pattern = pattern(L.n, L.k);
   L.step = -1;
   flashes[li] = new Float32Array(L.k);
 }
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
 
-let ax = null;
+let ax  = null;
+let bus = null;
 
 function ensureAx() {
-  if (!ax) ax = new (window.AudioContext || window.webkitAudioContext)();
+  if (!ax) {
+    ax = new (window.AudioContext || window.webkitAudioContext)();
+    // master bus: four layers can land on the same tick, so the sum goes
+    // through a hard-kneed compressor rather than straight at the speaker
+    const lim = ax.createDynamicsCompressor();
+    lim.threshold.value = -10;
+    lim.knee.value      = 0;
+    lim.ratio.value     = 20;
+    lim.attack.value    = 0.002;
+    lim.release.value   = 0.12;
+    bus = ax.createGain();
+    bus.gain.value = 0.6;
+    bus.connect(lim);
+    lim.connect(ax.destination);
+  }
   if (ax.state === 'suspended') ax.resume();
 }
 
@@ -277,7 +317,7 @@ function playTone(freq, when) {
   g.gain.setValueAtTime(0, when);
   g.gain.linearRampToValueAtTime(0.18, when + att);
   g.gain.exponentialRampToValueAtTime(0.001, when + att + dec);
-  o.connect(g); g.connect(ax.destination);
+  o.connect(g); g.connect(bus);
   o.start(when); o.stop(when + att + dec + 0.01);
 }
 
@@ -287,6 +327,7 @@ let playing    = false;
 let globalTick = 0;
 let nextTickT  = 0;
 let schedID    = null;
+const tickTimers = new Set();   // pending flash callbacks, cleared on stop
 
 function getBpm()  { return Math.max(40, Math.min(280, parseFloat(document.getElementById('bpmInp').value) || 116)); }
 function tickSec() { return 60 / (getBpm() * 4); }  // sixteenth-note grid
@@ -306,7 +347,9 @@ function doTick(tick, when) {
 
   const delay = Math.max(0, (when - ax.currentTime) * 1000 - 6);
   const hitsCopy = hits;
-  setTimeout(() => {
+  const id = setTimeout(() => {
+    tickTimers.delete(id);
+    if (!playing) return;
     for (let li = 0; li < layers.length; li++) {
       const L = layers[li];
       const s = tick % L.k;
@@ -315,6 +358,7 @@ function doTick(tick, when) {
     }
     if (hitsCopy >= 2) centerFlash = Math.min(1, centerFlash + 0.35 * hitsCopy);
   }, delay);
+  tickTimers.add(id);
 }
 
 function schedule() {
@@ -342,6 +386,11 @@ function startPlay() {
 function stopPlay() {
   playing = false;
   clearTimeout(schedID);
+  schedID = null;
+  // pending ticks would otherwise fire after the stop and leave a stale
+  // playhead sitting on the ring
+  tickTimers.forEach(clearTimeout);
+  tickTimers.clear();
   layers.forEach((L, li) => { L.step = -1; flashes[li] = new Float32Array(L.k); });
   centerFlash = 0;
   const btn = document.getElementById('playBtn');

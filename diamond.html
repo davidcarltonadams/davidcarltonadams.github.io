@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="play partch's 13-limit tonality diamond one cell at a time - every ratio is an overtone of one number and an undertone of another">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -263,6 +264,15 @@
     .scope-wrap { width: 100%; max-width: 680px; }
     canvas { display: block; width: 100%; border: 1px solid var(--border); border-radius: 2px; }
 
+    /* ── Back link ───────────────────────────────────── */
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
     /* ── Hint ────────────────────────────────────────── */
     .hint {
       font-size: 0.54rem; letter-spacing: 0.12em;
@@ -271,6 +281,8 @@
   </style>
 </head>
 <body>
+
+<a class="eggs-back" href="eggs.html">← eggs</a>
 
 <div class="header">
   <h1 class="title">tonality diamond</h1>
@@ -399,42 +411,31 @@ function devTextColor(d) {
 // ── Interval name catalogue ─────────────────────────────
 const NAMES = {
   '1/1':   'unison',
-  '3/2':   'perfect fifth',         '4/3':   'perfect fourth',
-  '9/8':   'major whole tone',      '16/9':  'Pythagorean minor seventh',
-  '27/16': 'Pythagorean major sixth','32/27': 'Pythagorean minor third',
-  '81/64': 'Pythagorean major third','128/81':'Pythagorean minor sixth',
-  '5/4':   'just major third',      '8/5':   'just minor sixth',
-  '6/5':   'just minor third',      '5/3':   'just major sixth',
-  '15/8':  'just major seventh',    '16/15': 'just minor second',
-  '10/9':  'minor whole tone',      '9/5':   'just minor seventh',
-  '25/24': 'chromatic semitone',    '45/32': 'aug. fourth',
-  '64/45': 'dim. fifth',            '25/16': 'aug. fifth',
-  '32/25': 'dim. fourth',
+  // 3-limit
+  '3/2':   'perfect fifth',           '4/3':   'perfect fourth',
+  '9/8':   'major whole tone',        '16/9':  'Pythagorean minor seventh',
+  // 5-limit
+  '5/4':   'just major third',        '8/5':   'just minor sixth',
+  '6/5':   'just minor third',        '5/3':   'just major sixth',
+  '10/9':  'minor whole tone',        '9/5':   'just minor seventh',
   // 7-limit
-  '7/4':   'natural minor seventh', '8/7':   'septimal whole tone',
-  '7/6':   'septimal minor third',  '12/7':  'septimal major sixth',
-  '7/5':   'septimal tritone',      '10/7':  'septimal tritone (alt.)',
-  '9/7':   'septimal major third',  '14/9':  'septimal minor sixth',
-  '21/16': 'septimal fourth',       '32/21': 'septimal fifth (alt.)',
-  '14/13': 'septimal-tridecimal second',
-  '28/27': 'septimal third-tone',
-  // 9-based (still 3-limit)
-  '16/9':  'Pythagorean minor seventh',
-  '18/11': 'undecimal minor sixth', '11/9':  'neutral third',
+  '7/4':   'harmonic seventh',        '8/7':   'septimal whole tone',
+  '7/6':   'septimal minor third',    '12/7':  'septimal major sixth',
+  '7/5':   'septimal tritone',        '10/7':  'septimal tritone (alt.)',
+  '9/7':   'septimal major third',    '14/9':  'septimal minor sixth',
   // 11-limit
-  '11/8':  'undecimal tritone',     '16/11': 'undecimal fifth (alt.)',
-  '11/6':  'undecimal major seventh','12/11': 'undecimal second',
-  '11/10': 'undecimal small tone',  '20/11': 'undecimal minor seventh (alt.)',
-  '22/13': 'undecimal-tridecimal interval',
-  '33/32': 'undecimal diesis',
+  '11/8':  'undecimal tritone',       '16/11': 'undecimal subfifth',
+  '11/6':  'undecimal neutral seventh','12/11': 'undecimal neutral second',
+  '11/10': 'undecimal small tone',    '20/11': 'undecimal minor seventh (alt.)',
+  '11/9':  'undecimal neutral third', '18/11': 'undecimal neutral sixth',
+  '14/11': 'undecimal major third',   '11/7':  'undecimal augmented fifth',
   // 13-limit
-  '13/8':  'tridecimal minor sixth','16/13': 'tridecimal major third',
-  '13/7':  'tridecimal major seventh','14/13':'tridecimal second',
-  '13/9':  'tridecimal acute fifth','18/13': 'tridecimal minor sixth (alt.)',
-  '13/10': 'tridecimal major third (alt.)','20/13':'tridecimal minor sixth',
-  '13/11': 'tridecimal minor third','22/13': 'tridecimal major sixth (alt.)',
-  '13/12': 'tridecimal second',     '24/13': 'tridecimal neutral seventh',
-  '26/27': 'tridecimal comma region',
+  '13/8':  'tridecimal neutral sixth','16/13': 'tridecimal neutral third',
+  '13/7':  'tridecimal submajor seventh','14/13':'tridecimal supraminor second',
+  '13/9':  'tridecimal diminished fifth','18/13':'tridecimal augmented fourth',
+  '13/10': 'tridecimal semi-dim. fourth','20/13':'tridecimal semi-aug. fifth',
+  '13/11': 'tridecimal minor third',  '22/13': 'tridecimal supermajor sixth',
+  '13/12': 'tridecimal neutral second','24/13': 'tridecimal neutral seventh',
 };
 
 // ── Prime-limit CSS variable names ──────────────────────
@@ -455,9 +456,11 @@ for (let j = 0; j < 7; j++) {
     const cents = ratioToCents(num, den);
     const dev   = deviationFromET(cents);
     const key   = `${num}/${den}`;
+    const vkey  = `${j},${i}`;   // voice key: the CELL, not the ratio — a diamond
+                                 // repeats ratios (4/3 is both 1/3 and 3/9)
     const hp    = cellHighestPrime(ODDS[i], ODDS[j]);
     cells[j][i] = {
-      num, den, key, cents, dev, hp,
+      num, den, key, vkey, cents, dev, hp,
       rawNum: ODDS[i], rawDen: ODDS[j],
       i, j,
       isDiag: i === j,
@@ -542,7 +545,7 @@ function buildGrid() {
         el.addEventListener('click',      () => toggleCell(nd));
         el.addEventListener('mouseenter', () => showInfo(nd));
         el.addEventListener('mouseleave', clearInfo);
-        el.addEventListener('touchstart', e => { e.preventDefault(); toggleCell(nd); }, { passive: false });
+        el.addEventListener('touchstart', e => { e.preventDefault(); showInfo(nd); toggleCell(nd); }, { passive: false });
       }
 
       nd.el = el;
@@ -561,10 +564,11 @@ function toggleOtonality(i) {
   const col     = cells.map(row => row[i]).filter(nd => !nd.isDiag);
   const allOn   = col.every(nd => nd.active);
   col.forEach(nd => {
-    if (allOn) { if (nd.active) { nd.active = false; if (ac) stopVoice(nd.key); } }
-    else        { if (!nd.active) { nd.active = true; startVoice(nd.key, fundamental * nd.num / nd.den); } }
+    if (allOn) { if (nd.active) { nd.active = false; if (ac) stopVoice(nd.vkey); } }
+    else        { if (!nd.active) { nd.active = true; startVoice(nd.vkey, fundamental * nd.num / nd.den); } }
     updateVisual(nd);
   });
+  updateRowColHighlight();
   updateHeaders();
   updateChord();
 }
@@ -574,10 +578,11 @@ function toggleUtonality(j) {
   const row   = cells[j].filter(nd => !nd.isDiag);
   const allOn = row.every(nd => nd.active);
   row.forEach(nd => {
-    if (allOn) { if (nd.active) { nd.active = false; if (ac) stopVoice(nd.key); } }
-    else        { if (!nd.active) { nd.active = true; startVoice(nd.key, fundamental * nd.num / nd.den); } }
+    if (allOn) { if (nd.active) { nd.active = false; if (ac) stopVoice(nd.vkey); } }
+    else        { if (!nd.active) { nd.active = true; startVoice(nd.vkey, fundamental * nd.num / nd.den); } }
     updateVisual(nd);
   });
+  updateRowColHighlight();
   updateHeaders();
   updateChord();
 }
@@ -588,8 +593,8 @@ function toggleUtonality(j) {
 
 function toggleCell(nd) {
   nd.active = !nd.active;
-  if (nd.active) startVoice(nd.key, fundamental * nd.num / nd.den);
-  else if (ac)   stopVoice(nd.key);
+  if (nd.active) startVoice(nd.vkey, fundamental * nd.num / nd.den);
+  else if (ac)   stopVoice(nd.vkey);
   updateVisual(nd);
   updateRowColHighlight();
   updateHeaders();
@@ -666,7 +671,7 @@ function updateChord() {
 
 function clearAll() {
   cells.flat().forEach(nd => {
-    if (nd.active) { nd.active = false; if (ac) stopVoice(nd.key); updateVisual(nd); }
+    if (nd.active) { nd.active = false; if (ac) stopVoice(nd.vkey); updateVisual(nd); }
   });
   document.querySelectorAll('.cell.row-lit, .cell.col-lit')
     .forEach(el => el.classList.remove('row-lit', 'col-lit'));
@@ -762,19 +767,22 @@ fundEl.addEventListener('input', () => {
   if (!ac) return;
   const t = ac.currentTime;
   cells.flat().forEach(nd => {
-    if (nd.active && voices[nd.key])
-      voices[nd.key].osc.frequency.setTargetAtTime(fundamental * nd.num / nd.den, t, 0.02);
+    if (nd.active && voices[nd.vkey])
+      voices[nd.vkey].osc.frequency.setTargetAtTime(fundamental * nd.num / nd.den, t, 0.02);
   });
 });
 
 function shiftOctave(dir) {
-  fundamental = Math.round(fundamental * Math.pow(2, dir) * 100) / 100;
+  const lo = parseFloat(fundEl.min) || 10;
+  const hi = parseFloat(fundEl.max) || 4000;
+  const next = Math.round(fundamental * Math.pow(2, dir) * 100) / 100;
+  fundamental = Math.min(hi, Math.max(lo, next));
   fundEl.value = fundamental;
   if (!ac) return;
   const t = ac.currentTime;
   cells.flat().forEach(nd => {
-    if (nd.active && voices[nd.key])
-      voices[nd.key].osc.frequency.setTargetAtTime(fundamental * nd.num / nd.den, t, 0.02);
+    if (nd.active && voices[nd.vkey])
+      voices[nd.vkey].osc.frequency.setTargetAtTime(fundamental * nd.num / nd.den, t, 0.02);
   });
 }
 
