@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="click nodes on a 7-limit just-intonation lattice to stack tones, and watch how far each ratio drifts from its 12-tone equal-tempered neighbour">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -114,6 +115,15 @@
     .scope-wrap { width: 100%; max-width: 780px; }
     canvas { display: block; width: 100%; border: 1px solid var(--border); border-radius: 2px; }
 
+    /* ── Back link ────────────────────────────────────── */
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
     /* ── Hint ─────────────────────────────────────────── */
     .hint {
       font-size: 0.54rem; letter-spacing: 0.12em;
@@ -122,6 +132,8 @@
   </style>
 </head>
 <body>
+
+<a class="eggs-back" href="eggs.html">← eggs</a>
 
 <div class="header">
   <h1 class="title">septimal lattice</h1>
@@ -250,17 +262,16 @@ function devColor(d) {
 // ── Interval names ──────────────────────────────────────
 const NAMES = {
   '1/1':   'unison',
+  // 3-limit
   '3/2':   'P5',                  '4/3':   'P4',
   '9/8':   'M2 (Pythagorean)',    '16/9':  'm7 (Pythagorean)',
-  '27/16': 'M6 (Pythagorean)',    '32/27': 'm3 (Pythagorean)',
-  '81/64': 'M3 (Pythagorean)',    '128/81':'m6 (Pythagorean)',
+  // 5-limit
   '5/4':   'M3 (just)',           '8/5':   'm6 (just)',
   '6/5':   'm3 (just)',           '5/3':   'M6 (just)',
   '15/8':  'M7 (just)',           '16/15': 'm2 (just)',
   '10/9':  'minor whole tone',    '9/5':   'm7 (just)',
   '45/32': 'aug. fourth',         '64/45': 'dim. fifth',
-  '25/16': 'aug. fifth',          '32/25': 'dim. fourth',
-  // 7-limit
+  // 7-limit — named intervals
   '7/4':   'natural m7 — "blue seventh"',
   '8/7':   'septimal M2',
   '7/6':   'septimal m3',
@@ -271,21 +282,27 @@ const NAMES = {
   '14/9':  'septimal m6',
   '21/16': 'septimal P4',
   '32/21': 'septimal P5 (alt.)',
-  '35/32': 'septimal chromatic semitone',
   '63/32': 'septimal M7',
+  '35/32': 'septimal neutral second',
   '15/14': 'septimal diatonic semitone',
-  '21/20': 'septimal chromatic semitone (alt.)',
-  '35/24': 'septimal M6 (wide)',
-  '63/40': 'septimal aug. fifth',
-  '35/18': 'septimal m7 (wide)',
-  '45/28': 'septimal aug. fourth (wide)',
-  '28/15': 'septimal M7 (wide)',
-  '105/64':'septimal aug. sixth',
-  '63/64': 'septimal comma region',
-  '56/45': '—',
-  '28/27': 'septimal comma',
-  '7/3':   '—',
-  '21/11': '—',
+  '21/20': 'septimal chromatic semitone',
+  '64/63': 'septimal comma (Archytas)',
+  '36/35': 'septimal diesis (quarter tone)',
+  // 7-limit — commatic shadings, named by how far they sit from a plain interval
+  '128/105': 'wide m3 (6/5 × septimal comma)',
+  '315/256': 'narrow M3 (5/4 ÷ septimal comma)',
+  '56/45':   'narrow M3 (5/4 ÷ septimal kleisma)',
+  '80/63':   'wide M3 (5/4 × septimal comma)',
+  '48/35':   'wide P4 (4/3 × septimal diesis)',
+  '35/24':   'narrow P5 (3/2 ÷ septimal diesis)',
+  '63/40':   'narrow m6 (8/5 ÷ septimal comma)',
+  '45/28':   'wide m6 (8/5 × septimal kleisma)',
+  '512/315': 'wide m6 (8/5 × septimal comma)',
+  '105/64':  'narrow M6 (5/3 ÷ septimal comma)',
+  '64/35':   'wide m7 (16/9 × septimal diesis)',
+  '28/15':   'narrow M7 (15/8 ÷ septimal kleisma)',
+  '40/21':   'wide M7 (15/8 × septimal comma)',
+  '35/18':   'narrow octave (2/1 ÷ septimal diesis)',
 };
 
 // ═══════════════════════════════════════════════════════
@@ -597,7 +614,21 @@ function initAudio() {
 }
 
 function startVoice(key, freq) {
-  if (voices[key]) return;
+  const held = voices[key];
+  if (held) {
+    // Still in its release tail — cancel the pending teardown and re-open the
+    // envelope, otherwise the node lights up with no sound behind it.
+    if (!held.relId) return;
+    clearTimeout(held.relId);
+    held.relId = null;
+    const t = ac.currentTime;
+    held.gain.gain.cancelScheduledValues(t);
+    held.gain.gain.setValueAtTime(held.gain.gain.value, t);
+    held.gain.gain.setTargetAtTime(0.09, t, 0.015);
+    held.osc.frequency.setValueAtTime(freq, t);
+    if (!rafId) drawScope();
+    return;
+  }
   initAudio();
   if (ac.state === 'suspended') ac.resume();
   const osc  = ac.createOscillator();
@@ -609,16 +640,19 @@ function startVoice(key, freq) {
   osc.connect(gain);
   gain.connect(masterGain);
   osc.start();
-  voices[key] = { osc, gain };
+  voices[key] = { osc, gain, relId: null };
   if (!rafId) drawScope();
 }
 
 function stopVoice(key) {
-  if (!voices[key]) return;
-  const { osc, gain } = voices[key];
+  const v = voices[key];
+  if (!v || v.relId) return;
+  const { osc, gain } = v;
   gain.gain.setTargetAtTime(0, ac.currentTime, 0.06);
-  setTimeout(() => {
+  v.relId = setTimeout(() => {
     try { osc.stop(); } catch (_) {}
+    osc.disconnect();
+    gain.disconnect();
     delete voices[key];
     if (Object.keys(voices).length === 0 && rafId) {
       cancelAnimationFrame(rafId); rafId = null; blankScope();

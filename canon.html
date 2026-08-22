@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="draw a subject on a microtonal grid and stack canonic voices at any delay and interval — imitation is one melody read at several distances at once.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -107,9 +108,19 @@
   .nota-rest{fill:#444460;font-family:serif;font-size:18px}
   .nota-clef{fill:#6868a0;font-family:serif;font-size:48px}
   .nota-lbl{font-family:'JetBrains Mono',monospace;font-size:8px}
+
+  /* ── Back link ─────────── */
+  .eggs-back {
+    position: fixed; top: .7rem; left: 1rem;
+    font-size: .58rem; color: #332; text-decoration: none;
+    letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+    z-index: 100; transition: color .15s;
+  }
+  .eggs-back:hover { color: #aaa; }
 </style>
 </head>
 <body>
+<a class="eggs-back" href="eggs.html">← eggs</a>
 <div class="app">
   <h1>Canon Loop Machine</h1>
   <div class="sub">draw a subject · rests are empty columns · stack pitches for double stops · add voices at any distance and interval · space = play/stop</div>
@@ -476,10 +487,20 @@ function ac() {
 
 function rowFreq(r) { return C4*Math.pow(2,(TUNINGS[curTuning].rowCents(r)+viewOctave*1200)/1200); }
 
+// Every voice goes through one master gain so stop can silence the notes that
+// were already handed to the 150 ms scheduler lookahead.
+let masterGain=null;
+function master() {
+  const c=ac();
+  if(!masterGain){ masterGain=c.createGain(); masterGain.gain.value=1; masterGain.connect(c.destination); }
+  return masterGain;
+}
+
 function playNote(row, transCents, when) {
   const freq=rowFreq(row)*Math.pow(2,transCents/1200);
   if(freq<18||freq>20000) return;
   const c=ac();
+  const out=master();
   const osc=c.createOscillator();
   const g=c.createGain();
   const isPluck = oscType==='pluck';
@@ -488,9 +509,9 @@ function playNote(row, transCents, when) {
   if(oscType==='sawtooth'||oscType==='square') {
     const filt=c.createBiquadFilter();
     filt.type='lowpass'; filt.frequency.value=Math.min(freq*5,3800); filt.Q.value=0.8;
-    osc.connect(g); g.connect(filt); filt.connect(c.destination);
+    osc.connect(g); g.connect(filt); filt.connect(out);
   } else {
-    osc.connect(g).connect(c.destination);
+    osc.connect(g).connect(out);
   }
   const atk=isPluck?0.002:0.008, rel=isPluck?0.13:0.38;
   g.gain.setValueAtTime(0,when);
@@ -504,6 +525,7 @@ function playNote(row, transCents, when) {
 // SCHEDULER
 // ═══════════════════════════════════════════════════════════════════════════════
 let schedT=null, curStep=0, nextT=0;
+const NOTE_TAIL=0.45;   // longest note release + tail, in seconds
 function stepDur() { return 60/bpm/4; }
 function swingDur(step) {
   if(swingRatio===0.5) return stepDur();
@@ -531,8 +553,8 @@ function sched() {
       if(curStep>=numSteps) curStep=0;
     } else {
       if(curStep>=onceTot) {
-        const msRemaining=(nextT-actx.currentTime)*1000+50;
-        setTimeout(stopPlay, Math.max(0,msRemaining));
+        const msRemaining=(nextT-actx.currentTime)*1000+NOTE_TAIL*1000;
+        schedT=setTimeout(stopPlay, Math.max(0,msRemaining));   // stop can cancel it
         return;
       }
     }
@@ -540,8 +562,27 @@ function sched() {
   schedT=setTimeout(sched,20);
 }
 
-function startPlay() { ac(); nextT=actx.currentTime+0.05; curStep=0; playing=true; $('btn-play').classList.add('active'); sched(); }
-function stopPlay()  { playing=false; if(schedT) clearTimeout(schedT); $('btn-play').classList.remove('active'); }
+function startPlay() {
+  ac();
+  const g=master().gain, now=actx.currentTime;
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(0,now);
+  g.linearRampToValueAtTime(1,now+0.02);   // ramp back up after a stop, no click
+  nextT=now+0.05; curStep=0; playing=true;
+  $('btn-play').classList.add('active');
+  sched();
+}
+function stopPlay()  {
+  playing=false;
+  if(schedT){ clearTimeout(schedT); schedT=null; }
+  if(actx&&masterGain){                    // kill the lookahead that already fired
+    const g=masterGain.gain, now=actx.currentTime;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value,now);
+    g.linearRampToValueAtTime(0,now+0.03);
+  }
+  $('btn-play').classList.remove('active');
+}
 function togglePlay(){ playing?stopPlay():startPlay(); }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -605,9 +646,11 @@ window.addEventListener('mouseup',()=>painting=false);
 gc.addEventListener('touchstart',e=>{
   e.preventDefault();
   const {s,p}=gpos(e.touches[0]);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; }
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; markNotaDirty(); }
 },{passive:false});
 gc.addEventListener('touchmove',e=>{ e.preventDefault(); if(painting) gpaint(e.touches[0]); },{passive:false});
+window.addEventListener('touchend',()=>painting=false);
+window.addEventListener('touchcancel',()=>painting=false);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PITCH AXIS
@@ -901,9 +944,33 @@ function buildIntervals() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // TUNING SWITCH
 // ═══════════════════════════════════════════════════════════════════════════════
-function switchTuning(t) {
+// Rows are scale degrees, not fixed pitches, so a drawn note keeps its row
+// index and is simply re-tuned by the new scale — the contour survives, the
+// intonation changes, which is the whole point of the instrument. Rows past
+// the end of a shorter tuning are the only thing that can be lost, and that
+// asks first. Pass quiet=true when the caller is about to overwrite the grid
+// anyway (load), so it never prompts.
+function switchTuning(t, quiet) {
+  const newRows=TUNINGS[t].defRows;
+  let highest=-1;
+  if(grid) grid.forEach((row,p)=>{ if(row&&row.some(Boolean)) highest=p; });
+  const wipes = highest>=newRows;
+  if(!quiet && wipes && !confirm(`${TUNINGS[t].label} has only ${newRows} rows — notes above that would be lost. switch anyway?`)) {
+    $('tuning-sel').value=curTuning;
+    return;
+  }
   curTuning=t;
-  initGrid();
+  if(quiet||wipes) {
+    initGrid();
+  } else {
+    const old=grid;
+    numRows=newRows;
+    grid=Array.from({length:numRows},(_,p)=>{
+      const row=new Array(numSteps).fill(false);
+      if(old&&old[p]) for(let s=0;s<numSteps;s++) row[s]=!!old[p][s];
+      return row;
+    });
+  }
   buildAxis();
   resizeG();
   $('scale-sel').disabled=!TUNINGS[t].scaleFilter;
@@ -971,7 +1038,7 @@ function loadGrid() {
     if(!s || s.v !== 1) return false;
     if(s.tuning && TUNINGS[s.tuning]) {
       $('tuning-sel').value = s.tuning;
-      switchTuning(s.tuning);
+      switchTuning(s.tuning, true);
     }
     if(s.numSteps) updateSteps(s.numSteps);
     if(s.bpm) { bpm=s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
@@ -982,6 +1049,7 @@ function loadGrid() {
     }
     if(s.oscType) { oscType=s.oscType; $('osc-sel').value=oscType; }
     if(s.grid) {
+      grid.forEach(row => row && row.fill(false));
       for(let p=0; p<Math.min(s.grid.length,numRows); p++) {
         if(s.grid[p] && grid[p]) {
           for(let st=0; st<Math.min(s.grid[p].length,numSteps); st++) {

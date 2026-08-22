@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="play the undertone series: click partials to sound 1/n below a root, hearing how subharmonics build a minor chord where overtones build major.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -327,7 +328,15 @@ function intervalName(n) {
 }
 
 // ── Audio ─────────────────────────────────────────────────
+// Per-voice peak is AMP_BASE / n^0.6; all 16 partials sum to ~2.17,
+// which clips hard on its own. MASTER_GAIN pulls the full stack under
+// unity (2.17 * 0.45 ≈ 0.98) and the compressor catches transients
+// from voices fading in on top of each other.
+const AMP_BASE    = 0.38;
+const MASTER_GAIN = 0.45;
+
 let ac = null, analyser = null, scopeBuf = null;
+let master = null, comp = null;
 const voices = {};
 const activeSet = new Set();
 let rafId = null;
@@ -335,9 +344,19 @@ let rafId = null;
 function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
+  master = ac.createGain();
+  master.gain.value = MASTER_GAIN;
+  comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -10;
+  comp.knee.value      = 6;
+  comp.ratio.value     = 8;
+  comp.attack.value    = 0.004;
+  comp.release.value   = 0.15;
   analyser = ac.createAnalyser();
   analyser.fftSize = 1024;
   analyser.smoothingTimeConstant = 0.6;
+  master.connect(comp);
+  comp.connect(analyser);
   analyser.connect(ac.destination);
 }
 
@@ -353,13 +372,19 @@ function togglePartial(n) {
   if (activeSet.has(n)) {
     const { osc, gain } = voices[n];
     gain.gain.setTargetAtTime(0, ac.currentTime, 0.04);
-    setTimeout(() => { try { osc.stop(); } catch(e){} delete voices[n]; }, 300);
+    // capture osc in the closure: re-toggling inside the 300 ms release
+    // window must not let this timeout delete the NEW voice's handle
+    setTimeout(() => {
+      try { osc.stop(); } catch(e){}
+      try { gain.disconnect(); } catch(e){}
+      if (voices[n] && voices[n].osc === osc) delete voices[n];
+    }, 300);
     activeSet.delete(n);
     if (activeSet.size === 0) stopScope();
   } else {
     const root = getRoot();
     const freq  = root / n;
-    const amp   = 0.38 / Math.pow(n, 0.6);
+    const amp   = AMP_BASE / Math.pow(n, 0.6);
     const osc   = ac.createOscillator();
     const gain  = ac.createGain();
     osc.type = 'sine';
@@ -367,7 +392,7 @@ function togglePartial(n) {
     gain.gain.setValueAtTime(0, ac.currentTime);
     gain.gain.setTargetAtTime(amp, ac.currentTime, 0.025);
     osc.connect(gain);
-    gain.connect(analyser);
+    gain.connect(master);
     osc.start();
     voices[n] = { osc, gain };
     activeSet.add(n);

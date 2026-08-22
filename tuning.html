@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="play 12-, 19- and 31-tet, just intonation and the harmonic series on one keyboard, each key labelled with its cents deviation from 12-tet">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -156,6 +157,7 @@
       transition: background 0.06s, border-color 0.06s;
     }
     .key:hover { background: rgba(255,255,255,0.07); }
+    .key:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
     .key.active {
       background: var(--accent-bg);
       border-color: var(--accent);
@@ -195,6 +197,14 @@
       border-radius: 2px;
     }
 
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
     /* ── Hint ─────────────────────────────────────────── */
     .hint {
       font-size: 0.54rem;
@@ -210,6 +220,8 @@
   </style>
 </head>
 <body>
+
+<a class="eggs-back" href="eggs.html">← eggs</a>
 
 <div class="header">
   <h1 class="title">tuning systems</h1>
@@ -247,6 +259,10 @@
     </div>
   </div>
 
+  <div class="ctrl-group">
+    <button class="oct-btn" id="silence-btn">silence</button>
+  </div>
+
 </div>
 
 <p id="desc"></p>
@@ -272,6 +288,18 @@ const KEY_SEQ = [
   'z','x','c','v','b','n','m',',','.','/','a','s','d','f','g','h','j','k','l',";","'",
   'q','w','e','r','t','y','u','i','o','p','[',']','\\',
   '`','1','2','3','4','5','6','7','8','9','0','-','='
+];
+
+// Same sequence as physical key codes. Note-on/note-off match on e.code, never
+// on e.key: pressing shift or capslock mid-note rewrites e.key and the keyup
+// would never match its keydown, leaving the note sounding forever.
+const CODE_SEQ = [
+  'KeyZ','KeyX','KeyC','KeyV','KeyB','KeyN','KeyM','Comma','Period','Slash',
+  'KeyA','KeyS','KeyD','KeyF','KeyG','KeyH','KeyJ','KeyK','KeyL','Semicolon','Quote',
+  'KeyQ','KeyW','KeyE','KeyR','KeyT','KeyY','KeyU','KeyI','KeyO','KeyP',
+  'BracketLeft','BracketRight','Backslash',
+  'Backquote','Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7',
+  'Digit8','Digit9','Digit0','Minus','Equal'
 ];
 
 // ── Tuning utilities ────────────────────────────────────────────────────
@@ -357,7 +385,7 @@ let waveform   = 'sine';
 // ── Audio engine ─────────────────────────────────────────────────────────
 let ac = null, masterGain, compressor, analyser, scopeBuf;
 let rafId = null;
-const voices = {};    // voiceId → { osc, gain }
+const voices = {};    // voiceId → { osc, gain, release }
 const heldKeys = new Set();
 
 function initAudio() {
@@ -382,7 +410,16 @@ function initAudio() {
 }
 
 function startVoice(vid, freq) {
-  if (voices[vid]) return;
+  const prev = voices[vid];
+  if (prev) {
+    // Still sounding and not released — nothing to retrigger
+    if (!prev.release) return;
+    // Retrigger inside the 350 ms release window: cancel the pending cleanup
+    // and free the fading oscillator, or its timeout deletes the new voice
+    clearTimeout(prev.release);
+    try { prev.osc.stop(); } catch (_) {}
+    delete voices[vid];
+  }
   initAudio();
   if (ac.state === 'suspended') ac.resume();
   const osc  = ac.createOscillator();
@@ -394,30 +431,49 @@ function startVoice(vid, freq) {
   osc.connect(gain);
   gain.connect(masterGain);
   osc.start();
-  voices[vid] = { osc, gain };
+  voices[vid] = { osc, gain, release: null };
   if (!rafId) startScope();
 }
 
 function stopVoice(vid) {
-  if (!voices[vid]) return;
-  const { osc, gain } = voices[vid];
+  const v = voices[vid];
+  if (!v || v.release) return;
+  const { osc, gain } = v;
   gain.gain.setTargetAtTime(0, ac.currentTime, 0.05);
-  setTimeout(() => {
+  v.release = setTimeout(() => {
     try { osc.stop(); } catch (_) {}
-    delete voices[vid];
+    // Only clear the slot if this voice is still the one living in it
+    if (voices[vid] === v) delete voices[vid];
     checkScope();
   }, 350);
 }
 
+// True while a voice is sounding and has not been released
+function isSounding(vid) {
+  const v = voices[vid];
+  return !!v && !v.release;
+}
+
+// Panic button. Empties the voice table synchronously so nothing can survive
+// a stuck keyup, an interrupted touch, or a tab switch.
 function stopAll() {
-  Object.keys(voices).forEach(stopVoice);
+  Object.keys(voices).forEach(vid => {
+    const v = voices[vid];
+    if (v.release) clearTimeout(v.release);
+    try { v.gain.gain.cancelScheduledValues(ac.currentTime); } catch (_) {}
+    try { v.gain.gain.setTargetAtTime(0, ac.currentTime, 0.02); } catch (_) {}
+    try { v.osc.stop(ac.currentTime + 0.12); } catch (_) {}
+    delete voices[vid];
+  });
   heldKeys.clear();
   document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
+  checkScope();
 }
 
 // ── Keyboard DOM ──────────────────────────────────────────────────────────
+// Does NOT silence anything — held notes carry across a rebuild. Callers that
+// invalidate the pitches (a tuning change) call stopAll() themselves.
 function buildKeyboard() {
-  stopAll();
   const kbd   = document.getElementById('keyboard');
   const t     = TUNINGS[tuningKey];
   kbd.innerHTML = '';
@@ -428,7 +484,8 @@ function buildKeyboard() {
   const keyW       = Math.max(36, Math.floor((containerW - gapTotal) / t.steps));
 
   for (let i = 0; i < t.steps; i++) {
-    const kc = KEY_SEQ[i] || '';
+    const kc = KEY_SEQ[i]  || '';
+    const cd = CODE_SEQ[i] || '';
     const c  = t.cents(i);
 
     const el = document.createElement('div');
@@ -436,8 +493,9 @@ function buildKeyboard() {
     el.style.width = keyW + 'px';
     el.dataset.step    = i;
     el.dataset.keychar = kc;
+    el.dataset.keycode = cd;
     el.setAttribute('role', 'button');
-    el.setAttribute('tabindex', '-1');
+    el.setAttribute('tabindex', '0');
     el.setAttribute('aria-label', `${t.name(i)}, step ${i}`);
 
     el.innerHTML =
@@ -451,6 +509,31 @@ function buildKeyboard() {
     el.addEventListener('mouseleave', ()  => { releaseKey('m' + i); el.classList.remove('active'); });
     el.addEventListener('touchstart', e => { e.preventDefault(); pressKey(i, 'm' + i); el.classList.add('active'); }, { passive: false });
     el.addEventListener('touchend',   e => { e.preventDefault(); releaseKey('m' + i); el.classList.remove('active'); }, { passive: false });
+    // An interrupted touch (incoming call, notification swipe) never sends touchend
+    el.addEventListener('touchcancel',   () => { releaseKey('m' + i); el.classList.remove('active'); });
+    el.addEventListener('pointercancel', () => { releaseKey('m' + i); el.classList.remove('active'); });
+
+    // role="button" + tabindex 0 has to mean something: enter and space play
+    el.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      if (e.repeat) return;
+      pressKey(i, 'b' + i);
+      el.classList.add('active');
+    });
+    el.addEventListener('keyup', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      releaseKey('b' + i);
+      el.classList.remove('active');
+    });
+    // Tabbing away mid-note swallows the keyup
+    el.addEventListener('blur', () => { releaseKey('b' + i); el.classList.remove('active'); });
+
+    // Carry held notes across a rebuild: re-light whatever is still sounding
+    if (isSounding('m' + i) || isSounding('b' + i) || (cd && heldKeys.has('k' + cd))) {
+      el.classList.add('active');
+    }
 
     kbd.appendChild(el);
   }
@@ -468,36 +551,42 @@ function releaseKey(vid) {
 }
 
 // ── Keyboard input ─────────────────────────────────────────────────────
+function isTyping(e) {
+  const tag = e.target && e.target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA';
+}
+
 document.addEventListener('keydown', e => {
-  if (e.repeat) return;
+  if (e.repeat || isTyping(e)) return;
 
-  if (e.key === 'ArrowLeft')  { e.preventDefault(); shiftOctave(-1); return; }
-  if (e.key === 'ArrowRight') { e.preventDefault(); shiftOctave(1);  return; }
-  if (e.key === 'Escape')     { e.preventDefault(); stopAll();        return; }
+  if (e.code === 'ArrowLeft')  { e.preventDefault(); shiftOctave(-1); return; }
+  if (e.code === 'ArrowRight') { e.preventDefault(); shiftOctave(1);  return; }
+  if (e.code === 'Escape')     { e.preventDefault(); stopAll();        return; }
 
-  const char = e.key;
-  const si   = KEY_SEQ.indexOf(char);
+  const si = CODE_SEQ.indexOf(e.code);
   if (si === -1 || si >= TUNINGS[tuningKey].steps) return;
   e.preventDefault();
 
-  const vid = 'k' + char;
+  const vid = 'k' + e.code;
   if (heldKeys.has(vid)) return;
   heldKeys.add(vid);
 
   pressKey(si, vid);
-  const el = document.querySelector(`[data-keychar="${CSS.escape(char)}"]`);
+  const el = document.querySelector(`[data-keycode="${e.code}"]`);
   if (el) el.classList.add('active');
 });
 
 document.addEventListener('keyup', e => {
-  const char = e.key;
-  const vid  = 'k' + char;
+  const vid = 'k' + e.code;
   if (!heldKeys.has(vid)) return;
   heldKeys.delete(vid);
   releaseKey(vid);
-  const el = document.querySelector(`[data-keychar="${CSS.escape(char)}"]`);
+  const el = document.querySelector(`[data-keycode="${e.code}"]`);
   if (el) el.classList.remove('active');
 });
+
+// A window switch or app swipe swallows every keyup — drop the lot
+window.addEventListener('blur', stopAll);
 
 // ── Tuning buttons ─────────────────────────────────────────────────────
 document.getElementById('tuning-btns').addEventListener('click', e => {
@@ -506,6 +595,7 @@ document.getElementById('tuning-btns').addEventListener('click', e => {
   document.querySelectorAll('#tuning-btns .tog').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   tuningKey = btn.dataset.t;
+  stopAll();          // the old pitches no longer exist in the new tuning
   buildKeyboard();
 });
 
@@ -531,6 +621,8 @@ function shiftOctave(dir) {
   fundEl.value = fundamental;
   stopAll();
 }
+
+document.getElementById('silence-btn').addEventListener('click', stopAll);
 
 document.getElementById('oct-dn').addEventListener('click', () => shiftOctave(-1));
 document.getElementById('oct-up').addEventListener('click', () => shiftOctave(1));
@@ -581,9 +673,14 @@ function drawScope() {
   g.stroke();
 }
 
-// Rebuild on resize (debounced)
+// Rebuild on resize (debounced), but only on a real width change. A phone's
+// URL bar collapsing fires resize at the same width, and rebuilding there
+// used to pull the keyboard out from under every held note.
 let resizeTimer;
+let lastWidth = window.innerWidth;
 window.addEventListener('resize', () => {
+  if (window.innerWidth === lastWidth) return;
+  lastWidth = window.innerWidth;
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(buildKeyboard, 200);
 });
