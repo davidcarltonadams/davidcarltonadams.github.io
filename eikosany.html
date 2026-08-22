@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="play erv wilson's combination product sets — hexany, dekany, eikosany — as graphs, and hear how tones built from shared odd generators lock together.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -120,8 +121,9 @@
 <div class="header">
   <h1 class="title">eikosany</h1>
   <p class="sub">
-    Partch's combinatorial sets — notes built by multiplying subsets of prime generators.<br>
-    the hexany has six tones, the dekany ten, the eikosany twenty.<br>
+    Erv Wilson's combination product sets — each tone is the product of a subset of odd generators.<br>
+    hexany: the six pairs from 1·3·5·7, an octahedron. dekany: the ten pairs from 1·3·5·7·9.<br>
+    eikosany: the twenty triples from 1·3·5·7·9·11.<br>
     connected nodes share all but one generator · click to build chords.
   </p>
 </div>
@@ -268,28 +270,36 @@ function circleLayout(n, cx, cy, r, angleOffset) {
   });
 }
 
-// For hexany (6 nodes): use a special octahedral layout (two triangles)
-// Node order after sort by cents:
-// The sorted nodes group nicely as two triangles: one "otonality-type", one "utonality-type"
+// The hexany's six tones are the vertices of an octahedron. Its three axes are
+// the three disjoint pairs — the only two tones sharing no generator sit opposite:
+//   {1,3} ↔ {5,7}   {1,5} ↔ {3,7}   {1,7} ↔ {3,5}
+// Projected down the body diagonal, that octahedron is a regular hexagon in which
+// each axis is a diameter, and the twelve octahedral edges are the twelve drawn
+// edges (every pair except the three diameters, which share no generator).
+const HEXANY_AXES = [
+  [[1, 3], [5, 7]],
+  [[1, 5], [3, 7]],
+  [[1, 7], [3, 5]],
+];
+
+function hexanySlot(gens) {
+  const key = [...gens].sort((a, b) => a - b).join(',');
+  for (let a = 0; a < HEXANY_AXES.length; a++) {
+    for (let e = 0; e < 2; e++) {
+      if (HEXANY_AXES[a][e].join(',') === key) return { axis: a, end: e };
+    }
+  }
+  return null;
+}
+
 function hexanyLayout(nodes, cx, cy, r) {
-  // Identify the two groups: nodes containing generator 1 vs not
-  const g1 = [1, 3, 5, 7][0]; // = 1
-  const withOne    = nodes.filter(n => n.gens.includes(g1));
-  const withoutOne = nodes.filter(n => !n.gens.includes(g1));
   const positions = new Array(nodes.length);
-  // Three "with-1" nodes at angles 90°, 210°, 330° (outer triangle)
-  // Three "without-1" nodes at 30°, 150°, 270° (inner triangle, rotated 60°)
-  const angles1 = [90, 210, 330].map(d => d * Math.PI / 180 - Math.PI / 2);
-  const angles2 = [30, 150, 270].map(d => d * Math.PI / 180 - Math.PI / 2);
-  withOne.forEach((n, i) => {
-    const idx = nodes.indexOf(n);
-    const a = -Math.PI/2 + (2 * Math.PI * i / 3);
-    positions[idx] = { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
-  });
-  withoutOne.forEach((n, i) => {
-    const idx = nodes.indexOf(n);
-    const a = -Math.PI/2 + Math.PI/3 + (2 * Math.PI * i / 3);
-    positions[idx] = { x: cx + r * 0.65 * Math.cos(a), y: cy + r * 0.65 * Math.sin(a) };
+  nodes.forEach((n, idx) => {
+    const slot = hexanySlot(n.gens);
+    if (!slot) return;
+    // axis a occupies the diameter at a·60°; the two ends are π apart
+    const ang = -Math.PI / 2 + slot.axis * Math.PI / 3 + slot.end * Math.PI;
+    positions[idx] = { x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang) };
   });
   return positions;
 }
@@ -560,6 +570,7 @@ function onFundChange() {
 function selectSet(key) {
   clearChord();
   currentSet = key;
+  hoverIdx = -1;
   nodes = buildNodes(key);
   edges = buildEdges(nodes, SETS[key].k);
   Object.keys(SETS).forEach(k => {
@@ -582,6 +593,9 @@ cv.addEventListener('touchstart', e => {
   if (idx < 0) return;
   if (chord.has(idx)) { chord.delete(idx); stopNode(idx); }
   else { chord.add(idx); playNode(idx); }
+  // no hover on touch, so the tap doubles as the inspect gesture
+  hoverIdx = idx;
+  updateInfoPanel(nodes[idx]);
   updateChordStrip();
   draw();
 }, { passive: false });

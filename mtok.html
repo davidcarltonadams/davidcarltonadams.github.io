@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="description" content="a microtonal touch keyboard in just intonation and 12, 19 and 31-edo — drag on a key to bend filter, vibrato and overdrive">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <title>MTOK — David Carlton Adams</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap');
   *{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
   :root{
     --bg:#08080c;--s1:#0e0e14;--s2:#12121a;--s3:#181822;
@@ -89,6 +89,15 @@
   #xy-mode-dot.vibrato{background:var(--grn);}
   #xy-mode-dot.overdrive{background:var(--org);}
 
+  /* ── Back link ── bottom-right: the topbar owns the whole top-left strip ── */
+  .eggs-back {
+    position: fixed; bottom: .35rem; right: 1rem;
+    font-size: .58rem; color: #332; text-decoration: none;
+    letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+    z-index: 100; transition: color .15s;
+  }
+  .eggs-back:hover { color: #aaa; }
+
   /* ── Active voices badge ── */
   #voice-count{
     font-size:0.5rem;color:var(--txddd);
@@ -97,6 +106,7 @@
 </style>
 </head>
 <body>
+<a class="eggs-back" href="eggs.html">← eggs</a>
 <div class="wrap">
 
   <!-- ── Top bar ── -->
@@ -209,7 +219,7 @@
   </div>
 
   <div class="hint-bar">
-    drag after touch: XY modulation &nbsp;·&nbsp; slide between keys: legato &nbsp;·&nbsp; panic clears all voices
+    drag after touch: XY modulation &nbsp;·&nbsp; panic clears all voices &nbsp;·&nbsp; esc = panic
   </div>
 </div>
 
@@ -222,6 +232,16 @@
 // ═══════════════════════════════════════════════════════════
 
 const ROOT_C3 = 130.81;
+
+const NAT_W = 48, ACC_W = 28, QT_W = 18;
+const OCT_W = NAT_W * 7;  // 336px per octave
+
+const _NOTE12m = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const _WHITE12m = [1,0,1,0,1,1,0,1,0,1,0,1];
+const _MICRO_NAMESm = {
+  0:'C', 0.5:'C↑', 1:'C♯', 2:'D', 2.5:'D↑', 3:'E♭', 3.86:'E↓(5/4)', 4:'E', 5:'F',
+  5.5:'F↑', 6:'F♯', 7:'G', 7.5:'G↑', 8:'A♭', 9:'A', 9.7:'B♭↓(7)', 10:'B♭', 11:'B', 11.5:'B↑',
+};
 
 const JI_KEYS = [
   {key:'c',       label:'C',       ratio:1/1,       type:'nat'},
@@ -251,13 +271,28 @@ const JI_KEYS = [
   {key:'bqs',     label:'B↑',      ratio:243/128,   type:'qt'},
 ];
 
+// An EDO has no white/black keys of its own, so borrow them: for each of the 12
+// chromatic degrees, the single nearest step of the EDO inherits that degree's
+// name and colour (nat = white, acc = black). Every other step is a microtone.
+// Keys are uniform width — OCT_W/n, edge to edge — so 19 and 31 lay out as
+// evenly as 12 does, and nothing gets overlaid on top of anything else.
 function edoKeys(n) {
-  return Array.from({length:n}, (_,i) => ({
-    key: `p${i}`,
-    label: i === 0 ? 'C' : (i % Math.round(n/7) === 0 ? `${i}/${n}` : ''),
-    ratio: Math.pow(2, i/n),
-    type: i === 0 ? 'nat' : (i % Math.round(n/12) === 0 ? 'acc' : 'qt'),
-  }));
+  const anchors = new Map();          // step index → 12-TET pitch class
+  for (let pc = 0; pc < 12; pc++) {
+    const step = ((Math.round(pc * n / 12) % n) + n) % n;
+    if (!anchors.has(step)) anchors.set(step, pc);
+  }
+  const w = OCT_W / n;
+  return Array.from({length:n}, (_,i) => {
+    const pc = anchors.has(i) ? anchors.get(i) : -1;
+    return {
+      key: `p${i}`,
+      label: pc < 0 ? '' : _NOTE12m[pc],
+      ratio: Math.pow(2, i/n),
+      type: pc < 0 ? 'qt' : (_WHITE12m[pc] ? 'nat' : 'acc'),
+      step: i, w,
+    };
+  });
 }
 
 const TUNING_DATA = {
@@ -271,13 +306,6 @@ const TUNING_DATA = {
 // EXTERNAL TUNINGS  (tunings.json → TUNING_DATA)
 // Same pitch notation as canon.html: 0=C, 1=C#, 0.5=C↑(+50¢), 9.7≈7th partial.
 // ═══════════════════════════════════════════════════════════════════════════════
-const _NOTE12m = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
-const _WHITE12m = [1,0,1,0,1,1,0,1,0,1,0,1];
-const _MICRO_NAMESm = {
-  0:'C', 0.5:'C↑', 1:'C♯', 2:'D', 2.5:'D↑', 3:'E♭', 3.86:'E↓(5/4)', 4:'E', 5:'F',
-  5.5:'F↑', 6:'F♯', 7:'G', 7.5:'G↑', 8:'A♭', 9:'A', 9.7:'B♭↓(7)', 10:'B♭', 11:'B', 11.5:'B↑',
-};
-
 function _semLabelM(s) {
   if(_MICRO_NAMESm[s]) return _MICRO_NAMESm[s];
   const near = Math.round(s), pc = ((near%12)+12)%12;
@@ -448,6 +476,19 @@ function makeTanhCurve(drive, n=512) {
   return curve;
 }
 
+// A tanh curve depends only on the drive amount, so there is no reason to
+// allocate 512 floats on every pointermove. Bake a bank once and snap to the
+// nearest slot — 0.66 of a drive unit apart, well under audible.
+const CURVE_MIN = 1, CURVE_MAX = 22, CURVE_SLOTS = 32;
+const CURVE_BANK = Array.from({length:CURVE_SLOTS}, (_, i) =>
+  makeTanhCurve(CURVE_MIN + (CURVE_MAX - CURVE_MIN) * i / (CURVE_SLOTS - 1)));
+
+function tanhCurve(drive) {
+  const t = (drive - CURVE_MIN) / (CURVE_MAX - CURVE_MIN);
+  const i = Math.round(t * (CURVE_SLOTS - 1));
+  return CURVE_BANK[Math.max(0, Math.min(CURVE_SLOTS - 1, i))];
+}
+
 function lpfParamToHz(p) {
   return 80 * Math.pow(20000/80, Math.max(p, 0.001));
 }
@@ -487,7 +528,7 @@ function makeVoice(freq, pointerId, lx0, ly0) {
   const drive = 1 + params.drive * 11;
   const makeupGain = 1 + params.drive * 2.8;
   const shaper = actx.createWaveShaper();
-  shaper.curve = makeTanhCurve(drive);
+  shaper.curve = tanhCurve(drive);
   shaper.oversample = '2x';
   const shaperPost = actx.createGain(); shaperPost.gain.value = makeupGain;
 
@@ -518,7 +559,7 @@ function makeVoice(freq, pointerId, lx0, ly0) {
     freq, pointerId, lx0, ly0, rect: null,
     oscs: [sawOsc, triOsc, sinOsc, sqOsc], lfoOsc, lfoG,
     sawG, triG, sinG, sqG, mixG, adsrG, shaper, shaperPost, lpf, hpf, panner, voiceAmp,
-    released: false,
+    released: false, curveRef: shaper.curve,
     baseDrive: drive, baseLP: lpf.frequency.value, baseMakeup: makeupGain,
   };
   voices.set(pointerId, voice);
@@ -574,7 +615,8 @@ function updateVoiceXY(voice, lx, ly) {
     voice.lfoG.gain.setTargetAtTime(xyMod * 0.06 * voice.freq, actx.currentTime, 0.02);
   }
   if (activeXYModes.has('overdrive')) {
-    voice.shaper.curve = makeTanhCurve(voice.baseDrive + xyMod * 10);
+    const cv = tanhCurve(voice.baseDrive + xyMod * 10);
+    if (cv !== voice.curveRef) { voice.shaper.curve = cv; voice.curveRef = cv; }
     voice.shaperPost.gain.setTargetAtTime(voice.baseMakeup + xyMod * 1.5, actx.currentTime, 0.02);
   }
 }
@@ -639,9 +681,6 @@ function panicAll() {
 // CANVAS KEYBOARD — GEOMETRY
 // ═══════════════════════════════════════════════════════════
 
-const NAT_W = 48, ACC_W = 28, QT_W = 18;
-const OCT_W = NAT_W * 7;  // 336px per octave
-
 let kbCanvas, kbCtx, kbDpr = 1;
 let keyRects = [];
 
@@ -665,7 +704,11 @@ function buildKeyRects(logicalH) {
       const freq = tun.root * pk.ratio * Math.pow(2, oct) * octMult;
       let x, w, h;
 
-      if (pk.type === 'nat') {
+      if (pk.w) {
+        // EDO layout: the tuning carries its own slot and width (see edoKeys).
+        x = oct * OCT_W + pk.step * pk.w;
+        w = pk.w; h = logicalH;
+      } else if (pk.type === 'nat') {
         const ni = natKeys.indexOf(pk);
         x = oct * OCT_W + ni * NAT_W;
         w = NAT_W; h = logicalH;
@@ -1052,16 +1095,20 @@ function savePreset() {
     lpf: Math.round(params.lpf*100), drive: Math.round(params.drive*100),
     vol: Math.round(params.vol*100), xyModes: [...activeXYModes],
   };
-  localStorage.setItem('mtok-preset', JSON.stringify(state));
+  try { localStorage.setItem('mtok-preset', JSON.stringify(state)); } catch(_) {}
   const btn = document.getElementById('btn-save-preset');
   if (btn) { btn.textContent = 'saved!'; setTimeout(() => btn.textContent = 'save', 1500); }
-  // Make custom slot selectable
+  ensureCustomPresetOption();
+}
+
+// The saved preset survives in localStorage but its <option> does not survive a
+// reload — recreate the slot so a saved patch is selectable from a cold start.
+function ensureCustomPresetOption() {
   const sel = document.getElementById('preset-sel');
-  if (sel) {
-    let opt = sel.querySelector('[value="custom"]');
-    if (!opt) { opt = document.createElement('option'); opt.value='custom'; sel.appendChild(opt); }
-    opt.textContent = 'Custom (saved)';
-  }
+  if (!sel) return;
+  let opt = sel.querySelector('[value="custom"]');
+  if (!opt) { opt = document.createElement('option'); opt.value='custom'; sel.appendChild(opt); }
+  opt.textContent = 'Custom (saved)';
 }
 
 function updateVal(param, val) {
@@ -1079,6 +1126,16 @@ function updateVal(param, val) {
   } else if (param === 'drive') {
     params.drive = val / 100;
     document.getElementById('vl-drive').textContent = val;
+    // Sounding voices follow the slider — same mapping makeVoice() uses.
+    const d  = 1 + params.drive * 11;
+    const mk = 1 + params.drive * 2.8;
+    voices.forEach(v => {
+      if (v.released) return;
+      v.baseDrive = d; v.baseMakeup = mk;
+      const cv = tanhCurve(d);
+      if (cv !== v.curveRef) { v.shaper.curve = cv; v.curveRef = cv; }
+      v.shaperPost.gain.setTargetAtTime(mk, actx.currentTime, 0.02);
+    });
   }
 }
 
@@ -1110,7 +1167,7 @@ window.addEventListener('pointercancel', globalPointerUp, {passive:true});
 Object.assign(window, {
   setXYMode, shiftOctave, changeTuning, toggleControls,
   setOscLevel, updateVal, setMasterVol, panicAll, testBeep,
-  loadPreset, savePreset,
+  loadPreset, savePreset, reloadTunings,
 });
 
 // Audio unlock for any gesture on the page.
@@ -1119,6 +1176,8 @@ Object.assign(window, {
 document.addEventListener('touchstart', () => ensureCtx(), {passive:true});
 document.addEventListener('click',      () => ensureCtx(), {passive:true});
 document.addEventListener('mousedown',  () => ensureCtx(), {passive:true});
+
+try { if (localStorage.getItem('mtok-preset')) ensureCustomPresetOption(); } catch(_) {}
 
 /// Load tunings.json (K3, Vallotti, DCA Beta, any custom entries) on startup.
 fetch('./tunings.json')
@@ -1142,8 +1201,16 @@ requestAnimationFrame(() => requestAnimationFrame(() => {
   kbCanvas.addEventListener('touchmove',     onCanvasTouchMove,  {passive:false});
   kbCanvas.addEventListener('touchend',      onCanvasTouchEnd,   {passive:false});
   kbCanvas.addEventListener('touchcancel',   onCanvasTouchEnd,   {passive:false});
-  // Re-init canvas on resize (orientation change, browser chrome show/hide)
-  window.addEventListener('resize', () => { panicAll(); initCanvas(); });
+  // Re-init canvas on resize — but only on a real WIDTH change (rotation, window
+  // resize). A phone collapsing its URL bar fires resize with height alone, and
+  // rebuilding there would cut every sounding voice mid-note.
+  let lastResizeW = window.innerWidth;
+  window.addEventListener('resize', () => {
+    if (window.innerWidth === lastResizeW) return;
+    lastResizeW = window.innerWidth;
+    panicAll();
+    initCanvas();
+  });
 }));
 
 })();

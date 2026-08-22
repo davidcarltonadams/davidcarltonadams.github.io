@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="drag the fifth and watch twelve notes reshape, then play a bach fugue in werckmeister, kirnberger, vallotti, young or lehman tuning">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -51,6 +52,7 @@
       touch-action: none;
     }
     .pc-cell:hover { border-color: rgba(255,255,255,0.18); }
+    .pc-cell:focus-visible { outline: none; border-color: var(--ji); }
     .pc-cell.playing { border-color: var(--ji); background: rgba(160,200,136,0.06); }
     .pc-name {
       font-size: clamp(0.48rem,1.4vw,0.68rem); letter-spacing: 0.02em; color: var(--text);
@@ -296,6 +298,7 @@
   <span id="root-hz">C3 · 130.8 Hz</span>
   <button class="ctrl-btn" id="btn-drone">drone</button>
   <button class="ctrl-btn" id="btn-scale">scale ▶</button>
+  <button class="ctrl-btn" id="btn-stop-all">■ stop all</button>
 </div>
 
 <div class="wtk-section">
@@ -485,36 +488,82 @@ const REGULAR = [
   { name: '19-TET',         fifth: 1200*11/19 },
 ];
 
-const PC   = 23.460;
-const SC   = 21.506;
-const P5   = 701.955;
+const PC   = 23.460;   // Pythagorean comma
+const SC   = 21.506;   // syntonic comma
+const SCH  = PC - SC;  // schisma, 1.954¢
+const P5   = 701.955;  // pure fifth
 
+// Each chain is the twelve fifths in FIFTH_ORDER, i.e.
+//   0 C–G   1 G–D   2 D–A    3 A–E    4 E–B    5 B–F♯
+//   6 F♯–C♯ 7 C♯–G♯ 8 G♯–E♭  9 E♭–B♭ 10 B♭–F  11 F–C
+// The circle closes, so every chain must sum to 8400¢ = seven octaves.
+// checkFifthChains() below enforces it. (buildFromFifths only walks the first
+// eleven — the twelfth is what the closure buys you — but it is written out so
+// the sum is checkable.)
 const WELL = [
   {
+    // Werckmeister I (III), 1691: ¼ Pythagorean comma on C–G, G–D, D–A and B–F♯.
     name: 'Werckmeister III · 1691',
-    fifths: [P5-PC/4, P5-PC/4, P5-PC/4, P5, P5, P5-PC/4, P5, P5, P5, P5, P5, P5],
+    fifths: [P5-PC/4, P5-PC/4, P5-PC/4, P5,       P5,       P5-PC/4,
+             P5,      P5,      P5,      P5,       P5,       P5],
   },
   {
+    // Kirnberger I, 1766: the whole syntonic comma on D–A, the leftover
+    // schisma on F♯–C♯, every other fifth pure.
     name: 'Kirnberger I · 1766',
-    fifths: [P5, P5, P5-SC, P5, P5, P5, P5, P5, P5, P5, P5, P5],
+    fifths: [P5,      P5,      P5-SC,   P5,       P5,       P5,
+             P5-SCH,  P5,      P5,      P5,       P5,       P5],
   },
   {
-    name: 'Young II · 1800',
-    fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6, P5, P5, P5, P5, P5, P5, P5-PC/6],
-  },
-  {
+    // Kirnberger III, 1779: the syntonic comma split across C–G–D–A–E (so
+    // C–E is pure), schisma again on F♯–C♯.
     name: 'Kirnberger III · 1779',
-    fifths: [P5-SC/4, P5-SC/4, P5-SC/4, P5-SC/4, P5, P5, P5, P5, P5-(PC-SC), P5, P5, P5],
+    fifths: [P5-SC/4, P5-SC/4, P5-SC/4, P5-SC/4,  P5,       P5,
+             P5-SCH,  P5,      P5,      P5,       P5,       P5],
   },
   {
+    // Vallotti, 1754: ⅙ Pythagorean comma on the six fifths F–C–G–D–A–E–B,
+    // the six sharp-side fifths pure.
     name: 'Vallotti · 1754',
-    fifths: [P5-SC/6, P5-SC/6, P5-SC/6, P5-SC/6, P5-SC/6, P5, P5, P5, P5, P5, P5-(PC-SC), P5-SC/6],
+    fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6,  P5-PC/6,  P5,
+             P5,      P5,      P5,      P5,       P5,       P5-PC/6],
   },
   {
+    // Young II, 1800: Vallotti rotated one fifth sharpward — ⅙ Pythagorean
+    // comma on C–G–D–A–E–B–F♯.
+    name: 'Young II · 1800',
+    fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6,  P5-PC/6,  P5-PC/6,
+             P5,      P5,      P5,      P5,       P5,       P5],
+  },
+  {
+    // Lehman-Bach, 2004: Bradley Lehman's reading of the spiral drawn on the
+    // 1722 Well-Tempered Clavier title page (Early Music 33, 2005). The shape
+    // is five fifths at ⅙ PC, three pure, three at 1/12 PC, and a closing
+    // fifth wide by 1/12 PC — which is what the circle demands once the other
+    // eleven are set.
+    // UNVERIFIED: the 5 / 3 / 3 / 1 shape is Lehman's, but the *rotation* —
+    // where the ⅙-comma block starts — was not checked against the printed
+    // articles, only reasoned from the closure and from C major coming out
+    // purest (392.2¢). Rotating the block one fifth either way also closes.
+    // Check the articles before trusting the key colours of this one.
     name: 'Lehman-Bach · 2004',
-    fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/12, P5-PC/12, P5-PC/12, P5, P5, P5, P5-PC/12, P5-PC/12, P5-PC/12],
+    fifths: [P5-PC/6, P5-PC/6, P5-PC/6, P5-PC/6,  P5-PC/6,  P5,
+             P5,      P5,      P5-PC/12, P5-PC/12, P5-PC/12, P5+PC/12],
   },
 ];
+
+// A closed circle of twelve fifths spans seven octaves. A chain that misses
+// 8400¢ has a comma typo or a dropped schisma in it — say so loudly instead of
+// quietly detuning the keyboard.
+function fifthChainSum(fifths) {
+  return fifths.reduce((a, f) => a + f, 0);
+}
+WELL.forEach(w => {
+  const sum = fifthChainSum(w.fifths);
+  if (Math.abs(sum - 8400) > 1e-6) {
+    console.error(`temperament: ${w.name} fifths sum to ${sum.toFixed(4)}¢, not 8400¢`);
+  }
+});
 
 let currentPcCents = buildRegular(700);
 let currentFifth   = 700;
@@ -922,27 +971,46 @@ function updateDroneFreq() {
   if (droneOsc) droneOsc.frequency.setTargetAtTime(midiToFreq(getDroneMidi()), ac.currentTime, 0.02);
 }
 
-// Scale playback
-let scaleTimer = null;
+// Scale playback — every timer is tracked so stopAll() can kill it
+let scaleTimers = [];
+
+function stopScale() {
+  scaleTimers.forEach(clearTimeout);
+  scaleTimers = [];
+}
+
 function playScale() {
   initAudio();
   if (ac.state === 'suspended') ac.resume();
-  if (scaleTimer) { clearTimeout(scaleTimer); scaleTimer = null; }
+  stopScale();
 
   const degrees = [0,2,4,5,7,9,11,12];
   const rootMidi = getDroneMidi();
   const dur = 0.42;
 
   degrees.forEach((d, i) => {
-    scaleTimer = setTimeout(() => playNoteAt(rootMidi + d, ac.currentTime + 0.01, dur, 0.2), i * dur * 1000);
-  });
-  degrees.forEach((d, i) => {
-    setTimeout(() => {
+    scaleTimers.push(setTimeout(() => playNoteAt(rootMidi + d, ac.currentTime + 0.01, dur, 0.2), i * dur * 1000));
+    scaleTimers.push(setTimeout(() => {
       clearHighlights();
       highlightPc(((rootMidi + d) % 12 + 12) % 12, 0);
-    }, i * dur * 1000);
+    }, i * dur * 1000));
   });
-  setTimeout(clearHighlights, degrees.length * dur * 1000 + 200);
+  scaleTimers.push(setTimeout(clearHighlights, degrees.length * dur * 1000 + 200));
+}
+
+// One control that silences everything: Escape on a keyboard, "stop all" on a
+// phone. Drone, scale, fugue playback and any held pitch-class cell.
+function stopAll() {
+  stopScale();
+  stopPlayback();
+  releaseAllCells();
+  if (droneOn) {
+    stopDrone();
+    droneOn = false;
+    document.getElementById('btn-drone').classList.remove('on');
+  }
+  silencePool();
+  clearHighlights();
 }
 
 // ── 4. KERN PARSER ────────────────────────────────────────────────────────────
@@ -1070,9 +1138,10 @@ function parseKern(text) {
 
 const AHEAD = 0.12;
 const TICK  = 30;
-let schedTimer = null, score = null, schedIdx = 0;
+let schedTimer = null, endTimer = null, score = null, schedIdx = 0;
 let playStartAC = 0, playBPM = 80;
 let isPlaying = false;
+let playToken = 0;   // bumped on every stop, so stale highlight timers no-op
 
 function beatToSec(beats) { return beats * 60 / playBPM; }
 
@@ -1089,13 +1158,14 @@ function schedLoop() {
     const pc = ((ev.midi % 12) + 12) % 12;
     const delay = Math.max(0, (evTime - now) * 1000);
     const durMs = Math.max(beatToSec(ev.dur) * 0.9, 0.04) * 1000;
-    setTimeout(() => highlightPc(pc, durMs), delay);
+    const tok = playToken;
+    setTimeout(() => { if (tok === playToken) highlightPc(pc, durMs); }, delay);
     schedIdx++;
   }
   if (schedIdx >= score.events.length) {
     const lastEv = score.events[score.events.length - 1];
     const endTime = (playStartAC + beatToSec(lastEv.t + lastEv.dur) - ac.currentTime) * 1000;
-    setTimeout(stopPlayback, Math.max(0, endTime) + 300);
+    endTimer = setTimeout(stopPlayback, Math.max(0, endTime) + 300);
     return;
   }
   schedTimer = setTimeout(schedLoop, TICK);
@@ -1128,6 +1198,9 @@ function silencePool() {
 
 function stopPlayback() {
   clearTimeout(schedTimer);
+  clearTimeout(endTimer);
+  schedTimer = endTimer = null;
+  playToken++;
   isPlaying = false;
   silencePool();
   clearHighlights();
@@ -1152,7 +1225,7 @@ const LANDMARKS = [
 ];
 
 const WTK_KEYS = [
-  'C','c','C♯','c♯','D','d','E♭','e♭','E','e','F','f',
+  'C','c','C♯','c♯','D','d','E♭','d♯','E','e','F','f',
   'F♯','f♯','G','g','A♭','g♯','A','a','B♭','b♭','B','b'
 ];
 
@@ -1172,6 +1245,35 @@ function releasePcCell(i) {
   if (cell) cell.classList.remove('playing');
 }
 
+function releaseAllCells() {
+  Array.from(heldCells.keys()).forEach(releasePcCell);
+}
+
+// Start a held note on cell i. Shared by pointer and keyboard.
+function holdPcCell(i, cell) {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  if (heldCells.has(i)) return;
+  const droneBase = Math.floor(getDroneMidi() / 12) * 12;
+  const midi = droneBase + i;
+  const now = ac.currentTime;
+  const v = getVoice();
+  v.osc.frequency.cancelScheduledValues(0);
+  v.osc.frequency.setValueAtTime(midiToFreq(midi), now);
+  v.mute.gain.cancelScheduledValues(0);
+  v.mute.gain.setValueAtTime(1, now);
+  const g = v.gain.gain;
+  g.cancelScheduledValues(0);
+  g.setValueAtTime(0.0001, now);
+  g.exponentialRampToValueAtTime(0.22, now + ENV.attack);
+  const susTarget = Math.max(0.22 * ENV.sustain, 0.0001);
+  g.exponentialRampToValueAtTime(susTarget, now + ENV.attack + ENV.decay);
+  v.freeAt = now + 3600;
+  v.midi = midi;
+  heldCells.set(i, v);
+  cell.classList.add('playing');
+}
+
 function buildPcGrid() {
   const grid = document.getElementById('pc-grid');
   grid.innerHTML = '';
@@ -1179,37 +1281,35 @@ function buildPcGrid() {
     const cell = document.createElement('div');
     cell.className = 'pc-cell';
     cell.id = `pc-${i}`;
+    cell.tabIndex = 0;
+    cell.setAttribute('role', 'button');
+    cell.setAttribute('aria-label', `${name}, hold to sound`);
     cell.innerHTML = `<div class="pc-name">${name}</div><div class="pc-dev" id="pcdev-${i}">0¢</div><div class="pc-bar" id="pcbar-${i}"></div>`;
+
+    const release = () => releasePcCell(i);
 
     cell.addEventListener('pointerdown', e => {
       e.preventDefault();
-      initAudio();
-      if (ac.state === 'suspended') ac.resume();
-      if (heldCells.has(i)) return;
-      const droneBase = Math.floor(getDroneMidi() / 12) * 12;
-      const midi = droneBase + i;
-      const now = ac.currentTime;
-      const v = getVoice();
-      v.osc.frequency.cancelScheduledValues(0);
-      v.osc.frequency.setValueAtTime(midiToFreq(midi), now);
-      v.mute.gain.cancelScheduledValues(0);
-      v.mute.gain.setValueAtTime(1, now);
-      const g = v.gain.gain;
-      g.cancelScheduledValues(0);
-      g.setValueAtTime(0.0001, now);
-      g.exponentialRampToValueAtTime(0.22, now + ENV.attack);
-      const susTarget = Math.max(0.22 * ENV.sustain, 0.0001);
-      g.exponentialRampToValueAtTime(susTarget, now + ENV.attack + ENV.decay);
-      v.freeAt = now + 3600;
-      v.midi = midi;
-      heldCells.set(i, v);
-      cell.classList.add('playing');
+      holdPcCell(i, cell);
     });
 
-    const release = () => releasePcCell(i);
     cell.addEventListener('pointerup',     release);
     cell.addEventListener('pointerleave',  release);
     cell.addEventListener('pointercancel', release);
+
+    // Enter/Space behave like press-and-hold; blur releases a stuck note.
+    cell.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      if (e.repeat) return;
+      holdPcCell(i, cell);
+    });
+    cell.addEventListener('keyup', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      release();
+    });
+    cell.addEventListener('blur', release);
 
     grid.appendChild(cell);
   });
@@ -1578,6 +1678,7 @@ document.getElementById('btn-drone').addEventListener('click', function() {
 });
 
 document.getElementById('btn-scale').addEventListener('click', playScale);
+document.getElementById('btn-stop-all').addEventListener('click', stopAll);
 
 let currentBook = '1';
 document.getElementById('btn-book1').addEventListener('click', function() {
@@ -1611,12 +1712,10 @@ document.getElementById('tempo-slider').addEventListener('input', function() {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    stopPlayback();
-    if (droneOn) { stopDrone(); droneOn = false; document.getElementById('btn-drone').classList.remove('on'); }
-    clearHighlights();
-  }
-  if (e.key === ' ' && score) { e.preventDefault(); if (isPlaying) stopPlayback(); else startPlayback(); }
+  const onCell = !!(e.target && e.target.classList && e.target.classList.contains('pc-cell'));
+  if (e.key === 'Escape') stopAll();
+  // Space is the pitch-class cells' own key when one has focus.
+  if (e.key === ' ' && score && !onCell) { e.preventDefault(); if (isPlaying) stopPlayback(); else startPlayback(); }
 });
 
 // ── INIT ──────────────────────────────────────────────────────────────────────

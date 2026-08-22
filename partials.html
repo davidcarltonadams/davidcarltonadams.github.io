@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="sound the first 24 harmonics over any fundamental and watch each one drift from 12-tet in cents — the overtone series, layerable and audible.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -21,6 +22,14 @@
       --on-bg:   rgba(138,176,200,0.12);
       --border:  rgba(255,255,255,0.07);
     }
+
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
 
     body {
       background: var(--bg);
@@ -162,8 +171,11 @@
       transition: opacity 0.3s;
       cursor: ew-resize;
       position: relative;
+      touch-action: none;
     }
     .glide-zone:hover, .glide-zone.dragging { opacity: 1; }
+    /* touch devices never hover — the bar would otherwise stay invisible */
+    @media (hover: none) { .glide-zone { opacity: 1; } }
 
     .glide-track {
       width: 100%;
@@ -219,6 +231,8 @@
       -webkit-user-select: none;
     }
     .partial-row:hover { background: rgba(255,255,255,0.03); }
+    .partial-row.over-nyquist { opacity: 0.3; cursor: default; }
+    .partial-row.over-nyquist:hover { background: none; }
     .partial-row.active { background: var(--on-bg); }
 
     .p-num {
@@ -302,6 +316,17 @@
       width: 100%;
       border: 1px solid var(--border);
       border-radius: 2px;
+    }
+
+    /* ── Nyquist notice ───────────────────────────── */
+    .drop-note {
+      margin-top: 0.8rem;
+      font-size: 0.57rem;
+      letter-spacing: 0.1em;
+      color: rgba(200,140,120,0.75);
+      font-style: italic;
+      min-height: 0.8rem;
+      text-align: center;
     }
 
     /* ── Hint ─────────────────────────────────────── */
@@ -410,6 +435,8 @@
 </head>
 <body>
 
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
 <!-- ── W/X/Y/Z slot buttons ─────────────────────────── -->
 <div class="slots" id="slots"></div>
 
@@ -461,7 +488,9 @@
   <span></span>
 </div>
 
-<div class="partials" id="partials-list" role="list" aria-label="Harmonic partials"></div>
+<div class="partials" id="partials-list" role="group" aria-label="Harmonic partials"></div>
+
+<p class="drop-note" id="drop-note" role="status" aria-live="polite"></p>
 
 <!-- ── Scope ───────────────────────────────────────────── -->
 <div class="scope-wrap">
@@ -476,17 +505,68 @@ let ac = null;
 const nodes  = {};
 const active = new Set();
 let scopeNode = null, analyser = null, scopeBuf = null;
+let master = null, limiter = null;
 let rafId = null;
 let glideMs = 0;
 
 function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
+
+  // every partial lands on master; master is scaled so the whole stack
+  // stays under unity, and the limiter catches the phase-aligned attack
+  master = ac.createGain();
+  master.gain.value = MASTER_GAIN;
+  limiter = ac.createDynamicsCompressor();
+  limiter.threshold.value = -3;
+  limiter.knee.value      = 0;
+  limiter.ratio.value     = 20;
+  limiter.attack.value    = 0.002;
+  limiter.release.value   = 0.15;
+
   analyser = ac.createAnalyser();
   analyser.fftSize = 1024;
   analyser.smoothingTimeConstant = 0.6;
   scopeBuf = new Uint8Array(analyser.fftSize);
+
+  master.connect(limiter);
+  limiter.connect(analyser);
   analyser.connect(ac.destination);
+}
+
+// ── Nyquist ──────────────────────────────────────────────
+function nyquistHz() {
+  return (ac ? ac.sampleRate : 44100) / 2;
+}
+
+// highest partial number that still fits below Nyquist
+function maxAudiblePartial(fund) {
+  return Math.max(0, Math.floor((nyquistHz() - 1) / fund));
+}
+
+function reportDropped(ns) {
+  const el = document.getElementById('drop-note');
+  if (!el) return;
+  el.textContent = ns.length
+    ? `above Nyquist at this fundamental, not sounding: ${ns.join(', ')}`
+    : '';
+}
+
+// silence any sounding partial the current fundamental pushed past Nyquist
+function pruneAboveNyquist() {
+  if (!ac) return;
+  const maxN = maxAudiblePartial(getFundamental());
+  const t = ac.currentTime;
+  for (const n of [...active]) {
+    if (n > maxN && nodes[n]) {
+      const {osc, gain} = nodes[n];
+      delete nodes[n];
+      active.delete(n);
+      gain.gain.setTargetAtTime(0, t, 0.04);
+      setTimeout(() => { try { osc.stop(); } catch(e){} }, 300);
+    }
+  }
+  if (active.size === 0) stopScope();
 }
 
 function getFundamental() {
@@ -500,6 +580,7 @@ function applyFundamentalChange() {
 }
 
 function retuneAll() {
+  pruneAboveNyquist();
   const fund = getFundamental();
   if (ac) {
     const t = ac.currentTime;
@@ -534,8 +615,10 @@ function togglePartial(n) {
     if (active.size === 0) stopScope();
   } else {
     const fund = getFundamental();
+    // refuse to schedule above Nyquist — it would alias, not sound
+    if (n > maxAudiblePartial(fund)) { renderRows(); return; }
     const freq = fund * n;
-    const amp  = 0.35 / Math.pow(n, 0.7);
+    const amp  = partialAmp(n);
 
     const osc  = ac.createOscillator();
     const gain = ac.createGain();
@@ -544,7 +627,7 @@ function togglePartial(n) {
     gain.gain.setValueAtTime(0, ac.currentTime);
     gain.gain.setTargetAtTime(amp, ac.currentTime, 0.02);
     osc.connect(gain);
-    gain.connect(analyser);
+    gain.connect(master);
     osc.start();
     nodes[n] = {osc, gain};
     active.add(n);
@@ -603,9 +686,21 @@ function centsLabel(c) {
 
 // ── Render rows ───────────────────────────────────────────
 const NUM_PARTIALS = 24;
+const PARTIAL_AMP_REF = 0.35;
+
+function partialAmp(n) { return PARTIAL_AMP_REF / Math.pow(n, 0.7); }
+
+// all 24 partials start in phase, so their peak is the plain sum of the
+// amplitudes (~2.07). scale the master so the full stack lands under unity;
+// a single partial still comes through at ~0.16.
+const PEAK_SUM = Array.from({ length: NUM_PARTIALS }, (_, i) => partialAmp(i + 1))
+                      .reduce((a, b) => a + b, 0);
+const MASTER_GAIN = 0.95 / PEAK_SUM;
 
 function renderRows() {
   const fund = getFundamental();
+  const maxN = maxAudiblePartial(fund);
+  const over = [];
   const list = document.getElementById('partials-list');
   list.innerHTML = '';
 
@@ -613,15 +708,20 @@ function renderRows() {
     const freq  = fund * n;
     const {name, cents} = freqToNote(freq);
     const isOn  = active.has(n);
+    const tooHigh = n > maxN;
+    if (tooHigh) over.unshift(n);
     const barPct = Math.min(100, 100 / n);
 
     const row = document.createElement('div');
-    row.className = 'partial-row' + (isOn ? ' active' : '');
-    row.setAttribute('role', 'listitem');
-    row.setAttribute('tabindex', '0');
+    row.className = 'partial-row' + (isOn ? ' active' : '') +
+                    (tooHigh ? ' over-nyquist' : '');
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', tooHigh ? '-1' : '0');
     row.setAttribute('aria-label',
-      `Partial ${n}: ${fmtFreq(freq)}, ${name}, ${centsLabel(cents)}`);
+      `Partial ${n}: ${fmtFreq(freq)}, ${name}, ${centsLabel(cents)}` +
+      (tooHigh ? ', above Nyquist, cannot sound' : ''));
     row.setAttribute('aria-pressed', isOn.toString());
+    if (tooHigh) row.setAttribute('aria-disabled', 'true');
     row.dataset.n = n;
 
     row.innerHTML = `
@@ -640,6 +740,8 @@ function renderRows() {
 
     list.appendChild(row);
   }
+
+  reportDropped(over);
 }
 
 function updateRows() {
@@ -699,7 +801,7 @@ let glideDragStartX = 0, glideDragStartMs = 0;
 
 function glideCursor(ms) {
   const label = ms === 0 ? 'no glide' : `${ms}ms`;
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='18'><text x='2' y='13' fill='%23d8d0c8' font-size='11' font-family='Georgia,serif' font-style='italic'>${label}</text></svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='64' height='18'><text x='2' y='13' fill='#d8d0c8' font-size='11' font-family='Georgia,serif' font-style='italic'>${label}</text></svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 0 0, ew-resize`;
 }
 
@@ -714,29 +816,36 @@ glideZone.addEventListener('mouseenter', () => {
   glideZone.style.cursor = glideCursor(glideMs);
 });
 
-glideZone.addEventListener('mousedown', e => {
+// pointer, not mouse — the bar has to drag under a finger too
+glideZone.addEventListener('pointerdown', e => {
   glideDragging = true;
   glideDragStartX  = e.clientX;
   glideDragStartMs = glideMs;
   glideZone.classList.add('dragging');
+  if (glideZone.setPointerCapture) {
+    try { glideZone.setPointerCapture(e.pointerId); } catch(err){}
+  }
   e.preventDefault();
 });
 
-document.addEventListener('mousemove', e => {
+document.addEventListener('pointermove', e => {
   if (!glideDragging) return;
   const rect  = glideZone.getBoundingClientRect();
   const delta = e.clientX - glideDragStartX;
   const msDelta = (delta / rect.width) * GLIDE_MAX;
   setGlide(glideDragStartMs + msDelta);
   glideZone.style.cursor = glideCursor(glideMs);
-});
+  e.preventDefault();
+}, { passive: false });
 
-document.addEventListener('mouseup', () => {
+const endGlideDrag = () => {
   if (glideDragging) {
     glideDragging = false;
     glideZone.classList.remove('dragging');
   }
-});
+};
+document.addEventListener('pointerup',     endGlideDrag);
+document.addEventListener('pointercancel', endGlideDrag);
 
 // ── W/X/Y/Z presets ──────────────────────────────────────
 const SLOT_KEYS = ['W', 'X', 'Y', 'Z'];
@@ -749,9 +858,12 @@ SLOT_KEYS.forEach(k => {
 
 let activeSlot = null;
 let holdTimer  = null;
+// a completed hold rebuilds the buttons, and the click that follows
+// pointerup would otherwise land on the fresh button and reload the slot
+let suppressClickUntil = 0;
 
 function letterCursor(letter) {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><text x='1' y='20' fill='%23d8d0c8' font-size='20' font-family='Georgia,serif' font-style='italic'>${letter}</text></svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><text x='1' y='20' fill='#d8d0c8' font-size='20' font-family='Georgia,serif' font-style='italic'>${letter}</text></svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 0 20, pointer`;
 }
 
@@ -789,8 +901,9 @@ function loadSlot(slot) {
     const glideSec  = glideMs / 1000;
 
     // glide shared partials to new frequencies
+    const sharedMaxN = Math.max(0, Math.floor((nyquistHz() - 1) / newFund));
     for (const n of curSet) {
-      if (newSet.has(n) && nodes[n]) {
+      if (newSet.has(n) && n <= sharedMaxN && nodes[n]) {
         const target = Math.max(newFund * n, 0.001);
         nodes[n].osc.frequency.cancelScheduledValues(t);
         nodes[n].osc.frequency.setValueAtTime(nodes[n].osc.frequency.value, t);
@@ -798,9 +911,9 @@ function loadSlot(slot) {
       }
     }
 
-    // fade out partials leaving
+    // fade out partials leaving (or newly stranded above Nyquist)
     for (const n of curSet) {
-      if (!newSet.has(n) && nodes[n]) {
+      if ((!newSet.has(n) || n > sharedMaxN) && nodes[n]) {
         const {osc, gain} = nodes[n];
         delete nodes[n];
         active.delete(n);
@@ -811,10 +924,11 @@ function loadSlot(slot) {
     }
 
     // fade in new partials
+    const newMaxN = Math.max(0, Math.floor((nyquistHz() - 1) / newFund));
     for (const n of newSet) {
-      if (!curSet.has(n)) {
+      if (!curSet.has(n) && n <= newMaxN) {
         const freq = newFund * n;
-        const amp  = 0.35 / Math.pow(n, 0.7);
+        const amp  = partialAmp(n);
         const osc  = ac.createOscillator();
         const gain = ac.createGain();
         osc.type = 'sine';
@@ -822,7 +936,7 @@ function loadSlot(slot) {
         gain.gain.setValueAtTime(0, t);
         gain.gain.linearRampToValueAtTime(amp, t + glideSec);
         osc.connect(gain);
-        gain.connect(analyser);
+        gain.connect(master);
         osc.start();
         nodes[n] = {osc, gain};
         active.add(n);
@@ -871,9 +985,10 @@ function renderSlotBtns() {
       e.preventDefault();
       btn.classList.add('holding');
       holdTimer = setTimeout(() => {
-        saveSlot(k);
         btn.classList.remove('holding');
         holdTimer = null;
+        suppressClickUntil = Date.now() + 500;
+        saveSlot(k);
       }, 3000);
     });
 
@@ -886,6 +1001,7 @@ function renderSlotBtns() {
     btn.addEventListener('pointerleave', cancelHold);
 
     btn.addEventListener('click', () => {
+      if (Date.now() < suppressClickUntil) return;
       if (!holdTimer) loadSlot(k);
     });
 

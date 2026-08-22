@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <title>flicker</title>
+  <meta name="description" content="accelerate a polyrhythm until it fuses into the interval with the same ratio — rhythm and pitch are one continuum">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.4rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 540px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.9;
+    }
+
+    canvas { display: block; }
+
+    .chips {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 0.5rem;
+    }
+    .chip {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.62rem; letter-spacing: 0.1em;
+      color: var(--dim);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 0.32rem 0.65rem;
+      cursor: pointer;
+      background: var(--bg2);
+      transition: color .12s, border-color .12s;
+      user-select: none; -webkit-user-select: none;
+    }
+    .chip.lit { color: var(--gold); border-color: rgba(212,192,112,0.45); }
+    .chip:focus-visible, button:focus-visible {
+      outline: 1px solid var(--gold);
+      outline-offset: 2px;
+      color: var(--gold);
+    }
+
+    .slider-block { width: min(560px, 92vw); text-align: center; }
+    input[type=range] {
+      width: 100%;
+      -webkit-appearance: none; appearance: none;
+      height: 2px; background: var(--border);
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--gold); cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--gold); cursor: pointer; border: none;
+    }
+
+    .readout {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.6rem; letter-spacing: 0.1em;
+      color: var(--dim);
+      margin-top: 0.55rem; min-height: 1em;
+    }
+    .zone {
+      font-size: 0.62rem; letter-spacing: 0.13em;
+      margin-top: 0.45rem; min-height: 1em;
+      color: var(--gold);
+    }
+    .constant {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.56rem; letter-spacing: 0.1em;
+      color: var(--dimmer);
+      margin-top: 0.35rem; min-height: 1em;
+    }
+
+    .buttons { display: flex; gap: 0.7rem; }
+    button {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.62rem; letter-spacing: 0.14em;
+      color: var(--text);
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 0.5rem 1.2rem;
+      cursor: pointer;
+      transition: color .12s, border-color .12s;
+    }
+    button:hover { color: var(--gold); border-color: rgba(212,192,112,0.45); }
+    button.lit { color: var(--gold); border-color: rgba(212,192,112,0.45); }
+
+    .foot {
+      font-size: 0.55rem; letter-spacing: 0.09em;
+      color: var(--dimmer); font-style: italic;
+      max-width: 480px; text-align: center; line-height: 1.9;
+    }
+  </style>
+</head>
+<body>
+<a class="eggs-back" href="eggs.html">&larr; eggs</a>
+
+<div class="header">
+  <div class="title">flicker</div>
+  <p class="sub">a polyrhythm and an interval with the same ratio are the same
+  phenomenon at different speeds &middot; spin 3 against 2 fast enough and the
+  rhythm fuses into a perfect fifth &middot; henry cowell called it in 1930</p>
+</div>
+
+<canvas id="cv"></canvas>
+
+<div class="chips" id="chips"></div>
+
+<div class="slider-block">
+  <input type="range" id="rate" min="0" max="1000" value="180" aria-label="pulse rate">
+  <div class="readout" id="readout">&nbsp;</div>
+  <div class="zone" id="zone">&nbsp;</div>
+  <div class="constant" id="constant">&nbsp;</div>
+</div>
+
+<div class="buttons">
+  <button id="play" aria-pressed="false">listen</button>
+  <button id="sweep" aria-pressed="false">sweep &middot; 45 s</button>
+</div>
+
+<p class="foot">below ~8 pulses a second you count a rhythm &middot; past ~30
+the pulses fuse and the ratio becomes pitch &middot; the numbers on the label
+never change &mdash; only how fast you are listening</p>
+
+<script>
+// ── flicker — the rhythm→pitch continuum ─────────────────────
+// Each voice is one oscillator playing a band-limited impulse
+// train (2048 equal harmonics, browser-normalized); sweeping its
+// frequency from 1 Hz to 160 Hz walks the same signal from
+// countable clicks to a pitched buzz. No crossfade, no trick:
+// one mechanism, one ratio, two percepts.
+
+const RMIN = 1, RMAX = 160;          // base-voice pulse rate, Hz
+const SW_START = 1.2, SW_END = 150, SW_DUR = 45; // sweep curve
+const ZONE_FLUTTER = 8, ZONE_PITCH = 30;
+
+const RATIOS = [
+  { label: '2:3',   terms: [2, 3],    name: 'perfect fifth' },
+  { label: '3:4',   terms: [3, 4],    name: 'perfect fourth' },
+  { label: '4:5',   terms: [4, 5],    name: 'major third' },
+  { label: '6:7',   terms: [6, 7],    name: 'septimal third' },
+  { label: '8:9',   terms: [8, 9],    name: 'whole tone' },
+  { label: '15:16', terms: [15, 16],  name: 'semitone' },
+  { label: '4:5:6', terms: [4, 5, 6], name: 'major triad' },
+];
+
+// ── pure math (headless-tested) ──────────────────────────────
+function centsBetween(a, b) { return 1200 * Math.log2(b / a); }
+function sliderToRate(x) {              // x in [0,1]
+  return RMIN * Math.pow(RMAX / RMIN, Math.min(1, Math.max(0, x)));
+}
+function rateToSlider(r) {
+  return Math.log(r / RMIN) / Math.log(RMAX / RMIN);
+}
+function voiceRates(terms, base) {      // base = slowest voice
+  return terms.map(t => base * t / terms[0]);
+}
+function alignFreq(terms, base) {       // polyrhythm downbeat rate
+  return base / terms[0];
+}
+function zoneFor(rate) {
+  if (rate < ZONE_FLUTTER) return 'rhythm';
+  if (rate < ZONE_PITCH) return 'flutter';
+  return 'pitch';
+}
+function sweepRate(t) {                 // t seconds into the sweep
+  const u = Math.min(1, Math.max(0, t / SW_DUR));
+  return SW_START * Math.pow(SW_END / SW_START, u);
+}
+function compGain(rate) {               // clicks are quiet; lift the slow end
+  return rate < 30 ? Math.min(2.6, Math.pow(30 / rate, 0.4)) : 1;
+}
+function centsLine(terms) {          // 3 decimals: a fifth is 701.955¢, not 702
+  const parts = [];
+  for (let i = 1; i < terms.length; i++)
+    parts.push(centsBetween(terms[i - 1], terms[i]).toFixed(3) + '¢');
+  return parts.join(' + ');
+}
+
+// ── state ────────────────────────────────────────────────────
+let ratio = RATIOS[0];
+let baseRate = sliderToRate(0.18);
+let running = false;
+let sweeping = false, sweepT0 = 0;
+let phases = [0, 0, 0];               // visual phase accumulators
+let flashes = [0, 0, 0];              // pulse-glow decay per ring
+let alignFlash = 0, alignPh = 0;
+let lastT = null;
+
+// ── audio (lazy, iOS-safe) ───────────────────────────────────
+let actx = null, master = null, voices = [];
+let combWave = null, hushTimer = null;
+const LEVEL = 0.16;
+const FADE = 0.09;                   // hush fade-out, seconds
+
+function ensureAudio() {
+  if (hushTimer !== null) { clearTimeout(hushTimer); hushTimer = null; }
+  if (!actx) {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    const comp = actx.createDynamicsCompressor();
+    master = actx.createGain();
+    master.gain.value = 0;
+    master.connect(comp); comp.connect(actx.destination);
+    // band-limited impulse train: 2048 equal harmonics, normalized
+    const K = 2048;
+    const real = new Float32Array(K + 1), imag = new Float32Array(K + 1);
+    for (let k = 1; k <= K; k++) imag[k] = 1;
+    combWave = actx.createPeriodicWave(real, imag);
+  }
+  if (voices.length) return;          // still built from the last listen
+  const pans = [-0.45, 0.45, 0];
+  for (let i = 0; i < 3; i++) {
+    const osc = actx.createOscillator();
+    osc.setPeriodicWave(combWave);
+    osc.frequency.value = 1;
+    const g = actx.createGain();
+    g.gain.value = 0;
+    osc.connect(g);
+    if (actx.createStereoPanner) {
+      const p = actx.createStereoPanner();
+      p.pan.value = pans[i];
+      g.connect(p); p.connect(master);
+    } else {
+      g.connect(master);
+    }
+    osc.start();
+    voices.push({ osc, g });
+  }
+}
+
+function pushRates() {
+  if (!actx) return;
+  const rates = voiceRates(ratio.terms, baseRate);
+  const t = actx.currentTime;
+  for (let i = 0; i < voices.length; i++) {
+    const on = i < rates.length;
+    if (on) voices[i].osc.frequency.setTargetAtTime(rates[i], t, 0.02);
+    voices[i].g.gain.setTargetAtTime(
+      on ? LEVEL * compGain(rates[i]) : 0, t, 0.03);
+  }
+}
+
+// hush is a real stop, not a mute: fade out, end the oscillators, park
+// the context. Web Audio oscillators are one-shot, so the next listen
+// builds fresh ones — that is what ensureAudio's voices check is for.
+function parkAudio() {
+  if (!actx) return;
+  const t = actx.currentTime;
+  master.gain.cancelScheduledValues(t);
+  master.gain.setTargetAtTime(0, t, FADE / 3);
+  for (let i = 0; i < voices.length; i++) {
+    const v = voices[i];
+    v.g.gain.setTargetAtTime(0, t, FADE / 3);
+    v.osc.onended = () => { v.osc.disconnect(); v.g.disconnect(); };
+    v.osc.stop(t + FADE);
+  }
+  voices = [];
+  hushTimer = setTimeout(() => {      // let the fade finish, then idle the clock
+    hushTimer = null;
+    if (!running && actx) actx.suspend();
+  }, FADE * 1000 + 60);
+}
+
+function setRunning(on) {
+  running = on;
+  if (actx) {
+    if (on) master.gain.setTargetAtTime(1, actx.currentTime, 0.06);
+    else parkAudio();
+  }
+  playBtn.textContent = on ? 'hush' : 'listen';
+  playBtn.classList.toggle('lit', on);
+  playBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  if (!on && sweeping) stopSweep();
+}
+
+function stopSweep() {
+  sweeping = false;
+  sweepBtn.classList.remove('lit');
+  sweepBtn.textContent = 'sweep · 45 s';
+  sweepBtn.setAttribute('aria-pressed', 'false');
+  slider.value = String(Math.round(rateToSlider(baseRate) * 1000));
+}
+
+// ── dom ──────────────────────────────────────────────────────
+const slider = document.getElementById('rate');
+const readout = document.getElementById('readout');
+const zoneEl = document.getElementById('zone');
+const constEl = document.getElementById('constant');
+const playBtn = document.getElementById('play');
+const sweepBtn = document.getElementById('sweep');
+const chipsEl = document.getElementById('chips');
+
+// real buttons, not decorated spans — tab-reachable, Enter/Space activate
+chipsEl.innerHTML = RATIOS.map((r, i) =>
+  '<button type="button" class="chip' + (i === 0 ? ' lit' : '') +
+  '" data-i="' + i + '" aria-pressed="' + (i === 0) + '">' +
+  r.label + '</button>').join('');
+
+chipsEl.addEventListener('click', e => {
+  const t = e.target.closest ? e.target.closest('.chip') : null;
+  if (!t) return;
+  ratio = RATIOS[+t.dataset.i];
+  const kids = chipsEl.children;
+  for (let i = 0; i < kids.length; i++) {
+    const on = i === +t.dataset.i;
+    kids[i].classList.toggle('lit', on);
+    kids[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  phases = [0, 0, 0]; alignPh = 0;
+  pushRates(); refreshText();
+});
+
+slider.addEventListener('input', () => {
+  if (sweeping) stopSweep();
+  baseRate = sliderToRate(+slider.value / 1000);
+  pushRates(); refreshText();
+});
+
+playBtn.addEventListener('click', () => {
+  if (running) { setRunning(false); return; }
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  pushRates();
+  setRunning(true);
+});
+
+sweepBtn.addEventListener('click', () => {
+  if (sweeping) { stopSweep(); return; }
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  pushRates();
+  sweeping = true; sweepT0 = null;    // stamped on next frame
+  sweepBtn.classList.add('lit');
+  sweepBtn.textContent = 'stop sweep';
+  sweepBtn.setAttribute('aria-pressed', 'true');
+  if (!running) setRunning(true);
+});
+
+function fmtRate(r) {
+  return r < 10 ? r.toFixed(2) : r.toFixed(1);
+}
+function refreshText() {
+  const rates = voiceRates(ratio.terms, baseRate);
+  readout.textContent = rates.map(fmtRate).join(' : ') + ' pulses/sec';
+  const z = zoneFor(rates[0]);
+  zoneEl.textContent =
+    z === 'rhythm' ? 'rhythm — you can count it' :
+    z === 'flutter' ? 'flutter — too fast to count, no pitch yet' :
+    'pitch — the ratio is now ' + ratio.name;
+  constEl.textContent =
+    ratio.label + ' · ' + centsLine(ratio.terms) + ' · ' + ratio.name +
+    ' · the ratio never changes';
+}
+
+// ── canvas ───────────────────────────────────────────────────
+const canvas = document.getElementById('cv');
+const dpr = window.devicePixelRatio || 1;
+const W = Math.min(window.innerWidth - 32, 560), H = 320;
+canvas.width = W * dpr; canvas.height = H * dpr;
+canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+const c = canvas.getContext('2d');
+c.scale(dpr, dpr);
+
+function draw() {
+  c.clearRect(0, 0, W, H);
+  const cx = W / 2, cy = H / 2;
+  const rates = voiceRates(ratio.terms, baseRate);
+  const n = rates.length;
+  for (let i = 0; i < n; i++) {
+    const rad = 46 + i * 42;
+    const fuse = Math.min(1, Math.max(0, (rates[i] - 12) / 30));
+    // ring
+    c.beginPath();
+    c.arc(cx, cy, rad, 0, Math.PI * 2);
+    c.strokeStyle = 'rgba(212,192,112,' + (0.10 + 0.45 * fuse) + ')';
+    c.lineWidth = 1 + 2.2 * fuse;
+    c.stroke();
+    // pulse glow at twelve o'clock
+    if (flashes[i] > 0.01) {
+      c.beginPath();
+      c.arc(cx, cy - rad, 7 + 7 * flashes[i], 0, Math.PI * 2);
+      c.fillStyle = 'rgba(212,192,112,' + 0.35 * flashes[i] + ')';
+      c.fill();
+    }
+    // orbiting dot fades out as it smears into the ring
+    if (fuse < 1) {
+      const a = phases[i] * Math.PI * 2 - Math.PI / 2;
+      c.beginPath();
+      c.arc(cx + rad * Math.cos(a), cy + rad * Math.sin(a),
+            4.2, 0, Math.PI * 2);
+      c.fillStyle = 'rgba(212,192,112,' + (0.9 * (1 - fuse) + 0.1) + ')';
+      c.fill();
+    }
+    // rate label under each ring's bottom — stacked, never colliding
+    c.font = '10px "SF Mono", monospace';
+    c.fillStyle = 'rgba(204,200,208,0.4)';
+    c.textAlign = 'center';
+    c.fillText(fmtRate(rates[i]) + ' Hz', cx, cy + rad + 13);
+  }
+  // downbeat — where the polyrhythm agrees
+  if (alignFlash > 0.01) {
+    c.beginPath();
+    c.arc(cx, cy, 10 + 10 * alignFlash, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(212,192,112,' + 0.5 * alignFlash + ')';
+    c.fill();
+  }
+  c.beginPath();
+  c.arc(cx, cy, 3, 0, Math.PI * 2);
+  c.fillStyle = 'rgba(204,200,208,0.35)';
+  c.fill();
+}
+
+function loop(now) {
+  const t = now / 1000;
+  const dt = lastT === null ? 0 : Math.min(0.05, t - lastT);
+  lastT = t;
+  if (sweeping) {
+    if (sweepT0 === null) sweepT0 = t;
+    baseRate = sweepRate(t - sweepT0);
+    slider.value = String(Math.round(rateToSlider(baseRate) * 1000));
+    pushRates();
+    if (t - sweepT0 >= SW_DUR) stopSweep();
+    refreshText();
+  }
+  const rates = voiceRates(ratio.terms, baseRate);
+  const spin = running ? 1 : 0.12;     // idle: slow silent orbit
+  for (let i = 0; i < rates.length; i++) {
+    const prev = phases[i];
+    phases[i] = (phases[i] + rates[i] * spin * dt) % 1;
+    if (phases[i] < prev) flashes[i] = 1;
+    flashes[i] *= Math.pow(0.001, dt);  // ~fully gone in 1 s
+  }
+  const prevA = alignPh;
+  alignPh = (alignPh + alignFreq(ratio.terms, baseRate) * spin * dt) % 1;
+  if (alignPh < prevA) alignFlash = 1;
+  alignFlash *= Math.pow(0.001, dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// idle pose: stagger the dots so the page never loads symmetric
+phases = [0.62, 0.28, 0.85];
+refreshText();
+draw();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
