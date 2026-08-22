@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="a playable 5-limit just-intonation lattice — click nodes to stack pure ratios and see how far each one sits from its nearest 12-tet neighbour.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -198,6 +199,15 @@
       color: rgba(216,208,200,0.45); font-style: italic;
     }
 
+    /* ── Back link ───────────────────────────────────── */
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
     /* ── Hint ────────────────────────────────────────── */
     .hint {
       font-size: 0.54rem;
@@ -209,6 +219,8 @@
   </style>
 </head>
 <body>
+
+<a class="eggs-back" href="eggs.html">← eggs</a>
 
 <div class="header">
   <h1 class="title">just intonation lattice</h1>
@@ -319,6 +331,9 @@ function fmtDev(d) {
 }
 
 // ── Interval catalogue ──────────────────────────────────
+// One entry per ratio the lattice can actually produce:
+// p ∈ [-3,3] fifths × q ∈ [-2,2] thirds, folded into one octave.
+// 35 coordinates, 35 distinct ratios, no unreachable entries.
 const INTERVAL_NAMES = {
   '1/1':   'unison (1/1)',
   '3/2':   'perfect fifth (P5)',
@@ -327,8 +342,6 @@ const INTERVAL_NAMES = {
   '16/9':  'minor seventh (m7)',
   '27/16': 'Pythagorean major sixth',
   '32/27': 'Pythagorean minor third',
-  '81/64': 'Pythagorean major third',
-  '128/81':'Pythagorean minor sixth',
   '5/4':   'just major third (5/4)',
   '8/5':   'just minor sixth (8/5)',
   '6/5':   'just minor third (6/5)',
@@ -345,11 +358,18 @@ const INTERVAL_NAMES = {
   '75/64': 'augmented second (75/64)',
   '128/75':'diminished seventh (128/75)',
   '135/128':'augmented unison (135/128)',
-  '256/135':'diminished octave',
-  '50/27': 'narrow minor seventh',
-  '27/25': 'large semitone / acute unison',
-  '250/243':'maximal diesis',
-  '243/250':'—',
+  '256/135':'diminished octave (256/135)',
+  '25/18': 'classic augmented fourth (25/18)',
+  '36/25': 'classic diminished fifth (36/25)',
+  '225/128':'augmented sixth (225/128)',
+  '256/225':'diminished third (256/225)',
+  '675/512':'augmented third (675/512)',
+  '1024/675':'diminished sixth (1024/675)',
+  '48/25': 'large diminished octave (48/25)',
+  '50/27': 'grave major seventh (50/27)',
+  '40/27': 'grave fifth (40/27)',
+  '27/20': 'acute fourth (27/20)',
+  '27/25': 'large limma / acute minor second (27/25)',
 };
 
 // ── Row color palette (inactive) ───────────────────────
@@ -616,7 +636,20 @@ function initAudio() {
 }
 
 function startVoice(key, freq) {
-  if (voices[key]) return;
+  const held = voices[key];
+  if (held) {
+    // Still sounding. If it is inside its 400 ms release window, cancel the
+    // pending teardown and fade back up on the same oscillator — otherwise a
+    // fast re-click leaves the node lit but silent.
+    if (held.releaseId === null) return;
+    clearTimeout(held.releaseId);
+    held.releaseId = null;
+    const t = ac.currentTime;
+    held.osc.frequency.setValueAtTime(freq, t);
+    held.gain.gain.setTargetAtTime(0.1, t, 0.015);
+    if (!rafId) drawScope();
+    return;
+  }
   initAudio();
   if (ac.state === 'suspended') ac.resume();
   const osc  = ac.createOscillator();
@@ -628,16 +661,17 @@ function startVoice(key, freq) {
   osc.connect(gain);
   gain.connect(masterGain);
   osc.start();
-  voices[key] = { osc, gain };
+  voices[key] = { osc, gain, releaseId: null };
   if (!rafId) drawScope();
 }
 
 function stopVoice(key) {
-  if (!voices[key]) return;
-  const { osc, gain } = voices[key];
+  const v = voices[key];
+  if (!v || v.releaseId !== null) return;   // already releasing
+  const { osc, gain } = v;
   const t = ac.currentTime;
   gain.gain.setTargetAtTime(0, t, 0.06);
-  setTimeout(() => {
+  v.releaseId = setTimeout(() => {
     try { osc.stop(); } catch (_) {}
     delete voices[key];
     if (Object.keys(voices).length === 0 && rafId) {
@@ -690,8 +724,8 @@ function updateVisual(nd) {
 function showInfo(nd) {
   const cStr  = nd.cents.toFixed(1) + '¢ above root';
   const devStr = nd.dev !== 0
-    ? ' · ' + fmtDev(nd.dev) + ' from 12-TET'
-    : ' · pure (0¢ deviation from 12-TET)';
+    ? ' · ' + fmtDev(nd.dev) + ' from the nearest 12-TET pitch'
+    : ' · lands exactly on 12-TET';
   document.getElementById('info-display').textContent =
     nd.name + '  ·  ' + cStr + devStr;
 }

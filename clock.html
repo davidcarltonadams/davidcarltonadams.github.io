@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="a shared performance clock: write a timed section map, hand it out as a link, and every device runs the same schedule off its own wall clock.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -511,6 +512,38 @@
       white-space: nowrap;
     }
 
+    /* ══════════════════════════════════════════════
+       CHROME
+    ══════════════════════════════════════════════ */
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    /* shown when the score in the URL can't be decoded — sits below the
+       top-left back link and the top-right performer status */
+    #load-error {
+      position: fixed;
+      top: 2.4rem;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: min(30rem, 78vw);
+      padding: 0.45rem 0.9rem;
+      font-size: 0.55rem;
+      letter-spacing: 0.06em;
+      line-height: 1.6;
+      text-align: center;
+      font-style: italic;
+      color: var(--text);
+      background: rgba(212,204,196,0.06);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      z-index: 150;
+    }
+
     /* waiting state */
     #perf-waiting {
       font-size: clamp(1rem, 4vw, 1.6rem);
@@ -521,6 +554,10 @@
   </style>
 </head>
 <body>
+
+<a class="eggs-back" href="eggs.html">← eggs</a>
+
+<p id="load-error" class="hidden"></p>
 
 <!-- ══════════════════════════════════════════
      SETUP VIEW (default)
@@ -621,6 +658,28 @@ async function sha256Hex(str) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// UTF-8-safe base64. btoa/atob only speak Latin-1: any section label above
+// U+00FF (第一部, an emoji cue) made btoa throw, which killed the create button
+// with no visible error at all. Encode through TextEncoder instead.
+function b64encode(str) {
+  let bin = '';
+  for (const b of new TextEncoder().encode(str)) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
+// Symmetric with b64encode. Pure-ASCII payloads are byte-identical to the old
+// btoa(JSON.stringify(...)) spelling, so links shared before this still open;
+// the Latin-1 fallback covers older links whose labels carried accents.
+function b64decode(b64) {
+  const bin = atob(b64);
+  const bytes = Uint8Array.from(bin, ch => ch.charCodeAt(0));
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch (e) {
+    return bin;
+  }
+}
+
 function pad(n) { return String(n).padStart(2, '0'); }
 
 function fmtClock(ms) {
@@ -644,14 +703,32 @@ function buildURL(room, isCond, sections, pw) {
   u.search = '';
   u.searchParams.set('room', room);
   if (isCond) u.searchParams.set('c', '1');
-  if (sections && sections.length) u.searchParams.set('s', btoa(JSON.stringify(sections)));
+  if (sections && sections.length) u.searchParams.set('s', b64encode(JSON.stringify(sections)));
   if (pw) u.searchParams.set('pw', pw);
   return u.toString();
 }
 
 // ── Session data ───────────────────────────────────────────────────────────
 let sections = [];
-try { if (SESS_DATA) sections = JSON.parse(atob(SESS_DATA)); } catch(e) {}
+let sessionDataError = false;
+if (SESS_DATA) {
+  try {
+    const parsed = JSON.parse(b64decode(SESS_DATA));
+    if (!Array.isArray(parsed)) throw new Error('not a section list');
+    sections = parsed;
+  } catch (e) {
+    // A clock with no sections and no message looks like a working clock, so say
+    // it out loud instead of swallowing the failure.
+    sessionDataError = true;
+  }
+}
+
+function reportSessionDataError() {
+  if (!sessionDataError) return;
+  const el = $('load-error');
+  el.textContent = "this link's sections could not be read — the score data is damaged or truncated. ask for a fresh link.";
+  el.classList.remove('hidden');
+}
 
 // ── Clock state ────────────────────────────────────────────────────────────
 let state = {
@@ -1182,6 +1259,8 @@ function showView(id) {
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
+reportSessionDataError();
+
 if (ROOM) {
   if (IS_COND) {
     showView('conductor-view');

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="watch a live spectrum against just-intonation partial markers — see which harmonics your voice or instrument actually puts out.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -18,9 +19,17 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 1.5rem 1rem 2rem;
+      padding: 2.4rem 1rem 2rem;
       gap: 1rem;
     }
+
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
 
     .top-bar {
       display: flex;
@@ -145,6 +154,8 @@
   </style>
 </head>
 <body>
+
+<a class="eggs-back" href="eggs.html">← eggs</a>
 
 <!--
   ══════════════════════════════════════════════════════════════════════════
@@ -361,17 +372,63 @@ function loop() {
 }
 
 // ── Mic control ────────────────────────────────────────────────────────────
+// Accurate failure reporting: every branch below either leaves us actually
+// listening or releases whatever it acquired.
+function micErrorMessage(err) {
+  switch (err && err.name) {
+    case 'NotAllowedError':
+    case 'PermissionDeniedError':
+      return 'mic permission denied — allow it for this page, then try again';
+    case 'NotFoundError':
+    case 'DevicesNotFoundError':
+      return 'no microphone on this device';
+    case 'NotReadableError':
+    case 'TrackStartError':
+      return 'mic is busy in another app — close it, then try again';
+    case 'OverconstrainedError':
+      return 'no mic matched the requested settings';
+    default:
+      return 'could not open the mic (' + ((err && err.name) || 'unknown error') + ')';
+  }
+}
+
 async function startMic() {
   if (running) { stopMic(); return; }
+
+  // getUserMedia only exists on https (or localhost) — check before asking.
+  if (!window.isSecureContext) {
+    statusEl.textContent = 'needs https — mic is blocked on insecure pages';
+    return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    statusEl.textContent = 'this browser has no mic access';
+    return;
+  }
+
+  statusEl.textContent = 'asking for mic…';
 
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
       video: false,
     });
+  } catch (err) {
+    stream = null;
+    statusEl.textContent = micErrorMessage(err);
+    console.error(err);
+    return;
+  }
 
+  try {
     // ── MIC → ANALYSER ONLY — never connect to destination ─────────────────
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // iOS hands back a suspended context; the click that got us here is the
+    // gesture that unlocks it. Without this the page draws nothing forever.
+    await audioCtx.resume();
+    if (audioCtx.state !== 'running') {
+      throw new Error('audio context stayed ' + audioCtx.state);
+    }
+
     analyser = audioCtx.createAnalyser();
     analyser.fftSize              = 8192;
     analyser.smoothingTimeConstant = parseFloat(smoothEl.value);
@@ -390,7 +447,9 @@ async function startMic() {
     loop();
 
   } catch (err) {
-    statusEl.textContent = 'mic access denied';
+    // Release the tracks we already took, or the mic indicator stays lit.
+    stopMic();
+    statusEl.textContent = 'audio engine would not start — try reloading';
     console.error(err);
   }
 }

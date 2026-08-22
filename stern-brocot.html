@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="walk the stern-brocot tree through the octave by mediants — each step is the simplest ratio between the current bounds, and you can hear it.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -291,7 +292,7 @@
 <div class="header">
   <h1 class="title">stern-brocot</h1>
   <p class="sub">
-    every positive rational number lives in this tree exactly once — simpler ratios closer to the root.<br>
+    every rational between the unison and the octave lives in this tree exactly once — simpler ratios closer to the root.<br>
     navigate by finding the simplest fraction between any two bounds. ← → to move, ↑ to backtrack.
   </p>
 </div>
@@ -343,7 +344,8 @@
     <kbd>↑</kbd> back &nbsp;
     <kbd>Home</kbd> root &nbsp;
     <kbd>Space</kbd> hear &nbsp;
-    <kbd>C</kbd> collect
+    <kbd>C</kbd> collect &nbsp;
+    <kbd>Esc</kbd> stop sound
   </span>
 </div>
 
@@ -553,6 +555,8 @@ let ax = null;
 let audioMode = 'pulse';
 let droneNodes = null;
 let audOsc = null, audGain = null;
+let pulseNodes = [];          // scheduled pulse tones, so stopAll() can reach them
+let axTried = false;          // mousemove is not a gesture on iOS — only try once
 
 function ensureAx() {
   if (!ax) ax = new (window.AudioContext || window.webkitAudioContext)();
@@ -570,6 +574,41 @@ function tone(freq, start, dur, vol = 0.25) {
   g.gain.linearRampToValueAtTime(0, start + dur);
   o.connect(g); g.connect(ax.destination);
   o.start(start); o.stop(start + dur);
+  const node = { o, g };
+  pulseNodes.push(node);
+  o.onended = () => {
+    try { g.disconnect(); } catch (err) {}
+    const i = pulseNodes.indexOf(node);
+    if (i >= 0) pulseNodes.splice(i, 1);
+  };
+}
+
+function stopPulses() {
+  if (!ax || !pulseNodes.length) return;
+  const now = ax.currentTime;
+  for (const { o, g } of pulseNodes) {
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(g.gain.value, now);
+    g.gain.linearRampToValueAtTime(0, now + 0.08);
+    try { o.stop(now + 0.09); } catch (err) {}
+  }
+  pulseNodes = [];
+}
+
+// Panic: kill every sounding path — drone, hover audition, scheduled pulses.
+function stopAll() {
+  stopPulses();
+  stopAudition();
+  stopDrone();
+  hoverAuditKey = null;
+}
+
+// Try to open the context from a non-gesture event (hover). iOS will refuse;
+// that's fine — a real gesture calls ensureAx() and the hover wakes up then.
+function tryEnsureAx() {
+  if (ax || axTried) return;
+  axTried = true;
+  try { ensureAx(); } catch (err) { ax = null; }
 }
 
 function hearPulse() {
@@ -1091,7 +1130,7 @@ function collectCurrent() {
   } else {
     p = S.p; q = S.q;
   }
-  bag.push({ p, q, dur: calcDur(p, q) });
+  bag.push({ p, q, dur: calcDur(p, q), manualDur: '1/4' });
   // Flash the ratio display
   const el = document.getElementById('curRatio');
   el.style.color = '#fff';
@@ -1106,14 +1145,23 @@ function cycleDur(i) {
   if (durMode !== 'manual') return;
   const idx = DUR_CYCLE.indexOf(bag[i].dur);
   bag[i].dur = DUR_CYCLE[(idx + 1) % DUR_CYCLE.length];
+  bag[i].manualDur = bag[i].dur;
   renderBag();
 }
 
 function setDurMode(m) {
+  const prev = durMode;
   durMode = durMode === m ? 'manual' : m; // toggle off if already on
+  if (durMode === prev) return;
+  // Leaving manual: stash the hand-set durations. Returning: put them back.
+  if (prev === 'manual') bag.forEach(item => { item.manualDur = item.dur; });
   document.getElementById('dwellBtn')  .classList.toggle('on', durMode === 'dwell');
   document.getElementById('resolveBtn').classList.toggle('on', durMode === 'resolve');
-  bag.forEach(item => { item.dur = calcDur(item.p, item.q); });
+  bag.forEach(item => {
+    item.dur = durMode === 'manual'
+      ? (item.manualDur || '1/4')
+      : calcDur(item.p, item.q);
+  });
   renderBag();
 }
 
@@ -1195,14 +1243,23 @@ function exportBag() {
 
 // ─── Keyboard ─────────────────────────────────────────────────────────────────
 
+const INTERACTIVE = ['SELECT', 'INPUT', 'TEXTAREA', 'BUTTON', 'A'];
+
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+  if (e.key === 'Escape') { stopAll(); return; }   // panic, works anywhere
+  if (INTERACTIVE.includes(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;  // leave Cmd/Ctrl+C etc. alone
   if (e.key === 'ArrowLeft')  { e.preventDefault(); goLeft(); }
   if (e.key === 'ArrowRight') { e.preventDefault(); goRight(); }
   if (e.key === 'ArrowUp' || e.key === 'Backspace') { e.preventDefault(); goBack(); }
   if (e.key === 'Home')       { e.preventDefault(); goRoot(); }
   if (e.key === ' ')          { e.preventDefault(); onHear(); }
   if (e.key === 'c' || e.key === 'C') { e.preventDefault(); collectCurrent(); }
+});
+
+// Tab hidden: tear everything down rather than leave a drone running unseen.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hoverX = -1; stopAll(); }
 });
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -1222,6 +1279,7 @@ document.addEventListener('keydown', e => {
 
   // Number line hover
   cv.addEventListener('mousemove', e => {
+    tryEnsureAx();
     const rect = cv.getBoundingClientRect();
     const my = (e.clientY - rect.top) * (cv.height / rect.height);
     if (my < LINE_H) {

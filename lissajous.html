@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="draw any musical interval as a lissajous figure — simple integer ratios close into a stable shape, irrational ones never do">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -163,10 +164,21 @@
     .info-row:last-child { margin-bottom: 0; }
     .info-val { color: #777; }
 
+    /* back link — parked below the fixed site nav so it clears the name link */
+    .eggs-back {
+      position: fixed; top: calc(var(--nav-h) + 0.6rem); left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 90; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
     .hint { font-size: 0.6rem; color: #333; letter-spacing: 0.05em; margin-top: 1rem; text-align: center; }
   </style>
 </head>
 <body>
+
+<a class="eggs-back" href="eggs.html">← eggs</a>
 
 <nav aria-label="Main navigation">
   <div class="nav-inner">
@@ -231,7 +243,7 @@
         <div class="slider-row">
           <span class="slider-lbl">speed</span>
           <input class="liss-range" id="speed-range" type="range" min="1" max="100" value="50">
-          <span class="slider-val" id="speed-val">×1</span>
+          <span class="slider-val" id="speed-val">×1.7</span>
         </div>
         <div class="slider-row">
           <span class="slider-lbl">trail</span>
@@ -244,7 +256,7 @@
         <div class="ctrl-label">sound</div>
         <div class="sound-row">
           <button class="btn-l" id="btn-sound">♪ tone</button>
-          <button class="btn-l" id="btn-animate">▶ animate</button>
+          <button class="btn-l" id="btn-animate">⏸ pause</button>
         </div>
       </div>
 
@@ -296,7 +308,7 @@ const INTERVALS = [
   { name: '13H',        ratio: [13, 8],  tetName: 'm6',       tetCents: 800 },
   { name: 'TT',        ratio: [45, 32], tetName: 'TT',       tetCents: 600 },
   { name: '3:2:1',     ratio: [3, 1],   tetName: 'P5+oct',   tetCents: 1902 },
-  { name: 'φ ratio',   ratio: [1.618, 1.0], tetName: '—',    tetCents: null },
+  { name: 'φ ratio',   ratio: [(1 + Math.sqrt(5)) / 2, 1], label: 'φ:1', tetName: '—', tetCents: null },
 ];
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
@@ -312,6 +324,7 @@ let activeBtn  = null;
 
 // ─── AUDIO ────────────────────────────────────────────────────────────────────
 let actx = null, oscA = null, oscB = null, gainNode = null;
+let stopTimer = null;
 const BASE_FREQ = 220; // A3
 
 function getCtx() {
@@ -321,6 +334,8 @@ function getCtx() {
 }
 
 function startSound() {
+  // a stop still in its release tail would otherwise kill these oscillators
+  if (stopTimer !== null) { clearTimeout(stopTimer); stopTimer = null; killOscs(); }
   const ctx = getCtx();
   gainNode = ctx.createGain();
   gainNode.gain.value = 0;
@@ -342,17 +357,20 @@ function startSound() {
   document.getElementById('btn-sound').textContent = '♪ mute';
 }
 
+function killOscs() {
+  oscA && oscA.stop();
+  oscB && oscB.stop();
+  oscA = oscB = gainNode = null;
+}
+
 function stopSound() {
-  if (!gainNode) return;
-  gainNode.gain.linearRampToValueAtTime(0, actx.currentTime + 0.05);
-  setTimeout(() => {
-    oscA && oscA.stop();
-    oscB && oscB.stop();
-    oscA = oscB = gainNode = null;
-  }, 100);
   sounding = false;
   document.getElementById('btn-sound').classList.remove('active');
   document.getElementById('btn-sound').textContent = '♪ tone';
+  if (!gainNode) return;
+  gainNode.gain.linearRampToValueAtTime(0, actx.currentTime + 0.05);
+  if (stopTimer !== null) clearTimeout(stopTimer);
+  stopTimer = setTimeout(() => { stopTimer = null; killOscs(); }, 100);
 }
 
 function updateSoundFreqs() {
@@ -449,7 +467,17 @@ function drawFrame() {
 // ─── RATIO LOGIC ──────────────────────────────────────────────────────────────
 function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
 
-function setRatio(a, b) {
+const PHI = (1 + Math.sqrt(5)) / 2;
+function isPhi(x) { return Math.abs(x - PHI) < 1e-9; }
+
+// gcd only means anything on integers; everything else prints as itself
+function fmtPart(x) {
+  if (Number.isInteger(x)) return String(x);
+  if (isPhi(x)) return 'φ';
+  return parseFloat(x.toFixed(4)) + '';
+}
+
+function setRatio(a, b, fromInput) {
   if (!a || !b || a <= 0 || b <= 0) return;
   if (Number.isInteger(a) && Number.isInteger(b)) {
     const g = gcd(a, b);
@@ -460,13 +488,14 @@ function setRatio(a, b) {
     ratioB = b;
   }
   color = ratioColor(ratioA, ratioB);
-  clearTrail();
   prevX = prevY = null;
-  t = 0;
+  if (!fromInput) { clearTrail(); t = 0; }
   updateInfo();
   updateSoundFreqs();
-  document.getElementById('ratio-a').value = Number.isInteger(a) ? a : a.toFixed(3);
-  document.getElementById('ratio-b').value = Number.isInteger(b) ? b : b.toFixed(3);
+  if (!fromInput) {
+    document.getElementById('ratio-a').value = Number.isInteger(a) ? a : parseFloat(a.toFixed(3));
+    document.getElementById('ratio-b').value = Number.isInteger(b) ? b : parseFloat(b.toFixed(3));
+  }
 }
 
 function ratioToCents(a, b) {
@@ -498,8 +527,9 @@ const INTERVAL_NAMES = {
 };
 
 function updateInfo() {
-  const g = gcd(ratioA, ratioB);
-  const a = ratioA / g, b = ratioB / g;
+  const whole = Number.isInteger(ratioA) && Number.isInteger(ratioB);
+  let a = ratioA, b = ratioB;
+  if (whole) { const g = gcd(ratioA, ratioB); a = ratioA / g; b = ratioB / g; }
   const cents = ratioToCents(ratioA, ratioB);
   const normCents = ((cents % 1200) + 1200) % 1200;
 
@@ -511,9 +541,11 @@ function updateInfo() {
   });
 
   const key = `${a}:${b}`;
-  const intName = INTERVAL_NAMES[key] || (cents < 0 ? 'below unison' : cents > 1200 ? 'compound interval' : '—');
+  const intName = whole
+    ? (INTERVAL_NAMES[key] || (cents < 0 ? 'below unison' : cents > 1200 ? 'compound interval' : '—'))
+    : (isPhi(ratioA) && ratioB === 1 ? 'irrational · never closes' : 'non-integer ratio');
 
-  document.getElementById('info-ratio').textContent = `${a} : ${b}`;
+  document.getElementById('info-ratio').textContent = `${fmtPart(a)} : ${fmtPart(b)}`;
   document.getElementById('info-name').textContent = intName;
   document.getElementById('info-cents').textContent = `${cents.toFixed(2)}¢`;
   document.getElementById('info-tet').textContent = `${nearest.cents}¢ (${nearest.name})`;
@@ -529,7 +561,7 @@ function buildIntervalButtons() {
     btn.className = 'iv-btn';
     btn.dataset.a = iv.ratio[0];
     btn.dataset.b = iv.ratio[1];
-    btn.innerHTML = `<span class="iv-name">${iv.name}</span><span class="iv-ratio">${iv.ratio[0]}:${iv.ratio[1]}</span>`;
+    btn.innerHTML = `<span class="iv-name">${iv.name}</span><span class="iv-ratio">${iv.label || iv.ratio[0] + ':' + iv.ratio[1]}</span>`;
     if (i === 2) { btn.classList.add('active'); activeBtn = btn; } // P5 default
     btn.addEventListener('click', () => {
       if (activeBtn) activeBtn.classList.remove('active');
@@ -542,13 +574,18 @@ function buildIntervalButtons() {
 }
 
 // ─── CONTROLS ─────────────────────────────────────────────────────────────────
+// the slider spans 0..2π, so only the quarter-turns get a symbol; the rest
+// print as a fraction of π
+const PHASE_LABELS = ['0', 'π/2', 'π', '3π/2', '2π'];
+function phaseLabel(v) {
+  const quarter = (v / 100) * 4;
+  return Number.isInteger(quarter) ? PHASE_LABELS[quarter] : (v / 50).toFixed(2) + 'π';
+}
+
 document.getElementById('phase-range').addEventListener('input', e => {
   const v = parseInt(e.target.value);
   phase = (v / 100) * Math.PI * 2;
-  const frac = v / 100;
-  const labels = ['0', 'π/4', 'π/2', '3π/4', 'π'];
-  const idx = Math.round(frac * 4);
-  document.getElementById('phase-val').textContent = labels[idx] || (frac * 2).toFixed(2) + 'π';
+  document.getElementById('phase-val').textContent = phaseLabel(v);
   clearTrail(); prevX = prevY = null;
 });
 
@@ -566,13 +603,33 @@ document.getElementById('trail-range').addEventListener('input', e => {
   document.getElementById('trail-val').textContent = label;
 });
 
-document.getElementById('ratio-a').addEventListener('input', e => {
+// read one ratio field, clamped to its own min/max; null while it's unusable
+function readRatioField(el) {
+  let v = parseFloat(el.value);
+  if (!isFinite(v)) return null;
+  const min = parseFloat(el.min), max = parseFloat(el.max);
+  if (isFinite(min)) v = Math.max(v, min);
+  if (isFinite(max)) v = Math.min(v, max);
+  return v;
+}
+
+function onRatioInput() {
+  const a = readRatioField(document.getElementById('ratio-a'));
+  const b = readRatioField(document.getElementById('ratio-b'));
+  if (a === null || b === null) return; // mid-edit or empty — leave the figure alone
   if (activeBtn) { activeBtn.classList.remove('active'); activeBtn = null; }
-  setRatio(parseInt(e.target.value), parseInt(document.getElementById('ratio-b').value));
-});
-document.getElementById('ratio-b').addEventListener('input', e => {
-  if (activeBtn) { activeBtn.classList.remove('active'); activeBtn = null; }
-  setRatio(parseInt(document.getElementById('ratio-a').value), parseInt(e.target.value));
+  setRatio(a, b, true);
+}
+
+['ratio-a', 'ratio-b'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', onRatioInput);
+  // snap the field itself to the clamped value once the edit is finished
+  el.addEventListener('change', () => {
+    const v = readRatioField(el);
+    if (v !== null) el.value = v;
+    onRatioInput();
+  });
 });
 
 document.getElementById('btn-sound').addEventListener('click', toggleSound);
@@ -581,7 +638,7 @@ document.getElementById('btn-animate').addEventListener('click', () => {
   animating = !animating;
   const btn = document.getElementById('btn-animate');
   btn.classList.toggle('active', animating);
-  btn.textContent = animating ? '▶ animate' : '⏸ pause';
+  btn.textContent = animating ? '⏸ pause' : '▶ animate';
   if (animating) loop();
 });
 

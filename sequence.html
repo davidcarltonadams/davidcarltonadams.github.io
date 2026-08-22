@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="a just-intonation step sequencer where duration comes from harmonic complexity — hear tenney height turn ratios into rhythm.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -293,6 +294,7 @@ const NAMES = {
 };
 const ET_IVLS = ['unison','m2','M2','m3','M3','P4','tritone','P5','m6','M6','m7','M7','octave'];
 
+function isPosInt(n)      { return Number.isInteger(n) && n > 0; }
 function ratioCents(p, q) { return 1200 * Math.log2(p / q); }
 function tenneyH(p, q)    { return Math.log2(p * q); }
 
@@ -306,15 +308,27 @@ function intervalName(p, q) {
   return `≈ ${nm} (${dev >= 0 ? '+' : ''}${dev.toFixed(0)}¢)`;
 }
 
+const TH_FLOOR     = 1;     // minimum tenney height used for duration (1/1 is 0)
+const RESOLVE_BEATS = 10;   // numerator of the inverse-tenney duration, in beats
+const MIN_STEP_SEC  = 0.02; // no step may be zero-length — the scheduler would spin
+
 // Parse rational duration string "p/q" or float string → seconds per beat unit
 function parseDur(dur, beatSec) {
-  if (typeof dur === 'number') return dur * beatSec;
-  const str = String(dur);
-  if (str.includes('/')) {
-    const [n, d] = str.split('/').map(Number);
-    return (n / d) * 4 * beatSec; // dur in quarter-note units × beat
+  let sec;
+  if (typeof dur === 'number') {
+    sec = dur * beatSec;
+  } else {
+    const str = String(dur);
+    if (str.includes('/')) {
+      const [n, d] = str.split('/').map(Number);
+      sec = (n / d) * 4 * beatSec;  // dur in quarter-note units × beat
+    } else {
+      sec = parseFloat(str) * beatSec;
+    }
   }
-  return parseFloat(str) * beatSec;
+  // a loaded file can carry 0, NaN or Infinity here — the scheduler loop needs
+  // a finite positive step or it never advances past ax.currentTime
+  return Number.isFinite(sec) && sec > MIN_STEP_SEC ? sec : MIN_STEP_SEC;
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -323,7 +337,7 @@ let seq         = [];     // [{p,q,dur,vel}, ...]
 let fundHz      = 220;
 let bpm         = 120;
 let swing       = 0.5;
-let durMode     = 'manual'; // 'manual' | 'tenney' | 'inverse'
+let durMode     = 'manual'; // 'manual' | 'dwell' | 'resolve'
 let looping     = false;
 let playing     = false;
 let curIdx      = 0;
@@ -383,12 +397,12 @@ function playNote(ev, startTime, dur) {
 function beatSec() { return 60 / bpm; }
 
 function applySwing(idx, rawSec) {
-  // Simple pair-wise swing: even events get swing×2×beat, odd get (2-swing×2)×beat
+  // Pair-wise swing: stretch the down-beat of each pair by swing×2, shrink the
+  // off-beat by the complement. A multiplier, not a replacement — the step keeps
+  // its own duration and only its share of the pair moves.
   if (swing === 0.5) return rawSec;
   const pairPos = idx % 2;
-  const base = beatSec();
-  if (pairPos === 0) return swing * 2 * base;
-  return (2 - swing * 2) * base;
+  return rawSec * (pairPos === 0 ? swing * 2 : 2 - swing * 2);
 }
 
 function scheduleAhead() {
@@ -422,6 +436,7 @@ function togglePlay() {
   if (playing) {
     playing = false;
     clearTimeout(schedTimer);
+    stopFundDrone();
     updatePlayBtn();
   } else {
     playing = true;
@@ -454,8 +469,11 @@ function toggleLoop() {
 }
 
 function calcDur(p, q) {
-  if (durMode === 'dwell')   return tenneyH(p, q).toFixed(3);         // tenney time: ∝ TH
-  if (durMode === 'resolve') return (10 / tenneyH(p, q)).toFixed(3);  // inverse tenney: ∝ 1/TH
+  // 1/1 has tenney height 0 — floor it so dwell never yields a zero-length step
+  // and resolve never divides by zero.
+  const th = Math.max(tenneyH(p, q), TH_FLOOR);
+  if (durMode === 'dwell')   return th.toFixed(3);                    // tenney time: ∝ TH
+  if (durMode === 'resolve') return (RESOLVE_BEATS / th).toFixed(3);  // inverse tenney: ∝ 1/TH
   return '1/4';
 }
 
@@ -533,7 +551,7 @@ function jumpTo(i) {
 }
 
 function addEvent() {
-  seq.push({ p: 3, q: 2, dur: tenneyTime ? tenneyH(3,2).toFixed(3) : '1/4', vel: 0.8 });
+  seq.push({ p: 3, q: 2, dur: calcDur(3, 2), vel: 0.8 });
   renderStrip();
 }
 
@@ -542,12 +560,14 @@ function addEvent() {
 function loadJSON(data) {
   try {
     const j = JSON.parse(data);
-    seq = (j.events || []).map(e => ({
+    const raw = Array.isArray(j.events) ? j.events : [];
+    seq = raw.filter(e => e && isPosInt(e.p) && isPosInt(e.q)).map(e => ({
       p:   e.p,
       q:   e.q,
       dur: e.dur || '1/4',
       vel: e.vel || 0.8,
     }));
+    const skipped = raw.length - seq.length;
     if (j.fundamental_hz) {
       fundHz = j.fundamental_hz;
       // Sync selector to nearest option or leave as-is
@@ -571,6 +591,10 @@ function loadJSON(data) {
     document.getElementById('seqWrap').classList.add('loaded');
     document.getElementById('dropZone').style.display = 'none';
     updatePlayBtn();
+    if (skipped > 0) {
+      alert(`Skipped ${skipped} event${skipped === 1 ? '' : 's'} with a bad ratio — `
+          + 'p and q must both be positive whole numbers.');
+    }
   } catch(e) {
     alert('Could not parse JSON: ' + e.message);
   }
