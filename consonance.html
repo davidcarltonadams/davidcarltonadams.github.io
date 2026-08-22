@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="a dissonance landscape across the octave — simple ratios sink into valleys, irrational intervals ride the hills, and every point is playable by drag">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -209,7 +210,7 @@
 </div>
 
 <div class="canvas-wrap" id="canvas-wrap">
-  <canvas id="landscape" height="310" aria-label="Consonance landscape from unison to octave"></canvas>
+  <canvas id="landscape" height="310" aria-label="Dissonance landscape from unison to octave: valleys at the simple ratios, hills in the gaps between them"></canvas>
 </div>
 
 <div class="info-bar">
@@ -226,7 +227,7 @@
 <div class="legend">
   <div class="legend-item">
     <div class="legend-swatch" style="background:var(--ji)"></div>
-    consonance curve
+    dissonance curve · valleys are pure
   </div>
   <div class="legend-item">
     <div class="legend-swatch" style="background:var(--tet);opacity:0.5"></div>
@@ -284,8 +285,6 @@
 <p class="hint">drag across the landscape · the valleys are where ears rest · esc mutes</p>
 
 <script>
-(function () {
-
 // ── JI ratio library ──────────────────────────────────────
 function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
 
@@ -320,8 +319,10 @@ function buildRatios(maxHeight) {
   return ratios.sort((a, b) => a.cents - b.cents);
 }
 
-// ── Consonance computation ────────────────────────────────
-// Gaussian sum of contributions from each JI ratio, weighted by simplicity (1/height).
+// ── Dissonance computation ────────────────────────────────
+// Gaussian sum of contributions from each JI ratio, weighted by simplicity (1/height),
+// then negated: the result is a dissonance landscape, so simple ratios are valleys
+// and the gaps between them stand up as hills.
 // sigma = "blur" in cents — how far a ratio's influence extends.
 function buildLandscape(ratios, sigma, nSamples) {
   const samples = new Float32Array(nSamples);
@@ -346,6 +347,8 @@ function buildLandscape(ratios, sigma, nSamples) {
       samples[i] += weight * 0.3 * Math.exp(-(d2 * d2) / twoSigSq);
     }
   }
+  // Flip: consonance → dissonance. Valleys now mark the simple ratios.
+  for (let i = 0; i < nSamples; i++) samples[i] = -samples[i];
   return samples;
 }
 
@@ -358,16 +361,38 @@ function nearestRatio(ratios, cents) {
   return { ratio: best, dist: minD };
 }
 
+// One nearest-ratio lookup per sample, built once per curve instead of once
+// per label. ratios is sorted by cents and c climbs, so a single pointer walks it.
+function buildNearestTable(ratios, nSamples) {
+  const table = new Array(nSamples);
+  let j = 0;
+  for (let i = 0; i < nSamples; i++) {
+    const c = (i / (nSamples - 1)) * 1200;
+    while (j < ratios.length - 1 &&
+           Math.abs(ratios[j + 1].cents - c) <= Math.abs(ratios[j].cents - c)) j++;
+    table[i] = ratios[j];
+  }
+  return table;
+}
+
 // ── State ─────────────────────────────────────────────────
+const N_FULL   = 1200; // curve resolution at rest
+const N_COARSE = 300;  // …and while a slider thumb is moving
+
 let ratios = buildRatios(100); // need height≥88 for 11:8 (11×8=88)
 let sigma  = 9;
-let N      = 1200;
-let landscape = buildLandscape(ratios, sigma, N);
+let N      = N_FULL;
+let landscape, nearestTable;
+function rebuildCurve() {
+  landscape    = buildLandscape(ratios, sigma, N);
+  nearestTable = buildNearestTable(ratios, N);
+}
+rebuildCurve();
 let showTET    = true;
 let showLabels = true;
 let showPhi    = true;
 let showDots   = false;
-let clipFrac   = 0.22; // fraction of interior max used as ceiling; <1 clips strong peaks
+let clipFrac   = 0.22; // fraction of the interior depth kept below the ceiling; <1 clips deep valleys
 
 const PHI_CENTS = 1200 * Math.log2((1 + Math.sqrt(5)) / 2); // ≈ 833.09¢
 
@@ -455,7 +480,16 @@ const cv = document.getElementById('landscape');
 let cursorCents = -1;
 let dragging = false;
 
-const TET_LABELS = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B','C8ve'];
+const CHROMATIC = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+
+// Grid labels spelled from whatever root is selected, not from a fixed C.
+function tetLabels() {
+  const start = CHROMATIC.indexOf(droneNote);
+  const out = [];
+  for (let i = 0; i <= 12; i++) out.push(CHROMATIC[(start + i) % 12]);
+  out[12] += '8ve';
+  return out;
+}
 
 function draw() {
   const dpr = devicePixelRatio || 1;
@@ -471,14 +505,15 @@ function draw() {
   g.fillRect(0, 0, w, h);
 
   // Normalize landscape
-  // Floor = absolute minimum; Ceiling = clipFrac × interior max
-  // Values above ceiling clip at the top, revealing weaker intervals
-  let minV = landscape[0];
-  for (let i = 1; i < N; i++) if (landscape[i] < minV) minV = landscape[i];
+  // Ceiling = absolute maximum (the roughest ground); Floor = clipFrac of the
+  // interior depth below it. Valleys deeper than the floor clip at the bottom,
+  // which is what keeps the shallow ones readable.
+  let maxV = landscape[0];
+  for (let i = 1; i < N; i++) if (landscape[i] > maxV) maxV = landscape[i];
   const EDGE = Math.floor(N * 0.025);
-  let interiorMax = 0;
-  for (let i = EDGE; i < N - EDGE; i++) if (landscape[i] > interiorMax) interiorMax = landscape[i];
-  const maxV  = minV + (interiorMax - minV) * clipFrac;
+  let interiorMin = landscape[EDGE];
+  for (let i = EDGE; i < N - EDGE; i++) if (landscape[i] < interiorMin) interiorMin = landscape[i];
+  const minV  = maxV - (maxV - interiorMin) * clipFrac;
   const range = maxV - minV;
 
   const PLOT_TOP    = 32;
@@ -487,13 +522,14 @@ function draw() {
 
   const centsToX = c => (c / 1200) * w;
   const valToY = v => {
-    const norm = range > 0 ? Math.max(0, (v - minV) / range) : 0;
-    // gamma 0.65: stretches small peaks upward so weak intervals stay visible
-    return PLOT_BOTTOM - Math.pow(Math.min(1, norm), 0.65) * PLOT_H * 0.94;
+    const depth = range > 0 ? Math.max(0, (maxV - v) / range) : 0;
+    // gamma 0.65: stretches shallow valleys downward so weak intervals stay visible
+    return PLOT_TOP + PLOT_H * 0.06 + Math.pow(Math.min(1, depth), 0.65) * PLOT_H * 0.94;
   };
 
   // ── 12-TET grid lines ─────────────────────────────────
   if (showTET) {
+    const tetLab = tetLabels();
     for (let i = 0; i <= 12; i++) {
       const x = centsToX(i * 100);
       g.beginPath();
@@ -509,7 +545,7 @@ function draw() {
       g.font = `italic ${9}px Georgia, serif`;
       g.textAlign = 'center';
       g.fillStyle = 'rgba(138,176,200,0.35)';
-      g.fillText(TET_LABELS[i], x, PLOT_BOTTOM + 16);
+      g.fillText(tetLab[i], x, PLOT_BOTTOM + 16);
     }
   }
 
@@ -541,21 +577,21 @@ function draw() {
   g.lineWidth = 1.5;
   g.stroke();
 
-  // ── JI peak labels ────────────────────────────────────
+  // ── JI valley labels ──────────────────────────────────
   if (showLabels) {
-    // Find local maxima above a low threshold (relative to floor-subtracted range)
-    const threshold = minV + range * 0.04;
+    // Find local minima that sink at least a little below the ceiling
+    const threshold = maxV - range * 0.04;
     const labeled = new Set();
     for (let i = 4; i < N - 4; i++) {
-      if (landscape[i] < threshold) continue;
-      const isMax = landscape[i] >= landscape[i-3] &&
-                    landscape[i] >= landscape[i+3] &&
-                    landscape[i] >= landscape[i-1] &&
-                    landscape[i] >= landscape[i+1];
-      if (!isMax) continue;
+      if (landscape[i] > threshold) continue;
+      const isMin = landscape[i] <= landscape[i-3] &&
+                    landscape[i] <= landscape[i+3] &&
+                    landscape[i] <= landscape[i-1] &&
+                    landscape[i] <= landscape[i+1];
+      if (!isMin) continue;
 
       const cents = (i / (N - 1)) * 1200;
-      const { ratio } = nearestRatio(ratios, cents);
+      const ratio = nearestTable[i];
       if (Math.abs(ratio.cents - cents) > 3) continue;
 
       const key = ratio.key;
@@ -735,6 +771,7 @@ document.querySelectorAll('.note-btn').forEach(btn => {
     this.classList.add('on');
     updateRootDisplay();
     updateDroneFreq();
+    draw(); // grid labels are spelled from the root
   });
 });
 
@@ -786,20 +823,30 @@ document.getElementById('btn-dots').addEventListener('click', function() {
   draw();
 });
 
-document.getElementById('blur-slider').addEventListener('input', function() {
+// Rebuilding the curve is the expensive part, so a moving thumb gets a coarse
+// curve and the full-resolution one lands on release ('change').
+function recompute(coarse) {
+  N = coarse ? N_COARSE : N_FULL;
+  rebuildCurve();
+  draw();
+}
+
+const blurSlider = document.getElementById('blur-slider');
+blurSlider.addEventListener('input', function() {
   sigma = parseInt(this.value);
   document.getElementById('blur-val').textContent = sigma + '¢';
-  landscape = buildLandscape(ratios, sigma, N);
-  draw();
+  recompute(true);
 });
+blurSlider.addEventListener('change', () => recompute(false));
 
-document.getElementById('depth-slider').addEventListener('input', function() {
+const depthSlider = document.getElementById('depth-slider');
+depthSlider.addEventListener('input', function() {
   const depth = parseInt(this.value);
   document.getElementById('depth-val').textContent = depth;
   ratios = buildRatios(depth);
-  landscape = buildLandscape(ratios, sigma, N);
-  draw();
+  recompute(true);
 });
+depthSlider.addEventListener('change', () => recompute(false));
 
 document.getElementById('contrast-slider').addEventListener('input', function() {
   clipFrac = parseInt(this.value) / 100;
@@ -815,8 +862,6 @@ window.addEventListener('resize', draw);
 
 // ── Init ──────────────────────────────────────────────────
 draw();
-
-}());
 </script>
 </body>
 </html>

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="a bell machine that plays just partials of a low C to nobody, striking sparser as the night deepens — hear a harmonic series in real time.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -29,7 +30,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: #7a7a6a; text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -150,12 +151,16 @@ function weightFor(p, hour) {
   return low * corridor * house;
 }
 
-// Mean seconds between strikes, by hour — the room empties out after midnight.
+// Mean seconds between strikes, by hour — the room empties out as the night
+// goes on. Monotone: from the 6am floor the gap only ever grows, all the way
+// around to dawn, so later really is sparser.
 function meanGap(hour) {
-  if (hour >= 1 && hour < 6)  return 15;
-  if (hour >= 23 || hour < 1) return 12;
-  if (hour >= 6 && hour < 9)  return 8;
-  return 9.5;
+  if (hour >= 1 && hour < 6)  return 16;     // deep night, sparsest
+  if (hour >= 23 || hour < 1) return 14;
+  if (hour >= 21)             return 12.5;
+  if (hour >= 18)             return 11;     // evening, settling
+  if (hour >= 9)              return 9.5;    // daytime, it plays anyway
+  return 8;                                  // 6–9, waking up: densest
 }
 
 // ── audio ───────────────────────────────────────────────────────────────────
@@ -216,8 +221,11 @@ function scheduleNext() {
       // the house chord, rolled gently upward
       const t0 = ctx.currentTime + 0.05;
       CHORD.forEach((p, i) => strike(p, t0 + i * (0.28 + Math.random() * 0.22), 0.8));
+      lastStruck = CHORD[0]; lastStruckAt = performance.now();   // label the root of the roll
     } else {
-      strike(drawPartial(hourNow), ctx.currentTime + 0.02, 0.55 + Math.random() * 0.4);
+      const p = drawPartial(hourNow);
+      strike(p, ctx.currentTime + 0.02, 0.55 + Math.random() * 0.4);
+      lastStruck = p; lastStruckAt = performance.now();
     }
     scheduleNext();
   }, Math.max(1200, gap * 1000));
@@ -313,14 +321,21 @@ function draw(ts) {
 // ── interaction ─────────────────────────────────────────────────────────────
 const gate = document.getElementById('gate');
 const hushBtn = document.getElementById('hush');
+let hushed = false;   // holds even before there is an AudioContext
+
+function setHushLabel() {
+  hushBtn.textContent = hushed ? 'resume' : 'hush';
+  hushBtn.setAttribute('aria-label', hushed ? 'resume sound' : 'pause all sound');
+}
 
 function begin() {
+  if (hushed) return;   // a hush laid down before first touch still holds
   if (!ctx) initAudio();
   if (ctx.state === 'suspended') ctx.resume();
   if (!running) {
     running = true;
     gate.classList.add('gone');
-    hushBtn.textContent = 'hush';
+    setHushLabel();
     // a first breath: the low fundamental, then the shift begins
     strike(2, ctx.currentTime + 0.15, 0.9);
     lastStruck = 2; lastStruckAt = performance.now();
@@ -346,17 +361,22 @@ cv.addEventListener('click', (e) => {
 });
 
 hushBtn.addEventListener('click', () => {
-  if (!ctx) return;
-  if (running) {
-    running = false;
-    clearTimeout(nextTimer);
-    panicAll();
-    ctx.suspend();
-    hushBtn.textContent = 'resume';
-  } else {
+  if (hushed) {              // lift the hush and (re)start the shift
+    hushed = false;
+    setHushLabel();
     begin();
+    return;
   }
+  hushed = true;
+  setHushLabel();
+  if (!running) return;      // nothing sounding yet — the hush just waits
+  running = false;
+  clearTimeout(nextTimer);
+  panicAll();
+  if (ctx) ctx.suspend();
 });
+
+setHushLabel();
 
 // keep honest when the tab sleeps
 document.addEventListener('visibilitychange', () => {

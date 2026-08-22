@@ -130,6 +130,35 @@
     button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
     button.on { color: var(--gold); border-color: rgba(212,192,112,0.45); }
 
+    /* ?pose=1 draws a synthetic spectrum — say so, unmissably */
+    .simulated {
+      position: fixed;
+      top: 42%; left: 50%;
+      transform: translate(-50%, -50%) rotate(-21deg);
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: clamp(1.9rem, 11vw, 4.4rem);
+      letter-spacing: 0.28em;
+      color: rgba(212,192,112,0.30);
+      border: 3px solid rgba(212,192,112,0.26);
+      padding: 0.22em 0.3em 0.22em 0.55em;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .simulated-note {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(212,192,112,0.12);
+      border-top: 1px solid rgba(212,192,112,0.35);
+      color: var(--gold);
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.09em;
+      text-align: center;
+      padding: 0.5rem 1rem;
+      z-index: 201;
+    }
+
     .hint {
       font-size: 0.53rem;
       letter-spacing: 0.1em;
@@ -183,19 +212,21 @@
   <button id="btnPlay">listen</button>
 </div>
 
-<p class="hint">0 ghost = clean linear mix, no ghosts possible · turn it up to fold the sum through a soft nonlinear curve · "stop" fully kills both oscillators and closes the audio graph</p>
+<p class="hint">0 ghost = clean linear mix, no ghosts possible, and the readout above goes empty to match · turn it up to fold the sum through a soft asymmetric curve — all four derived tones arrive together, the moment it leaves 0 · "stop" fully kills both oscillators and closes the audio graph</p>
 
 <script>
 // ─────────────────────────────────────────────────────────────
 //  tartini — audible combination tones (Tartini / difference tones)
 //  Two independent sine oscillators sum into a WaveShaperNode whose
-//  curve is (1-ghost)*identity + ghost*(x + k2*x^2 + k3*x^3), soft-
-//  clipped by tanh. The x^2 term is what actually produces sum/
-//  difference products via the trig product-to-sum identity applied
-//  to (sinA + sinB)^2; the x^3 term adds odd-order products like
-//  2fA-fB and 2fB-fA. At ghost=0 the curve is exact identity, so the
-//  mix is clean and no ghost tones exist in the signal — this is an
-//  honest nonlinearity, not oscillators faked in under those labels.
+//  curve is a straight lerp between the identity and one fixed
+//  nonlinearity: (1-ghost)*x + ghost*shape(x), with
+//  shape(x) = tanh(k*(x + q*x^2)) range-matched back into [-1,1].
+//  The x^2 inside the tanh is what actually produces sum/difference
+//  products, via the trig product-to-sum identity applied to
+//  (sinA + sinB)^2; tanh's own odd terms add 2fA-fB and 2fB-fA. At
+//  ghost=0 the lerp collapses to exact identity, so the mix is clean
+//  and no ghost tones exist in the signal — this is an honest
+//  nonlinearity, not oscillators faked in under those labels.
 // ─────────────────────────────────────────────────────────────
 
 const $ = id => document.getElementById(id);
@@ -241,21 +272,37 @@ function freqToNote(freq) {
   return name + oct + (cents !== 0 ? (cents > 0 ? '+' : '') + cents + '¢' : '');
 }
 
-// nonlinear curve: identity at ghost=0, grows a quadratic (sum/diff
-// generator) + cubic (higher-order product generator) term as ghost
-// rises, soft-clipped so it never blows out.
+// nonlinear curve: a true lerp from the identity toward one fixed
+// shape. amt=0 is the identity exactly (every sample y === x, not
+// "close to x"); amt=1 is the full nonlinearity. shape() is
+// deliberately asymmetric — the q*x^2 inside the tanh is the even
+// -order term that makes sum and difference tones at all, and tanh
+// supplies the odd terms (2A-B, 2B-A) plus the soft clip. q stays
+// under 0.5 so x + q*x^2 is monotone across [-1,1] and the shaper
+// never folds the waveform back on itself.
+const CURVE_K = 2.2;   // drive into the tanh
+const CURVE_Q = 0.4;   // quadratic weight — the sum/diff generator
+function curveShape(x) { return Math.tanh(CURVE_K * (x + CURVE_Q * x * x)); }
 function makeCurve(amt) {
   const n = 4096;
   const curve = new Float32Array(n);
-  const k2 = amt * 0.55, k3 = amt * 0.85;
-  const norm = Math.tanh(1 + amt * 0.6);
+  // range-match the shaped branch to x: shape is monotone, so its
+  // extremes sit at x = ±1 and dividing by the larger |end| keeps the
+  // branch inside [-1,1], same span the identity branch has.
+  const norm = Math.max(Math.abs(curveShape(-1)), Math.abs(curveShape(1)));
   for (let i = 0; i < n; i++) {
     const x = (i / (n - 1)) * 2 - 1;
-    const y = x + k2 * x * x + k3 * x * x * x;
-    curve[i] = Math.tanh(y * (1 + amt * 0.6)) / norm;
+    curve[i] = (1 - amt) * x + amt * (curveShape(x) / norm);
   }
   return curve;
 }
+
+// Every derived tone on this page is made by the waveshaper, and the
+// curve is exact identity at ghost 0 — so a derived row is honest
+// only when the nonlinearity is engaged AND the product lands on a
+// real, positive frequency (fA === fB puts the difference tone at DC;
+// a lopsided pair can push 2fA-fB below zero).
+function toneAudible(freq) { return getGhost() > 0 && freq > 0; }
 
 // ── Audio graph ─────────────────────────────────────────────
 let actx = null, master = null, analyser = null, shaper = null, sumGain = null;
@@ -358,10 +405,10 @@ function synthSpectrum(fa, fb, ghost) {
   const peaks = [
     { f: fa,     amp: 235,               w: 2.2 },
     { f: fb,     amp: 235,               w: 2.2 },
-    { f: g.diff, amp: 60 + 150 * ghost,  w: 3.2 },
-    { f: g.sum,  amp: 40 + 110 * ghost,  w: 3.2 },
-    { f: g.c1,   amp: ghost > 0.15 ? 25 + 70 * ghost : 0, w: 4 },
-    { f: g.c2,   amp: ghost > 0.15 ? 25 + 70 * ghost : 0, w: 4 },
+    { f: g.diff, amp: ghost > 0 ? 60 + 150 * ghost : 0, w: 3.2 },
+    { f: g.sum,  amp: ghost > 0 ? 40 + 110 * ghost : 0, w: 3.2 },
+    { f: g.c1,   amp: ghost > 0 ? 25 + 70 * ghost : 0,  w: 4 },
+    { f: g.c2,   amp: ghost > 0 ? 25 + 70 * ghost : 0,  w: 4 },
   ];
   for (let i = 0; i < n; i++) {
     const f = i * binHz;
@@ -475,12 +522,18 @@ requestAnimationFrame(loop);
 function updateReadout() {
   const fa = getFA(), fb = getFB();
   const g = computeGhosts(fa, fb);
-  $('readout').innerHTML =
-    `difference <span class="d">${g.diff.toFixed(1)} Hz</span> (${freqToNote(g.diff)}) ` +
-    `&nbsp;·&nbsp; summation <span class="s">${g.sum.toFixed(1)} Hz</span> (${freqToNote(g.sum)})` +
-    (getGhost() > 0.15
-      ? ` &nbsp;·&nbsp; <span class="h">2A−B ${g.c1.toFixed(0)} Hz · 2B−A ${g.c2.toFixed(0)} Hz</span>`
-      : '');
+  const rows = [];
+  if (toneAudible(g.diff))
+    rows.push(`difference <span class="d">${g.diff.toFixed(1)} Hz</span> (${freqToNote(g.diff)})`);
+  if (toneAudible(g.sum))
+    rows.push(`summation <span class="s">${g.sum.toFixed(1)} Hz</span> (${freqToNote(g.sum)})`);
+  if (toneAudible(g.c1))
+    rows.push(`<span class="h">2A−B ${g.c1.toFixed(0)} Hz</span>`);
+  if (toneAudible(g.c2))
+    rows.push(`<span class="h">2B−A ${g.c2.toFixed(0)} Hz</span>`);
+  $('readout').innerHTML = rows.length
+    ? rows.join(' &nbsp;·&nbsp; ')
+    : 'ghost at 0 · the mix is linear · nothing derived is in the signal';
 }
 
 // ── Controls ─────────────────────────────────────────────────
@@ -513,10 +566,18 @@ $('btnPlay').addEventListener('click', () => { running ? stopAll() : start(); })
 // ?pose=1 seeds a dissonant pair + a mid-high ghost amount and
 // switches the spectrum to the synthetic renderer so the capture
 // shows real-looking peaks without needing an unlocked AudioContext.
+// Two spellings, same staged state to the pixel:
+//   ?pose=1            — watermarked. what a visitor gets if they
+//                        stumble into it, so a drawn spectrum can
+//                        never be mistaken for a measured one.
+//   ?pose=1&capture=1  — no watermark. the molt/thumbnail capture
+//                        only, so SIMULATED doesn't bake into the
+//                        published nest image.
 (function applyPose() {
   if (typeof location === 'undefined') return;   // headless logic-test env
   const params = new URLSearchParams(location.search);
   if (params.get('pose') !== '1') return;
+  const capturing = params.get('capture') === '1';
   posed = true;
   // 250/340 (~11/8, dissonant) keeps all six markers — A, B, diff,
   // sum, 2A-B, 2B-A — well separated (90, 160, 250, 340, 430,
@@ -527,6 +588,21 @@ $('btnPlay').addEventListener('click', () => { running ? stopAll() : start(); })
   $('gainB').value = 0.6;  $('gainBVal').textContent = '0.60';
   $('ghost').value = 0.62; $('ghostVal').textContent = '0.62';
   axisCur = axisTarget(getFA(), getFB());   // no mid-ease frame in the capture
+  // the spectrum here is drawn, not measured — label it, unless this
+  // is the capture pass. the watermark is the ONLY difference between
+  // the two spellings, so the published thumbnail still shows exactly
+  // the frame a visitor sees underneath it.
+  if (capturing) return;
+  const mark = document.createElement('div');
+  mark.className = 'simulated';
+  mark.textContent = 'SIMULATED';
+  mark.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(mark);
+  const note = document.createElement('div');
+  note.className = 'simulated-note';
+  note.setAttribute('role', 'status');
+  note.textContent = 'SIMULATED · pose mode (?pose=1) · this spectrum is synthetic, not measured — drop the ?pose=1 for the real instrument';
+  document.body.appendChild(note);
 })();
 
 updateReadout();

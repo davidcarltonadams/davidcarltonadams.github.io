@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="play the modes two ways — one collection with a moving tonic, or one tonic with a changing collection — on a key-aware keyboard.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -95,6 +96,23 @@
     }
     .root-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
     .root-btn.on { color: var(--accent); border-color: var(--accent); background: rgba(160,154,204,0.12); }
+
+    /* ── Reading selector (relative / parallel) ─ */
+    .reading-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .reading-note {
+      font-size: 0.54rem;
+      letter-spacing: 0.1em;
+      color: var(--dimmer);
+      font-style: italic;
+      text-align: center;
+      max-width: 420px;
+    }
 
     /* ── Keyboard ─────────────────────────────── */
     .keyboard-wrap {
@@ -221,6 +239,8 @@
 
 <div class="scale-tabs" id="scale-tabs"></div>
 
+<div class="reading-row" id="reading-row"></div>
+
 <div class="root-row" id="root-row"></div>
 
 <div class="keyboard-wrap">
@@ -235,6 +255,7 @@
 
 <div class="mode-info" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:0.25rem">
   <button id="auto-play-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--dim);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">▶ play scale</button>
+  <button id="silence-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--dim);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">◼ silence</button>
   <div style="display:flex;align-items:center;gap:0.5rem">
     <span style="font-size:0.58rem;color:var(--dimmer);font-style:italic;letter-spacing:0.08em">tempo</span>
     <input type="range" id="tempo-slider" min="40" max="220" value="90"
@@ -243,7 +264,7 @@
   </div>
 </div>
 
-<p class="hint">esc stops all · click to play scale tone</p>
+<p class="hint">silence or esc stops all · click to play scale tone</p>
 
 <script>
 // ── Scale definitions ─────────────────────────────────────
@@ -294,11 +315,13 @@ const SCALES = {
     label: 'pentatonic',
     intervals: [2,2,3,2,3],
     modes: [
-      { name: 'major pentatonic',  start: 0, desc: 'universal scale — folk, blues, rock, gospel worldwide' },
-      { name: 'Egyptian',          start: 1, desc: 'sus pentatonic — suspended feel, no third' },
-      { name: 'blues major',       start: 2, desc: 'man gong — minor pentatonic starting point' },
-      { name: 'minor pentatonic',  start: 3, desc: 'the blues scale foundation — rock guitar, riffs, calls' },
-      { name: 'Yo (Japanese)',     start: 4, desc: 'Japanese Yo scale — traditional Japanese music' },
+      // rotations of 2·2·3·2·3, in order. names checked against the interval
+      // pattern each rotation actually produces, not against its neighbours.
+      { name: 'major pentatonic',  start: 0, desc: '2·2·3·2·3 — folk, blues, rock, gospel worldwide' },
+      { name: 'Egyptian',          start: 1, desc: '2·3·2·3·2 — sus pentatonic, suspended feel, no third' },
+      { name: 'blues minor',       start: 2, desc: '3·2·3·2·2 — man gong; the darkest rotation' },
+      { name: 'Yo (Japanese)',     start: 3, desc: '2·3·2·2·3 — ritsusen, the Japanese Yo scale; also called blues major' },
+      { name: 'minor pentatonic',  start: 4, desc: '3·2·2·3·2 — the blues scale foundation; rock guitar, riffs, calls' },
     ],
   },
   wholetone: {
@@ -322,8 +345,67 @@ const SCALES = {
 let currentScale = 'major';
 let currentModeIdx = 0;
 let currentRoot = 0; // semitones from C4
+// 'relative' — one pitch collection, the tonic moves (all seven modes share notes)
+// 'parallel' — one tonic, the collection changes
+let reading = 'relative';
 
+const READING_NOTE = {
+  relative: 'one pitch collection, tonic moves · same notes, different gravity',
+  parallel: 'one tonic, collection changes · same gravity, different notes',
+};
+
+// button labels for the root chooser — a chooser, not a spelling claim
 const ROOT_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+
+// ── Note spelling (key-aware) ─────────────────────────────
+// Sharp keys must spell with sharps, flat keys with flats. Which set applies
+// is read off the collection's footprint on the line of fifths.
+const SHARP_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+const FLAT_NAMES  = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+
+// position on the circle of fifths: C=0, G=1, D=2, A=3, E=4, B=5, F♯=6, … F=11
+function fifthsIndex(pc) { return (7 * (((pc % 12) + 12) % 12)) % 12; }
+
+// Find the tightest contiguous window of fifths covering the collection, then
+// see which way it spills out of the natural band F…B (−1…5). Spill to the
+// flat side means flats; C major sits inside the band and defaults to sharps,
+// which costs nothing since it has no black keys.
+function useFlats() {
+  const pcs = [...getScaleNotesSet()];
+  if (!pcs.length) return false;
+  const idx = pcs.map(fifthsIndex);
+  let bestK = 0, bestSpread = 99;
+  for (let k = 0; k < 12; k++) {
+    let spread = 0;
+    for (const i of idx) spread = Math.max(spread, (i - k + 12) % 12);
+    if (spread < bestSpread) { bestSpread = spread; bestK = k; }
+  }
+  const lo = bestK <= 6 ? bestK : bestK - 12;
+  const hi = lo + bestSpread;
+  return Math.max(0, -1 - lo) > Math.max(0, hi - 5);
+}
+
+function noteName(pc, flats) {
+  if (flats === undefined) flats = useFlats();
+  const p = ((pc % 12) + 12) % 12;
+  return (flats ? FLAT_NAMES : SHARP_NAMES)[p];
+}
+
+// ── Tonic ─────────────────────────────────────────────────
+// How far the mode's tonic sits above the parent collection's root.
+function modeOffset() {
+  const sc = SCALES[currentScale];
+  const mode = sc.modes[currentModeIdx];
+  let off = 0;
+  for (let i = 0; i < mode.start; i++) off += sc.intervals[i];
+  return off % 12;
+}
+
+// In the relative reading the root row picks the collection and the tonic
+// moves through it; in the parallel reading the root row IS the tonic.
+function currentTonic() {
+  return reading === 'relative' ? (currentRoot + modeOffset()) % 12 : currentRoot % 12;
+}
 
 // 2 octaves of chromatic from root
 const WHITE_PATTERN = [0,2,4,5,7,9,11,12,14,16,17,19,21,23]; // semitones of white keys C..B..C
@@ -331,8 +413,10 @@ const BLACK_OFFSETS = {1:1, 3:2, 6:4, 8:5, 10:6, 13:8, 15:9, 18:11, 20:12, 22:13
 
 // ── Audio ─────────────────────────────────────────────────
 let ac = null, masterComp = null;
-const voices = {};
+const voices = {};          // voice id -> {osc, gain}
+const heldBy = {};          // midi key -> id of the voice currently sounding it
 const playingNotes = new Set();
+let voiceSeq = 0;
 
 function initAudio() {
   if (ac) return;
@@ -348,13 +432,31 @@ function initAudio() {
 
 function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
 
+// Fade a voice out over ~50ms and free it. Used both to retrigger a pitch and
+// to silence everything.
+function releaseVoice(id) {
+  const v = voices[id];
+  if (!v) return;
+  const t = ac ? ac.currentTime : 0;
+  try {
+    v.gain.gain.cancelScheduledValues(t);
+    v.gain.gain.setTargetAtTime(0, t, 0.012);
+  } catch(e){}
+  try { v.osc.stop(t + 0.06); } catch(e){ try { v.osc.stop(); } catch(e2){} }
+  delete voices[id];
+}
+
 function playNote(semitone) {
   initAudio();
   if (ac.state === 'suspended') ac.resume();
   const midi = 60 + semitone; // C4 = 60
   const key = String(midi);
-  if (playingNotes.has(key)) return;
 
+  // same pitch twice in a row is a legitimate melodic gesture — retrigger it
+  // rather than swallowing the second strike
+  if (heldBy[key] !== undefined) { releaseVoice(heldBy[key]); delete heldBy[key]; }
+
+  const id = ++voiceSeq;
   const freq = midiToFreq(midi);
   const osc  = ac.createOscillator();
   const gain = ac.createGain();
@@ -366,21 +468,19 @@ function playNote(semitone) {
   osc.connect(gain); gain.connect(masterComp);
   osc.start();
   playingNotes.add(key);
-  voices[key] = osc;
+  voices[id] = { osc, gain };
+  heldBy[key] = id;
   setTimeout(() => {
-    try { osc.stop(); } catch(e){}
-    playingNotes.delete(key);
-    delete voices[key];
+    releaseVoice(id);
+    if (heldBy[key] === id) { delete heldBy[key]; playingNotes.delete(key); }
     updateKeyVisuals();
   }, 900);
   updateKeyVisuals();
 }
 
 function stopAll() {
-  for (const [k, osc] of Object.entries(voices)) {
-    try { osc.stop(); } catch(e){}
-    delete voices[k];
-  }
+  for (const id of Object.keys(voices)) releaseVoice(id);
+  for (const k of Object.keys(heldBy)) delete heldBy[k];
   playingNotes.clear();
   updateKeyVisuals();
 }
@@ -402,8 +502,9 @@ function getScaleNotes() {
   }
   steps.push(cum); // octave
 
-  // Apply root offset
-  const rootSemi = currentRoot;
+  // Apply tonic offset — the tonic is the root in the parallel reading, and a
+  // degree of the root's collection in the relative one
+  const rootSemi = currentTonic();
   return steps.map(s => (s + rootSemi) % 12);
 }
 
@@ -416,11 +517,12 @@ function degreeInScale(semitone) {
   const sc = SCALES[currentScale];
   const mode = sc.modes[currentModeIdx];
   const n = sc.intervals.length;
+  const tonic = currentTonic();
   let cum = 0;
   const steps = [];
   for (let i = 0; i < n; i++) {
     const idx = (mode.start + i) % n;
-    steps.push((cum + currentRoot) % 12);
+    steps.push((cum + tonic) % 12);
     cum += sc.intervals[idx];
   }
   const pos = steps.indexOf((semitone + 12) % 12);
@@ -428,23 +530,7 @@ function degreeInScale(semitone) {
 }
 
 // ── Build UI ──────────────────────────────────────────────
-function buildScaleTabs() {
-  const el = document.getElementById('scale-tabs');
-  el.innerHTML = '';
-  for (const [key, sc] of Object.entries(SCALES)) {
-    const btn = document.createElement('button');
-    btn.className = 'scale-btn' + (key === currentScale ? ' on' : '');
-    btn.textContent = sc.label;
-    btn.addEventListener('click', () => {
-      currentScale = key;
-      currentModeIdx = 0;
-      buildScaleTabs();
-      buildModeInfo();
-      updateKeyVisuals();
-    });
-    el.appendChild(btn);
-  }
-}
+// (the scale-family tabs are built by buildModeInfo, which owns #scale-tabs)
 
 function buildRootRow() {
   const el = document.getElementById('root-row');
@@ -457,10 +543,36 @@ function buildRootRow() {
       currentRoot = i;
       buildRootRow();
       buildModeInfo();
-      updateKeyVisuals();
+      buildKeyboard(); // key semitones and labels are baked in at build time
     });
     el.appendChild(btn);
   });
+}
+
+function buildReadingRow() {
+  const el = document.getElementById('reading-row');
+  el.innerHTML = '';
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:0.4rem;justify-content:center;flex-wrap:wrap';
+  ['relative', 'parallel'].forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'scale-btn' + (r === reading ? ' on' : '');
+    b.textContent = r;
+    b.addEventListener('click', () => {
+      reading = r;
+      buildReadingRow();
+      buildModeInfo();
+      buildKeyboard();
+    });
+    row.appendChild(b);
+  });
+  el.appendChild(row);
+
+  const note = document.createElement('p');
+  note.className = 'reading-note';
+  note.textContent = READING_NOTE[reading];
+  el.appendChild(note);
 }
 
 function buildKeyboard() {
@@ -471,6 +583,7 @@ function buildKeyboard() {
   const whiteKeys = [0,2,4,5,7,9,11,12,14,16,17,19,21,23]; // semitones above C4
   const whiteCount = whiteKeys.length;
   const keyW = 100 / whiteCount;
+  const flats = useFlats(); // decided once per build so every label agrees
 
   // White keys first
   whiteKeys.forEach((semi, wi) => {
@@ -482,8 +595,7 @@ function buildKeyboard() {
     div.style.position = 'absolute';
     div.style.height = '100%';
 
-    const noteName = ROOT_NAMES[(semi + currentRoot) % 12];
-    div.innerHTML = `<span class="key-label">${noteName}</span>`;
+    div.innerHTML = `<span class="key-label">${noteName(semi + currentRoot, flats)}</span>`;
     div.addEventListener('mousedown', () => playNote(semi + currentRoot));
     div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi + currentRoot); }, {passive: false});
     kb.appendChild(div);
@@ -500,7 +612,7 @@ function buildKeyboard() {
     const leftPct = (leftWi + 1) * keyW - keyW * 0.29;
     div.style.left = leftPct + '%';
     div.style.width = keyW * 0.58 + '%';
-    div.innerHTML = `<span class="key-label" style="margin-top:4px">${ROOT_NAMES[(semi + currentRoot) % 12]}</span>`;
+    div.innerHTML = `<span class="key-label" style="margin-top:4px">${noteName(semi + currentRoot, flats)}</span>`;
     div.addEventListener('mousedown', () => playNote(semi + currentRoot));
     div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi + currentRoot); }, {passive: false});
     kb.appendChild(div);
@@ -511,7 +623,7 @@ function buildKeyboard() {
 
 function updateKeyVisuals() {
   const scaleSet = getScaleNotesSet();
-  const rootPc = currentRoot % 12;
+  const rootPc = currentTonic();
 
   document.querySelectorAll('.key').forEach(k => {
     const semi = parseInt(k.dataset.semi);
@@ -554,7 +666,7 @@ function buildModeInfo() {
     btn.textContent = s.label;
     btn.addEventListener('click', () => {
       currentScale = key; currentModeIdx = 0;
-      buildModeInfo(); updateKeyVisuals(); buildRootRow();
+      buildModeInfo(); buildRootRow(); buildKeyboard();
     });
     el.appendChild(btn);
   }
@@ -573,9 +685,10 @@ function buildModeInfo() {
     c += sc.intervals[idx];
     steps.push(c);
   }
+  const flats = useFlats();
   document.getElementById('intervals-display').textContent =
     sc.intervals.slice(mode.start).concat(sc.intervals.slice(0, mode.start)).join(' · ') +
-    '  →  ' + getScaleNotes().map(s => ROOT_NAMES[s]).join(' ');
+    '  →  ' + getScaleNotes().map(s => noteName(s, flats)).join(' ');
 
   // Add mode selector buttons below scale tabs
   if (sc.modes.length > 1) {
@@ -588,7 +701,7 @@ function buildModeInfo() {
       b.textContent = m.name;
       b.addEventListener('click', () => {
         currentModeIdx = i;
-        buildModeInfo(); updateKeyVisuals();
+        buildModeInfo(); buildKeyboard();
       });
       modeRow.appendChild(b);
     });
@@ -607,13 +720,14 @@ function autoPlayStep() {
   const sc = SCALES[currentScale];
   const mode = sc.modes[currentModeIdx];
   const n = sc.intervals.length;
+  const tonic = currentTonic();
   let cum = 0;
   const semitones = [];
   for (let i = 0; i < n; i++) {
-    semitones.push(cum + currentRoot);
+    semitones.push(cum + tonic);
     cum += sc.intervals[(mode.start + i) % n];
   }
-  semitones.push(cum + currentRoot); // octave
+  semitones.push(cum + tonic); // octave
 
   if (autoStep >= semitones.length) autoStep = 0;
   const semi = semitones[autoStep];
@@ -645,17 +759,22 @@ document.getElementById('auto-play-btn').addEventListener('click', () => {
   if (autoPlaying) stopAutoPlay(); else startAutoPlay();
 });
 
+// mobile has no esc key — the same kill path needs a tappable control
+document.getElementById('silence-btn').addEventListener('click', () => {
+  stopAutoPlay();
+  stopAll();
+});
+
 document.getElementById('tempo-slider').addEventListener('input', e => {
   document.getElementById('tempo-val').textContent = e.target.value;
   if (autoPlaying) { clearTimeout(autoTimer); autoPlayStep(); }
 });
 
 // ── Init ──────────────────────────────────────────────────
-buildScaleTabs();
+buildReadingRow();
 buildRootRow();
-buildKeyboard();
 buildModeInfo();
-updateKeyVisuals();
+buildKeyboard();
 </script>
 </body>
 </html>

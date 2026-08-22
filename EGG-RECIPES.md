@@ -108,10 +108,20 @@ sum, 2A−B, 2B−A — well separated on the 0–2000 Hz axis (90, 160, 250, 34
 1 Hz and their labels overlapped. Lesson for any egg with a computed-frequency
 spectrum: pick pose values that keep *every derived* marker separated, not
 just the raw inputs.
+
+**Capture URL — use `tartini.html?pose=1&capture=1`.** Bare `?pose=1` now
+draws a large SIMULATED watermark plus a bottom banner, because a visitor can
+stumble into the querystring and the spectrum it shows is synthetic, not
+measured. `capture=1` stages the identical frame with the watermark
+suppressed, so the molt must pass it or SIMULATED bakes into
+`assets/eggs/tartini.webp`. The watermark is the only difference between the
+two spellings.
 ```js
 if (params.get('pose') === '1') {
+  const capturing = params.get('capture') === '1';   // molt path, no watermark
   posed = true;
   freqA = 250; freqB = 340; gainA = 0.6; gainB = 0.6; ghost = 0.62;
+  if (!capturing) showSimulatedWatermark();
 }
 ```
 

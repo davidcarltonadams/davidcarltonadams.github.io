@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="every fraction placed at p/q of a turn around a circle; hover one and its two farey neighbors light up with the |ps − rq| = 1 determinant that defines them.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -122,7 +123,16 @@
       color: var(--dimmer);
       font-style: italic;
       text-align: center;
-      min-height: 1.4em;
+      min-height: 2.9em;
+    }
+    .info-line .det {
+      display: block;
+      margin-top: 0.34rem;
+      color: var(--gold);
+      font-style: normal;
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.53rem;
+      letter-spacing: 0.05em;
     }
 
     .legend {
@@ -150,7 +160,7 @@
 
 <div class="header">
   <h1 class="title">farey clock</h1>
-  <p class="sub">every fraction p∕q sits at exactly (p∕q × 360°) around the circle — radian space made visible. the farey sequence of order n contains every fraction with denominator ≤ n. adjacent fractions have a beautiful property: if p∕q and r∕s are neighbors, then |ps − rq| = 1. click any dot to hear that position as a pitch.</p>
+  <p class="sub">every fraction p∕q sits at exactly (p∕q × 360°) around the circle — radian space made visible. the farey sequence of order n contains every fraction with denominator ≤ n. adjacent fractions have a beautiful property: if p∕q and r∕s are neighbors, then |ps − rq| = 1. hover a dot to light up its two neighbors and see that determinant worked out. click to hear the position as a pitch.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -268,6 +278,7 @@ let showNeighbors = true;
 let showJI = false;
 let showSpokes = false;
 let hoveredFrac = null;
+let hoveredNeighbors = null;
 
 // ── Sweep state
 let sweeping = false;
@@ -284,6 +295,20 @@ function ringPos(v, radius) {
   const a = fracAngle(v);
   return { x: CX + radius * Math.cos(a), y: CY + radius * Math.sin(a) };
 }
+
+// ── Farey neighbors — the defining property of the sequence:
+// for adjacent p/q and r/s in Fₙ, |ps − rq| = 1. Always. That is the whole theorem.
+function neighborsOf(f) {
+  const i = fracs.indexOf(f);
+  if (i < 0) return null;
+  return {
+    prev: i > 0 ? fracs[i - 1] : null,
+    next: i < fracs.length - 1 ? fracs[i + 1] : null,
+  };
+}
+
+// determinant of the pair (a before b): |a.p·b.q − b.p·a.q|
+function fareyDet(a, b) { return Math.abs(a.p * b.q - b.p * a.q); }
 
 // ── Draw
 let rafPending = false;
@@ -374,6 +399,29 @@ function draw() {
     }
   }
 
+  // ── Hovered fraction and its two Farey neighbors
+  if (hoveredFrac && hoveredNeighbors) {
+    const a0 = fracAngle((hoveredNeighbors.prev || hoveredFrac).v);
+    const a1 = fracAngle((hoveredNeighbors.next || hoveredFrac).v);
+    c.beginPath();
+    c.arc(CX, CY, R, a0, a1);
+    c.strokeStyle = 'rgba(212,192,112,0.45)';
+    c.lineWidth = 4; c.stroke();
+
+    for (const nb of [hoveredNeighbors.prev, hoveredNeighbors.next]) {
+      if (!nb) continue;
+      const pn = ringPos(nb.v, R);
+      c.beginPath(); c.arc(pn.x, pn.y, 10, 0, Math.PI * 2);
+      c.strokeStyle = 'rgba(212,192,112,0.80)';
+      c.lineWidth = 1.2; c.stroke();
+      const lp = ringPos(nb.v, R + 22);
+      c.fillStyle = 'rgba(212,192,112,0.90)';
+      c.font = '9.5px Georgia, serif';
+      c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(`${nb.p}/${nb.q}`, lp.x, lp.y);
+    }
+  }
+
   // ── Fraction dots
   const BASE_R = 7;
   for (const f of fracs) {
@@ -449,38 +497,112 @@ function findFrac(mx, my) {
   return null;
 }
 
+function updateInfoLine() {
+  const el = document.getElementById('infoLine');
+  if (!hoveredFrac) { el.textContent = 'hover or click a fraction'; return; }
+  const f     = hoveredFrac;
+  const cents = (f.v * 1200).toFixed(0);
+  const freq  = (parseFloat(document.getElementById('rootSel').value) * Math.pow(2, f.v)).toFixed(2);
+  const deg   = (f.v * 360).toFixed(1);
+  let line = `${f.p}/${f.q} · ${deg}° · ${cents}¢ · ${freq} Hz`;
+
+  const nb = hoveredNeighbors;
+  if (nb && (nb.prev || nb.next)) {
+    const names = [], dets = [];
+    if (nb.prev) {
+      names.push(`${nb.prev.p}/${nb.prev.q}`);
+      dets.push(`|${nb.prev.p}·${f.q} − ${f.p}·${nb.prev.q}| = ${fareyDet(nb.prev, f)}`);
+    }
+    if (nb.next) {
+      names.push(`${nb.next.p}/${nb.next.q}`);
+      dets.push(`|${f.p}·${nb.next.q} − ${nb.next.p}·${f.q}| = ${fareyDet(f, nb.next)}`);
+    }
+    line += `<span class="det">neighbors ${names.join(' and ')} · ${dets.join(' · ')}</span>`;
+  }
+  el.innerHTML = line;
+}
+
+function hoverAt(mx, my) {
+  hoveredFrac = findFrac(mx, my);
+  hoveredNeighbors = hoveredFrac ? neighborsOf(hoveredFrac) : null;
+  updateInfoLine();
+  requestDraw();
+}
+
 canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
-  hoveredFrac = findFrac(e.clientX - rect.left, e.clientY - rect.top);
-  if (hoveredFrac) {
-    const cents = (hoveredFrac.v * 1200).toFixed(0);
-    const freq  = (parseFloat(document.getElementById('rootSel').value) * Math.pow(2, hoveredFrac.v)).toFixed(2);
-    const deg   = (hoveredFrac.v * 360).toFixed(1);
-    document.getElementById('infoLine').textContent =
-      `${hoveredFrac.p}/${hoveredFrac.q} · ${deg}° · ${cents}¢ · ${freq} Hz`;
-  } else {
-    document.getElementById('infoLine').textContent = 'hover or click a fraction';
-  }
-  requestDraw();
+  hoverAt(e.clientX - rect.left, e.clientY - rect.top);
 });
 
 canvas.addEventListener('mouseleave', () => {
   hoveredFrac = null;
-  document.getElementById('infoLine').textContent = 'hover or click a fraction';
+  hoveredNeighbors = null;
+  updateInfoLine();
   requestDraw();
 });
 
 // ── Audio
 let actx = null;
+let master = null, comp = null;
+
+// Sweep voices are capped — Fₙ at n=16 is 138 fractions and the tails overlap,
+// so an uncapped sweep piles up oscillators until the graph clips or stalls.
+const MAX_SWEEP_VOICES = 12;
+let sweepVoices = [];
 
 function ensureAudio() {
   if (actx) return;
   actx = new (window.AudioContext || window.webkitAudioContext)();
+  comp = actx.createDynamicsCompressor();
+  comp.threshold.value = -18;
+  comp.knee.value = 24;
+  comp.ratio.value = 8;
+  comp.attack.value = 0.003;
+  comp.release.value = 0.25;
+  master = actx.createGain();
+  master.gain.value = 0.55;
+  master.connect(comp);
+  comp.connect(actx.destination);
+}
+
+function resumeAudio() {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+}
+
+// free finished voices, then steal the oldest until there is room for one more
+function makeRoomForVoice() {
+  const t = actx.currentTime;
+  sweepVoices = sweepVoices.filter(v => {
+    if (v.until > t) return true;
+    try { v.osc.disconnect(); v.env.disconnect(); } catch (e) {}
+    return false;
+  });
+  while (sweepVoices.length >= MAX_SWEEP_VOICES) {
+    const v = sweepVoices.shift();
+    try {
+      v.env.gain.cancelScheduledValues(t);
+      v.env.gain.setTargetAtTime(0, t, 0.008);
+      v.osc.stop(t + 0.06);
+    } catch (e) {}
+  }
+}
+
+function killSweepVoices() {
+  if (!actx) return;
+  const t = actx.currentTime;
+  for (const v of sweepVoices) {
+    try {
+      v.env.gain.cancelScheduledValues(t);
+      v.env.gain.setTargetAtTime(0, t, 0.02);
+      v.osc.stop(t + 0.12);
+    } catch (e) {}
+  }
+  sweepVoices = [];
 }
 
 function playFrac(f) {
-  ensureAudio();
-  if (actx.state === 'suspended') actx.resume();
+  resumeAudio();
   const root = parseFloat(document.getElementById('rootSel').value);
   const freq  = root * Math.pow(2, f.v);
   const osc   = actx.createOscillator();
@@ -488,7 +610,7 @@ function playFrac(f) {
   osc.type = 'sine';
   osc.frequency.value = freq;
   env.gain.value = 0;
-  osc.connect(env); env.connect(actx.destination);
+  osc.connect(env); env.connect(master);
   osc.start();
   const t = actx.currentTime;
   env.gain.setTargetAtTime(0.5, t, 0.01);
@@ -498,7 +620,7 @@ function playFrac(f) {
 
 function playFracSweep(f) {
   ensureAudio();
-  if (actx.state === 'suspended') actx.resume();
+  makeRoomForVoice();
   const root = parseFloat(document.getElementById('rootSel').value);
   const freq  = root * Math.pow(2, f.v);
   const osc   = actx.createOscillator();
@@ -506,7 +628,7 @@ function playFracSweep(f) {
   osc.type = 'sine';
   osc.frequency.value = freq;
   env.gain.value = 0;
-  osc.connect(env); env.connect(actx.destination);
+  osc.connect(env); env.connect(master);
   osc.start();
   const t = actx.currentTime;
   const vol = Math.max(0.05, 0.45 / Math.sqrt(f.q));
@@ -514,6 +636,7 @@ function playFracSweep(f) {
   env.gain.setTargetAtTime(vol, t, 0.005);
   env.gain.setTargetAtTime(0, t + 0.08, decay * 0.15);
   osc.stop(t + decay + 0.5);
+  sweepVoices.push({ osc, env, until: t + decay + 0.5 });
 }
 
 // ── Sweep RAF loop
@@ -549,6 +672,7 @@ function startSweep() {
 
 function stopSweep() {
   sweeping = false;
+  killSweepVoices();
   if (sweepRAF) { cancelAnimationFrame(sweepRAF); sweepRAF = null; }
   sweepLastTime = null;
   requestDraw();
@@ -569,6 +693,10 @@ function subscript(n) {
 function updateN() {
   n = parseInt(document.getElementById('nSlider').value);
   fracs = fareySeq(n);
+  // the hovered dot belongs to the old sequence — its neighbors no longer mean anything
+  hoveredFrac = null;
+  hoveredNeighbors = null;
+  updateInfoLine();
   document.getElementById('nVal').innerHTML = `F${subscript(n)} — <span id="nCount">${fracs.length}</span> fractions`;
   updateLegend();
   requestDraw();
@@ -593,10 +721,12 @@ document.getElementById('btnSpokes').addEventListener('click', e => {
   requestDraw();
 });
 
-document.getElementById('rootSel').addEventListener('change', () => { /* no redraw needed */ });
+document.getElementById('rootSel').addEventListener('change', updateInfoLine);
 
 // ── Sweep button
 document.getElementById('btnSweep').addEventListener('click', e => {
+  // iOS unlocks the context only inside the gesture handler itself
+  resumeAudio();
   if (sweeping) {
     stopSweep();
     e.target.textContent = 'sweep';
