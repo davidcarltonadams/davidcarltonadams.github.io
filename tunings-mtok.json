@@ -1,6 +1,6 @@
 {
   "_comment": "MTOK2 scale-mode placeholder data. beta/gamma are David-decision PLACEHOLDERS (2026-08-15) — playable now, refined by ear later. A future David-authored table replaces the contents of an entry with no code change (website/js/mtok/tuning.js reads this shape as-is). If this file is absent or fails to parse, tuning.js falls back to plain alpha ratios for beta/gamma — never crashes.",
-  "_displayNames": "UI labels for the scale radio (David, 2026-08-16). The internal ids stay alpha/beta/gamma/qt forever; these replace them everywhere user-facing, because alpha/beta/gamma collide with Wendy Carlos's scales. Each name is the scale's own fundamental — and all four happen to land on a programming language, which is the joke: C (alpha, JI on C3), D (beta, upper row over D/G), Go (gamma, transposed to G), Qt (24-EDO quartertones).",
+  "_displayNames": "UI labels for the scale radio (David, 2026-08-16). The internal ids stay alpha/beta/gamma/qt forever; these replace them everywhere user-facing, because alpha/beta/gamma collide with Wendy Carlos's scales. Each name is the scale's own fundamental — and all four happen to land on a programming language, which is the joke: C (alpha, JI on C3), C++ (beta — C plus added upper-row overrides; renamed from D 2026-08-25, docket mtok2-scale-names), Go (gamma, transposed to G), Qt (24-EDO quartertones).",
   "alpha": {
     "displayName": "C",
     "_comment": "Ratio table lives in tuning.js (ALPHA_RATIOS, canonical from MTOK_B block 6). This entry exists only to carry the display name; tuning.js does not read it."
@@ -10,7 +10,7 @@
     "_comment": "24-EDO grid is generated in tuning.js (QT_DEGREE). Display name only — tuning.js does not read this entry."
   },
   "beta": {
-    "displayName": "D",
+    "displayName": "C++",
     "placeholder": true,
     "appliesToRow": "hi",
     "_comment": "Only the 'hi'-suffixed pads of fqs/atri/bflsept (the SPEC's 'upper-microtonal-row') are re-tuned; every other pad (including fqs/atri/bflsept's own lo/med) stays plain alpha. Derivation: fqs-hi = G x 11/8 (undecimal over G) = 3/2 * 11/8 = 33/16. atri-hi = D x 7/4 (septimal over D) = 9/8 * 7/4 = 63/32. bflsept-hi = G x 7/4 (septimal over G), folded down one octave to stay in-register = (3/2 * 7/4) / 2 = 21/16.",

@@ -31,12 +31,12 @@ const YELLOW = '#d8b845', GREEN = '#5ab06a', PURPLE = '#9a6ad0', ORANGE = '#d88a
 // Tuning display names (David, 2026-08-16). Internal ids stay alpha/beta/
 // gamma/qt; nothing user-facing says them, because they collide with Wendy
 // Carlos's scales. Each label is the scale's own fundamental, and all four
-// land on a programming language — C, D, Go, Qt. `displayName` in
-// tunings-mtok.json is the source of truth; this mirrors it so a missing or
-// malformed JSON degrades to the right labels rather than to the old names.
+// land on a programming language — C, C++, Go, Qt (beta renamed D→C++
+// 2026-08-25). `displayName` in tunings-mtok.json is the source of truth; this
+// mirrors it so a missing or malformed JSON degrades to the right labels.
 const SCALE_FALLBACK = {
   alpha: { label: 'C',  title: 'C — 25-pad just intonation on C3' },
-  beta:  { label: 'D',  title: 'D — upper row re-tuned over D/G' },
+  beta:  { label: 'C++', title: 'C++ — C with the upper row re-tuned over D/G' },
   gamma: { label: 'Go', title: 'Go — lattice transposed to a G fundamental' },
   qt:    { label: 'Qt', title: 'Qt — 24-EDO quartertone grid' },
 };
