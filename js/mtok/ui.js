@@ -26,12 +26,12 @@ const SRC_COLOR = {
 };
 const YELLOW = '#d8b845', GREEN = '#5ab06a', PURPLE = '#9a6ad0', RED = '#c0392b';
 
-// Tuning display names (David, 2026-08-16): C, D, Go, Qt — every scale's own
-// fundamental, and all four land on a programming language. Internal ids stay
+// Tuning display names (David, 2026-08-16; beta renamed D→C++ 2026-08-25):
+// C, C++, Go, Qt — all four land on a programming language. Internal ids stay
 // alpha/beta/gamma/qt. tunings-mtok.json displayName overrides these.
 const SCALE_FALLBACK = {
   alpha: { label: 'C',  title: 'C — 25-pad just intonation on C3' },
-  beta:  { label: 'D',  title: 'D — upper row re-tuned over D/G' },
+  beta:  { label: 'C++', title: 'C++ — C with the upper row re-tuned over D/G' },
   gamma: { label: 'Go', title: 'Go — lattice transposed to a G fundamental' },
   qt:    { label: 'Qt', title: 'Qt — 24-EDO quartertone grid' },
 };
