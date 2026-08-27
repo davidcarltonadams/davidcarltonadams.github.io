@@ -189,16 +189,14 @@ const TUNINGS = {
 const NOTE_NAMES_SHARP = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
 const NOTE_NAMES_FLAT  = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
 
-// Chromatic names for chain-of-fifths order
-const CHAIN_NAMES = ['C','G','D','A','E','B','F♯','C♯','G♯','D♯','A♯','E♯',
-                     'B♯','F𝄪','C𝄪','G𝄪','D𝄪','A𝄪','E𝄪',
-                     'F','C','G','D','A','E','B','F♯','C♯','G♯','D♯','A♯'];
-// Simpler: just cycle through these for display
+// Node names, indexed by chain position (fifths above C)
 const NAMES_12 = ['C','G','D','A','E','B','F♯','C♯','G♯','E♭','B♭','F'];
-const NAMES_19 = ['C','G','D','A','E','B','F♯','C♯','G♯','D♯','A♯','E♯','B♯','G𝄪','D𝄪','A𝄪','E𝄪','B𝄪','F'];
+const NAMES_JUST = ['C','G','D','A','E','B','F♯','C♯','G♯','D♯','A♯','E♯'];
+const NAMES_19 = ['C','G','D','A','E','B','F♯','C♯','G♯','D♯','A♯','E♯','B♯','F𝄪','C𝄪','G𝄪','D𝄪','A𝄪','F'];
 const NAMES_31 = Array.from({length:31}, (_,i) => {
   const base = ['C','G','D','A','E','B','F♯','C♯','G♯','D♯','A♯','E♯',
-                'B♯','G𝄪','D𝄪','A𝄪','E𝄪','B𝄪','F𝄫','C𝄫','G𝄫','D𝄫','A𝄫','E𝄫','B𝄫','F','C','G','D','A','E'];
+                'B♯','F𝄪','C𝄪','G𝄪','D𝄪','A𝄪','E𝄪','B𝄪','A𝄫','E𝄫','B𝄫',
+                'F♭','C♭','G♭','D♭','A♭','E♭','B♭','F'];
   return base[i] || String(i);
 });
 
@@ -282,7 +280,7 @@ function getNodeNames(mode) {
   if (mode === '12')   return NAMES_12;
   if (mode === '19')   return NAMES_19;
   if (mode === '31')   return NAMES_31;
-  return NAMES_12; // just also shows 12 names
+  return NAMES_JUST; // just mode: pure chain-of-fifths spellings (D♯/A♯/E♯, not E♭/B♭/F)
 }
 
 function draw(mode) {
