@@ -779,7 +779,11 @@ function applyMsg(msg) {
     state.pausedAt = msg.elapsed;
     onClockPause();
   } else if (msg.type === 'resume') {
-    state.startTime = Date.now() - state.pausedAt;
+    // Prefer the conductor's epoch startTime (latency-proof); fall back to
+    // arrival-time reconstruction for messages from an older conductor.
+    state.startTime = (typeof msg.startTime === 'number')
+      ? msg.startTime
+      : Date.now() - state.pausedAt;
     state.paused    = false;
     state.pausedAt  = null;
     onClockResume();
@@ -1183,7 +1187,7 @@ function initConductor(roomCode) {
       // resume
       state.startTime = Date.now() - state.pausedAt;
       state.paused    = false;
-      const msg = { type: 'resume' };
+      const msg = { type: 'resume', startTime: state.startTime };
       broadcast(msg);
       pauseBtn.textContent = 'pause';
     } else {

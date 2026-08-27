@@ -226,9 +226,11 @@ function euclidean(n, k) {
 
 // A handful of traditional rhythms are the Euclidean necklace read from a
 // different starting step. Where k-1 pulses fall in k steps, Bjorklund leaves
-// the single rest last; the tradition puts it second. Values rotate right.
+// the single rest last; the tradition puts it second. Bossa nova starts on
+// the necklace's third onset and samba on its last (Toussaint 2005).
+// Values rotate right.
 
-const ROT = { '2/3':2, '3/4':2, '5/6':2, '7/8':2 };
+const ROT = { '2/3':2, '3/4':2, '5/6':2, '7/8':2, '5/16':10, '7/16':2 };
 
 function pattern(n, k) {
   const pat = euclidean(n, k);
