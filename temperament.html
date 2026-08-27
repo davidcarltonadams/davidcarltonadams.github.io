@@ -475,8 +475,21 @@ function buildFromFifths(fifths) {
   return pc;
 }
 
+// Regular chains anchor at E♭, per the historical convention: the eleven
+// tuned fifths run E♭–B♭–F–C–G–D–A–E–B–F♯–C♯–G♯, so the wolf (the untuned
+// closure) falls on G♯–E♭. C stays the 0¢ reference — it sits three fifths
+// up the chain. (buildFromFifths above starts its walk at C, which is right
+// for the WELL tables — their fifths arrays are written in that order — but
+// anchoring a regular chain there would park the wolf on F–C and make the
+// cells labeled E♭/B♭/F sound as D♯/A♯/E♯.)
+const REGULAR_CHAIN = [3, 10, 5, 0, 7, 2, 9, 4, 11, 6, 1, 8]; // E♭…G♯
+
 function buildRegular(fifth) {
-  return buildFromFifths(new Array(12).fill(fifth));
+  const pc = new Float64Array(12);
+  for (let i = 0; i < 12; i++) {
+    pc[REGULAR_CHAIN[i]] = ((((i - 3) * fifth) % 1200) + 1200) % 1200;
+  }
+  return pc;
 }
 
 const REGULAR = [
