@@ -160,7 +160,7 @@
 
 <div class="header">
   <h1 class="title">farey clock</h1>
-  <p class="sub">every fraction p∕q sits at exactly (p∕q × 360°) around the circle — radian space made visible. the farey sequence of order n contains every fraction with denominator ≤ n. adjacent fractions have a beautiful property: if p∕q and r∕s are neighbors, then |ps − rq| = 1. hover a dot to light up its two neighbors and see that determinant worked out. click to hear the position as a pitch.</p>
+  <p class="sub">every fraction p∕q sits at exactly (p∕q × 360°) around the circle — radian space made visible. the farey sequence of order n contains every reduced fraction between 0 and 1 with denominator ≤ n. adjacent fractions have a beautiful property: if p∕q and r∕s are neighbors, then |ps − rq| = 1. hover a dot to light up its two neighbors and see that determinant worked out. click to hear the position as a pitch.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -545,7 +545,7 @@ canvas.addEventListener('mouseleave', () => {
 let actx = null;
 let master = null, comp = null;
 
-// Sweep voices are capped — Fₙ at n=16 is 138 fractions and the tails overlap,
+// Sweep voices are capped — Fₙ at n=16 is 81 fractions and the tails overlap,
 // so an uncapped sweep piles up oscillators until the graph clips or stalls.
 const MAX_SWEEP_VOICES = 12;
 let sweepVoices = [];

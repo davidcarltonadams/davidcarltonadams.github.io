@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="build a waveform one harmonic at a time with signed amplitude sliders, and hear why sign, not just strength, is what makes a triangle a triangle.">
+  <meta name="description" content="build a waveform one harmonic at a time with signed amplitude sliders, and watch why sign, not just strength, is what makes a triangle a triangle.">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -229,7 +229,7 @@ const NAMES = [
   'octave',
 ];
 
-// harmonic amplitudes (−1–1; sign is phase, and it is what separates triangle from square)
+// harmonic amplitudes (−1–1; sign is phase — it separates triangle from square on the scope; to the ear the discriminator is rolloff, 1/n² vs 1/n)
 const amps = new Array(NUM_H).fill(0);
 amps[0] = 1; // start with fundamental
 

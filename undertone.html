@@ -245,7 +245,7 @@
   <h1 class="title">the undertone series</h1>
   <p class="sub">
     each partial sounds <em>below</em> the root &mdash; the mirror image of the harmonic series<br>
-    where overtones give you major, undertones give you minor
+    overtones stack a major triad, undertones a minor one
   </p>
 </div>
 
@@ -299,11 +299,6 @@ function freqToNote(freq) {
 }
 
 function intervalName(n) {
-  const c = [
-    '', 'unison', 'octave ↓', 'P12 ↓', '2 oct ↓', 'M17 ↓',
-    'P19 ↓', 'B♭21 ↓', '3 oct ↓', 'M23 ↓', 'M24 ↓',
-    '↓', '4 oct ↓', '↓', '↓', '↓', '4 oct ↓'
-  ];
   // Calculate actual interval in cents below root
   const centsBelow = 1200 * Math.log2(n);
   const octaves = Math.floor(centsBelow / 1200);
