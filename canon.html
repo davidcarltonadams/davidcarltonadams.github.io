@@ -270,8 +270,8 @@ function buildDCAFull() {
   const set = new Set(DCA_BASE);
   DCA_BASE.forEach(s => {
     if (s !== Math.floor(s)) {
-      set.add(Math.round(((s + 5) % 12) * 10) / 10);  // P4 up
-      set.add(Math.round(((s + 7) % 12) * 10) / 10);  // P5 up
+      set.add(Math.round(((s + 5) % 12) * 100) / 100);  // P4 up
+      set.add(Math.round(((s + 7) % 12) * 100) / 100);  // P5 up
     }
   });
   return [...set].sort((a, b) => a - b);

@@ -140,7 +140,7 @@
     <option value="ji-major">JI major</option>
     <option value="harmonics">harmonics 8–15</option>
     <option value="pentatonic">JI pentatonic</option>
-    <option value="7-limit">7-limit chromatic</option>
+    <option value="7-limit">7-limit · lower half</option>
   </select>
 
   <select id="fundSel">
@@ -165,7 +165,7 @@
   <span class="disp" id="swingD">straight</span>
 
   <button class="btn sml" id="syncBtn" onclick="togglePauseAtSync()"
-          title="pause both voices when they re-align to step 0">pause at sync</button>
+          title="pause both voices when they re-align in unison">pause at sync</button>
 
   <div class="legend" style="margin-left:auto">
     <div class="leg">
@@ -198,7 +198,7 @@ const PITCH_SETS = {
     ratios: [[1,1],[9,8],[5,4],[3,2],[5,3],[2,1],[9,4],[5,2]],
   },
   '7-limit': {
-    label: '7-limit chromatic',
+    label: '7-limit · lower half',
     ratios: [[1,1],[8,7],[7,6],[6,5],[5,4],[4,3],[7,5],[3,2],[8,5],[5,3],[7,4],[2,1]].slice(0,8),
   },
 };
@@ -237,7 +237,7 @@ function makeGrid() {
 
 function ratioCents(p, q) { return 1200 * Math.log2(p / q); }
 function beat16A() { return 60 / bpm / 4; }
-function beat16B() { return beat16A() * (1 + driftPct / 100); }
+function beat16B() { return beat16A() / (1 + driftPct / 100); }
 
 // Swing-aware step durations — pair total stays constant, so average is unchanged
 function stepDurA(step) {
@@ -378,8 +378,8 @@ function draw() {
     const pA = headPhase(nextA_step, nextA_time, stepDurA, now);
     const pB = headPhase(nextB_step, nextB_time, stepDurB, now);
 
-    // Sync detection: diff goes HIGH→LOW when they meet at step 0
-    const diff = (pA - pB + NUM_STEPS) % NUM_STEPS;
+    // Sync detection: diff goes HIGH→LOW when B laps A
+    const diff = (pB - pA + NUM_STEPS) % NUM_STEPS;
     if (lastDiff > NUM_STEPS * 0.80 && diff < NUM_STEPS * 0.20) {
       if (!syncDetected) {
         syncDetected = true;
