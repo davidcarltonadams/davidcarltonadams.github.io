@@ -419,8 +419,8 @@ const COMMENTARY = {
   '5/4': 'The just major third: 386¢, a full 14 cents narrower than equal temperament\'s 400¢. Pure major thirds beat slowly in ET precisely because the 5th partial of the lower note clashes with the 4th partial of the upper.',
   '6/5': 'The just minor third: 316¢. Simpler than the Pythagorean minor third (32/27 = 294¢). The ratio 6:5 arises naturally in the overtone series between the 5th and 6th partials.',
   '7/4': 'The harmonic seventh — the 7th overtone. 969¢, a full 31 cents flat of equal temperament\'s minor seventh. Blues singers, brass players, and barbershop quartets naturally land here.',
-  '7/6': 'The septimal minor third: 267¢. Slightly narrower than the just minor third (6/5 = 316¢). A characteristic interval of 7-limit harmony.',
-  '5/3': 'The just major sixth: 884¢, two cents narrow of equal temperament. Consonant and clear — its simplicity (5 and 3) places it early in the tree.',
+  '7/6': 'The septimal minor third: 267¢. 49¢ narrower than the just minor third (6/5 = 316¢). A characteristic interval of 7-limit harmony.',
+  '5/3': 'The just major sixth: 884¢, sixteen cents narrow of equal temperament. Consonant and clear — its simplicity (5 and 3) places it early in the tree.',
   '8/5': 'The just minor sixth: 814¢ — the octave-complement of the major third. 5/4 × 8/5 = 2/1.',
   '9/8': 'The major whole tone — two perfect fifths minus an octave. 3/2 × 3/2 / 2 = 9/8. The backbone of Pythagorean melody.',
   '11/8': 'The 11th harmonic — an interval Western theory has no name for. Approximately a tritone, but 49 cents flat of equal temperament. Central to spectral music and 11-limit JI.',
@@ -1067,7 +1067,7 @@ function buildExplanation() {
     out += `<p>The <strong>Stern-Brocot tree</strong> contains every positive rational number exactly once, arranged so that <em>simpler</em> ratios — those with smaller numerators and denominators — appear closer to the root.</p>`;
     out += `<p>We explore the <strong>octave</strong>: all intervals between 1/1 (unison) and 2/1 (octave). The root of this subtree is found by taking the <em>mediant</em> of the two bounds:</p>`;
     out += `<span class="math">(1 + 2) / (1 + 1) = 3/2 — the perfect fifth</span>`;
-    out += `<p>The <strong>mediant</strong> of two fractions a/b and c/d is (a+c)/(b+d). A theorem guarantees that the mediant is always the fraction with the <em>smallest denominator</em> strictly between them — not an approximation, but a mathematical fact.</p>`;
+    out += `<p>The <strong>mediant</strong> of two fractions a/b and c/d is (a+c)/(b+d). A theorem guarantees that the mediant of two adjacent fractions (|ad−bc| = 1 — as every pair of bounds in this tree is) is always the fraction with the <em>smallest denominator</em> strictly between them — not an approximation, but a mathematical fact.</p>`;
     out += `<p>Navigate <strong>left</strong> to find the simplest fraction between 1/1 and 3/2 (→ 4/3).<br>Navigate <strong>right</strong> to find the simplest fraction between 3/2 and 2/1 (→ 5/3).</p>`;
     return out;
   }
