@@ -139,7 +139,7 @@
       line-height: 1.3;
     }
 
-    /* O-tonality column headers (row 1, cols 2–8) */
+    /* U-tonality column headers (row 1, cols 2–8) */
     .col-header {
       grid-row: 1;
       display: flex; flex-direction: column;
@@ -150,7 +150,7 @@
     }
     .col-header:hover .hdr-num { color: var(--text); }
 
-    /* U-tonality row headers (col 1, rows 2–8) */
+    /* O-tonality row headers (col 1, rows 2–8) */
     .row-header {
       grid-column: 1;
       display: flex; flex-direction: column;
@@ -288,8 +288,8 @@
   <h1 class="title">tonality diamond</h1>
   <p class="sub">
     13-limit just intonation &nbsp;&middot;&nbsp;
-    columns: O-tonalities (overtone chords) &nbsp;&middot;&nbsp;
-    rows: U-tonalities (undertone chords) &nbsp;&middot;&nbsp;
+    columns: U-tonalities (undertone chords) &nbsp;&middot;&nbsp;
+    rows: O-tonalities (overtone chords) &nbsp;&middot;&nbsp;
     after Partch
   </p>
 </div>
@@ -356,8 +356,8 @@
 
 <p class="hint">
   click cell to toggle &nbsp;&middot;&nbsp;
-  click column header for full O-tonality &nbsp;&middot;&nbsp;
-  click row header for full U-tonality &nbsp;&middot;&nbsp;
+  click column header for full U-tonality &nbsp;&middot;&nbsp;
+  click row header for full O-tonality &nbsp;&middot;&nbsp;
   esc clears all
 </p>
 
@@ -447,7 +447,7 @@ const PRIME_VAR = {
 // Cell data
 // ═══════════════════════════════════════════════════════
 
-// cells[j][i] = data for row j (U-ton. on ODDS[j]), column i (O-ton. on ODDS[i])
+// cells[j][i] = data for row j (O-ton. on ODDS[j]), column i (U-ton. on ODDS[i])
 const cells = [];
 for (let j = 0; j < 7; j++) {
   cells[j] = [];
@@ -492,35 +492,35 @@ function buildGrid() {
   const corner = document.createElement('div');
   corner.className = 'corner-cell';
   corner.style.gridRow = '1'; corner.style.gridColumn = '1';
-  corner.innerHTML = `<span class="corner-label">U-ton.↓&nbsp;&nbsp;O-ton.→</span>`;
+  corner.innerHTML = `<span class="corner-label">O-ton.↓&nbsp;&nbsp;U-ton.→</span>`;
   grid.appendChild(corner);
 
-  // Column headers (O-tonalities)
+  // Column headers (U-tonalities)
   for (let i = 0; i < 7; i++) {
     const h = document.createElement('div');
     h.className = 'col-header';
     h.style.gridRow = '1';
     h.style.gridColumn = String(i + 2);
     h.innerHTML = `
-      <span class="hdr-tag">O·ton.</span>
+      <span class="hdr-tag">U·ton.</span>
       <span class="hdr-num" id="col-hdr-${i}">${ODDS[i]}</span>`;
-    h.title = `O-tonality on ${ODDS[i]}: activate all ${ODDS[i]}-limit overtone chord members`;
-    h.addEventListener('click', () => toggleOtonality(i));
+    h.title = `U-tonality on ${ODDS[i]}: the chord under identity ${ODDS[i]}`;
+    h.addEventListener('click', () => toggleUtonality(i));
     grid.appendChild(h);
   }
 
   // Row headers + cells
   for (let j = 0; j < 7; j++) {
-    // Row header (U-tonality)
+    // Row header (O-tonality)
     const rh = document.createElement('div');
     rh.className = 'row-header';
     rh.style.gridColumn = '1';
     rh.style.gridRow = String(j + 2);
     rh.innerHTML = `
       <span class="hdr-num" id="row-hdr-${j}">${ODDS[j]}</span>
-      <span class="hdr-tag">U·ton.</span>`;
-    rh.title = `U-tonality on ${ODDS[j]}: activate all ${ODDS[j]}-limit undertone chord members`;
-    rh.addEventListener('click', () => toggleUtonality(j));
+      <span class="hdr-tag">O·ton.</span>`;
+    rh.title = `O-tonality on ${ODDS[j]}: the chord over identity ${ODDS[j]}`;
+    rh.addEventListener('click', () => toggleOtonality(j));
     grid.appendChild(rh);
 
     // Data cells
@@ -559,8 +559,8 @@ function buildGrid() {
 // Tonality group toggle
 // ═══════════════════════════════════════════════════════
 
-// O-tonality: all cells in column i (same rawNum)
-function toggleOtonality(i) {
+// U-tonality: all cells in column i (same rawNum)
+function toggleUtonality(i) {
   const col     = cells.map(row => row[i]).filter(nd => !nd.isDiag);
   const allOn   = col.every(nd => nd.active);
   col.forEach(nd => {
@@ -573,8 +573,8 @@ function toggleOtonality(i) {
   updateChord();
 }
 
-// U-tonality: all cells in row j (same rawDen)
-function toggleUtonality(j) {
+// O-tonality: all cells in row j (same rawDen)
+function toggleOtonality(j) {
   const row   = cells[j].filter(nd => !nd.isDiag);
   const allOn = row.every(nd => nd.active);
   row.forEach(nd => {
@@ -624,11 +624,11 @@ function updateRowColHighlight() {
   for (let j = 0; j < 7; j++) {
     for (let i = 0; i < 7; i++) {
       if (!cells[j][i].active) continue;
-      // Highlight other cells in same column (O-tonality)
+      // Highlight other cells in same column (U-tonality)
       for (let jj = 0; jj < 7; jj++) {
         if (jj !== j && cells[jj][i].el) cells[jj][i].el.classList.add('col-lit');
       }
-      // Highlight other cells in same row (U-tonality)
+      // Highlight other cells in same row (O-tonality)
       for (let ii = 0; ii < 7; ii++) {
         if (ii !== i && cells[j][ii].el) cells[j][ii].el.classList.add('row-lit');
       }
@@ -653,8 +653,8 @@ function showInfo(nd) {
   const name  = NAMES[nd.key] || nd.key;
   const cStr  = nd.cents.toFixed(1) + '¢ above root';
   const devStr = nd.dev !== 0 ? `${fmtDev(nd.dev)} from 12-TET` : '0¢ deviation (12-TET coincidence)';
-  const oStr  = `O-ton. on ${nd.rawNum}`;
-  const uStr  = `U-ton. on ${nd.rawDen}`;
+  const oStr  = `O-ton. on ${nd.rawDen}`;
+  const uStr  = `U-ton. on ${nd.rawNum}`;
   document.getElementById('info-display').textContent =
     `${nd.key}  ·  ${name}  ·  ${cStr}  ·  ${devStr}  ·  ${oStr} × ${uStr}`;
 }
