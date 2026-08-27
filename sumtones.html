@@ -238,8 +238,8 @@
 <div class="header">
   <h1 class="title">combination tones</h1>
   <p class="sub">
-    two tones produce two more — the difference (B&minus;A) and sum (A+B) ring in the ear<br>
-    Tartini discovered these on the violin in 1714
+    two tones produce two more — the difference (|B&minus;A|) rings in the ear; the sum (A+B) arises there too, though scarcely audibly<br>
+    Tartini discovered the difference tone on the violin in 1714
   </p>
 </div>
 
@@ -266,9 +266,9 @@
     <button class="preset-btn" data-a="261.63" data-b="392.44">P5 (3/2)</button>
     <button class="preset-btn" data-a="261.63" data-b="327.03">M3 (5/4)</button>
     <button class="preset-btn" data-a="261.63" data-b="313.96">m3 (6/5)</button>
-    <button class="preset-btn" data-a="261.63" data-b="349.23">P4 (4/3)</button>
-    <button class="preset-btn" data-a="261.63" data-b="458.66">7/4</button>
-    <button class="preset-btn" data-a="261.63" data-b="366.28">11/8</button>
+    <button class="preset-btn" data-a="261.63" data-b="348.84">P4 (4/3)</button>
+    <button class="preset-btn" data-a="261.63" data-b="457.85">7/4</button>
+    <button class="preset-btn" data-a="261.63" data-b="359.74">11/8</button>
     <button class="preset-btn" data-a="261.63" data-b="523.25">P8</button>
   </div>
 </div>
@@ -281,7 +281,7 @@
 <!-- ── Results ────────────────────────────────────────────── -->
 <div class="results" id="results"></div>
 
-<p class="hint">click a row to hear that tone · esc clears all</p>
+<p class="hint">click a row to hear that tone — synthesized here so you can hear where it sits; in your ear they arise from cochlear nonlinearity · esc clears all</p>
 
 <script>
 const NOTE_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
@@ -371,7 +371,7 @@ function toneDesc(id, fa, fb) {
   if (id === 'b')    return 'primary tone';
   if (id === 'diff') {
     const fd = Math.abs(fb - fa);
-    return `B − A = ${fd.toFixed(1)} Hz — difference tone (Tartini)`;
+    return `|B − A| = ${fd.toFixed(1)} Hz — difference tone (Tartini)`;
   }
   if (id === 'sum')  {
     return `A + B = ${(fa+fb).toFixed(1)} Hz — sum tone`;
@@ -424,7 +424,7 @@ function drawSpectrum() {
   const TONES = [
     { freq: a,    col: '#8ab0c8', label: 'A',    amp: 0.80 },
     { freq: b,    col: '#a0b888', label: 'B',    amp: 0.80 },
-    { freq: diff, col: '#c8906a', label: 'B−A',  amp: 0.45 },
+    { freq: diff, col: '#c8906a', label: '|B−A|',  amp: 0.45 },
     { freq: sum,  col: '#b08acc', label: 'A+B',  amp: 0.30 },
   ];
 
@@ -456,7 +456,7 @@ function drawSpectrum() {
     const x = (tone.freq / MAX_FREQ) * w;
     const isPlaying = playing.has(
       tone.label === 'A' ? 'a' : tone.label === 'B' ? 'b' :
-      tone.label === 'B−A' ? 'diff' : 'sum'
+      tone.label === '|B−A|' ? 'diff' : 'sum'
     );
     const alpha = isPlaying ? 0.85 : 0.35;
 

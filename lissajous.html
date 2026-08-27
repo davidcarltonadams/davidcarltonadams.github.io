@@ -307,7 +307,7 @@ const INTERVALS = [
   { name: '11H',        ratio: [11, 8],  tetName: 'TT',       tetCents: 600 },
   { name: '13H',        ratio: [13, 8],  tetName: 'm6',       tetCents: 800 },
   { name: 'TT',        ratio: [45, 32], tetName: 'TT',       tetCents: 600 },
-  { name: '3:2:1',     ratio: [3, 1],   tetName: 'P5+oct',   tetCents: 1902 },
+  { name: '3:1',       ratio: [3, 1],   tetName: 'P5+oct',   tetCents: 1900 },
   { name: 'φ ratio',   ratio: [(1 + Math.sqrt(5)) / 2, 1], label: 'φ:1', tetName: '—', tetCents: null },
 ];
 
@@ -531,14 +531,16 @@ function updateInfo() {
   let a = ratioA, b = ratioB;
   if (whole) { const g = gcd(ratioA, ratioB); a = ratioA / g; b = ratioB / g; }
   const cents = ratioToCents(ratioA, ratioB);
-  const normCents = ((cents % 1200) + 1200) % 1200;
 
-  // Find nearest 12-TET
-  let nearest = TET_NAMES[0], minDist = Infinity;
-  TET_NAMES.forEach(t => {
-    const d = Math.abs(normCents - t.cents);
-    if (d < minDist) { minDist = d; nearest = t; }
-  });
+  // Find nearest 12-TET degree in the same register as the raw cents value,
+  // so the displayed deviation is truly (cents − nearest)
+  const nearestStep = 100 * Math.round(cents / 100);
+  let tetClass = ((nearestStep % 1200) + 1200) % 1200;
+  let tetOct = (nearestStep - tetClass) / 1200;
+  if (nearestStep === 1200) { tetClass = 1200; tetOct = 0; } // 2:1 reads "octave"
+  const nearest = TET_NAMES.find(t => t.cents === tetClass);
+  const octSuffix = tetOct === 0 ? ''
+    : (tetOct > 0 ? '+' : '−') + (Math.abs(tetOct) === 1 ? '' : Math.abs(tetOct)) + 'oct';
 
   const key = `${a}:${b}`;
   const intName = whole
@@ -548,8 +550,8 @@ function updateInfo() {
   document.getElementById('info-ratio').textContent = `${fmtPart(a)} : ${fmtPart(b)}`;
   document.getElementById('info-name').textContent = intName;
   document.getElementById('info-cents').textContent = `${cents.toFixed(2)}¢`;
-  document.getElementById('info-tet').textContent = `${nearest.cents}¢ (${nearest.name})`;
-  const dev = cents - nearest.cents;
+  document.getElementById('info-tet').textContent = `${nearestStep}¢ (${nearest.name}${octSuffix})`;
+  const dev = cents - nearestStep;
   document.getElementById('info-dev').textContent = `${dev >= 0 ? '+' : ''}${dev.toFixed(2)}¢`;
 }
 
