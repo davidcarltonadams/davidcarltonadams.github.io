@@ -1,5 +1,5 @@
 **Artist Statement**  
-David Carlton Adams \[+1 (979) 676 3269 | davidcarltonadams@gmail.com\]
+David Carlton Adams \[davidcarltonadams@gmail.com\]
 
 My work bridges **experimental composition, rock performance, and technological exploration** to create music that is both intellectually rigorous and immediately expressive. Drawing from my background as a rock guitarist, recording engineer, and composer, I mix alternative tunings, guitar effects, live electronics, and diverse genre influences to forge novel sonic experiences that lower barriers between contemporary music and broader audiences.
 
