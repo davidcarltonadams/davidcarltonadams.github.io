@@ -688,7 +688,11 @@ function fmtClock(ms) {
 }
 
 function genCode() {
-  return Math.random().toString(36).substr(2, 6).toUpperCase();
+  // CSPRNG, 8 chars, no lookalike glyphs (0/O, 1/I/L) — ~39 bits of entropy
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
 }
 
 // ── URL param helpers ──────────────────────────────────────────────────────
