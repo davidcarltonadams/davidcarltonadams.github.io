@@ -10,7 +10,6 @@
   <meta name="description" content="Kaleidoscope — a multi-scene work for SuperCollider synthesis, live electronics, and dance. Choreography by Zoë Brielle Payne (ZBRI). Charm City Fringe Festival Spring 2026.">
   <link rel="stylesheet" href="css/style.css">
   <!-- Config shared with kaleidoscope-sound.html — edit kaleidoscope-config.js to update sections -->
-  <script src="kaleidoscope-config.js"></script>
 
   <style>
     /* ── Page-specific overrides ──────────────────────────────── */
@@ -479,37 +478,7 @@
       </div>
     </div>
 
-    <!-- Mode toggle -->
-    <div class="mode-toggle" role="group" aria-label="View mode">
-      <button class="mode-btn active" id="btn-listen" onclick="setMode('listen')">listen</button>
-      <button class="mode-btn" id="btn-operator" onclick="setMode('operator')">operator</button>
-    </div>
-
-    <!-- ── LISTEN VIEW ──────────────────────────────────────────── -->
-    <div id="listen-view">
-
-      <div class="player-section">
-        <div class="section-label">sections</div>
-
-        <div class="track-list" id="track-list">
-          <!-- Rows injected by JS from SECTIONS config below -->
-        </div>
-
-        <!-- Main transport -->
-        <div class="main-transport" id="transport">
-          <div class="now-playing-label">now playing</div>
-          <div class="now-playing-title" id="np-title">—</div>
-          <div class="progress-wrap" id="progress-wrap">
-            <div class="progress-fill" id="progress-fill"></div>
-          </div>
-          <div class="time-row">
-            <span id="time-current">0:00</span>
-            <span id="time-total">—</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Program note -->
+    <!-- Program note -->
       <div class="program-note">
         <h2>program note</h2>
         <p>
@@ -529,24 +498,13 @@
         </p>
       </div>
 
-    </div><!-- /#listen-view -->
-
-    <!-- ── OPERATOR VIEW ──────────────────────────────────────────── -->
-    <div id="operator-view">
-
-      <div class="operator-header">
-        <strong>Operator Mode</strong>
-        Press START on each cue when signaled by the conductor or score.
-        Only one cue plays at a time — starting a new one stops the current one.
-      </div>
-
-      <div class="cue-grid" id="cue-grid">
-        <!-- Cards injected by JS -->
-      </div>
-
-      <button class="cue-stop-all" onclick="stopAll()">&#9632; stop all</button>
-
-    </div><!-- /#operator-view -->
+    <!-- Recordings note -->
+    <div class="program-note" style="margin-top:1.2rem;">
+      <p style="font-style:italic; color:var(--text-3);">
+        Recordings from the Charm City Fringe run are in production — audio
+        will return here on release.
+      </p>
+    </div>
 
   </div><!-- /.container -->
 </main>
@@ -567,250 +525,8 @@
 </footer>
 
 <script>
-/* ══════════════════════════════════════════════════════════════════
-   Sections come from kaleidoscope-config.js (shared with
-   kaleidoscope-sound.html). Edit that file to update the sequence.
-   ══════════════════════════════════════════════════════════════════ */
-
-// Normalize SEQUENCE from config into the format this player expects
-const SECTIONS = (typeof SEQUENCE !== 'undefined' ? SEQUENCE : []).map(s => ({
-  id:       s.id,
-  label:    s.label,
-  duration: s.duration || null,
-  src:      s.src,                          // full relative path from config
-  note:     s.type === 'interlude' ? 'interlude' : '',
-  opNote:   s.poetryNeeded
-              ? '⚠ Poetry playback needed before this cue — confirm with David'
-              : (s.id === 'scene-0' ? 'Begin on cue from David or stage manager.' : ''),
-}));
-/* ─────────────────────────────────────────────────────────────── */
-
-// ── State ─────────────────────────────────────────────────────────
-let currentIdx   = -1;
-let currentAudio = null;
-let mode         = 'listen';
-
-// ── Utilities ─────────────────────────────────────────────────────
-function fmt(sec) {
-  if (!sec || isNaN(sec)) return '—';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return m + ':' + String(s).padStart(2, '0');
-}
-
-function audioPath(id) {
-  // Use the src from SEQUENCE config if available; fall back to constructed path
-  const sec = SECTIONS.find(s => s.id === id);
-  return sec && sec.src ? sec.src : 'audio/kaleidoscope/ccf/' + id + '.mp3';
-}
-
-// ── Build track list ──────────────────────────────────────────────
-function buildTrackList() {
-  const list = document.getElementById('track-list');
-  list.innerHTML = '';
-  SECTIONS.forEach((sec, i) => {
-    const row = document.createElement('div');
-    row.className = 'track-row';
-    row.id = 'track-' + i;
-    row.setAttribute('role', 'button');
-    row.setAttribute('tabindex', '0');
-    row.setAttribute('aria-label', 'Play ' + sec.label);
-    row.innerHTML = `
-      <button class="track-play-btn" id="pbtn-${i}" onclick="togglePlay(${i})" aria-label="Play/pause ${sec.label}">
-        <span class="play-icon" id="icon-${i}"></span>
-      </button>
-      <div class="track-info">
-        <div class="track-name">${sec.label}</div>
-        ${sec.note ? `<div class="track-note">${sec.note}</div>` : ''}
-      </div>
-      <div class="track-duration" id="dur-${i}">${sec.duration ? fmt(sec.duration) : ''}</div>
-    `;
-    row.addEventListener('click', (e) => {
-      if (!e.target.closest('.track-play-btn')) togglePlay(i);
-    });
-    row.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePlay(i); }
-    });
-    list.appendChild(row);
-  });
-}
-
-// ── Build cue grid ────────────────────────────────────────────────
-function buildCueGrid() {
-  const grid = document.getElementById('cue-grid');
-  grid.innerHTML = '';
-  SECTIONS.forEach((sec, i) => {
-    const card = document.createElement('div');
-    card.className = 'cue-card';
-    card.id = 'cue-' + i;
-    card.innerHTML = `
-      <div class="cue-number">${i + 1}</div>
-      <div class="cue-info">
-        <div class="cue-name">${sec.label}</div>
-        ${sec.opNote ? `<div class="cue-note-op">${sec.opNote}</div>` : ''}
-      </div>
-      <button class="cue-start-btn" id="cbtn-${i}" onclick="cueStart(${i})">Start</button>
-    `;
-    grid.appendChild(card);
-  });
-}
-
-// ── Playback ──────────────────────────────────────────────────────
-function togglePlay(idx) {
-  if (currentIdx === idx && currentAudio && !currentAudio.paused) {
-    currentAudio.pause();
-    setPlayIcon(idx, false);
-    return;
-  }
-  loadAndPlay(idx);
-}
-
-function cueStart(idx) {
-  loadAndPlay(idx);
-}
-
-function loadAndPlay(idx) {
-  stopAll(false); // stop without clearing cue active state yet
-
-  currentIdx = idx;
-  const sec = SECTIONS[idx];
-  const audio = new Audio(audioPath(sec.id));
-  currentAudio = audio;
-
-  audio.addEventListener('loadedmetadata', () => {
-    const el = document.getElementById('dur-' + idx);
-    if (el) el.textContent = fmt(audio.duration);
-    updateTransport();
-  });
-
-  audio.addEventListener('timeupdate', updateProgress);
-
-  audio.addEventListener('ended', () => {
-    setPlayIcon(idx, false);
-    setCueActive(idx, false);
-    document.getElementById('np-title').textContent = '—';
-    document.getElementById('progress-fill').style.width = '0%';
-    document.getElementById('time-current').textContent = '0:00';
-    // auto-advance to next section
-    if (idx + 1 < SECTIONS.length) {
-      loadAndPlay(idx + 1);
-    }
-  });
-
-  audio.addEventListener('error', () => {
-    console.warn('Audio not found:', audioPath(sec.id));
-    setPlayIcon(idx, false);
-    setCueActive(idx, false);
-    document.getElementById('np-title').textContent = sec.label + ' (file not found)';
-  });
-
-  const playPromise = audio.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(() => {
-      // Autoplay blocked — show iOS unlock overlay
-      document.getElementById('unlock-overlay').classList.add('visible');
-      document.getElementById('unlock-btn').onclick = () => {
-        document.getElementById('unlock-overlay').classList.remove('visible');
-        audio.play().catch(() => {});
-      };
-    });
-  }
-
-  // Update UI
-  document.querySelectorAll('.track-row').forEach(r => r.classList.remove('active'));
-  const row = document.getElementById('track-' + idx);
-  if (row) row.classList.add('active');
-  setPlayIcon(idx, true);
-
-  document.querySelectorAll('.cue-card').forEach(c => c.classList.remove('cue-active'));
-  const card = document.getElementById('cue-' + idx);
-  if (card) card.classList.add('cue-active');
-
-  document.querySelectorAll('.cue-start-btn').forEach(b => b.classList.remove('playing'));
-  const cbtn = document.getElementById('cbtn-' + idx);
-  if (cbtn) { cbtn.textContent = 'Playing…'; cbtn.classList.add('playing'); }
-
-  document.getElementById('np-title').textContent = sec.label;
-}
-
-function stopAll(clearState = true) {
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio = null;
-  }
-  document.querySelectorAll('.track-row').forEach(r => r.classList.remove('active'));
-  document.querySelectorAll('.cue-card').forEach(c => c.classList.remove('cue-active'));
-  document.querySelectorAll('.cue-start-btn').forEach(b => {
-    b.textContent = 'Start'; b.classList.remove('playing');
-  });
-  for (let i = 0; i < SECTIONS.length; i++) setPlayIcon(i, false);
-  if (clearState) {
-    currentIdx = -1;
-    document.getElementById('np-title').textContent = '—';
-    document.getElementById('progress-fill').style.width = '0%';
-    document.getElementById('time-current').textContent = '0:00';
-  }
-}
-
-function setCueActive(idx, active) {
-  const card = document.getElementById('cue-' + idx);
-  if (!card) return;
-  card.classList.toggle('cue-active', active);
-  const btn = document.getElementById('cbtn-' + idx);
-  if (!btn) return;
-  if (!active) { btn.textContent = 'Start'; btn.classList.remove('playing'); }
-}
-
-// ── UI updates ────────────────────────────────────────────────────
-function setPlayIcon(idx, playing) {
-  const icon = document.getElementById('icon-' + idx);
-  if (!icon) return;
-  if (playing) {
-    icon.className = 'pause-icon';
-    icon.innerHTML = '<span class="pause-bar"></span><span class="pause-bar"></span>';
-  } else {
-    icon.className = 'play-icon';
-    icon.innerHTML = '';
-  }
-}
-
-function updateTransport() {
-  if (!currentAudio) return;
-  const sec = SECTIONS[currentIdx];
-  if (sec && currentAudio.duration) {
-    document.getElementById('time-total').textContent = fmt(currentAudio.duration);
-  }
-}
-
-function updateProgress() {
-  if (!currentAudio || !currentAudio.duration) return;
-  const pct = (currentAudio.currentTime / currentAudio.duration) * 100;
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('time-current').textContent = fmt(currentAudio.currentTime);
-}
-
-// ── Seekbar ────────────────────────────────────────────────────────
-document.getElementById('progress-wrap').addEventListener('click', (e) => {
-  if (!currentAudio || !currentAudio.duration) return;
-  const rect = e.currentTarget.getBoundingClientRect();
-  const pct  = (e.clientX - rect.left) / rect.width;
-  currentAudio.currentTime = pct * currentAudio.duration;
-});
-
-// ── Mode toggle ────────────────────────────────────────────────────
-function setMode(m) {
-  mode = m;
-  document.getElementById('listen-view').style.display   = m === 'listen'   ? '' : 'none';
-  document.getElementById('operator-view').style.display = m === 'operator' ? '' : 'none';
-  document.getElementById('btn-listen').classList.toggle('active',   m === 'listen');
-  document.getElementById('btn-operator').classList.toggle('active', m === 'operator');
-}
-
 // ── Nav toggle (matches rest of site) ─────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  buildTrackList();
-  buildCueGrid();
-
   const toggle = document.querySelector('.nav-toggle');
   const links  = document.querySelector('.nav-links');
   if (toggle && links) {
