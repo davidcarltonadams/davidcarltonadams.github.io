@@ -3,3 +3,11 @@
 # Exclude large source audio — only ccf/ MP3s go to GitHub Pages
 audio/kaleidoscope/Kaleidoscope audio/
 audio/kaleidoscope/*.wav
+
+# Security pass 2026-08-31 — show audio + sequencer stay local-only
+audio/kaleidoscope/
+kaleidoscope-sound*.html
+kaleidoscope-config*.js
+# application PDFs with personal info stay local-only
+assets/docs/*UNT*.pdf
+assets/docs/ADAMS - List of compositions and performances of original works.pdf
