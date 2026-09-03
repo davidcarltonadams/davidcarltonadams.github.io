@@ -50,7 +50,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 540px;
@@ -152,7 +152,6 @@
     }
     .keys {
       display: grid;
-      grid-template-columns: repeat(13, 1fr);
       gap: 2px;
       flex: 1;
       max-width: 480px;
@@ -161,12 +160,12 @@
       -webkit-user-select: none;
     }
     .key {
-      height: 44px;
+      height: 52px;
       border: 1px solid var(--border);
       background: rgba(255,255,255,0.02);
       font-family: 'SF Mono','Fira Code',monospace;
-      font-size: 0.5rem;
-      color: var(--dimmer);
+      font-size: 0.6rem;
+      color: var(--dim);
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -174,7 +173,9 @@
       cursor: pointer;
       transition: background 0.08s;
     }
-    .key.black { background: rgba(0,0,0,0.45); border-color: rgba(255,255,255,0.12); }
+    .key.black { background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.14); color: rgba(204,200,208,0.5); height: 40px; align-self: start; }
+    .keys-meta { display: flex; gap: 1rem; align-items: center; }
+    .btn.small { font-size: 0.56rem; padding: 0.3rem 0.8rem; }
     .key.down { background: rgba(212,192,112,0.28); color: var(--gold); }
     .oct-btn {
       background: none; border: 1px solid var(--border); color: var(--dim);
@@ -246,12 +247,17 @@
 </div>
 
 <div class="keys-wrap">
-  <button class="oct-btn" id="octDown">−</button>
+  <button class="oct-btn" id="octDown" title="octave down (left arrow)">−</button>
   <div class="keys" id="keys"></div>
-  <button class="oct-btn" id="octUp">+</button>
+  <button class="oct-btn" id="octUp" title="octave up (right arrow)">+</button>
+</div>
+<div class="keys-meta">
+  <button class="btn small" id="layoutBtn">keys: cubase</button>
+  <span class="ctrl-val" id="octLbl">C4</span>
+  <span class="ctrl-val" id="velLbl"></span>
 </div>
 <p class="midi-line" id="midiLine">
-  keys: the strip above, or the computer keyboard (z-row and q-row, like a tracker) ·
+  the strip is the computer keyboard: press the letter on a key, or tap it · tab swaps layouts (cubase: white keys q to ], black on the number row · tracker: z-row and q-row, two octaves) · arrows: left and right shift the octave, up and down set velocity ·
   <button id="midiBtn">connect a midi keyboard</button>
 </p>
 <p class="hint" id="hint">the same brush width is 50¢ per sine everywhere, but 50¢ is 1.6 Hz at the bottom and 200 Hz at the top. so a wide stroke beats slowly in the bass and buzzes in the treble.</p>
@@ -559,6 +565,7 @@ function updateReadout() {
   if (lit > 0) parts.push(`centroid ${fmtHz(centroid())} · ${lit} of ${NBINS} sines lit`);
   else parts.push('nothing painted yet');
   if (held.size > 0) parts.push(`${held.size} key${held.size > 1 ? 's' : ''} down`);
+  document.getElementById('velLbl').textContent = `vel ${velocity.toFixed(1)}`;
   readoutEl.innerHTML = parts.join(' · ');
 }
 
@@ -648,33 +655,62 @@ function preset(name) {
 }
 document.querySelectorAll('.preset-btn').forEach(b => b.addEventListener('click', () => preset(b.dataset.preset)));
 
-// ── on-screen strip ──────────────────────────────────────────
+// ── keyboards: two layouts, one strip ────────────────────────
+// tracker: z-row is one octave, q-row the octave above (two octaves).
+// cubase: Steinberg's virtual keyboard, white keys on q w e r t y u i o p,
+// black keys on 2 3 5 6 7 9 0, extended in the same pattern past p:
+// [ is f, = is f sharp, ] is g. arrows: left/right octave, up/down velocity.
+const LAYOUTS = {
+  tracker: { keys: [...'zsxdcvgbhnjm,l.;/'.split('').map((ch, i) => [ch, i]),
+                    ...'q2w3er5t6y7ui9o0p'.split('').map((ch, i) => [ch, i + 12])] },
+  cubase:  { keys: [['q',0],['2',1],['w',2],['3',3],['e',4],['r',5],['5',6],['t',7],['6',8],['y',9],['7',10],['u',11],
+                    ['i',12],['9',13],['o',14],['0',15],['p',16],['[',17],['=',18],[']',19]] },
+};
+let layoutName = 'cubase';
+let velocity = 0.8;
+const KEYMAP = {};                        // char -> semitone offset for the current layout
 const keysEl = document.getElementById('keys');
 const BLACK = new Set([1, 3, 6, 8, 10]);
-const keyEls = [];
-for (let k = 0; k <= 12; k++) {
-  const el = document.createElement('div');
-  el.className = 'key' + (BLACK.has(k % 12) ? ' black' : '');
-  el.dataset.k = k;
-  keyEls.push(el);
-  keysEl.appendChild(el);
+let keyEls = [];
+function buildStrip() {
+  const L = LAYOUTS[layoutName];
+  for (const k in KEYMAP) delete KEYMAP[k];
+  L.keys.forEach(([ch, k]) => KEYMAP[ch] = k);
+  const byOffset = new Map(L.keys.map(([ch, k]) => [k, ch]));
+  const span = Math.max(...L.keys.map(([, k]) => k)) + 1;
+  keysEl.innerHTML = '';
+  keysEl.style.gridTemplateColumns = `repeat(${span}, 1fr)`;
+  keyEls = [];
+  for (let k = 0; k < span; k++) {
+    const el = document.createElement('div');
+    el.className = 'key' + (BLACK.has(k % 12) ? ' black' : '');
+    el.dataset.k = k;
+    const ch = byOffset.get(k);
+    el.textContent = ch ? ch : '';
+    el.title = noteName(k);
+    keyEls.push(el);
+    keysEl.appendChild(el);
+  }
+  document.getElementById('layoutBtn').textContent = layoutName === 'cubase' ? 'keys: cubase' : 'keys: tracker';
+  document.getElementById('octLbl').textContent = 'C' + octave;
 }
-function labelKeys() {
-  for (let k = 0; k <= 12; k++) keyEls[k].textContent = (k % 12 === 0) ? 'C' + (octave + Math.floor(k / 12)) : '';
-}
-labelKeys();
-let stripNote = null;
+const NOTE_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+function noteName(k) { return NOTE_NAMES[k % 12] + (octave + Math.floor(k / 12)); }
+function offsetToNote(k) { return (octave + 1) * 12 + k; }
+
+// strip (touch / mouse): glide across keys while held
+let stripNote = null, stripK = null;
 function stripDown(k) {
-  const note = (octave + 1) * 12 + k;
+  const note = offsetToNote(k);
   if (stripNote !== null && stripNote !== note) stripUp();
-  stripNote = note; keyEls[k].classList.add('down');
-  noteOn(note, 0.8);
+  stripNote = note; stripK = k; keyEls[k].classList.add('down');
+  noteOn(note, velocity);
 }
 function stripUp() {
   if (stripNote === null) return;
   noteOff(stripNote);
   keyEls.forEach(e => e.classList.remove('down'));
-  stripNote = null;
+  stripNote = null; stripK = null;
 }
 keysEl.addEventListener('pointerdown', e => {
   const t = e.target.closest('.key'); if (!t) return;
@@ -689,40 +725,61 @@ keysEl.addEventListener('pointermove', e => {
 });
 keysEl.addEventListener('pointerup', stripUp);
 keysEl.addEventListener('pointercancel', stripUp);
-document.getElementById('octDown').addEventListener('click', () => { octave = Math.max(1, octave - 1); labelKeys(); });
-document.getElementById('octUp').addEventListener('click', () => { octave = Math.min(7, octave + 1); labelKeys(); });
 
-// ── computer keyboard ────────────────────────────────────────
-// z-row = one octave from C(octave), q-row = the octave above. tracker layout.
-const KEYMAP = {};
-'zsxdcvgbhnjm,l.;/'.split('').forEach((ch, i) => KEYMAP[ch] = i);
-'q2w3er5t6y7ui9o0p'.split('').forEach((ch, i) => KEYMAP[ch] = i + 12);
-const heldKeys = new Map();               // physical key -> note
+function shiftOctave(d) {
+  octave = Math.max(1, Math.min(7, octave + d));
+  buildStrip(); updateReadout();
+}
+document.getElementById('octDown').addEventListener('click', () => shiftOctave(-1));
+document.getElementById('octUp').addEventListener('click', () => shiftOctave(1));
+document.getElementById('layoutBtn').addEventListener('click', () => {
+  layoutName = layoutName === 'cubase' ? 'tracker' : 'cubase';
+  releaseAllKeys(); buildStrip();
+});
+
+// computer keyboard: chars land in KEYMAP for whichever layout is on;
+// while a key is held its light stays on the strip
+const heldKeys = new Map();               // physical char -> [note, k]
+function releaseAllKeys() {
+  for (const [, [note, k]] of heldKeys) { noteOff(note); if (keyEls[k]) keyEls[k].classList.remove('down'); }
+  heldKeys.clear();
+}
 window.addEventListener('keydown', e => {
   if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target && /INPUT|BUTTON/.test(e.target.tagName)) e.target.blur();
   if (e.key === 'Escape') { panic(); return; }
   if (e.key === ' ') { e.preventDefault(); playBtn.click(); return; }
-  const k = KEYMAP[e.key.toLowerCase()];
+  if (e.key === 'Tab') { e.preventDefault(); document.getElementById('layoutBtn').click(); return; }
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); shiftOctave(-1); return; }
+  if (e.key === 'ArrowRight') { e.preventDefault(); shiftOctave(1); return; }
+  if (e.key === 'ArrowUp')    { e.preventDefault(); velocity = Math.min(1, +(velocity + 0.1).toFixed(1)); updateReadout(); return; }
+  if (e.key === 'ArrowDown')  { e.preventDefault(); velocity = Math.max(0.1, +(velocity - 0.1).toFixed(1)); updateReadout(); return; }
+  const ch = e.key.toLowerCase();
+  const k = KEYMAP[ch];
   if (k === undefined) return;
   e.preventDefault();
-  const note = (octave + 1) * 12 + k;
-  if (heldKeys.has(e.key.toLowerCase())) return;
-  heldKeys.set(e.key.toLowerCase(), note);
-  noteOn(note, 0.8);
+  if (heldKeys.has(ch)) return;
+  const note = offsetToNote(k);
+  heldKeys.set(ch, [note, k]);
+  if (keyEls[k]) keyEls[k].classList.add('down');
+  noteOn(note, velocity);
 });
 window.addEventListener('keyup', e => {
-  const note = heldKeys.get(e.key.toLowerCase());
-  if (note === undefined) return;
-  heldKeys.delete(e.key.toLowerCase());
-  noteOff(note);
+  const ch = e.key.toLowerCase();
+  const h = heldKeys.get(ch);
+  if (!h) return;
+  heldKeys.delete(ch);
+  noteOff(h[0]);
+  if (keyEls[h[1]] && !heldKeys.size) keyEls[h[1]].classList.remove('down');
+  else if (keyEls[h[1]] && ![...heldKeys.values()].some(([, k]) => k === h[1])) keyEls[h[1]].classList.remove('down');
 });
 // nothing may hang: losing the window releases everything keyed
 window.addEventListener('blur', () => {
   for (const note of Array.from(held.keys())) noteOff(note);
-  heldKeys.clear(); stripUp();
+  releaseAllKeys(); stripUp();
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) panic(); });
+buildStrip();
 
 // ── web midi ─────────────────────────────────────────────────
 const midiLine = document.getElementById('midiLine');

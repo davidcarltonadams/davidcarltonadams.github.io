@@ -32,7 +32,10 @@ Born 2026-07-23, the night of escher + comma + nest.
   --gold:   #d4c070;
 }
 /* Georgia serif body · 'SF Mono' for numbers/labels ·
-   lowercase titles letter-spaced 0.24em · italic .sub epigraph ·
+   lowercase titles letter-spaced 0.24em · italic .sub epigraph in
+   var(--dim), NOT var(--dimmer): the epigraph is meant to be read,
+   0.17 alpha was too faint (David, 2026-09-03; brush + vuza set the
+   new floor, older eggs retrofit as they get touched) ·
    fixed ← eggs backlink top-left (see escher.html for full block) */
 ```
 
@@ -157,7 +160,7 @@ flashes. `?pose=1` sets `playStep = 29` and seeds a six-slot decaying flash
 trail on every voice ring and the composite ring behind that position, so the
 capture shows a mid-cycle sweep with glowing recent hits and no AudioContext
 needed. No watermark: the frame is real canon data, only the playhead position
-is staged. Capture URL `vuza.html?pose=1`.
+is staged. Capture URL `vuza.html?pose=1`. Boots on the vuza preset (index `VUZA_IDX`), so the pose always shows the 72.
 
 ## Canvas boilerplate (retina + width clamp)
 
