@@ -274,7 +274,7 @@ canvas.addEventListener('click', e => {
   }
   if (best < 0) return;
   if (best === hovered && !nodes[best].ghost) {
-    window.location.href = nodes[best].n + '.html';
+    window.location.href = 'eggs/' + nodes[best].n + '.html';
   }
   hovered = best; caption();
 });

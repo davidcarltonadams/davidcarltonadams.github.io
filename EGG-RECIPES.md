@@ -9,6 +9,10 @@ Born 2026-07-23, the night of escher + comma + nest.
 ## House rules
 
 - One lowercase word filename (`comma.html`), matching `<title>` and `.title`.
+  **Eggs live in `website/eggs/` (moved 2026-09-03; the shared `tunings.json`
+  moved with them).** Inside an egg, site chrome is one level up: `../assets/`,
+  `../js/`, `../eggs.html` for the backlink. Thumbnails stay in
+  `website/assets/eggs/`. Old root URLs forward via `404.html`.
 - No nav links from public pages. Eggs are listed in `eggs.html` only
   (name + `egg-desc` with `·`-separated clauses; lowercase; specific numbers
   beat adjectives: "21.5¢ per cycle" not "slowly drifts").
@@ -178,7 +182,7 @@ c.scale(dpr, dpr);
 Math/sequencer logic:
 
 ```bash
-node ~/projects/tools/egg-test.js comma.html '
+node ~/projects/tools/egg-test.js eggs/comma.html '
   let t=0; for (let i=0;i<16;i++){ advance(t); t+=900; }
   assert(Math.abs(1200*Math.log2(base) + 64.52) < 0.01, "3-cycle drift");
   console.log("OK");'
@@ -192,7 +196,7 @@ CH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 "$CH" --headless=new --disable-gpu --hide-scrollbars \
   --force-device-scale-factor=1 --timeout=12000 \
   --screenshot=/tmp/egg.png --window-size=1000,625 \
-  "file://$PWD/egg.html"
+  "file://$PWD/eggs/egg.html"
 ```
 
 Audio is the one thing these can't verify — that's always an ears check.
