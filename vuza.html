@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="rhythm canons that tile time · a lopsided six-note figure enters twelve times at lopsided moments and the sum is a perfectly even pulse of 72, every slot struck exactly once, neither part periodic">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <title>vuza</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+      --red:    #d46a6a;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.3rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dimmer);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 520px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.85;
+    }
+
+    canvas { display: block; touch-action: none; cursor: grab; }
+    canvas.dragging { cursor: grabbing; }
+
+    .presets { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
+    .btn-sm {
+      font-family: Georgia, serif;
+      font-size: 0.52rem; letter-spacing: 0.1em; text-transform: lowercase;
+      font-style: italic; color: var(--dim);
+      background: none; border: 1px solid var(--border);
+      padding: 0.28rem 0.55rem; cursor: pointer; white-space: nowrap;
+      transition: color 0.13s, border-color 0.13s;
+    }
+    .btn-sm:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
+    .btn-sm.on    { color: var(--gold); border-color: rgba(212,192,112,0.45); }
+    .btn-sm.warn  { color: var(--red); border-color: rgba(212,106,106,0.4); }
+
+    .transport {
+      display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap;
+      justify-content: center;
+    }
+    .bpm-group {
+      display: flex; gap: 0.35rem; align-items: center;
+      font-size: 0.58rem; font-style: italic; color: var(--dim);
+    }
+    .bpm-inp {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.62rem; color: var(--text);
+      background: var(--bg2); border: 1px solid var(--border);
+      padding: 0.16rem 0.3rem; width: 3rem; outline: none; text-align: center;
+    }
+    .play-btn {
+      font-family: Georgia, serif; font-size: 0.68rem; font-style: italic;
+      letter-spacing: 0.12em; color: var(--text);
+      background: none; border: 1px solid rgba(255,255,255,0.22);
+      padding: 0.45rem 1.5rem; cursor: pointer; transition: all 0.13s;
+    }
+    .play-btn:hover { background: rgba(255,255,255,0.03); }
+    .play-btn.playing { border-color: rgba(212,192,112,0.55); color: var(--gold); }
+    .hear { display: flex; gap: 0.3rem; align-items: center; font-size: 0.55rem; font-style: italic; color: var(--dim); }
+
+    .voices { display: flex; gap: 0.32rem; flex-wrap: wrap; justify-content: center; align-items: center; }
+    .vchip {
+      width: 14px; height: 14px; border-radius: 50%; cursor: pointer;
+      border: 1px solid transparent; opacity: 0.85; transition: opacity 0.13s, transform 0.13s;
+    }
+    .vchip.off { opacity: 0.18; }
+    .vchip:hover { transform: scale(1.2); }
+    .vlbl { font-size: 0.5rem; font-style: italic; color: var(--dimmer); letter-spacing: 0.1em; margin-right: 0.2rem; }
+
+    .readout {
+      width: 100%; max-width: 520px;
+      border: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.58rem; line-height: 1.95; color: var(--dim);
+    }
+    .readout b { font-weight: normal; color: var(--text); }
+    .readout .g { color: var(--gold); }
+    .readout .r { color: var(--red); }
+    .readout .set { word-break: break-word; }
+
+    .explain-wrap { width: 100%; max-width: 520px; }
+    .explain-toggle {
+      font-size: 0.51rem; font-style: italic; color: var(--dimmer);
+      letter-spacing: 0.1em; background: none; border: none;
+      font-family: Georgia, serif; cursor: pointer; transition: color 0.13s;
+    }
+    .explain-toggle:hover { color: var(--dim); }
+    .explain-body {
+      display: none; margin-top: 0.9rem;
+      font-size: 0.63rem; line-height: 1.9; color: var(--dim);
+      border: 1px solid var(--border); padding: 1.2rem 1.5rem;
+    }
+    .explain-body.open { display: block; }
+    .explain-body p { margin-bottom: 0.7rem; }
+    .explain-body p:last-child { margin-bottom: 0; }
+    .explain-body strong { color: var(--text); font-weight: normal; }
+    .math {
+      font-family: 'SF Mono','Fira Code',monospace; font-size: 0.62rem;
+      color: var(--gold); padding: 0.28rem 0.7rem;
+      background: rgba(212,192,112,0.05);
+      border-left: 2px solid rgba(212,192,112,0.25);
+      margin: 0.5rem 0; display: block;
+    }
+  </style>
+</head>
+<body>
+
+<a href="eggs.html" class="eggs-back">← eggs</a>
+
+<div class="header">
+  <h1 class="title">vuza</h1>
+  <p class="sub">
+    a lopsided figure enters at lopsided moments and the sum is a perfectly even pulse ·<br>
+    every one of 72 slots struck exactly once, and neither the figure nor the entries repeat
+  </p>
+</div>
+
+<canvas id="cv"></canvas>
+
+<div class="presets" id="presets"></div>
+
+<div class="voices" id="voices"></div>
+
+<div class="transport">
+  <div class="bpm-group">
+    <span>bpm</span>
+    <input class="bpm-inp" id="bpmInp" type="number" value="132" min="40" max="280">
+  </div>
+  <button class="play-btn" id="playBtn" onclick="togglePlay()">▶ play</button>
+  <div class="hear">
+    <span>hear</span>
+    <button class="btn-sm on" id="hearParts" onclick="setHear('parts')">parts</button>
+    <button class="btn-sm" id="hearSum" onclick="setHear('sum')">sum</button>
+  </div>
+</div>
+
+<div class="readout" id="readout"></div>
+
+<div class="explain-wrap">
+  <button class="explain-toggle" onclick="toggleExplain()">? what is this</button>
+  <div class="explain-body" id="explainBody">
+    <p>A <strong>rhythmic tiling canon</strong> of period n is an inner rhythm R (a set of onsets, counted in slots) and an outer rhythm S (the moments each copy of R enters) such that every translate R + s lands on fresh slots and together they cover all n exactly once. Written additively: R ⊕ S = Z<sub>n</sub>. Each ring here is one entry, the outer ring is the sum, and the sum is always a flat pulse when the tiling holds.</p>
+    <p>Most tilings are cheap: either R or S is <strong>periodic</strong>, a smaller pattern repeated on a sub-cycle (the n = 12 presets). Dan Tudor Vuza asked in 1991 whether a canon could tile with <strong>neither</strong> side periodic. Hajós had shown in 1950 that for most periods the answer is no; the smallest period where it is possible is <strong>72</strong>, then 108, 120, 144, 168. The one loaded here comes from Vuza's own construction with n = 2·3·3·2·2.</p>
+    <p>Set hear to <strong>sum</strong> and the twelve voices collapse to one click on every slot, a metronome. Set it to <strong>parts</strong> and each voice gets its own pitch: the same slots, now heard as twelve staggered, irregular figures. Nothing changed in the timing. Drag any ring to rotate its entry and the tiling breaks: doubled slots flare red, holes go dark. Click a colored dot above to solo a voice.</p>
+    <span class="math">R = {0, 8, 16} ⊕ {0, 18} = 2·(4·{0,1,2} ⊕ 9·{0,1})</span>
+    <span class="math">S = {0, 1, 5, 6, 12, 25, 29, 36, 42, 48, 49, 53} · |R|·|S| = 6·12 = 72</span>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── The math ────────────────────────────────────────────────────────────────
+
+// R ⊕ S = Z_n : every residue hit exactly once. Returns true/false.
+function tiles(R, S, n) {
+  const c = coverage(R, S, n);
+  for (let i = 0; i < n; i++) if (c[i] !== 1) return false;
+  return true;
+}
+
+// hit count per slot
+function coverage(R, S, n) {
+  const c = new Array(n).fill(0);
+  for (const r of R) for (const s of S) c[(((r + s) % n) + n) % n]++;
+  return c;
+}
+
+// X is periodic mod n if some proper divisor d of n has X + d ≡ X (mod n),
+// i.e. X is a union of cosets of the subgroup dZ_n.
+function isPeriodic(X, n) {
+  const set = new Set(X.map(x => ((x % n) + n) % n));
+  for (let d = 1; d < n; d++) {
+    if (n % d) continue;
+    if (X.every(x => set.has((((x + d) % n) + n) % n))) return true;
+  }
+  return false;
+}
+
+// smallest period d (a divisor of n) with X + d ≡ X, or n if aperiodic
+function period(X, n) {
+  const set = new Set(X.map(x => ((x % n) + n) % n));
+  for (let d = 1; d < n; d++) {
+    if (n % d) continue;
+    if (X.every(x => set.has((((x + d) % n) + n) % n))) return d;
+  }
+  return n;
+}
+
+// ─── Presets ─────────────────────────────────────────────────────────────────
+
+// The 72 canon: R is Vuza's inner rhythm for (p1,n1,p2,n2,n3) = (2,3,3,2,2),
+// R = n3·(p1·n2·I_n1 ⊕ p2·n1·I_n2) = 2·(4·{0,1,2} ⊕ 9·{0,1}).
+// S is one of the 72 aperiodic complements of R found by exact cover.
+// Both verified aperiodic; see egg-test assertions in the build notes.
+const PRESETS = [
+  { name: 'vuza · 72',       n: 72, R: [0,8,16,18,26,34], S: [0,1,5,6,12,25,29,36,42,48,49,53] },
+  { name: 'pairs · 12',      n: 12, R: [0,1],   S: [0,2,4,6,8,10] },
+  { name: 'triplets · 12',   n: 12, R: [0,1,2], S: [0,3,6,9] },
+  { name: 'gapped · 16',     n: 16, R: [0,2,4,6], S: [0,1,8,9] },
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+
+let presetIdx = 0;
+let n = 72, R = [], S = [];
+let offsets = [];        // per-voice rotation applied by dragging (slots)
+let solo = null;         // Set of voice indices, or null = all
+let hear = 'parts';      // 'parts' | 'sum'
+let flashes = [];        // per-voice Float32Array(n)
+let sumFlash = null;     // Float32Array(n) on the composite ring
+let playStep = -1;
+let cov = [];
+
+function effectiveS() { return S.map((s, i) => (((s + offsets[i]) % n) + n) % n); }
+
+function loadPreset(i) {
+  presetIdx = i;
+  const P = PRESETS[i];
+  n = P.n; R = P.R.slice(); S = P.S.slice();
+  offsets = S.map(() => 0);
+  solo = null;
+  flashes = S.map(() => new Float32Array(n));
+  sumFlash = new Float32Array(n);
+  playStep = -1;
+  recompute();
+  buildPresetUI();
+  buildVoiceUI();
+}
+
+function recompute() {
+  cov = coverage(R, effectiveS(), n);
+  renderReadout();
+}
+
+function resetOffsets() {
+  offsets = S.map(() => 0);
+  recompute();
+  buildPresetUI();
+}
+
+// ─── Colors ──────────────────────────────────────────────────────────────────
+
+function voiceRGB(i, count) {
+  // spread hues around the wheel, starting at gold, skipping nothing
+  const h = (46 + i * 360 / count) % 360;
+  return hsl2rgb(h, 0.5, 0.64);
+}
+function hsl2rgb(h, s, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  let r, g, b;
+  if      (h < 60)  [r, g, b] = [c, x, 0];
+  else if (h < 120) [r, g, b] = [x, c, 0];
+  else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c];
+  else if (h < 300) [r, g, b] = [x, 0, c];
+  else              [r, g, b] = [c, 0, x];
+  return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+}
+
+// ─── Audio ───────────────────────────────────────────────────────────────────
+
+let ax = null, master = null;
+const LEVEL = 0.6;
+
+function ensureAx() {
+  if (!ax) {
+    ax = new (window.AudioContext || window.webkitAudioContext)();
+    const lim = ax.createDynamicsCompressor();
+    lim.threshold.value = -10; lim.knee.value = 0; lim.ratio.value = 20;
+    lim.attack.value = 0.002; lim.release.value = 0.12;
+    master = ax.createGain();
+    master.gain.value = 0;               // faded in on start, out on stop
+    master.connect(lim);
+    lim.connect(ax.destination);
+  }
+  if (ax.state === 'suspended') ax.resume();
+}
+
+// pitch per voice: a two-octave ladder of just steps so 12 parts stay tellable
+const LADDER = [1, 9/8, 5/4, 4/3, 3/2, 5/3, 15/8, 2, 9/4, 5/2, 8/3, 3];
+function voiceHz(i) {
+  if (hear === 'sum') return 660;
+  return 220 * LADDER[i % LADDER.length] * (i >= 12 ? 2 : 1);
+}
+
+// short sine ping with an exponential tail; oscillator lives only for the hit
+function ping(freq, when, level) {
+  const o = ax.createOscillator();
+  const g = ax.createGain();
+  o.type = 'sine';
+  o.frequency.value = freq;
+  const att = 0.003, dec = 0.10;
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(level, when + att);
+  g.gain.exponentialRampToValueAtTime(0.0008, when + att + dec);
+  o.connect(g); g.connect(master);
+  o.start(when); o.stop(when + att + dec + 0.01);
+}
+
+// ─── Scheduler ───────────────────────────────────────────────────────────────
+
+let playing = false, tick = 0, nextT = 0, schedID = null;
+const tickTimers = new Set();
+const LOOKAHEAD = 0.12, SCHED_INT = 22;
+
+function getBpm() { return Math.max(40, Math.min(280, parseFloat(document.getElementById('bpmInp').value) || 132)); }
+function slotSec() { return 60 / (getBpm() * 4); }   // one slot = a sixteenth
+
+function audible(i) { return !solo || solo.has(i); }
+
+function doTick(t, when) {
+  const step = t % n;
+  const Se = effectiveS();
+  const hits = [];
+  for (let i = 0; i < Se.length; i++) {
+    const rel = (((step - Se[i]) % n) + n) % n;
+    if (R.includes(rel)) hits.push(i);
+  }
+  if (hits.length) {
+    const lvl = hear === 'sum' ? 0.22 : 0.20;
+    for (const i of hits) if (audible(i)) ping(voiceHz(i), when, lvl);
+  }
+  const delay = Math.max(0, (when - ax.currentTime) * 1000 - 6);
+  const id = setTimeout(() => {
+    tickTimers.delete(id);
+    if (!playing) return;
+    playStep = step;
+    for (const i of hits) flashes[i][step] = 1;
+    if (hits.length) sumFlash[step] = 1;
+  }, delay);
+  tickTimers.add(id);
+}
+
+function schedule() {
+  while (nextT < ax.currentTime + LOOKAHEAD) {
+    doTick(tick, nextT);
+    nextT += slotSec();
+    tick++;
+  }
+  schedID = setTimeout(schedule, SCHED_INT);
+}
+
+function startPlay() {
+  ensureAx();
+  playing = true;
+  tick = 0;
+  nextT = ax.currentTime + 0.06;
+  master.gain.cancelScheduledValues(ax.currentTime);
+  master.gain.setTargetAtTime(LEVEL, ax.currentTime, 0.04);
+  schedule();
+  const btn = document.getElementById('playBtn');
+  btn.classList.add('playing');
+  btn.textContent = '■ stop';
+}
+
+function stopPlay() {
+  playing = false;
+  clearTimeout(schedID); schedID = null;
+  tickTimers.forEach(clearTimeout); tickTimers.clear();
+  if (master) {
+    master.gain.cancelScheduledValues(ax.currentTime);
+    master.gain.setTargetAtTime(0, ax.currentTime, 0.05);
+  }
+  playStep = -1;
+  const btn = document.getElementById('playBtn');
+  btn.classList.remove('playing');
+  btn.textContent = '▶ play';
+}
+
+function togglePlay() { if (playing) stopPlay(); else startPlay(); }
+
+function setHear(mode) {
+  hear = mode;
+  document.getElementById('hearParts').classList.toggle('on', mode === 'parts');
+  document.getElementById('hearSum').classList.toggle('on', mode === 'sum');
+}
+
+// ─── Canvas ──────────────────────────────────────────────────────────────────
+
+const cv = document.getElementById('cv');
+const gx = cv.getContext('2d');
+let SZ = 420;
+
+function setSize() {
+  SZ = Math.min(window.innerWidth - 32, 420);
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = SZ * dpr; cv.height = SZ * dpr;
+  cv.style.width = SZ + 'px'; cv.style.height = SZ + 'px';
+  gx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+setSize();
+window.addEventListener('resize', setSize);
+
+// ring radii in a 420 box: voices inside, composite outside
+function ringRadius(i, count) {
+  const rIn = 58, rOut = 156;
+  if (count === 1) return (rIn + rOut) / 2;
+  return rIn + (rOut - rIn) * i / (count - 1);
+}
+const R_SUM = 182;
+
+let lastT = 0;
+function frame(now) {
+  const dt = Math.min((now - lastT) / 1000, 0.05);
+  lastT = now;
+  for (const f of flashes) for (let s = 0; s < n; s++) if (f[s] > 0) f[s] = Math.max(0, f[s] - dt * 4.5);
+  for (let s = 0; s < n; s++) if (sumFlash[s] > 0) sumFlash[s] = Math.max(0, sumFlash[s] - dt * 4.5);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+function draw() {
+  const sc = SZ / 420, cx = SZ / 2, cy = SZ / 2;
+  gx.clearRect(0, 0, SZ, SZ);
+  gx.fillStyle = '#070709';
+  gx.fillRect(0, 0, SZ, SZ);
+
+  const Se = effectiveS();
+  const count = Se.length;
+  const dotR = Math.max(2.1, Math.min(3.2, 120 / n)) * sc;
+
+  // voice rings
+  for (let i = 0; i < count; i++) {
+    const r = ringRadius(i, count) * sc;
+    const [cr, cg, cb] = voiceRGB(i, count);
+    const on = audible(i);
+    const alpha = on ? 1 : 0.22;
+    gx.strokeStyle = `rgba(${cr},${cg},${cb},${0.07 * alpha})`;
+    gx.lineWidth = 1;
+    gx.beginPath(); gx.arc(cx, cy, r, 0, Math.PI * 2); gx.stroke();
+    for (const rr of R) {
+      const s = (rr + Se[i]) % n;
+      const ang = (s / n) * Math.PI * 2 - Math.PI / 2;
+      const x = cx + r * Math.cos(ang), y = cy + r * Math.sin(ang);
+      const fl = flashes[i][s] || 0;
+      if (fl > 0.01) {
+        gx.fillStyle = `rgba(${cr},${cg},${cb},${fl * 0.2 * alpha})`;
+        gx.beginPath(); gx.arc(x, y, dotR * 3.2, 0, Math.PI * 2); gx.fill();
+      }
+      gx.fillStyle = `rgba(${cr},${cg},${cb},${(0.55 + fl * 0.45) * alpha})`;
+      gx.beginPath(); gx.arc(x, y, dotR + fl * 1.5 * sc, 0, Math.PI * 2); gx.fill();
+    }
+    // entry marker: a small tick at the voice's s, pointing inward
+    const ang0 = (Se[i] / n) * Math.PI * 2 - Math.PI / 2;
+    gx.strokeStyle = `rgba(${cr},${cg},${cb},${0.35 * alpha})`;
+    gx.lineWidth = 1;
+    gx.beginPath();
+    gx.moveTo(cx + (r - 4 * sc) * Math.cos(ang0), cy + (r - 4 * sc) * Math.sin(ang0));
+    gx.lineTo(cx + (r + 4 * sc) * Math.cos(ang0), cy + (r + 4 * sc) * Math.sin(ang0));
+    gx.stroke();
+  }
+
+  // composite ring: which voice owns each slot; collisions red, holes empty
+  const rs = R_SUM * sc;
+  gx.strokeStyle = 'rgba(212,192,112,0.10)';
+  gx.lineWidth = 1;
+  gx.beginPath(); gx.arc(cx, cy, rs, 0, Math.PI * 2); gx.stroke();
+  const owner = new Array(n).fill(-1);
+  for (let i = 0; i < count; i++) for (const rr of R) { const s = (rr + Se[i]) % n; if (owner[s] < 0) owner[s] = i; }
+  for (let s = 0; s < n; s++) {
+    const ang = (s / n) * Math.PI * 2 - Math.PI / 2;
+    const x = cx + rs * Math.cos(ang), y = cy + rs * Math.sin(ang);
+    const fl = sumFlash[s] || 0;
+    const k = cov[s];
+    if (k === 0) {
+      gx.strokeStyle = 'rgba(212,106,106,0.55)';
+      gx.lineWidth = 1;
+      gx.beginPath(); gx.arc(x, y, dotR + 1.2 * sc, 0, Math.PI * 2); gx.stroke();
+    } else if (k > 1) {
+      if (fl > 0.01) {
+        gx.fillStyle = `rgba(212,106,106,${fl * 0.25})`;
+        gx.beginPath(); gx.arc(x, y, dotR * 3.5, 0, Math.PI * 2); gx.fill();
+      }
+      gx.fillStyle = `rgba(212,106,106,${0.75 + fl * 0.25})`;
+      gx.beginPath(); gx.arc(x, y, (dotR + 1.6) * sc + fl * 1.5 * sc, 0, Math.PI * 2); gx.fill();
+    } else {
+      const i = owner[s];
+      const [cr, cg, cb] = hear === 'sum' ? [212,192,112] : voiceRGB(i, count);
+      const alpha = audible(i) ? 1 : 0.25;
+      if (fl > 0.01) {
+        gx.fillStyle = `rgba(${cr},${cg},${cb},${fl * 0.22 * alpha})`;
+        gx.beginPath(); gx.arc(x, y, dotR * 3.2, 0, Math.PI * 2); gx.fill();
+      }
+      gx.fillStyle = `rgba(${cr},${cg},${cb},${(0.6 + fl * 0.4) * alpha})`;
+      gx.beginPath(); gx.arc(x, y, (dotR + 0.6 * sc) + fl * 1.5 * sc, 0, Math.PI * 2); gx.fill();
+    }
+  }
+
+  // playhead: one radial line across every ring
+  if (playStep >= 0) {
+    const ang = (playStep / n) * Math.PI * 2 - Math.PI / 2;
+    gx.strokeStyle = 'rgba(204,200,208,0.35)';
+    gx.lineWidth = 1 * sc;
+    gx.beginPath();
+    gx.moveTo(cx + 40 * sc * Math.cos(ang), cy + 40 * sc * Math.sin(ang));
+    gx.lineTo(cx + (rs + 10 * sc) * Math.cos(ang), cy + (rs + 10 * sc) * Math.sin(ang));
+    gx.stroke();
+  }
+
+  // center: n
+  gx.fillStyle = 'rgba(212,192,112,0.55)';
+  gx.font = `${12 * sc}px 'SF Mono','Fira Code',monospace`;
+  gx.textAlign = 'center'; gx.textBaseline = 'middle';
+  gx.fillText(String(n), cx, cy);
+  const ok = cov.every(k => k === 1);
+  gx.fillStyle = ok ? 'rgba(204,200,208,0.22)' : 'rgba(212,106,106,0.6)';
+  gx.font = `italic ${8.5 * sc}px Georgia, serif`;
+  gx.fillText(ok ? 'tiles' : 'broken', cx, cy + 14 * sc);
+}
+
+// ─── Drag to rotate an entry ────────────────────────────────────────────────
+
+let drag = null;
+function canvasXY(e) {
+  const b = cv.getBoundingClientRect();
+  return [(e.clientX - b.left) * 420 / SZ - 210, (e.clientY - b.top) * 420 / SZ - 210];
+}
+function angleOf(x, y) { return Math.atan2(y, x) + Math.PI / 2; }
+
+cv.addEventListener('pointerdown', e => {
+  const [x, y] = canvasXY(e);
+  const rad = Math.hypot(x, y);
+  const count = S.length;
+  let best = -1, bd = 7;
+  for (let i = 0; i < count; i++) {
+    const d = Math.abs(rad - ringRadius(i, count));
+    if (d < bd) { bd = d; best = i; }
+  }
+  if (best < 0) return;
+  drag = { i: best, a0: angleOf(x, y), off0: offsets[best] };
+  cv.classList.add('dragging');
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const [x, y] = canvasXY(e);
+  let da = angleOf(x, y) - drag.a0;
+  while (da > Math.PI) da -= Math.PI * 2;
+  while (da < -Math.PI) da += Math.PI * 2;
+  const slots = Math.round(da / (Math.PI * 2) * n);
+  const next = (((drag.off0 + slots) % n) + n) % n;
+  if (next !== offsets[drag.i]) {
+    offsets[drag.i] = next;
+    recompute();
+    buildPresetUI();
+  }
+});
+function endDrag() { if (drag) { drag = null; cv.classList.remove('dragging'); } }
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+
+// ─── UI ──────────────────────────────────────────────────────────────────────
+
+function buildPresetUI() {
+  const wrap = document.getElementById('presets');
+  wrap.innerHTML = '';
+  PRESETS.forEach((P, i) => {
+    const b = document.createElement('button');
+    b.className = 'btn-sm' + (i === presetIdx ? ' on' : '');
+    b.textContent = P.name;
+    b.onclick = () => loadPreset(i);
+    wrap.appendChild(b);
+  });
+  if (offsets.some(o => o !== 0)) {
+    const b = document.createElement('button');
+    b.className = 'btn-sm warn';
+    b.textContent = 'restore entries';
+    b.onclick = resetOffsets;
+    wrap.appendChild(b);
+  }
+}
+
+function buildVoiceUI() {
+  const wrap = document.getElementById('voices');
+  wrap.innerHTML = '';
+  const lbl = document.createElement('span');
+  lbl.className = 'vlbl';
+  lbl.textContent = 'solo';
+  wrap.appendChild(lbl);
+  const count = S.length;
+  for (let i = 0; i < count; i++) {
+    const [cr, cg, cb] = voiceRGB(i, count);
+    const d = document.createElement('div');
+    d.className = 'vchip' + (audible(i) ? '' : ' off');
+    d.style.background = `rgb(${cr},${cg},${cb})`;
+    d.title = `voice ${i + 1} · enters at ${S[i]}`;
+    d.onclick = () => {
+      if (!solo) solo = new Set([i]);
+      else if (solo.has(i)) { solo.delete(i); if (!solo.size) solo = null; }
+      else solo.add(i);
+      buildVoiceUI();
+    };
+    wrap.appendChild(d);
+  }
+  const all = document.createElement('button');
+  all.className = 'btn-sm';
+  all.textContent = 'all';
+  all.style.marginLeft = '0.3rem';
+  all.onclick = () => { solo = null; buildVoiceUI(); };
+  wrap.appendChild(all);
+}
+
+function fmtSet(X) { return '{' + X.join(', ') + '}'; }
+
+function renderReadout() {
+  const Se = effectiveS();
+  const ok = cov.every(k => k === 1);
+  const coll = cov.filter(k => k > 1).length, holes = cov.filter(k => k === 0).length;
+  const pr = period(R, n), ps = period(Se, n);
+  const apR = pr === n, apS = ps === n;
+  const moved = offsets.some(o => o !== 0);
+  const lines = [
+    `period <b>${n}</b> · |R| = <b>${R.length}</b> · |S| = <b>${Se.length}</b> · |R|·|S| = <b>${R.length * Se.length}</b>`,
+    `<span class="set">R = <b>${fmtSet(R)}</b> · aperiodic: ${apR ? '<span class="g">yes</span>' : `no (period ${pr})`}</span>`,
+    `<span class="set">S = <b>${fmtSet(Se.slice().sort((a, b) => a - b))}</b>${moved ? ' <i>(dragged)</i>' : ''} · aperiodic: ${apS ? '<span class="g">yes</span>' : `no (period ${ps})`}</span>`,
+    ok
+      ? `R ⊕ S = Z<sub>${n}</sub> · <span class="g">tiles</span> · every slot hit once${apR && apS ? ' · <span class="g">vuza canon</span>' : ''}`
+      : `R ⊕ S ≠ Z<sub>${n}</sub> · <span class="r">broken</span> · ${coll} doubled slot${coll === 1 ? '' : 's'} · ${holes} hole${holes === 1 ? '' : 's'}`,
+  ];
+  document.getElementById('readout').innerHTML = lines.join('<br>');
+}
+
+function toggleExplain() { document.getElementById('explainBody').classList.toggle('open'); }
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  if (e.key === 'Escape' && playing) stopPlay();
+});
+
+// ─── Boot ────────────────────────────────────────────────────────────────────
+
+loadPreset(0);
+
+// ?pose=1 : stage a mid-cycle frame for the headless thumbnail (no audio needed)
+const params = new URLSearchParams((window.location && window.location.search) || '');
+if (params.get('pose') === '1') {
+  playStep = 29;
+  const Se = effectiveS();
+  for (let i = 0; i < Se.length; i++) for (const rr of R) {
+    const s = (rr + Se[i]) % n;
+    const back = ((playStep - s) % n + n) % n;
+    if (back < 6) { flashes[i][s] = 1 - back / 6; sumFlash[s] = 1 - back / 6; }
+  }
+}
+
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
