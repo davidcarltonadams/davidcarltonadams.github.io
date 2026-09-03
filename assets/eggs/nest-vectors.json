@@ -692,18 +692,18 @@
       "id": "vuza",
       "vector": {
         "ratio": 0.25,
-        "rhythm": 0.75,
-        "psychoacoustics": 0.25,
-        "illusion": 0.25,
-        "process": 0.9,
-        "visible_math": 0.6,
-        "playable": 0.25,
-        "score": 0.25
+        "rhythm": 0.95,
+        "psychoacoustics": 0.35,
+        "illusion": 0.45,
+        "process": 0.8,
+        "visible_math": 0.9,
+        "playable": 0.6,
+        "score": 0.3
       },
-      "scored_date": "2026-08-17",
-      "ghost": true,
-      "desc": "unhatched · rhythm canons that tile time",
-      "reconstructed": true
+      "scored_date": "2026-09-03",
+      "ghost": false,
+      "desc": "rhythm canons that tile time · 72 slots, each struck once",
+      "reconstructed": false
     },
     {
       "id": "brush",

@@ -152,6 +152,13 @@ if (params.get('pose') === '1') {
 }
 ```
 
+**vuza.html** — the ring draws on load but idles with no playhead and no
+flashes. `?pose=1` sets `playStep = 29` and seeds a six-slot decaying flash
+trail on every voice ring and the composite ring behind that position, so the
+capture shows a mid-cycle sweep with glowing recent hits and no AudioContext
+needed. No watermark: the frame is real canon data, only the playhead position
+is staged. Capture URL `vuza.html?pose=1`.
+
 ## Canvas boilerplate (retina + width clamp)
 
 ```js
