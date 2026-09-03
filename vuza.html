@@ -49,7 +49,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 520px;
@@ -72,6 +72,22 @@
     .btn-sm:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
     .btn-sm.on    { color: var(--gold); border-color: rgba(212,192,112,0.45); }
     .btn-sm.warn  { color: var(--red); border-color: rgba(212,106,106,0.4); }
+
+    .maker {
+      width: 100%; max-width: 520px;
+      border: 1px solid var(--border); padding: 0.7rem 0.9rem;
+      display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .mk-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; justify-content: center; }
+    .mk-row label { font-size: 0.56rem; font-style: italic; color: var(--dim); display: flex; gap: 0.35rem; align-items: center; }
+    .mk-sel, .mk-inp {
+      font-family: 'SF Mono','Fira Code',monospace; font-size: 0.6rem; color: var(--text);
+      background: var(--bg2); border: 1px solid var(--border); padding: 0.16rem 0.3rem; outline: none;
+    }
+    .mk-inp { width: 13rem; }
+    .mk-chk input { accent-color: var(--gold); }
+    .mk-note { font-family: 'SF Mono','Fira Code',monospace; font-size: 0.54rem; color: var(--dim); text-align: center; line-height: 1.7; }
+    .mk-note.r { color: var(--red); }
 
     .transport {
       display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap;
@@ -159,6 +175,21 @@
 
 <div class="presets" id="presets"></div>
 
+<div class="maker">
+  <div class="mk-row">
+    <label>period <select id="mkN" class="mk-sel"></select></label>
+    <label>|R| <select id="mkK" class="mk-sel"></select></label>
+    <label class="mk-chk"><input type="checkbox" id="mkLop" checked> lopsided</label>
+    <button class="btn-sm" id="mkRandom">random</button>
+  </div>
+  <div class="mk-row">
+    <label>R = <input id="mkR" class="mk-inp" placeholder="0, 3, 7, 16, 20, 23" spellcheck="false"></label>
+    <button class="btn-sm" id="mkFind">find S</button>
+    <button class="btn-sm" id="mkNext">another S</button>
+  </div>
+  <div class="mk-note" id="mkNote">pick a period and a figure size and roll, or type your own R and the page searches for every S that tiles it</div>
+</div>
+
 <div class="voices" id="voices"></div>
 
 <div class="transport">
@@ -180,7 +211,7 @@
   <button class="explain-toggle" onclick="toggleExplain()">? what is this</button>
   <div class="explain-body" id="explainBody">
     <p>A <strong>rhythmic tiling canon</strong> of period n is an inner rhythm R (a set of onsets, counted in slots) and an outer rhythm S (the moments each copy of R enters) such that every translate R + s lands on fresh slots and together they cover all n exactly once. Written additively: R ⊕ S = Z<sub>n</sub>. Each ring here is one entry, the outer ring is the sum, and the sum is always a flat pulse when the tiling holds.</p>
-    <p>Most tilings are cheap: either R or S is <strong>periodic</strong>, a smaller pattern repeated on a sub-cycle (the n = 12 presets). Dan Tudor Vuza asked in 1991 whether a canon could tile with <strong>neither</strong> side periodic. Hajós had shown in 1950 that for most periods the answer is no; the smallest period where it is possible is <strong>72</strong>, then 108, 120, 144, 168. The one loaded here comes from Vuza's own construction with n = 2·3·3·2·2.</p>
+    <p>Most tilings are cheap: either R or S is <strong>periodic</strong>, a smaller pattern repeated on a sub-cycle (the 12 and 16 presets; the 24 to 60 ones have an S that only repeats every half or third cycle, which is as lopsided as it gets before 72). Dan Tudor Vuza asked in 1991 whether a canon could tile with <strong>neither</strong> side periodic. Hajós had shown in 1950 that for most periods the answer is no; the smallest period where it is possible is <strong>72</strong>, then 108, 120, 144, 168. The one loaded here comes from Vuza's own construction with n = 2·3·3·2·2.</p>
     <p>Set hear to <strong>sum</strong> and the twelve voices collapse to one click on every slot, a metronome. Set it to <strong>parts</strong> and each voice gets its own pitch: the same slots, now heard as twelve staggered, irregular figures. Nothing changed in the timing. Drag any ring to rotate its entry and the tiling breaks: doubled slots flare red, holes go dark. Click a colored dot above to solo a voice.</p>
     <span class="math">R = {0, 8, 16} ⊕ {0, 18} = 2·(4·{0,1,2} ⊕ 9·{0,1})</span>
     <span class="math">S = {0, 1, 5, 6, 12, 25, 29, 36, 42, 48, 49, 53} · |R|·|S| = 6·12 = 72</span>
@@ -233,12 +264,78 @@ function period(X, n) {
 // R = n3·(p1·n2·I_n1 ⊕ p2·n1·I_n2) = 2·(4·{0,1,2} ⊕ 9·{0,1}).
 // S is one of the 72 aperiodic complements of R found by exact cover.
 // Both verified aperiodic; see egg-test assertions in the build notes.
+// Below 72 one side is always periodic (Hajos), but it need not be a plain
+// grid: the middle presets have an S that only repeats every half or third
+// cycle, so the entries look lopsided inside each half. Found by the same
+// exact-cover search that powers the random button, then hand-picked.
 const PRESETS = [
-  { name: 'vuza · 72',       n: 72, R: [0,8,16,18,26,34], S: [0,1,5,6,12,25,29,36,42,48,49,53] },
   { name: 'pairs · 12',      n: 12, R: [0,1],   S: [0,2,4,6,8,10] },
   { name: 'triplets · 12',   n: 12, R: [0,1,2], S: [0,3,6,9] },
   { name: 'gapped · 16',     n: 16, R: [0,2,4,6], S: [0,1,8,9] },
+  { name: 'lopsided · 24',   n: 24, R: [0,3,7,16,20,23], S: [0,10,12,22] },
+  { name: 'threes · 36',     n: 36, R: [0,3,9,12,15,24], S: [0,1,2,18,19,20] },
+  { name: 'paired · 48',     n: 48, R: [0,13,19,26,32,42], S: [0,3,12,15,24,27,36,39] },
+  { name: 'halves · 60',     n: 60, R: [0,4,5,15,19,20], S: [0,3,6,9,27,30,33,36,39,57] },
+  { name: 'vuza · 72',       n: 72, R: [0,8,16,18,26,34], S: [0,1,5,6,12,25,29,36,42,48,49,53] },
 ];
+const VUZA_IDX = 7;
+
+// ─── Search: every S with R ⊕ S = Z_n ───────────────────────────────────────
+// Exact cover by backtracking: take the lowest uncovered slot t, some copy of
+// R must land there, so its entry is t - r for one of the r in R. Capped on
+// solutions and on steps so a hostile R cannot hang the page.
+function complements(Rin, n, cap = 400, budget = 2e6) {
+  const Rm = [...new Set(Rin.map(r => ((r % n) + n) % n))].sort((a, b) => a - b);
+  if (!Rm.length || n % Rm.length) return [];
+  // normalise up to rotation: every tiling can be slid so that 0 is an entry,
+  // so start with the copy at 0 already placed
+  const cov = new Uint8Array(n), S = [0], out = [];
+  for (const rr of Rm) cov[rr] = 1;
+  let steps = 0;
+  function rec() {
+    if (out.length >= cap || ++steps > budget) return;
+    let t = -1;
+    for (let i = 0; i < n; i++) if (!cov[i]) { t = i; break; }
+    if (t < 0) { out.push(S.slice().sort((a, b) => a - b)); return; }
+    for (const r of Rm) {
+      const s = ((t - r) % n + n) % n;
+      let ok = true;
+      for (const rr of Rm) if (cov[(rr + s) % n]) { ok = false; break; }
+      if (!ok) continue;
+      for (const rr of Rm) cov[(rr + s) % n] = 1;
+      S.push(s); rec(); S.pop();
+      for (const rr of Rm) cov[(rr + s) % n] = 0;
+    }
+  }
+  rec();
+  return out;
+}
+
+// rank complements: the least regular S first (largest period), ties by
+// how unevenly the entries are spaced
+function rankComplements(C, n) {
+  const spread = S => { let v = 0; for (let i = 0; i < S.length; i++) { const g = ((S[(i + 1) % S.length] - S[i]) % n + n) % n; v += Math.abs(g - n / S.length); } return v; };
+  return C.slice().sort((a, b) => (period(b, n) - period(a, n)) || (spread(b) - spread(a)));
+}
+
+// a random R of size k containing 0 that admits at least one tiling; prefers
+// a lopsided (aperiodic) R and a lopsided S. Returns null if luck runs out.
+function randomCanon(n, k, lopsided = true, tries = 400) {
+  let best = null;
+  for (let t = 0; t < tries; t++) {
+    const set = new Set([0]);
+    while (set.size < k) set.add(1 + Math.floor(Math.random() * (n - 1)));
+    const R = [...set].sort((a, b) => a - b);
+    if (lopsided && period(R, n) < n) continue;
+    const C = complements(R, n, 200);
+    if (!C.length) continue;
+    const ranked = rankComplements(C, n);
+    const cand = { R, S: ranked[0], all: ranked, ps: period(ranked[0], n) };
+    if (!best || cand.ps > best.ps) best = cand;
+    if (!lopsided || best.ps >= n / 2) break;
+  }
+  return best;
+}
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -254,10 +351,20 @@ let cov = [];
 
 function effectiveS() { return S.map((s, i) => (((s + offsets[i]) % n) + n) % n); }
 
+let canonName = '';
+let altS = [];           // other complements for the current R (for "another S")
+let altIdx = 0;
+
 function loadPreset(i) {
-  presetIdx = i;
   const P = PRESETS[i];
-  n = P.n; R = P.R.slice(); S = P.S.slice();
+  loadCanon(P.n, P.R, P.S, P.name, i);
+}
+
+function loadCanon(nn, RR, SS, name, idx = -1) {
+  presetIdx = idx;
+  canonName = name;
+  n = nn; R = RR.slice(); S = SS.slice();
+  const box = document.getElementById('mkR'); if (box) box.value = R.join(', ');
   offsets = S.map(() => 0);
   solo = null;
   flashes = S.map(() => new Float32Array(n));
@@ -602,6 +709,12 @@ function buildPresetUI() {
     b.onclick = () => loadPreset(i);
     wrap.appendChild(b);
   });
+  if (presetIdx < 0) {
+    const b = document.createElement('button');
+    b.className = 'btn-sm on';
+    b.textContent = canonName;
+    wrap.appendChild(b);
+  }
   if (offsets.some(o => o !== 0)) {
     const b = document.createElement('button');
     b.className = 'btn-sm warn';
@@ -610,6 +723,71 @@ function buildPresetUI() {
     wrap.appendChild(b);
   }
 }
+
+// ─── Make your own ──────────────────────────────────────────────────────────
+
+const N_CHOICES = [12, 16, 18, 20, 24, 30, 36, 40, 48, 60, 72];
+function divisorsOf(n) { const d = []; for (let k = 2; k <= n / 2; k++) if (n % k === 0) d.push(k); return d; }
+
+function fillMakerSelects() {
+  const nSel = document.getElementById('mkN'), kSel = document.getElementById('mkK');
+  nSel.innerHTML = N_CHOICES.map(v => `<option value="${v}">${v}</option>`).join('');
+  nSel.value = String(n);
+  fillK();
+}
+function fillK() {
+  const nn = parseInt(document.getElementById('mkN').value, 10);
+  const kSel = document.getElementById('mkK');
+  const prev = parseInt(kSel.value, 10);
+  const ds = divisorsOf(nn);
+  kSel.innerHTML = ds.map(v => `<option value="${v}">${v}</option>`).join('');
+  kSel.value = String(ds.includes(prev) ? prev : ds.includes(6) ? 6 : ds[Math.floor(ds.length / 2)]);
+}
+
+function setMakerNote(msg, warn = false) {
+  const el = document.getElementById('mkNote');
+  el.innerHTML = msg;
+  el.classList.toggle('r', warn);
+}
+
+function makeRandom() {
+  const nn = parseInt(document.getElementById('mkN').value, 10);
+  const k = parseInt(document.getElementById('mkK').value, 10);
+  const lop = document.getElementById('mkLop').checked;
+  const got = randomCanon(nn, k, lop);
+  if (!got) { setMakerNote(`no tiling turned up for |R| = ${k} in ${nn} after 400 tries · try another size`, true); return; }
+  altS = got.all; altIdx = 0;
+  loadCanon(nn, got.R, got.S, `random · ${nn}`);
+  document.getElementById('mkR').value = got.R.join(', ');
+  setMakerNote(`${got.all.length}${got.all.length >= 200 ? '+' : ''} complements for this R · showing the least regular`);
+}
+
+function makeFromR() {
+  const nn = parseInt(document.getElementById('mkN').value, 10);
+  const raw = document.getElementById('mkR').value;
+  const RR = [...new Set(raw.split(/[^0-9]+/).filter(Boolean).map(Number).map(x => ((x % nn) + nn) % nn))].sort((a, b) => a - b);
+  if (RR.length < 2) { setMakerNote('give R as a list of slots, like 0, 3, 7', true); return; }
+  if (nn % RR.length) { setMakerNote(`|R| = ${RR.length} does not divide ${nn} · no tiling can exist`, true); return; }
+  const C = complements(RR, nn, 400);
+  if (!C.length) { setMakerNote(`R = {${RR.join(', ')}} does not tile ${nn} · no S exists`, true); return; }
+  altS = rankComplements(C, nn); altIdx = 0;
+  loadCanon(nn, RR, altS[0], `yours · ${nn}`);
+  document.getElementById('mkR').value = RR.join(', ');
+  setMakerNote(`${C.length}${C.length >= 400 ? '+' : ''} complements · showing the least regular`);
+}
+
+function nextS() {
+  if (altS.length < 2) { setMakerNote('this R has only one complement', false); return; }
+  altIdx = (altIdx + 1) % altS.length;
+  loadCanon(n, R, altS[altIdx], canonName);
+  setMakerNote(`complement ${altIdx + 1} of ${altS.length}${altS.length >= 200 ? '+' : ''}`);
+}
+
+document.getElementById('mkN').addEventListener('change', fillK);
+document.getElementById('mkRandom').addEventListener('click', makeRandom);
+document.getElementById('mkFind').addEventListener('click', makeFromR);
+document.getElementById('mkNext').addEventListener('click', nextS);
+document.getElementById('mkR').addEventListener('keydown', e => { if (e.key === 'Enter') makeFromR(); });
 
 function buildVoiceUI() {
   const wrap = document.getElementById('voices');
@@ -653,7 +831,7 @@ function renderReadout() {
   const lines = [
     `period <b>${n}</b> · |R| = <b>${R.length}</b> · |S| = <b>${Se.length}</b> · |R|·|S| = <b>${R.length * Se.length}</b>`,
     `<span class="set">R = <b>${fmtSet(R)}</b> · aperiodic: ${apR ? '<span class="g">yes</span>' : `no (period ${pr})`}</span>`,
-    `<span class="set">S = <b>${fmtSet(Se.slice().sort((a, b) => a - b))}</b>${moved ? ' <i>(dragged)</i>' : ''} · aperiodic: ${apS ? '<span class="g">yes</span>' : `no (period ${ps})`}</span>`,
+    `<span class="set">S = <b>${fmtSet(Se.slice().sort((a, b) => a - b))}</b>${moved ? ' <i>(dragged)</i>' : ''} · aperiodic: ${apS ? '<span class="g">yes</span>' : `no (repeats every ${ps}${ps === n / 2 ? ', a half cycle' : ps === n / 3 ? ', a third' : ps * Se.length === n ? ', a plain grid' : ''})`}</span>`,
     ok
       ? `R ⊕ S = Z<sub>${n}</sub> · <span class="g">tiles</span> · every slot hit once${apR && apS ? ' · <span class="g">vuza canon</span>' : ''}`
       : `R ⊕ S ≠ Z<sub>${n}</sub> · <span class="r">broken</span> · ${coll} doubled slot${coll === 1 ? '' : 's'} · ${holes} hole${holes === 1 ? '' : 's'}`,
@@ -664,14 +842,15 @@ function renderReadout() {
 function toggleExplain() { document.getElementById('explainBody').classList.toggle('open'); }
 
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
   if (e.key === ' ') { e.preventDefault(); togglePlay(); }
   if (e.key === 'Escape' && playing) stopPlay();
 });
 
 // ─── Boot ────────────────────────────────────────────────────────────────────
 
-loadPreset(0);
+loadPreset(VUZA_IDX);
+fillMakerSelects();
 
 // ?pose=1 : stage a mid-cycle frame for the headless thumbnail (no audio needed)
 const params = new URLSearchParams((window.location && window.location.search) || '');
