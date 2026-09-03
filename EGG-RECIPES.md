@@ -182,7 +182,7 @@ c.scale(dpr, dpr);
 Math/sequencer logic:
 
 ```bash
-node ~/projects/tools/egg-test.js eggs/comma.html '
+node ~/egg-lab/tools/egg-test.js eggs/comma.html '
   let t=0; for (let i=0;i<16;i++){ advance(t); t+=900; }
   assert(Math.abs(1200*Math.log2(base) + 64.52) < 0.01, "3-cycle drift");
   console.log("OK");'
@@ -204,7 +204,7 @@ Audio is the one thing these can't verify — that's always an ears check.
 ## Harvest (weekly, or when the chickens get fed)
 
 ```bash
-python3 ~/projects/tools/egg_harvest.py        # report: new / unlisted / orphaned
+python3 ~/egg-lab/tools/egg_harvest.py        # report: new / unlisted / orphaned
 ```
 
 Reviews before publishing are David's step: inspect each new egg in the
