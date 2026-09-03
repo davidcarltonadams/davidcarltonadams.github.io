@@ -137,6 +137,21 @@ those phases plus `baseRate = 2.49` before capture. Label lesson: per-ring
 Hz labels stack UNDER each ring (`cy + rad + 13`), never at a shared y to the
 right — two rings printed at the same y collide the moment rates share digits.
 
+**brush.html** — idles blank. `?pose=1` runs the harmonic 1/n preset on the
+default 110 Hz guide, adds one 700¢-wide smear at 2.4 kHz (amp 0.5), and parks
+the brush cursor at 1.32 kHz so the readout shows a live "harmonic 12 +0¢"
+line. No audio needed; the readout and bars render on load. Capture URL:
+`brush.html?pose=1`.
+```js
+if (params.get('pose') === '1') {
+  preset('harmonic');
+  const saved = widthCents; widthCents = 700;
+  paintAt(freqToBin(2400), 0.5, false);
+  widthCents = saved;
+  hoverBin = freqToBin(1320);
+}
+```
+
 ## Canvas boilerplate (retina + width clamp)
 
 ```js
