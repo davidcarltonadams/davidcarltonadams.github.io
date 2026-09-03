@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="paint a spectrum and hear it. 169 sines, 24 per octave, seven octaves from 55 Hz. a narrow stroke is a tone, a wide one is a noise band. play the painting from a MIDI keyboard, the computer keyboard, or the strip on screen.">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+  <title>brush</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #070709;
+      --bg2:    #0d0d11;
+      --text:   #ccc8d0;
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
+      --border: rgba(255,255,255,0.07);
+      --gold:   #d4c070;
+      --blue:   #7ab8d4;
+      --rose:   #c088b8;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1rem 5rem;
+      gap: 1.2rem;
+    }
+    .eggs-back {
+      position: fixed; top: .7rem; left: 1rem;
+      font-size: .58rem; color: #332; text-decoration: none;
+      letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+      z-index: 100; transition: color .15s;
+    }
+    .eggs-back:hover { color: #aaa; }
+
+    .header { text-align: center; }
+    .title {
+      font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+      font-weight: normal;
+      letter-spacing: 0.24em;
+      text-transform: lowercase;
+    }
+    .sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.09em;
+      color: var(--dim);
+      font-style: italic;
+      margin-top: 0.42rem;
+      max-width: 540px;
+      margin-left: auto; margin-right: auto;
+      line-height: 1.9;
+    }
+
+    #paint {
+      display: block;
+      border: 1px solid var(--border);
+      touch-action: none;
+      cursor: crosshair;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .readout {
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.56rem;
+      color: var(--dim);
+      letter-spacing: 0.06em;
+      min-height: 1.4em;
+      text-align: center;
+      max-width: 640px;
+    }
+    .readout .g { color: var(--gold); }
+
+    .transport {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.9rem 1.6rem;
+      justify-content: center;
+      align-items: flex-end;
+      max-width: 640px;
+    }
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      align-items: center;
+    }
+    .ctrl-label {
+      font-size: 0.56rem;
+      letter-spacing: 0.11em;
+      color: var(--dimmer);
+      font-style: italic;
+    }
+    .ctrl-val {
+      font-size: 0.56rem;
+      color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace;
+    }
+    input[type=range].wide { width: 130px; accent-color: var(--gold); }
+
+    .btn {
+      font-family: Georgia, serif;
+      font-size: 0.64rem;
+      font-style: italic;
+      letter-spacing: 0.13em;
+      color: var(--text);
+      background: none;
+      border: 1px solid rgba(255,255,255,0.22);
+      padding: 0.42rem 1.3rem;
+      cursor: pointer;
+      transition: all 0.13s;
+    }
+    .btn:hover { background: rgba(255,255,255,0.03); }
+    .btn.on { border-color: rgba(212,192,112,0.55); color: var(--gold); }
+    .btn.erase.on { border-color: rgba(192,136,184,0.6); color: var(--rose); }
+
+    .presets {
+      display: flex;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .preset-btn {
+      background: transparent;
+      color: var(--dimmer);
+      border: 1px solid var(--border);
+      padding: 0.3rem 0.8rem;
+      font-family: Georgia, serif;
+      font-size: 0.58rem;
+      font-style: italic;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: color 0.13s, border-color 0.13s;
+    }
+    .preset-btn:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+
+    /* on-screen keys: one octave, plus octave shift */
+    .keys-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      max-width: 640px;
+      width: 100%;
+      justify-content: center;
+    }
+    .keys {
+      display: grid;
+      gap: 2px;
+      flex: 1;
+      max-width: 480px;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .key {
+      height: 52px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      font-family: 'SF Mono','Fira Code',monospace;
+      font-size: 0.6rem;
+      color: var(--dim);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 4px;
+      cursor: pointer;
+      transition: background 0.08s;
+    }
+    .key.black { background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.14); color: rgba(204,200,208,0.5); height: 40px; align-self: start; }
+    .keys-meta { display: flex; gap: 1rem; align-items: center; }
+    .btn.small { font-size: 0.56rem; padding: 0.3rem 0.8rem; }
+    .key.down { background: rgba(212,192,112,0.28); color: var(--gold); }
+    .oct-btn {
+      background: none; border: 1px solid var(--border); color: var(--dim);
+      font-family: 'SF Mono','Fira Code',monospace; font-size: 0.6rem;
+      width: 30px; height: 30px; cursor: pointer;
+    }
+    .oct-btn:hover { border-color: rgba(255,255,255,0.18); }
+    .midi-line {
+      font-size: 0.55rem;
+      letter-spacing: 0.08em;
+      color: var(--dimmer);
+      font-style: italic;
+      text-align: center;
+      max-width: 540px;
+      line-height: 1.8;
+    }
+    .midi-line button {
+      background: none; border: none; color: var(--dim); cursor: pointer;
+      font: inherit; text-decoration: underline; text-underline-offset: 3px;
+      padding: 0;
+    }
+    .midi-line button:hover { color: var(--text); }
+    .hint {
+      font-size: 0.54rem;
+      letter-spacing: 0.08em;
+      color: var(--dimmer);
+      font-style: italic;
+      text-align: center;
+      max-width: 520px;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+<a class="eggs-back" href="../eggs.html">← eggs</a>
+
+<div class="header">
+  <h1 class="title">brush</h1>
+  <p class="sub">a spectrum is a picture. paint one. narrow strokes sing, wide strokes hiss, and the width of the brush is the whole difference between a note and a noise. then play the painting from a keyboard: every key slides the whole picture so the marked fundamental lands on that pitch.</p>
+</div>
+
+<canvas id="paint"></canvas>
+<div class="readout" id="readout">paint on the canvas · height is loudness · left is low</div>
+
+<div class="transport">
+  <button class="btn" id="playBtn">play</button>
+  <button class="btn erase" id="eraseBtn">erase</button>
+  <div class="ctrl-group">
+    <span class="ctrl-label">brush width</span>
+    <input type="range" class="wide" id="widthSlider" min="50" max="1200" value="150" step="25">
+    <span class="ctrl-val" id="widthVal">150¢</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">fundamental (guide)</span>
+    <input type="range" class="wide" id="f0Slider" min="0" max="48" value="12" step="1">
+    <span class="ctrl-val" id="f0Val">110 Hz</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">volume</span>
+    <input type="range" class="wide" id="volSlider" min="0" max="1" value="0.6" step="0.01">
+  </div>
+</div>
+
+<div class="presets">
+  <button class="preset-btn" data-preset="harmonic">harmonic 1/n</button>
+  <button class="preset-btn" data-preset="odd">odd only</button>
+  <button class="preset-btn" data-preset="band">one wide band</button>
+  <button class="preset-btn" data-preset="clear">clear</button>
+</div>
+
+<div class="keys-wrap">
+  <button class="oct-btn" id="octDown" title="octave down (left arrow)">−</button>
+  <div class="keys" id="keys"></div>
+  <button class="oct-btn" id="octUp" title="octave up (right arrow)">+</button>
+</div>
+<div class="keys-meta">
+  <button class="btn small" id="layoutBtn">keys: cubase</button>
+  <span class="ctrl-val" id="octLbl">C4</span>
+  <span class="ctrl-val" id="velLbl"></span>
+</div>
+<p class="midi-line" id="midiLine">
+  the strip is the computer keyboard: press the letter on a key, or tap it · tab swaps layouts (cubase: white keys q to ], black on the number row · tracker: z-row and q-row, two octaves) · arrows: left and right shift the octave, up and down set velocity ·
+  <button id="midiBtn">connect a midi keyboard</button>
+</p>
+<p class="hint" id="hint">the same brush width is 50¢ per sine everywhere, but 50¢ is 1.6 Hz at the bottom and 200 Hz at the top. so a wide stroke beats slowly in the bass and buzzes in the treble.</p>
+
+<script>
+// ── the grid ─────────────────────────────────────────────────
+// 24 sines per octave, seven octaves, 55 Hz to 7040 Hz inclusive: 169 bins.
+const BPO = 24, OCTAVES = 7, F_LOW = 55;
+const NBINS = BPO * OCTAVES + 1;          // 169
+const CENTS_PER_BIN = 1200 / BPO;         // 50
+const amp = new Float32Array(NBINS);      // the painting, 0..1 per bin
+
+function binFreq(i) { return F_LOW * Math.pow(2, i / BPO); }
+function freqToBin(f) { return BPO * Math.log2(f / F_LOW); }   // fractional
+function midiFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+
+// ── canvas ───────────────────────────────────────────────────
+const canvas = document.getElementById('paint');
+const dpr = window.devicePixelRatio || 1;
+const W = Math.min(window.innerWidth - 32, 640), H = 300;
+const AXIS = 22;                          // room for Hz labels at the bottom
+const PH = H - AXIS;                      // paint height
+canvas.width = W * dpr; canvas.height = H * dpr;
+canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+const c = canvas.getContext('2d');
+c.scale(dpr, dpr);
+
+function binX(i) { return i / (NBINS - 1) * W; }
+function xBin(x) { return x / W * (NBINS - 1); }
+
+// ── state ────────────────────────────────────────────────────
+let widthCents = 150;
+let erasing = false;
+let f0Step = 12;                          // semitones above 55 Hz (A1)
+function f0Hz() { return F_LOW * Math.pow(2, f0Step / 12); }
+let octave = 4;                           // on-screen strip base octave (C4 = 60)
+let hoverBin = null;
+
+// ── painting ─────────────────────────────────────────────────
+// raised-cosine kernel over the brush width: full strength at the centre,
+// zero at the edge, no hard corners in the spectrum.
+function kernel(dBins, halfBins) {
+  if (dBins >= halfBins) return 0;
+  return 0.5 * (1 + Math.cos(Math.PI * dBins / halfBins));
+}
+
+// paint (or erase) at a fractional bin position with a target height 0..1
+function paintAt(binPos, height, erase) {
+  const half = Math.max(0.5, widthCents / CENTS_PER_BIN / 2);
+  const lo = Math.max(0, Math.floor(binPos - half));
+  const hi = Math.min(NBINS - 1, Math.ceil(binPos + half));
+  for (let j = lo; j <= hi; j++) {
+    const k = kernel(Math.abs(j - binPos), half);
+    if (k <= 0) continue;
+    if (erase) amp[j] *= (1 - k);
+    else amp[j] = Math.max(amp[j], height * k);
+    if (amp[j] < 0.003) amp[j] = 0;
+  }
+  markDirty(lo, hi);
+}
+
+// a stroke between two pointer positions, stepped so fast drags don't gap
+function stroke(b0, h0, b1, h1, erase) {
+  const steps = Math.max(1, Math.ceil(Math.abs(b1 - b0) * 2));
+  for (let s = 0; s <= steps; s++) {
+    const t = s / steps;
+    paintAt(b0 + (b1 - b0) * t, h0 + (h1 - h0) * t, erase);
+  }
+}
+
+// ── measurements ─────────────────────────────────────────────
+function totalAmp() { let s = 0; for (let i = 0; i < NBINS; i++) s += amp[i]; return s; }
+function litCount() { let n = 0; for (let i = 0; i < NBINS; i++) if (amp[i] > 0) n++; return n; }
+function centroid() {
+  let num = 0, den = 0;
+  for (let i = 0; i < NBINS; i++) { num += amp[i] * binFreq(i); den += amp[i]; }
+  return den > 0 ? num / den : 0;
+}
+// nearest harmonic of the guide fundamental, with the error in cents
+function nearestHarmonic(freq, f0) {
+  const n = Math.max(1, Math.round(freq / f0));
+  const cents = 1200 * Math.log2(freq / (n * f0));
+  return { n, cents };
+}
+
+// ── audio: voices ────────────────────────────────────────────
+// A voice is the painting transposed by a ratio. Each voice owns one sine
+// per lit bin, created lazily the first time that bin lights, then steered
+// by gain only. Voice 0 is the drone (ratio 1, the play button). Keyed
+// voices come and go with note on/off.
+let actx = null, master = null, limiter = null;
+const voices = new Map();                 // id -> voice
+let nextVoiceId = 1;
+let playing = false;
+
+function ensureAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  limiter = actx.createDynamicsCompressor();
+  limiter.threshold.value = -12; limiter.knee.value = 6;
+  limiter.ratio.value = 12; limiter.attack.value = 0.003; limiter.release.value = 0.12;
+  master = actx.createGain();
+  master.gain.value = parseFloat(document.getElementById('volSlider').value);
+  limiter.connect(master); master.connect(actx.destination);
+}
+
+// per-bin gain: the painted height, scaled so a full canvas does not clip
+function binGain(i) {
+  const t = totalAmp();
+  return amp[i] * 0.55 / Math.sqrt(Math.max(1, t));
+}
+
+function makeVoice(ratio, level) {
+  const out = actx.createGain();
+  out.gain.value = 0;
+  out.connect(limiter);
+  const v = { id: nextVoiceId++, ratio, level, out, bins: new Map(), dead: false };
+  voices.set(v.id, v);
+  out.gain.setTargetAtTime(level, actx.currentTime, 0.012);
+  syncVoice(v, 0, NBINS - 1);
+  return v;
+}
+
+function syncVoice(v, lo, hi) {
+  const nyq = actx.sampleRate * 0.45;
+  for (let i = lo; i <= hi; i++) {
+    const g = binGain(i);
+    let node = v.bins.get(i);
+    if (!node) {
+      if (g <= 0) continue;
+      const f = binFreq(i) * v.ratio;
+      if (f > nyq || f < 16) continue;
+      const osc = actx.createOscillator();
+      const gain = actx.createGain();
+      osc.type = 'sine'; osc.frequency.value = f;
+      gain.gain.value = 0;
+      osc.connect(gain); gain.connect(v.out); osc.start();
+      node = { osc, gain }; v.bins.set(i, node);
+    }
+    node.gain.gain.setTargetAtTime(g, actx.currentTime, 0.02);
+  }
+}
+
+function releaseVoice(v, tail) {
+  if (v.dead) return;
+  v.dead = true;
+  voices.delete(v.id);
+  const t = actx.currentTime;
+  v.out.gain.cancelScheduledValues(t);
+  v.out.gain.setTargetAtTime(0, t, tail / 4);
+  setTimeout(() => {
+    for (const { osc, gain } of v.bins.values()) {
+      try { osc.stop(); } catch (e) {}
+      osc.disconnect(); gain.disconnect();
+    }
+    v.bins.clear();
+    v.out.disconnect();
+  }, tail * 1000 + 80);
+}
+
+// dirty-range sync: paint touches a few bins, every voice follows just those
+let dirtyLo = NBINS, dirtyHi = -1, dirtyPending = false;
+function markDirty(lo, hi) {
+  dirtyLo = Math.min(dirtyLo, lo); dirtyHi = Math.max(dirtyHi, hi);
+  if (!dirtyPending) { dirtyPending = true; requestAnimationFrame(flushDirty); }
+}
+function flushDirty() {
+  dirtyPending = false;
+  if (actx) {
+    // the normalisation depends on the total, so every lit bin moves a little;
+    // resync the whole voice when the total shifted, else just the range
+    for (const v of voices.values()) syncVoice(v, 0, NBINS - 1);
+  }
+  dirtyLo = NBINS; dirtyHi = -1;
+  draw(); updateReadout();
+}
+
+// drone
+let drone = null;
+function startDrone() {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  if (drone && !drone.dead) return;
+  drone = makeVoice(1, 1);
+  playing = true;
+}
+function stopDrone() {
+  if (drone) releaseVoice(drone, 0.25);
+  drone = null; playing = false;
+}
+function panic() {
+  for (const v of Array.from(voices.values())) releaseVoice(v, 0.08);
+  drone = null; playing = false;
+  held.clear(); document.querySelectorAll('.key.down').forEach(k => k.classList.remove('down'));
+  setPlayBtn();
+}
+
+// ── notes (midi, computer keys, on-screen strip all land here) ──
+const held = new Map();                   // note number -> voice
+function noteOn(note, vel) {
+  ensureAudio();
+  if (actx.state === 'suspended') actx.resume();
+  if (held.has(note)) return;
+  // steal the oldest if the polyphony is full: sines are not free
+  if (held.size >= 6) { const [first] = held.keys(); noteOff(first); }
+  const ratio = midiFreq(note) / f0Hz();
+  const v = makeVoice(ratio, Math.max(0.15, vel));
+  held.set(note, v);
+  draw(); updateReadout();
+}
+function noteOff(note) {
+  const v = held.get(note);
+  if (!v) return;
+  held.delete(note);
+  releaseVoice(v, 0.3);
+  draw(); updateReadout();
+}
+
+// ── drawing ──────────────────────────────────────────────────
+const OCT_LABELS = [55, 110, 220, 440, 880, 1760, 3520, 7040];
+function draw() {
+  c.fillStyle = '#0a0a0c';
+  c.fillRect(0, 0, W, H);
+
+  // octave lines + Hz labels
+  c.font = '9px "SF Mono", "Fira Code", monospace';
+  c.textAlign = 'center';
+  for (const f of OCT_LABELS) {
+    const x = binX(freqToBin(f));
+    c.strokeStyle = 'rgba(255,255,255,0.07)';
+    c.lineWidth = 1;
+    c.beginPath(); c.moveTo(x, 0); c.lineTo(x, PH); c.stroke();
+    c.fillStyle = 'rgba(204,200,208,0.35)';
+    c.fillText(f >= 1000 ? (f / 1000) + 'k' : String(f), Math.min(W - 12, Math.max(12, x)), H - 7);
+  }
+
+  // harmonic guides for the fundamental: n = 1..64 while on the canvas
+  const f0 = f0Hz();
+  for (let n = 1; n * f0 <= binFreq(NBINS - 1) && n <= 64; n++) {
+    const x = binX(freqToBin(n * f0));
+    const strong = n === 1 || (n & (n - 1)) === 0;      // fundamental and octaves
+    c.strokeStyle = strong ? 'rgba(122,184,212,0.35)' : 'rgba(122,184,212,0.14)';
+    c.lineWidth = strong ? 1 : 0.6;
+    c.beginPath(); c.moveTo(x, 16); c.lineTo(x, PH); c.stroke();
+    if (n <= 8 || strong) {
+      c.fillStyle = 'rgba(122,184,212,0.4)';
+      c.fillText(String(n), Math.min(W - 8, x), 11);
+    }
+  }
+
+  // keyed voices: where the painting has slid to, drawn hollow
+  for (const v of held.values()) {
+    const shift = BPO * Math.log2(v.ratio);
+    c.strokeStyle = 'rgba(192,136,184,0.5)';
+    c.lineWidth = 1;
+    c.beginPath();
+    let started = false;
+    for (let i = 0; i < NBINS; i++) {
+      if (amp[i] <= 0) { started = false; continue; }
+      const x = binX(i + shift);
+      if (x < 0 || x > W) { started = false; continue; }
+      const y = PH - amp[i] * v.level * (PH - 20);
+      if (!started) { c.moveTo(x, y); started = true; } else c.lineTo(x, y);
+    }
+    c.stroke();
+  }
+
+  // the painting: one bar per bin, gold, plus a fill
+  const bw = W / (NBINS - 1);
+  for (let i = 0; i < NBINS; i++) {
+    if (amp[i] <= 0) continue;
+    const x = binX(i);
+    const h = amp[i] * (PH - 20);
+    c.fillStyle = `rgba(212,192,112,${0.25 + 0.6 * amp[i]})`;
+    c.fillRect(x - bw / 2, PH - h, Math.max(1, bw - 0.5), h);
+  }
+
+  // brush cursor
+  if (hoverBin !== null) {
+    const half = widthCents / CENTS_PER_BIN / 2;
+    const x0 = binX(hoverBin - half), x1 = binX(hoverBin + half);
+    c.fillStyle = erasing ? 'rgba(192,136,184,0.08)' : 'rgba(212,192,112,0.07)';
+    c.fillRect(x0, 0, x1 - x0, PH);
+    c.strokeStyle = erasing ? 'rgba(192,136,184,0.5)' : 'rgba(212,192,112,0.5)';
+    c.lineWidth = 1;
+    c.beginPath(); c.moveTo(binX(hoverBin), 0); c.lineTo(binX(hoverBin), PH); c.stroke();
+  }
+
+  // baseline
+  c.strokeStyle = 'rgba(255,255,255,0.14)';
+  c.beginPath(); c.moveTo(0, PH + 0.5); c.lineTo(W, PH + 0.5); c.stroke();
+}
+
+const readoutEl = document.getElementById('readout');
+function fmtHz(f) { return f >= 1000 ? (f / 1000).toFixed(2) + ' kHz' : f.toFixed(1) + ' Hz'; }
+function updateReadout() {
+  const parts = [];
+  if (hoverBin !== null) {
+    const f = binFreq(hoverBin);
+    const { n, cents } = nearestHarmonic(f, f0Hz());
+    const sign = cents >= 0 ? '+' : '−';
+    parts.push(`<span class="g">${fmtHz(f)}</span> · harmonic ${n} ${sign}${Math.abs(cents).toFixed(0)}¢`);
+  }
+  const lit = litCount();
+  if (lit > 0) parts.push(`centroid ${fmtHz(centroid())} · ${lit} of ${NBINS} sines lit`);
+  else parts.push('nothing painted yet');
+  if (held.size > 0) parts.push(`${held.size} key${held.size > 1 ? 's' : ''} down`);
+  document.getElementById('velLbl').textContent = `vel ${velocity.toFixed(1)}`;
+  readoutEl.innerHTML = parts.join(' · ');
+}
+
+// ── pointer painting ─────────────────────────────────────────
+let painting = false, lastBin = 0, lastH = 0;
+function pointerPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const x = Math.max(0, Math.min(W, e.clientX - r.left));
+  const y = Math.max(0, Math.min(PH, e.clientY - r.top));
+  return { bin: xBin(x), h: 1 - y / PH };
+}
+canvas.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  const p = pointerPos(e);
+  painting = true; lastBin = p.bin; lastH = p.h; hoverBin = p.bin;
+  const erase = erasing || e.button === 2 || e.shiftKey;
+  paintAt(p.bin, p.h, erase);
+});
+canvas.addEventListener('pointermove', e => {
+  const p = pointerPos(e);
+  hoverBin = p.bin;
+  if (painting) {
+    const erase = erasing || (e.buttons & 2) !== 0 || e.shiftKey;
+    stroke(lastBin, lastH, p.bin, p.h, erase);
+    lastBin = p.bin; lastH = p.h;
+  } else { draw(); updateReadout(); }
+});
+function endPaint(e) { painting = false; }
+canvas.addEventListener('pointerup', endPaint);
+canvas.addEventListener('pointercancel', endPaint);
+canvas.addEventListener('pointerleave', () => { hoverBin = null; painting = false; draw(); updateReadout(); });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// ── controls ─────────────────────────────────────────────────
+const playBtn = document.getElementById('playBtn');
+function setPlayBtn() {
+  playBtn.textContent = playing ? 'stop' : 'play';
+  playBtn.classList.toggle('on', playing);
+}
+playBtn.addEventListener('click', () => {
+  if (playing) stopDrone(); else startDrone();
+  setPlayBtn();
+});
+const eraseBtn = document.getElementById('eraseBtn');
+eraseBtn.addEventListener('click', () => {
+  erasing = !erasing;
+  eraseBtn.classList.toggle('on', erasing);
+  draw();
+});
+document.getElementById('widthSlider').addEventListener('input', e => {
+  widthCents = parseInt(e.target.value, 10);
+  document.getElementById('widthVal').textContent = widthCents + '¢';
+  draw();
+});
+document.getElementById('f0Slider').addEventListener('input', e => {
+  f0Step = parseInt(e.target.value, 10);
+  document.getElementById('f0Val').textContent = f0Hz().toFixed(f0Hz() < 100 ? 1 : 0) + ' Hz';
+  // held notes keep their pitch: the guide moved under them, so their ratio changes
+  if (actx) for (const [note, v] of held) {
+    v.ratio = midiFreq(note) / f0Hz();
+    for (const [i, node] of v.bins) node.osc.frequency.setTargetAtTime(binFreq(i) * v.ratio, actx.currentTime, 0.02);
+  }
+  draw(); updateReadout();
+});
+document.getElementById('volSlider').addEventListener('input', e => {
+  if (master) master.gain.setTargetAtTime(parseFloat(e.target.value), actx.currentTime, 0.02);
+});
+
+// ── presets ──────────────────────────────────────────────────
+function preset(name) {
+  const f0 = f0Hz();
+  amp.fill(0);
+  if (name === 'harmonic' || name === 'odd') {
+    const saved = widthCents; widthCents = 50;
+    for (let n = 1; n * f0 <= binFreq(NBINS - 1); n++) {
+      if (name === 'odd' && n % 2 === 0) continue;
+      paintAt(freqToBin(n * f0), 1 / n, false);
+    }
+    widthCents = saved;
+  } else if (name === 'band') {
+    const saved = widthCents; widthCents = 900;
+    paintAt(freqToBin(f0 * 6), 0.85, false);
+    widthCents = saved;
+  }
+  markDirty(0, NBINS - 1);
+}
+document.querySelectorAll('.preset-btn').forEach(b => b.addEventListener('click', () => preset(b.dataset.preset)));
+
+// ── keyboards: two layouts, one strip ────────────────────────
+// tracker: z-row is one octave, q-row the octave above (two octaves).
+// cubase: Steinberg's virtual keyboard, white keys on q w e r t y u i o p,
+// black keys on 2 3 5 6 7 9 0, extended in the same pattern past p:
+// [ is f, = is f sharp, ] is g. arrows: left/right octave, up/down velocity.
+const LAYOUTS = {
+  tracker: { keys: [...'zsxdcvgbhnjm,l.;/'.split('').map((ch, i) => [ch, i]),
+                    ...'q2w3er5t6y7ui9o0p'.split('').map((ch, i) => [ch, i + 12])] },
+  cubase:  { keys: [['q',0],['2',1],['w',2],['3',3],['e',4],['r',5],['5',6],['t',7],['6',8],['y',9],['7',10],['u',11],
+                    ['i',12],['9',13],['o',14],['0',15],['p',16],['[',17],['=',18],[']',19]] },
+};
+let layoutName = 'cubase';
+let velocity = 0.8;
+const KEYMAP = {};                        // char -> semitone offset for the current layout
+const keysEl = document.getElementById('keys');
+const BLACK = new Set([1, 3, 6, 8, 10]);
+let keyEls = [];
+function buildStrip() {
+  const L = LAYOUTS[layoutName];
+  for (const k in KEYMAP) delete KEYMAP[k];
+  L.keys.forEach(([ch, k]) => KEYMAP[ch] = k);
+  const byOffset = new Map(L.keys.map(([ch, k]) => [k, ch]));
+  const span = Math.max(...L.keys.map(([, k]) => k)) + 1;
+  keysEl.innerHTML = '';
+  keysEl.style.gridTemplateColumns = `repeat(${span}, 1fr)`;
+  keyEls = [];
+  for (let k = 0; k < span; k++) {
+    const el = document.createElement('div');
+    el.className = 'key' + (BLACK.has(k % 12) ? ' black' : '');
+    el.dataset.k = k;
+    const ch = byOffset.get(k);
+    el.textContent = ch ? ch : '';
+    el.title = noteName(k);
+    keyEls.push(el);
+    keysEl.appendChild(el);
+  }
+  document.getElementById('layoutBtn').textContent = layoutName === 'cubase' ? 'keys: cubase' : 'keys: tracker';
+  document.getElementById('octLbl').textContent = 'C' + octave;
+}
+const NOTE_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+function noteName(k) { return NOTE_NAMES[k % 12] + (octave + Math.floor(k / 12)); }
+function offsetToNote(k) { return (octave + 1) * 12 + k; }
+
+// strip (touch / mouse): glide across keys while held
+let stripNote = null, stripK = null;
+function stripDown(k) {
+  const note = offsetToNote(k);
+  if (stripNote !== null && stripNote !== note) stripUp();
+  stripNote = note; stripK = k; keyEls[k].classList.add('down');
+  noteOn(note, velocity);
+}
+function stripUp() {
+  if (stripNote === null) return;
+  noteOff(stripNote);
+  keyEls.forEach(e => e.classList.remove('down'));
+  stripNote = null; stripK = null;
+}
+keysEl.addEventListener('pointerdown', e => {
+  const t = e.target.closest('.key'); if (!t) return;
+  e.preventDefault(); keysEl.setPointerCapture(e.pointerId);
+  stripDown(parseInt(t.dataset.k, 10));
+});
+keysEl.addEventListener('pointermove', e => {
+  if (stripNote === null) return;
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const k = t && t.closest ? t.closest('.key') : null;
+  if (k) stripDown(parseInt(k.dataset.k, 10));
+});
+keysEl.addEventListener('pointerup', stripUp);
+keysEl.addEventListener('pointercancel', stripUp);
+
+function shiftOctave(d) {
+  octave = Math.max(1, Math.min(7, octave + d));
+  buildStrip(); updateReadout();
+}
+document.getElementById('octDown').addEventListener('click', () => shiftOctave(-1));
+document.getElementById('octUp').addEventListener('click', () => shiftOctave(1));
+document.getElementById('layoutBtn').addEventListener('click', () => {
+  layoutName = layoutName === 'cubase' ? 'tracker' : 'cubase';
+  releaseAllKeys(); buildStrip();
+});
+
+// computer keyboard: chars land in KEYMAP for whichever layout is on;
+// while a key is held its light stays on the strip
+const heldKeys = new Map();               // physical char -> [note, k]
+function releaseAllKeys() {
+  for (const [, [note, k]] of heldKeys) { noteOff(note); if (keyEls[k]) keyEls[k].classList.remove('down'); }
+  heldKeys.clear();
+}
+window.addEventListener('keydown', e => {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target && /INPUT|BUTTON/.test(e.target.tagName)) e.target.blur();
+  if (e.key === 'Escape') { panic(); return; }
+  if (e.key === ' ') { e.preventDefault(); playBtn.click(); return; }
+  if (e.key === 'Tab') { e.preventDefault(); document.getElementById('layoutBtn').click(); return; }
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); shiftOctave(-1); return; }
+  if (e.key === 'ArrowRight') { e.preventDefault(); shiftOctave(1); return; }
+  if (e.key === 'ArrowUp')    { e.preventDefault(); velocity = Math.min(1, +(velocity + 0.1).toFixed(1)); updateReadout(); return; }
+  if (e.key === 'ArrowDown')  { e.preventDefault(); velocity = Math.max(0.1, +(velocity - 0.1).toFixed(1)); updateReadout(); return; }
+  const ch = e.key.toLowerCase();
+  const k = KEYMAP[ch];
+  if (k === undefined) return;
+  e.preventDefault();
+  if (heldKeys.has(ch)) return;
+  const note = offsetToNote(k);
+  heldKeys.set(ch, [note, k]);
+  if (keyEls[k]) keyEls[k].classList.add('down');
+  noteOn(note, velocity);
+});
+window.addEventListener('keyup', e => {
+  const ch = e.key.toLowerCase();
+  const h = heldKeys.get(ch);
+  if (!h) return;
+  heldKeys.delete(ch);
+  noteOff(h[0]);
+  if (keyEls[h[1]] && !heldKeys.size) keyEls[h[1]].classList.remove('down');
+  else if (keyEls[h[1]] && ![...heldKeys.values()].some(([, k]) => k === h[1])) keyEls[h[1]].classList.remove('down');
+});
+// nothing may hang: losing the window releases everything keyed
+window.addEventListener('blur', () => {
+  for (const note of Array.from(held.keys())) noteOff(note);
+  releaseAllKeys(); stripUp();
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) panic(); });
+buildStrip();
+
+// ── web midi ─────────────────────────────────────────────────
+const midiLine = document.getElementById('midiLine');
+const midiBtn = document.getElementById('midiBtn');
+function onMidi(msg) {
+  const [status, d1, d2] = msg.data;
+  const cmd = status & 0xf0;
+  if (cmd === 0x90 && d2 > 0) noteOn(d1, d2 / 127);
+  else if (cmd === 0x80 || (cmd === 0x90 && d2 === 0)) noteOff(d1);
+  else if (cmd === 0xb0 && (d1 === 120 || d1 === 123)) panic();
+}
+function attachMidi(access) {
+  const names = [];
+  for (const input of access.inputs.values()) { input.onmidimessage = onMidi; names.push(input.name); }
+  access.onstatechange = () => attachMidi(access);
+  midiLine.innerHTML = names.length
+    ? `midi: listening to ${names.map(n => n.toLowerCase()).join(', ')} · esc or cc120 silences everything`
+    : 'midi: no inputs found · plug something in and it will appear';
+}
+midiBtn.addEventListener('click', () => {
+  ensureAudio();
+  if (!navigator.requestMIDIAccess) { midiLine.textContent = 'midi: this browser has no web midi (safari and firefox do not; chrome and edge do)'; return; }
+  navigator.requestMIDIAccess().then(attachMidi).catch(() => { midiLine.textContent = 'midi: access refused'; });
+});
+
+// ── pose (thumbnail capture) ─────────────────────────────────
+const params = new URLSearchParams(window.location.search);
+if (params.get('pose') === '1') {
+  preset('harmonic');
+  const saved = widthCents; widthCents = 700;
+  paintAt(freqToBin(2400), 0.5, false);
+  widthCents = saved;
+  hoverBin = freqToBin(1320);
+}
+
+draw(); updateReadout();
+</script>
+</body>
+</html>
