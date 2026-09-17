@@ -3,7 +3,8 @@
 > Composer, performer, and educator based in Baltimore. DMA in Composition,
 > Peabody Institute / Johns Hopkins University. Music spanning contemporary
 > chamber music, opera, improvisation, rock, and live electronics, with a
-> core interest in microtonality and just intonation.
+> core interest in microtonality and just intonation. Also builds and
+> operates a multi-agent AI operations system (see Systems).
 
 ## Main pages
 
@@ -11,6 +12,7 @@
 - [Works](https://davidcarltonadams.com/works.html): filterable catalogue of 50 compositions, 2008–present
 - [Media](https://davidcarltonadams.com/media.html): recordings and video
 - [Teaching](https://davidcarltonadams.com/teaching.html): courses, private lessons, teaching philosophy
+- [Systems](https://davidcarltonadams.com/systems.html): the non-music side — a multi-agent AI operations system he built and runs daily, three interactive demos, design principles, program record
 - [Contact](https://davidcarltonadams.com/contact.html): email and profiles
 - [Eggs](https://davidcarltonadams.com/eggs.html): three dozen browser-based
   musical instruments and toys — just intonation lattices, rhythm machines,
