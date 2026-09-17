@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <title>David Carlton Adams — systems</title>
+  <meta name="description" content="David Carlton Adams: builds and operates a multi-agent AI operations system; program operator and co-founder; DMA, Johns Hopkins. Demos, architecture, record.">
+  <meta property="og:title" content="David Carlton Adams — systems">
+  <meta property="og:description" content="Builds and operates a multi-agent AI operations system. Program operator and co-founder. DMA, Johns Hopkins. Demos, architecture, record.">
+  <meta property="og:url" content="https://davidcarltonadams.com/systems.html">
+  <meta property="og:type" content="website">
+  <link rel="canonical" href="https://davidcarltonadams.com/systems.html">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Page-local layout. Fragments and facts, not paragraphs. */
+    .sys-nav { display: flex; gap: 1.2rem; flex-wrap: wrap; font-size: .92rem; margin: -.4rem 0 1.6rem; }
+    .facts { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1.2rem; margin: 1rem 0 1.6rem; max-width: 40rem; }
+    .facts dt { color: var(--text-3, #777); font-size: .86rem; letter-spacing: .04em; text-transform: uppercase; }
+    .facts dd { margin: 0; }
+    .numbers { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; margin: 1rem 0 1.6rem; }
+    @media (min-width: 640px) { .numbers { grid-template-columns: repeat(3, 1fr); } }
+    .numbers div { border-top: 2px solid currentColor; padding-top: .4rem; }
+    .numbers b { display: block; font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .numbers span { font-size: .86rem; color: var(--text-3, #777); }
+    .demo-cards { display: grid; gap: 1.1rem; margin: 1rem 0 1.6rem; }
+    @media (min-width: 700px) { .demo-cards { grid-template-columns: 1fr 1fr 1fr; } }
+    .demo-card { border: 1px solid rgba(127,127,127,.35); border-radius: 10px; padding: 1rem 1.1rem; }
+    .demo-card h3 { margin: 0 0 .3rem; font-size: 1.05rem; }
+    .demo-card p { margin: 0; font-size: .9rem; color: var(--text-3, #777); }
+    .principles { list-style: none; padding: 0; margin: 1rem 0 1.6rem; display: grid; gap: .5rem; max-width: 44rem; }
+    .principles li { display: grid; grid-template-columns: minmax(11rem, max-content) 1fr; gap: .2rem 1rem; }
+    @media (max-width: 520px) { .principles li { grid-template-columns: 1fr; } }
+    .principles span { color: var(--text-3, #777); font-size: .92rem; }
+    .record { width: 100%; border-collapse: collapse; margin: 1rem 0 1.6rem; font-size: .95rem; }
+    .record td { padding: .45rem .8rem .45rem 0; vertical-align: top; border-bottom: 1px solid rgba(127,127,127,.25); }
+    .record td:first-child { white-space: nowrap; }
+    .record td:last-child { color: var(--text-3, #777); }
+    .record-wrap { overflow-x: auto; }
+    .doors { margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <nav aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-name">David Carlton Adams</a>
+      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+          <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+          <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+        </svg>
+      </button>
+      <ul class="nav-links" role="list">
+        <li><a href="systems.html" class="active">systems</a></li>
+        <li><a href="index.html">music</a></li>
+        <li><a href="contact.html">contact</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+    <div class="container">
+      <h1 class="page-title">David Carlton Adams</h1>
+
+      <dl class="facts">
+        <dt>Based</dt><dd>Baltimore, MD · Washington, DC reach</dd>
+        <dt>Degree</dt><dd>Doctor of Musical Arts, cognate in Computer Music — Johns Hopkins University (Peabody), 2026</dd>
+        <dt>Status</dt><dd>U.S. citizen · no sponsorship needed · clearance-eligible</dd>
+        <dt>Languages</dt><dd>English · French (professional working) · Japanese (conversational)</dd>
+        <dt>Contact</dt><dd><a href="contact.html">contact page</a> · <a href="https://linkedin.com/in/davidcarltonadams" target="_blank" rel="noopener">LinkedIn</a> · <a href="https://github.com/davidcarltonadams" target="_blank" rel="noopener">GitHub</a></dd>
+      </dl>
+
+      <h2 class="page-subtitle">the system</h2>
+      <p>A personal multi-agent operations platform: project state layer, daily generated newspaper, decision queue, and the automation that keeps them honest. Designed, built, and operated daily since March 2026.</p>
+
+      <div class="numbers">
+        <div><b>176</b><span>daily briefings delivered, no human assembly step</span></div>
+        <div><b>29</b><span>scheduled autonomous processes</span></div>
+        <div><b>78</b><span>projects under one source of truth, every write logged and replayable</span></div>
+      </div>
+
+      <h2 class="page-subtitle">interactive demos</h2>
+      <p>Three surfaces of the system, rebuilt on synthetic data. Projects, people, and feeds are fictional; architecture and interaction patterns are the real system's. Source on <a href="https://github.com/davidcarltonadams/agent-infrastructure-demos" target="_blank" rel="noopener">GitHub</a>.</p>
+      <div class="demo-cards">
+        <div class="demo-card">
+          <h3><a href="https://davidcarltonadams.com/agent-infrastructure-demos/atlas-demo.html" target="_blank" rel="noopener">Flightpath</a></h3>
+          <p>one-true-state project layer · milestones, heat index, estimate ledger</p>
+        </div>
+        <div class="demo-card">
+          <h3><a href="https://davidcarltonadams.com/agent-infrastructure-demos/gazette-demo.html" target="_blank" rel="noopener">The Gazette</a></h3>
+          <p>daily newspaper assembled overnight · ranked opportunities, decision digest</p>
+        </div>
+        <div class="demo-card">
+          <h3><a href="https://davidcarltonadams.com/agent-infrastructure-demos/horizons-demo.html" target="_blank" rel="noopener">Gander</a></h3>
+          <p>timeline + what-if sandbox · schedules derived from dependencies and capacity</p>
+        </div>
+      </div>
+
+      <h2 class="page-subtitle">how it is built</h2>
+      <ul class="principles">
+        <li><strong>One writer per fact</strong><span>one canonical writer per piece of state; everything else reads</span></li>
+        <li><strong>Models are not trust boundaries</strong><span>every LLM layer assumed compromisable; safety in the deterministic checks after it</span></li>
+        <li><strong>Gate the irreversible, log the reversible</strong><span>outbound keeps a human yes/no; internal writes are logged and replayable</span></li>
+        <li><strong>The paper always publishes</strong><span>daily surfaces fall back to a validated deterministic base</span></li>
+        <li><strong>Untrusted in, summarized out</strong><span>email, scraped feeds, and agent output are read-only holds until a human acts</span></li>
+        <li><strong>Audited on rotation</strong><span>integrity audits over untrusted-input lanes on a seven-week rotation; adversarial pre-ship tests</span></li>
+      </ul>
+
+      <h2 class="page-subtitle">record</h2>
+      <div class="record-wrap">
+      <table class="record">
+        <tr><td>2024–</td><td><strong>New Uncertainty Collective</strong>, co-founder</td><td>commissioning + presenting org from zero · ~10 public events · 501(c)(3) standup in process</td></tr>
+        <tr><td>2025–</td><td><strong>Project Poetic Justice</strong>, co-lead</td><td>creative program inside two DC correctional facilities · security review at every step · ~24 works premiered</td></tr>
+        <tr><td>2026–27</td><td><strong>Peabody Faculty Learning Community</strong>, co-lead</td><td>AI, Artistry, and Education · AI in Practice strand</td></tr>
+        <tr><td>2017–23</td><td><strong>Fast Forward Austin</strong>, co-director</td><td>six years · single public-funder recompete · 73–81% of every dollar to artists</td></tr>
+        <tr><td>2020–</td><td><strong>Peabody Institute</strong>, adjunct faculty; instructor of record</td><td>five undergraduate theory terms · 54 students</td></tr>
+        <tr><td>2001–02</td><td><strong>Texas A&amp;M</strong></td><td>coursework in mathematics, physics, chemistry, nuclear engineering</td></tr>
+      </table>
+      </div>
+
+      <!-- BY THE NUMBERS: intentionally absent. The public-safe build of the
+           stats deck isn't generated yet; when it is, a framed link goes here.
+           Do NOT link the internal deck. -->
+
+      <p class="doors">
+        <a href="contact.html">work with me</a> · <a href="index.html">the music side</a> · <a href="eggs.html">play</a>
+      </p>
+    </div>
+  </main>
+  <script src="js/nav.js" defer></script>
+</body>
+</html>
