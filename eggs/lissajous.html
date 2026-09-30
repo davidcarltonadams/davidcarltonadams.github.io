@@ -475,12 +475,69 @@ function makeLayer() {
   return [c, g];
 }
 
-// Persistent trail layer
-let trailCanvas, trailCtx;
+// Persistent trail layer, plus the figure layer: the whole closed curve,
+// drawn once per ratio or phase and laid faintly over the trail, so the shape
+// a ratio makes is on screen at once rather than only the comet's last few
+// percent of it.
+let trailCanvas, trailCtx, figureCanvas, figureCtx;
+const FIGURE_ALPHA = 0.32;
 function initTrail() {
   [trailCanvas, trailCtx] = makeLayer();
+  [figureCanvas, figureCtx] = makeLayer();
   clearTrail();
+  drawFigure();
 }
+
+// A reduced integer a:b closes after t = 2π. Anything else never closes, so it
+// gets no base layer and its trail never fades: the path keeps filling in and
+// never retraces. That contrast is the point of the egg.
+function closes() { return Number.isInteger(ratioA) && Number.isInteger(ratioB); }
+
+function drawFigure() {
+  figureCtx.clearRect(0, 0, W, H);
+  if (!closes()) return;
+  const steps = Math.max(1200, 80 * (ratioA + ratioB));
+  figureCtx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const tt = (i / steps) * Math.PI * 2;
+    const x = CX + R * Math.sin(ratioA * tt + phase);
+    const y = CY + R * Math.sin(ratioB * tt);
+    if (i) figureCtx.lineTo(x, y); else figureCtx.moveTo(x, y);
+  }
+  figureCtx.strokeStyle = color;
+  figureCtx.lineWidth = 1;
+  figureCtx.stroke();
+}
+
+// Put trail + figure + dot on screen at time t. The animation calls it every
+// frame; a paused canvas calls it on any change, so it never shows a stale
+// ratio next to an info panel that has moved on.
+function compose() {
+  const x = CX + R * Math.sin(ratioA * t + phase);
+  const y = CY + R * Math.sin(ratioB * t);
+  ctx.drawImage(trailCanvas, 0, 0, W, H);
+  ctx.globalAlpha = FIGURE_ALPHA;
+  ctx.drawImage(figureCanvas, 0, 0, W, H);
+  ctx.globalAlpha = 1;
+
+  // Cursor dot
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = 0.9;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Axis guides (very subtle)
+  ctx.strokeStyle = '#0d0d14';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(CX, 0); ctx.lineTo(CX, H);
+  ctx.moveTo(0, CY); ctx.lineTo(W, CY);
+  ctx.stroke();
+}
+
+function redrawIfPaused() { if (!animating) compose(); }
 
 function clearTrail() {
   trailCtx.fillStyle = '#06060a';
@@ -500,11 +557,14 @@ let color = ratioColor(3, 2);
 function drawFrame() {
   if (!animating) return;
 
-  // Fade the trail layer
-  trailCtx.globalAlpha = trailAlpha;
-  trailCtx.fillStyle = '#06060a';
-  trailCtx.fillRect(0, 0, W, H);
-  trailCtx.globalAlpha = 1;
+  // Fade the trail layer (never at "infinite", never for a ratio that doesn't close)
+  const fade = closes() ? trailAlpha : 0;
+  if (fade > 0) {
+    trailCtx.globalAlpha = fade;
+    trailCtx.fillStyle = '#06060a';
+    trailCtx.fillRect(0, 0, W, H);
+    trailCtx.globalAlpha = 1;
+  }
 
   const x = CX + R * Math.sin(ratioA * t + phase);
   const y = CY + R * Math.sin(ratioB * t);
@@ -523,24 +583,7 @@ function drawFrame() {
   prevX = x;
   prevY = y;
 
-  // Compose: trail + cursor dot
-  ctx.drawImage(trailCanvas, 0, 0, W, H);
-
-  // Cursor dot
-  ctx.beginPath();
-  ctx.arc(x, y, 3, 0, Math.PI * 2);
-  ctx.fillStyle = '#fff';
-  ctx.globalAlpha = 0.9;
-  ctx.fill();
-  ctx.globalAlpha = 1;
-
-  // Axis guides (very subtle)
-  ctx.strokeStyle = '#0d0d14';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(CX, 0); ctx.lineTo(CX, H);
-  ctx.moveTo(0, CY); ctx.lineTo(W, CY);
-  ctx.stroke();
+  compose();
 
   t += speed * 0.003;
 }
@@ -571,6 +614,8 @@ function setRatio(a, b, fromInput) {
   color = ratioColor(ratioA, ratioB);
   prevX = prevY = null;
   if (!fromInput) { clearTrail(); t = 0; }
+  drawFigure();
+  redrawIfPaused();
   updateInfo();
   updateSoundFreqs();
   if (!fromInput) {
@@ -784,6 +829,7 @@ document.getElementById('phase-range').addEventListener('input', e => {
   phase = (v / 100) * Math.PI * 2;
   document.getElementById('phase-val').textContent = phaseLabel(v);
   clearTrail(); prevX = prevY = null;
+  drawFigure(); redrawIfPaused();
 });
 
 document.getElementById('speed-range').addEventListener('input', e => {
@@ -794,7 +840,8 @@ document.getElementById('speed-range').addEventListener('input', e => {
 
 document.getElementById('trail-range').addEventListener('input', e => {
   const v = parseInt(e.target.value);
-  trailAlpha = (100 - v) / 100 * 0.25 + 0.005;
+  // the far end really is infinite: no fade at all
+  trailAlpha = v >= 100 ? 0 : (100 - v) / 100 * 0.25 + 0.005;
   const labels = [[0,'instant'],[25,'short'],[50,'medium'],[75,'long'],[100,'infinite']];
   const label = labels.reduce((a,b) => Math.abs(b[0]-v) < Math.abs(a[0]-v) ? b : a)[1];
   document.getElementById('trail-val').textContent = label;
@@ -861,6 +908,7 @@ window.addEventListener('resize', () => {
   if (document.documentElement.clientWidth === lastW) return;
   lastW = document.documentElement.clientWidth;
   sizeCanvas(); initTrail(); prevX = prevY = null;
+  redrawIfPaused();
 });
 buildIntervalButtons();
 updateInfo();
