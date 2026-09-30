@@ -277,9 +277,13 @@ function glow(p, delayMs) {
 }
 
 function ratioLabel(p) {
-  // octave-reduced ratio over the nearest power of two below p
+  // octave-reduced ratio over the nearest power of two below p, in lowest
+  // terms. (Was: partial 1 read "octave", 4 read "octave", 6 read "6/4".)
+  if (p === 1) return 'fundamental';
   let d = 1; while (d * 2 <= p) d *= 2;
-  return d === p ? 'octave' : p + '/' + d;
+  if (d === p) { const n = Math.log2(p); return n === 1 ? 'octave' : n + ' octaves'; }
+  let a = p, b = d; while (b) [a, b] = [b, a % b];
+  return (p / a) + '/' + (d / a);
 }
 
 let lastStruck = null, lastStruckAt = 0;
@@ -334,6 +338,8 @@ function begin() {
   if (ctx.state === 'suspended') ctx.resume();
   if (!running) {
     running = true;
+    master.gain.cancelScheduledValues(ctx.currentTime);   // undo a hush's fade
+    master.gain.setValueAtTime(0.85, ctx.currentTime);
     gate.classList.add('gone');
     setHushLabel();
     // a first breath: the low fundamental, then the shift begins
@@ -369,11 +375,16 @@ hushBtn.addEventListener('click', () => {
   }
   hushed = true;
   setHushLabel();
-  if (!running) return;      // nothing sounding yet — the hush just waits
+  if (!running) return;      // nothing sounding yet: the hush just waits
   running = false;
   clearTimeout(nextTimer);
-  panicAll();
-  if (ctx) ctx.suspend();
+  // fade the master over 80 ms, then free the bells and sleep the clock
+  // (stopping ringing bells outright clicked, one click per bell)
+  const t = ctx.currentTime, mg = master.gain;
+  mg.cancelScheduledValues(t);
+  mg.setValueAtTime(mg.value, t);
+  mg.linearRampToValueAtTime(0, t + 0.08);
+  setTimeout(() => { if (!running) { panicAll(); ctx.suspend(); } }, 110);
 });
 
 setHushLabel();
@@ -394,10 +405,10 @@ function tickClock() {
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   const hour = d.getHours();
-  const phase = (hour >= 23 || hour < 6) ? 'deep night — sparsest'
-              : (hour < 9)  ? 'early — waking up'
-              : (hour < 18) ? 'daytime — it plays anyway'
-              : 'evening — settling';
+  const phase = (hour >= 23 || hour < 6) ? 'deep night, sparsest'
+              : (hour < 9)  ? 'early, waking up'
+              : (hour < 18) ? 'daytime, it plays anyway'
+              : 'evening, settling';
   document.getElementById('nowline').textContent = hh + ':' + mm + ' · ' + phase;
 }
 setInterval(tickClock, 20000);
