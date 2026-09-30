@@ -772,7 +772,38 @@ function broadcast(msg) {
   hostConns.forEach(conn => { try { conn.send(msg); } catch(e) {} });
 }
 
+// Whoever answers at the room's peer id can send anything, so every message is
+// checked before it touches the clock: a known type, finite times, a whole
+// state object. (One {type:'sync', state:null} used to throw inside the
+// performer's frame loop and freeze the clock until a reload.)
+const MAX_SPAN_MS = 7 * 24 * 3600 * 1000;   // no piece runs a week
+const isEpochMs  = v => typeof v === 'number' && Number.isFinite(v) && Math.abs(v - Date.now()) < MAX_SPAN_MS;
+const isElapsed  = v => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < MAX_SPAN_MS;
+
+function cleanState(st) {
+  if (!st || typeof st !== 'object') return null;
+  if (st.paused !== true && st.paused !== false) return null;
+  if (st.startTime !== null && !isEpochMs(st.startTime)) return null;
+  if (st.pausedAt !== null && st.pausedAt !== undefined && !isElapsed(st.pausedAt)) return null;
+  const out = { startTime: st.startTime, paused: st.paused, pausedAt: st.pausedAt ?? null };
+  if (out.paused && (out.startTime === null || out.pausedAt === null)) return null;
+  return out;
+}
+
+function validMsg(msg) {
+  if (!msg || typeof msg !== 'object') return false;
+  switch (msg.type) {
+    case 'start':  return isEpochMs(msg.startTime);
+    case 'pause':  return isElapsed(msg.elapsed);
+    case 'resume': return msg.startTime === undefined ? isElapsed(state.pausedAt) : isEpochMs(msg.startTime);
+    case 'reset':  return true;
+    case 'sync':   return cleanState(msg.state) !== null;
+    default:       return false;
+  }
+}
+
 function applyMsg(msg) {
+  if (!validMsg(msg)) { console.warn('clock: ignored a malformed message'); return; }
   if (msg.type === 'start') {
     state.startTime = msg.startTime;
     state.paused    = false;
@@ -797,7 +828,7 @@ function applyMsg(msg) {
     state.pausedAt  = null;
     onClockReset();
   } else if (msg.type === 'sync') {
-    state = msg.state;
+    state = cleanState(msg.state);
     if (state.startTime && !state.paused) onClockStart();
     else if (state.paused) onClockPause();
     else onClockReset();
@@ -841,7 +872,9 @@ function startPeerClient(roomCode) {
     clientConn.on('open', () => {
       $('perf-status').textContent = roomCode + ' · connected';
     });
-    clientConn.on('data', msg => applyMsg(msg));
+    clientConn.on('data', msg => {
+      try { applyMsg(msg); } catch (e) { console.warn('clock: message failed', e); }
+    });
     clientConn.on('close', () => {
       $('perf-status').textContent = 'disconnected — reload to reconnect';
     });
@@ -885,6 +918,8 @@ let unlockedSections = new Set();
 let lastRenderedId = null; // track rendered section so DOM isn't rebuilt every frame
 
 function perfTick() {
+  // ask for the next frame first: one bad frame must not end the loop
+  perfAnimId = requestAnimationFrame(perfTick);
   const elapsed = getElapsed();
   $('perf-clock').textContent = fmtClock(elapsed);
 
@@ -912,8 +947,6 @@ function perfTick() {
   } else {
     $('perf-next').textContent = '';
   }
-
-  perfAnimId = requestAnimationFrame(perfTick);
 }
 
 function renderPerfContent(section) {
