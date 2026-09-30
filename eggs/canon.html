@@ -104,6 +104,8 @@
   #nota { display:block; width:100%; min-height:80px; overflow:hidden; }
   .nota-line{stroke:#3a3a54;stroke-width:1}
   .nota-stem{stroke:#5a5a80;stroke-width:1.2}
+  .nota-beam{stroke:#5a5a80;stroke-width:3;fill:none}
+  .nota-flag{stroke:#5a5a80;stroke-width:1.4;fill:none}
   .nota-acc{fill:#8888aa;font-family:serif;font-size:11px}
   .nota-dev{font-family:var(--mono);font-size:7px}
   .nota-rest16{fill:#6a6a88;stroke:#6a6a88}
@@ -875,7 +877,8 @@ function drawNotation() {
   if(!visVoices.length) return;
 
   const W = container.clientWidth || 800;
-  const totalH = 8 + visVoices.length * (NOTA_STAVE_H + NOTA_GAP) + 8;
+  const NOTA_TOP = 24;   // room above the first staff for up-stems and beams
+  const totalH = NOTA_TOP + visVoices.length * (NOTA_STAVE_H + NOTA_GAP) + 8;
   const stepW = (W - NOTA_LPAD - NOTA_RPAD) / numSteps;
 
   const svg = mkSVG('svg', {width:W, height:totalH, style:'display:block'});
@@ -883,7 +886,7 @@ function drawNotation() {
 
   visVoices.forEach((v, vi) => {
     const voiceIdx = voices.indexOf(v);
-    const staveTop = 8 + vi * (NOTA_STAVE_H + NOTA_GAP);
+    const staveTop = NOTA_TOP + vi * (NOTA_STAVE_H + NOTA_GAP);
     const staveBot = staffPosToY(0, staveTop); // y of E4 bottom line
 
     // 5 staff lines at staffPos 0,2,4,6,8
@@ -907,7 +910,9 @@ function drawNotation() {
     lbl.textContent = voiceIdx === 0 ? 'dux' : 'v'+(voiceIdx+1);
     svg.appendChild(lbl);
 
-    // Notes for each step
+    // Notes for each step. Stems, beams and flags are drawn after the loop,
+    // once each beat's notes are known: every note is a 16th of the grid.
+    const chords = new Array(numSteps).fill(null);
     for(let s = 0; s < numSteps; s++) {
       const pat = ((s - v.offset) % numSteps + numSteps) % numSteps;
       const pitchRows = [];
@@ -926,20 +931,15 @@ function drawNotation() {
         continue;
       }
 
+      chords[s] = { nx, ys: [], sps: [] };
       pitchRows.forEach(p => {
         const cents = snapCents(p, v.transCents) + viewOctave * 1200;
         const {staffPos, accidental, deviation} = centsToNoteInfo(cents);
         const ny = staffPosToY(staffPos, staveTop);
+        chords[s].ys.push(ny); chords[s].sps.push(staffPos);
 
         // Ledger lines (if needed)
         drawLedgerLines(svg, nx, staffPos, staveTop);
-
-        // Stem (up if below middle line B4=sp4, down otherwise)
-        const stemUp = staffPos < 4;
-        const stemX  = stemUp ? nx + 5 : nx - 5;
-        svg.appendChild(mkSVG('line', {
-          x1:stemX, y1:ny, x2:stemX, y2:stemUp ? ny-28 : ny+28, class:'nota-stem'
-        }));
 
         // Note head
         const nh = mkSVG('ellipse', {
@@ -968,7 +968,40 @@ function drawNotation() {
         }
       });
     }
+    drawBeams(svg, chords);
   });
+}
+
+// 16ths: runs of consecutive notes inside one beat (4 steps) share a stem
+// direction and a double beam; a note alone in its run gets two flags. (Bare
+// stems read as quarter notes.) One stem per chord, from its far note.
+function drawBeams(svg, chords) {
+  let s = 0;
+  while(s < chords.length) {
+    if(!chords[s]) { s++; continue; }
+    const beat = Math.floor(s / 4), run = [];
+    while(s < chords.length && chords[s] && Math.floor(s / 4) === beat) run.push(chords[s++]);
+    const allSp = run.flatMap(c => c.sps), allY = run.flatMap(c => c.ys);
+    const up = allSp.reduce((a, b) => a + b, 0) / allSp.length < 4;
+    const beamY = up ? Math.min(...allY) - 26 : Math.max(...allY) + 26;
+    const xs = run.map(c => up ? c.nx + 5 : c.nx - 5);
+    run.forEach((c, i) => {
+      const far = up ? Math.max(...c.ys) : Math.min(...c.ys);
+      svg.appendChild(mkSVG('line', {x1:xs[i], y1:far, x2:xs[i], y2:beamY, class:'nota-stem'}));
+    });
+    const dir = up ? 1 : -1;   // second beam / flag sits toward the notes
+    if(run.length > 1) {
+      for(const k of [0, 1]) {
+        const y = beamY + dir * k * 5;
+        svg.appendChild(mkSVG('path', {d:`M${xs[0]} ${y} L${xs[xs.length - 1]} ${y}`, class:'nota-beam'}));
+      }
+    } else {
+      for(const k of [0, 1]) {
+        const y = beamY + dir * k * 5;
+        svg.appendChild(mkSVG('path', {d:`M${xs[0]} ${y} q4 ${dir * 3} 6 ${dir * 9}`, class:'nota-flag'}));
+      }
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
