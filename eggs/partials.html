@@ -607,10 +607,13 @@ function togglePartial(n) {
   if (ac.state === 'suspended') ac.resume();
 
   if (active.has(n)) {
+    // release this voice and forget it now: a re-press inside the fade
+    // builds a fresh voice, and the timer below only stops the old osc
     const {osc, gain} = nodes[n];
+    delete nodes[n];
     const t = ac.currentTime;
     gain.gain.setTargetAtTime(0, t, 0.04);
-    setTimeout(() => { try { osc.stop(); } catch(e){} delete nodes[n]; }, 300);
+    setTimeout(() => { try { osc.stop(); } catch(e){} }, 300);
     active.delete(n);
     if (active.size === 0) stopScope();
   } else {
@@ -1084,6 +1087,9 @@ document.getElementById('btn-8vb').addEventListener('click', () => {
 // ── Standard events ───────────────────────────────────────
 document.getElementById('fund-input').addEventListener('input', applyFundamentalChange);
 document.getElementById('clear-btn').addEventListener('click', clearAll);
+// esc is the panic key; a hidden tab stops the chord rather than droning on
+document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearAll(); });
 document.getElementById('export-btn').addEventListener('click', exportJSON);
 
 document.querySelectorAll('.preset-btn').forEach(btn => {
