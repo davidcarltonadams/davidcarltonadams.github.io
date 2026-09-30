@@ -608,7 +608,10 @@ document.addEventListener('visibilitychange', () => {
     hideGate.gain.setTargetAtTime(0, t, 0.015);
     setTimeout(() => { if (document.hidden && ac.state === 'running') ac.suspend(); }, 150);
   } else {
-    ac.resume().then(() => hideGate.gain.setTargetAtTime(1, ac.currentTime, 0.03));
+    // reopen the gate whatever resume() does; if it is refused, show the
+    // stopped state instead of lit nodes that make no sound
+    hideGate.gain.setTargetAtTime(1, t, 0.03);
+    Promise.resolve().then(() => ac.resume()).catch(() => clearAll());
   }
 });
 
