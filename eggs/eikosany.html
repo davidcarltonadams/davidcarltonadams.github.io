@@ -113,6 +113,17 @@
       padding: 0.2rem 0.55rem; letter-spacing: 0.06em;
     }
     .chord-lbl { font-size: 0.48rem; letter-spacing: 0.12em; font-style: italic; color: var(--dim); }
+    /* the CPS's own chords, one button each */
+    .cps-chords { width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 0.35rem; }
+    .cps-row { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+    .cps-row .chord-lbl { min-width: 5.5rem; }
+    .cps-btn {
+      background: none; border: 1px solid var(--border); border-radius: 2px;
+      color: var(--control); font-family: 'SF Mono','Fira Code',monospace; font-size: 0.5rem;
+      padding: 0.18rem 0.4rem; cursor: pointer; letter-spacing: 0.02em;
+    }
+    .cps-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+    .cps-btn.on { color: var(--gold); border-color: rgba(212,192,112,0.6); }
     /* volume slider: the inline -webkit-appearance:none left the browser's blue thumb */
     #volR::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: var(--control); cursor: pointer; }
     #volR::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--control); border: none; cursor: pointer; }
@@ -171,6 +182,8 @@
     <span class="info-val" id="iLimit" style="font-size:1rem;padding-top:0.3rem">—</span>
   </div>
 </div>
+
+<div class="cps-chords" id="cpsChords"></div>
 
 <div class="ctrl-row">
   <span class="chord-lbl">chord:</span>
@@ -491,6 +504,7 @@ cv.addEventListener('click', e => {
     chord.add(idx);
     playNode(idx);
   }
+  unmarkCpsChord();
   updateChordStrip();
   draw();
 });
@@ -593,6 +607,8 @@ function stopNode(idx) {
 function clearChord() {
   [...chord].forEach(i => stopNode(i));
   chord.clear();
+  cpsChordKey = null;
+  document.querySelectorAll('.cps-btn.on').forEach(b => b.classList.remove('on'));
   updateChordStrip();
   draw();
 }
@@ -607,6 +623,54 @@ function onFundChange() {
 
 // ─── Set switching ────────────────────────────────────────────────────────────
 
+// ─── The set's own chords ─────────────────────────────────────────────────────
+// Harmonic (otonal): fix k−1 generators and add each remaining one in turn.
+// Subharmonic (utonal): take k+1 generators and all their k-subsets.
+// hexany 4 + 4 triads · dekany 5 tetrads + 10 triads · eikosany 15 + 15 tetrads.
+let cpsChordKey = null;
+
+function cpsChords(setKey) {
+  const { generators, k } = SETS[setKey];
+  const idxOf = gens => nodes.findIndex(n => n.gens.length === gens.length && gens.every(g => n.gens.includes(g)));
+  const oto = combinations(generators, k - 1).map(fixed => ({
+    kind: 'o', label: (fixed.length ? fixed.join('·') : '1') + ' ×',
+    title: `harmonic: ${fixed.join('·')} times each of ${generators.filter(g => !fixed.includes(g)).join(', ')}`,
+    idx: generators.filter(g => !fixed.includes(g)).map(g => idxOf([...fixed, g])),
+  }));
+  const uto = combinations(generators, k + 1).map(T => ({
+    kind: 'u', label: '÷ ' + T.join('·'),
+    title: `subharmonic: every ${k} of ${T.join(', ')}`,
+    idx: combinations(T, k).map(idxOf),
+  }));
+  return { oto, uto };
+}
+
+function renderCpsChords() {
+  const wrap = document.getElementById('cpsChords');
+  const { oto, uto } = cpsChords(currentSet);
+  const row = (label, list) => `<div class="cps-row"><span class="chord-lbl">${label}</span>` +
+    list.map(c => `<button class="cps-btn" data-key="${c.kind}:${c.idx.join(',')}" title="${c.title}">${c.label}</button>`).join('') + '</div>';
+  wrap.innerHTML = row(`harmonic · ${oto.length}`, oto) + row(`subharmonic · ${uto.length}`, uto);
+  wrap.querySelectorAll('.cps-btn').forEach(b => b.addEventListener('click', () => playCpsChord(b.dataset.key)));
+}
+
+function unmarkCpsChord() {
+  cpsChordKey = null;
+  document.querySelectorAll('.cps-btn.on').forEach(b => b.classList.remove('on'));
+}
+
+function playCpsChord(key) {
+  const again = key === cpsChordKey;
+  clearChord();
+  if (again) return;
+  const idx = key.split(':')[1].split(',').map(Number);
+  for (const i of idx) { chord.add(i); playNode(i); }
+  cpsChordKey = key;
+  document.querySelectorAll('.cps-btn').forEach(b => b.classList.toggle('on', b.dataset.key === key));
+  updateChordStrip();
+  draw();
+}
+
 function selectSet(key) {
   clearChord();
   currentSet = key;
@@ -619,6 +683,7 @@ function selectSet(key) {
   rebuildLayout();
   clearInfoPanel();
   updateChordStrip();
+  renderCpsChords();
 }
 
 // ─── Touch / pointer ──────────────────────────────────────────────────────────
@@ -633,6 +698,7 @@ cv.addEventListener('touchstart', e => {
   e.preventDefault();
   if (chord.has(idx)) { chord.delete(idx); stopNode(idx); }
   else { chord.add(idx); playNode(idx); }
+  unmarkCpsChord();
   // no hover on touch, so the tap doubles as the inspect gesture
   hoverIdx = idx;
   updateInfoPanel(nodes[idx]);
