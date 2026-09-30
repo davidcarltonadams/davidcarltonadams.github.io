@@ -9,6 +9,10 @@ Born 2026-07-23, the night of escher + comma + nest.
 ## House rules
 
 - One lowercase word filename (`comma.html`), matching `<title>` and `.title`.
+  **Eggs live in `website/eggs/` (moved 2026-09-03; the shared `tunings.json`
+  moved with them).** Inside an egg, site chrome is one level up: `../assets/`,
+  `../js/`, `../eggs.html` for the backlink. Thumbnails stay in
+  `website/assets/eggs/`. Old root URLs forward via `404.html`.
 - No nav links from public pages. Eggs are listed in `eggs.html` only
   (name + `egg-desc` with `·`-separated clauses; lowercase; specific numbers
   beat adjectives: "21.5¢ per cycle" not "slowly drifts").
@@ -32,7 +36,10 @@ Born 2026-07-23, the night of escher + comma + nest.
   --gold:   #d4c070;
 }
 /* Georgia serif body · 'SF Mono' for numbers/labels ·
-   lowercase titles letter-spaced 0.24em · italic .sub epigraph ·
+   lowercase titles letter-spaced 0.24em · italic .sub epigraph in
+   var(--dim), NOT var(--dimmer): the epigraph is meant to be read,
+   0.17 alpha was too faint (David, 2026-09-03; brush + vuza set the
+   new floor, older eggs retrofit as they get touched) ·
    fixed ← eggs backlink top-left (see escher.html for full block) */
 ```
 
@@ -137,6 +144,28 @@ those phases plus `baseRate = 2.49` before capture. Label lesson: per-ring
 Hz labels stack UNDER each ring (`cy + rad + 13`), never at a shared y to the
 right — two rings printed at the same y collide the moment rates share digits.
 
+**brush.html** — idles blank. `?pose=1` runs the harmonic 1/n preset on the
+default 110 Hz guide, adds one 700¢-wide smear at 2.4 kHz (amp 0.5), and parks
+the brush cursor at 1.32 kHz so the readout shows a live "harmonic 12 +0¢"
+line. No audio needed; the readout and bars render on load. Capture URL:
+`brush.html?pose=1`.
+```js
+if (params.get('pose') === '1') {
+  preset('harmonic');
+  const saved = widthCents; widthCents = 700;
+  paintAt(freqToBin(2400), 0.5, false);
+  widthCents = saved;
+  hoverBin = freqToBin(1320);
+}
+```
+
+**vuza.html** — the ring draws on load but idles with no playhead and no
+flashes. `?pose=1` sets `playStep = 29` and seeds a six-slot decaying flash
+trail on every voice ring and the composite ring behind that position, so the
+capture shows a mid-cycle sweep with glowing recent hits and no AudioContext
+needed. No watermark: the frame is real canon data, only the playhead position
+is staged. Capture URL `vuza.html?pose=1`. Boots on the vuza preset (index `VUZA_IDX`), so the pose always shows the 72.
+
 ## Canvas boilerplate (retina + width clamp)
 
 ```js
@@ -153,7 +182,7 @@ c.scale(dpr, dpr);
 Math/sequencer logic:
 
 ```bash
-node ~/projects/tools/egg-test.js comma.html '
+node ~/egg-lab/tools/egg-test.js eggs/comma.html '
   let t=0; for (let i=0;i<16;i++){ advance(t); t+=900; }
   assert(Math.abs(1200*Math.log2(base) + 64.52) < 0.01, "3-cycle drift");
   console.log("OK");'
@@ -167,7 +196,7 @@ CH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 "$CH" --headless=new --disable-gpu --hide-scrollbars \
   --force-device-scale-factor=1 --timeout=12000 \
   --screenshot=/tmp/egg.png --window-size=1000,625 \
-  "file://$PWD/egg.html"
+  "file://$PWD/eggs/egg.html"
 ```
 
 Audio is the one thing these can't verify — that's always an ears check.
@@ -175,7 +204,7 @@ Audio is the one thing these can't verify — that's always an ears check.
 ## Harvest (weekly, or when the chickens get fed)
 
 ```bash
-python3 ~/projects/tools/egg_harvest.py        # report: new / unlisted / orphaned
+python3 ~/egg-lab/tools/egg_harvest.py        # report: new / unlisted / orphaned
 ```
 
 Reviews before publishing are David's step: inspect each new egg in the
