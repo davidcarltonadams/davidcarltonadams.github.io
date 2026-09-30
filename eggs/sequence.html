@@ -56,7 +56,7 @@
     .drop-zone {
       width: 100%; max-width: 860px;
       border: 1px dashed rgba(212,192,112,0.25);
-      padding: 2.2rem 1.5rem;
+      padding: 0.8rem 1rem;
       text-align: center;
       cursor: pointer;
       transition: border-color 0.15s, background 0.15s;
@@ -72,8 +72,7 @@
     #fileIn { display: none; }
 
     /* ── Sequence display ── */
-    .seq-wrap { width: 100%; max-width: 860px; display: none; flex-direction: column; gap: 1.4rem; }
-    .seq-wrap.loaded { display: flex; }
+    .seq-wrap { width: 100%; max-width: 860px; display: flex; flex-direction: column; gap: 1.4rem; }
 
     /* Playhead canvas */
     .cv-wrap { width: 100%; }
@@ -202,18 +201,19 @@
 <div class="header">
   <h1 class="title">sequence</h1>
   <p class="sub">
-    ji sequencer — drop a grab-bag json from stern-brocot, or build manually.<br>
+    ji sequencer · it opens on a just major scale · load a grab bag from stern-brocot to play your own.<br>
     rational durations · tenney time · midi float export.
   </p>
 </div>
 
-<!-- Drop / load zone -->
+<!-- Load zone: click for a file picker (works on a phone), or drop a file on it -->
 <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileIn').click()">
-  drop a <strong style="color:var(--dim)">stern-brocot json</strong> here — or click to browse
+  load a <strong style="color:var(--dim)">grab-bag json</strong> · drop it here or tap to browse ·
+  make one in <a href="stern-brocot.html" onclick="event.stopPropagation()" style="color:var(--gold)">stern-brocot</a>
 </div>
 <input type="file" id="fileIn" accept=".json">
 
-<!-- Main sequencer UI (hidden until loaded) -->
+<!-- Main sequencer UI: a starter scale until a file is loaded -->
 <div class="seq-wrap" id="seqWrap">
 
   <div class="info-panel">
@@ -644,8 +644,6 @@ function loadJSON(data) {
     curIdx = 0; playing = false;
     renderStrip();
     updateInfoPanel(null);
-    document.getElementById('seqWrap').classList.add('loaded');
-    document.getElementById('dropZone').style.display = 'none';
     updatePlayBtn();
     if (skipped > 0) {
       alert(`Skipped ${skipped} event${skipped === 1 ? '' : 's'} with a bad ratio — `
@@ -658,9 +656,16 @@ function loadJSON(data) {
 
 function loadNew() {
   stopSeq();
-  document.getElementById('seqWrap').classList.remove('loaded');
-  document.getElementById('dropZone').style.display = '';
+  document.getElementById('fileIn').value = '';   // the same file can be picked again
+  document.getElementById('fileIn').click();
 }
+
+// First visit: a playable starter, the just major scale over the 1/1 drone.
+// (The page used to open on an empty drop zone, a dead end on a phone.)
+seq = [[1,1],[9,8],[5,4],[4,3],[3,2],[5,3],[15,8],[2,1]]
+  .map(([p, q]) => ({ p, q, dur: '1/4', vel: 0.8 }));
+document.getElementById('infoFund').textContent = `${fundHz} Hz`;
+renderStrip();
 
 // ─── MIDI float export ────────────────────────────────────────────────────────
 
