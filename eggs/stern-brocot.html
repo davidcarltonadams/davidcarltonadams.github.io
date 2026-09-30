@@ -262,6 +262,7 @@
     }
     .bag-chip:hover { border-color: rgba(212,192,112,0.55); }
     .bag-chip.dragging { opacity: 0.28; }
+    .bag-chip.playing  { border-color: rgba(212,192,112,0.85); background: rgba(212,192,112,0.12); }
     .bag-chip.drag-over { border-color: rgba(212,192,112,1); background: rgba(212,192,112,0.06); }
     .chip-ratio { font-size: 0.72rem; color: var(--gold); }
     .chip-dur {
@@ -356,17 +357,19 @@
   <div class="bag-header">
     <span class="bag-title">grab bag</span>
     <span class="bag-count" id="bagCount">0 ratios</span>
+    <button class="btn-sm" id="collectBtn" onclick="collectCurrent()" title="add the current ratio to the grab bag (C)">+ collect</button>
     <button class="btn-sm" id="dwellBtn"   onclick="setDurMode('dwell')"   title="complex ratios linger">dwell</button>
     <button class="btn-sm" id="resolveBtn" onclick="setDurMode('resolve')" title="consonances linger">resolve</button>
     <span class="path-lbl" style="font-style:normal">bpm:</span>
     <input class="bag-input" id="bpmIn" type="number" value="120" min="20" max="400">
     <span class="path-lbl" style="font-style:normal">swing:</span>
     <input class="bag-input" id="swingIn" type="number" value="0.50" min="0.50" max="0.75" step="0.01" style="width:2.8rem">
+    <button class="btn-sm" id="playBagBtn" onclick="togglePlayBag()">▶ play bag</button>
     <button class="btn-sm" onclick="clearBag()">✕ clear</button>
-    <button class="btn-sm on" onclick="exportBag()">↓ export json</button>
+    <button class="btn-sm" onclick="exportBag()">↓ export json</button>
   </div>
   <div class="bag-tray" id="bagTray">
-    <span class="bag-empty">press <kbd>C</kbd> to collect the current ratio — or hover the number line and press <kbd>C</kbd></span>
+    <span class="bag-empty">press <kbd>C</kbd> or + collect to add the current ratio · or hover the number line and press <kbd>C</kbd></span>
   </div>
 </div>
 
@@ -599,6 +602,7 @@ function stopPulses() {
 // Panic: kill every sounding path — drone, hover audition, scheduled pulses.
 function stopAll() {
   stopPulses();
+  if (typeof stopBag === 'function') stopBag();
   stopAudition();
   stopDrone();
   hoverAuditKey = null;
@@ -1177,14 +1181,89 @@ function setDurMode(m) {
   renderBag();
 }
 
-function clearBag() { bag = []; renderBag(); }
+function clearBag() {
+  if (bagPlaying) { stopPulses(); stopBag(); }
+  bag = []; renderBag();
+}
+
+// ─── Play the bag ─────────────────────────────────────────────────────────────
+// Each step is a dyad, fundamental + ratio, like "hear". Durations read the way
+// sequence.html reads the export: "a/b" is a/b of a whole note (4 beats), a
+// bare number (dwell/resolve) is beats; swing stretches the first of each pair.
+// Every tone joins pulseNodes, so Esc, stop and a hidden tab silence it.
+
+let bagToken = 0, bagPlaying = false, bagEndTimer = null;
+
+function bagStepSec(item, beatSec) {
+  const s = String(item.dur);
+  let beats;
+  if (s.includes('/')) { const [n, d] = s.split('/').map(Number); beats = n / d * 4; }
+  else beats = parseFloat(s);
+  const sec = beats * beatSec;
+  return Number.isFinite(sec) && sec > 0.05 ? sec : 0.05;
+}
+
+function stepTone(freq, start, dur, vol) {
+  const o = ax.createOscillator(), g = ax.createGain();
+  const atk = Math.min(0.02, dur / 4), rel = Math.min(0.08, dur / 3);
+  o.type = 'sine'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, start);
+  g.gain.linearRampToValueAtTime(vol, start + atk);
+  g.gain.setValueAtTime(vol, start + dur - rel);
+  g.gain.linearRampToValueAtTime(0, start + dur);
+  o.connect(g); g.connect(ax.destination);
+  o.start(start); o.stop(start + dur + 0.01);
+  const node = { o, g };
+  pulseNodes.push(node);
+  o.onended = () => {
+    try { g.disconnect(); } catch (err) {}
+    const i = pulseNodes.indexOf(node);
+    if (i >= 0) pulseNodes.splice(i, 1);
+  };
+}
+
+function stopBag() {
+  bagToken++;
+  bagPlaying = false;
+  clearTimeout(bagEndTimer);
+  document.querySelectorAll('.bag-chip.playing').forEach(c => c.classList.remove('playing'));
+  const b = document.getElementById('playBagBtn');
+  if (b) b.textContent = '▶ play bag';
+}
+
+function togglePlayBag() {
+  if (bagPlaying) { stopPulses(); stopBag(); return; }
+  if (!bag.length) return;
+  ensureAx();
+  stopBag();
+  bagPlaying = true;
+  const tok = bagToken;
+  document.getElementById('playBagBtn').textContent = '■ stop bag';
+  const f = fundHz();
+  const beatSec = 60 / (parseFloat(document.getElementById('bpmIn').value) || 120);
+  const swing = Math.min(0.75, Math.max(0.5, parseFloat(document.getElementById('swingIn').value) || 0.5));
+  let t = ax.currentTime + 0.08;
+  bag.forEach((item, i) => {
+    let d = bagStepSec(item, beatSec);
+    if (swing !== 0.5) d *= (i % 2 === 0 ? swing * 2 : 2 - swing * 2);
+    stepTone(f, t, d, 0.2);
+    stepTone(f * item.p / item.q, t, d, 0.2);
+    setTimeout(() => {
+      if (tok !== bagToken) return;
+      document.querySelectorAll('.bag-chip.playing').forEach(c => c.classList.remove('playing'));
+      document.getElementById(`chip-${i}`)?.classList.add('playing');
+    }, Math.max(0, (t - ax.currentTime) * 1000));
+    t += d;
+  });
+  bagEndTimer = setTimeout(() => { if (tok === bagToken) stopBag(); }, (t - ax.currentTime) * 1000 + 60);
+}
 
 function renderBag() {
   document.getElementById('bagCount').textContent =
     `${bag.length} ratio${bag.length !== 1 ? 's' : ''}`;
   const tray = document.getElementById('bagTray');
   if (bag.length === 0) {
-    tray.innerHTML = `<span class="bag-empty">press <kbd>C</kbd> to collect the current ratio — or hover the number line and press <kbd>C</kbd></span>`;
+    tray.innerHTML = `<span class="bag-empty">press <kbd>C</kbd> or + collect to add the current ratio · or hover the number line and press <kbd>C</kbd></span>`;
     return;
   }
   tray.innerHTML = bag.map((item, i) => `
@@ -1299,8 +1378,14 @@ document.addEventListener('visibilitychange', () => {
   btnR.addEventListener('mouseenter', () => { ensureAx(); startAudition(rChild()); });
   btnR.addEventListener('mouseleave', stopAudition);
 
+  // Touch also fires compatibility mouse events after the tap; the hover
+  // glow and its click-to-jump are mouse-only, so ignore those echoes.
+  let lastTouchAt = -1e9;
+  const touchEcho = () => performance.now() - lastTouchAt < 800;
+
   // Number line hover
   cv.addEventListener('mousemove', e => {
+    if (touchEcho()) return;
     tryEnsureAx();
     const rect = cv.getBoundingClientRect();
     const my = (e.clientY - rect.top) * (cv.height / rect.height);
@@ -1319,9 +1404,36 @@ document.addEventListener('visibilitychange', () => {
     stopAudition();
   });
 
+  // Tap on the number line (touch/pen): there is no hover glow to build up, so
+  // jump to the simplest catalogued ratio under the finger. A drag scrolls.
+  let tapStart = null;
+  cv.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse') return;
+    lastTouchAt = performance.now();
+    tapStart = { x: e.clientX, y: e.clientY };
+  });
+  cv.addEventListener('pointerup', e => {
+    if (e.pointerType === 'mouse' || !tapStart) return;
+    const moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y);
+    tapStart = null;
+    if (moved > 10) return;
+    const rect = cv.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (cv.width / rect.width);
+    const y = (e.clientY - rect.top) * (cv.height / rect.height);
+    if (y >= LINE_H) return;
+    const reach = 14 * (cv.width / rect.width);
+    let best = null;
+    for (const r of HOVER_RATIOS) {           // sorted simplest first
+      const dx = Math.abs(cx(r.cents) - x);
+      if (dx <= reach && (!best || dx < best.dx - 4)) best = { r, dx };
+    }
+    if (best) { hoverX = -1; hoverAuditKey = null; jumpToRatio(best.r.p, best.r.q); }
+  });
+  cv.addEventListener('pointercancel', () => { tapStart = null; });
+
   // Click on number line: jump to brightest hover ratio
   cv.addEventListener('click', e => {
-    if (hoverX < 0) return;
+    if (touchEcho() || hoverX < 0) return;
     let best = null, bestG = 0.25;
     for (const r of HOVER_RATIOS) {
       const g = hoverGlows[`${r.p}/${r.q}`] || 0;
