@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="the shepard–risset accelerando — five pulse trains in 2:1 tempo octaves, accelerating forever, never getting faster. an endless rhythmic illusion.">
+  <meta name="description" content="the shepard–risset accelerando · five pulse trains in 2:1 tempo octaves, accelerating forever, never getting faster. an endless rhythmic illusion.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -11,6 +11,8 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(204,200,208,0.58);
       --bg:     #070709;
       --bg2:    #0d0d11;
       --text:   #ccc8d0;
@@ -32,7 +34,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -48,7 +50,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 540px;
@@ -121,7 +123,7 @@
     }
     button {
       background: transparent;
-      color: var(--dimmer);
+      color: var(--control);
       border: 1px solid var(--border);
       padding: 0.32rem 0.85rem;
       font-family: Georgia, serif;
@@ -131,7 +133,7 @@
       cursor: pointer;
       transition: color 0.15s, border-color 0.15s;
     }
-    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
     button.on { color: var(--gold); border-color: rgba(212,192,112,0.4); }
 
     .hint {
@@ -140,6 +142,9 @@
       color: var(--dimmer);
       font-style: italic;
     }
+    /* a touch screen has no esc or space: say what works there */
+    .touch-only { display: none; }
+    @media (hover: none) { .kbd-only { display: none; } .touch-only { display: inline; } }
   </style>
 </head>
 <body>
@@ -147,7 +152,7 @@
 
 <div class="header">
   <h1 class="title">risset</h1>
-  <p class="sub">the shepard–risset accelerando. five pulse trains locked in tempo octaves — every layer exactly twice the speed of the one below — all accelerating together. a layer that races off the top fades to silence while a new one is born at the bottom, so the machine speeds up forever and never gets faster. escher's staircase, turned sideways into time. one doubling every 30 seconds; reverse for the slowing that never arrives.</p>
+  <p class="sub">the shepard–risset accelerando. five pulse trains locked in tempo octaves (every layer exactly twice the speed of the one below, every tick of a slow layer shared by the faster ones) all accelerating together. a layer that races off the top fades to silence while a new one is born at the bottom, so the machine speeds up forever and never gets faster. escher's staircase, turned sideways into time. one doubling every 30 seconds; reverse for the slowing that never arrives.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -175,7 +180,7 @@
   <button id="btnReverse">reverse</button>
 </div>
 
-<p class="hint">click the canvas or press space to play · esc stops · the circles are fixed tempo rulers — the players fall through them</p>
+<p class="hint"><span class="kbd-only">click the canvas or press space to play · esc stops</span><span class="touch-only">tap the canvas or play to start · pause silences it</span> · the circles are fixed tempo rulers · the players fall through them</p>
 
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -253,7 +258,7 @@ function ensureAudio() {
     osc.frequency.value = FLAT;
     osc.connect(tick); tick.connect(master);
     osc.start();                       // persistent pool — never re-started
-    layers.push({ osc, tick, nextT: 0 });
+    layers.push({ osc, tick, nextT: 0, lastT: -Infinity });
   }
 }
 
@@ -262,15 +267,28 @@ function reAnchor() {                  // re-pin oct(t) to the clock "now"
   tRef   = clock();
   if (!actx) return;
   const t0 = actx.currentTime + 0.05;
-  for (const L of layers) L.nextT = t0;
+  for (const L of layers) { L.nextT = t0; L.lastT = -Infinity; }
+}
+
+// The first tick of layer j at or after time t, stepped along j's own
+// tick sequence with the same arithmetic j's scheduler uses, so the
+// times come out identical to the ones j actually plays.
+function tickOnOrAfter(j, t, R) {
+  const L = layers[j];
+  let tj = L.lastT > -Infinity ? L.lastT : L.nextT;
+  while (tj < t - 1e-9) tj += nextInterval(tempoOf(uAt(j, tj)), R);
+  return tj;
 }
 
 function scheduleTicks() {
   if (!actx || !running) return;
   const now = actx.currentTime, R = rate();
+  // stall (hidden tab, long frame): the old guard jumped each late layer
+  // to "now" on its own, which put fast layers off the slow ones' grid.
+  // Re-pin every layer to one common tick instead, so nesting survives.
+  if (layers.some(L => L.nextT < now - 0.05)) reAnchor();
   for (let i = 0; i < N; i++) {
     const L = layers[i];
-    if (L.nextT < now - 0.2) L.nextT = now;      // tab-hidden catch-up guard
     while (L.nextT < now + 0.12) {
       const t = L.nextT;
       const u = uAt(i, t);
@@ -284,23 +302,47 @@ function scheduleTicks() {
         L.tick.gain.linearRampToValueAtTime(a * 0.5, t + 0.004);
         L.tick.gain.setTargetAtTime(0, t + 0.004, decay);
       }
-      L.nextT = t + nextInterval(T, R);
+      L.lastT = t;
+      let tn = t + nextInterval(T, R);
+      // Rebirth. When a layer wraps (off the top into the bottom going
+      // faster, or the reverse), its phase still belongs to the grid it
+      // left. Re-lock it to the neighbour it is born next to: its first
+      // tick lands on one of that neighbour's ticks, and from there the
+      // closed-form interval keeps it at exactly every other beat (or two
+      // per beat). Without this every upward wrap drifted off the grid and
+      // by minute two every loud tick flammed against its faster neighbour.
+      const un = uAt(i, tn);
+      if ((R > 0 && un < u) || (R < 0 && un > u)) {
+        const j = R > 0 ? (i + 1) % N : (i + N - 1) % N;
+        tn = tickOnOrAfter(j, tn, R);
+      }
+      L.nextT = tn;
     }
   }
 }
 
 // ── Canvas ───────────────────────────────────────────────────
 const canvas = document.getElementById('cv');
-const dpr = window.devicePixelRatio || 1;
-const W = Math.min(window.innerWidth - 32, 620);
+// sized from the layout viewport and re-sized on resize/rotation (sizing once
+// from innerWidth left a landscape-width canvas overflowing a portrait phone)
+let dpr = window.devicePixelRatio || 1;
+let W = 620;
 const H = 400;
-canvas.width = W * dpr; canvas.height = H * dpr;
-canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
 const c = canvas.getContext('2d');
-c.scale(dpr, dpr);
-
-const cx = W / 2, cy = H / 2;
-const rIn = 26, rOut = Math.min(W, H) / 2 - 26;
+let cx = W / 2, cy = H / 2;
+const rIn = 26;
+let rOut = Math.min(W, H) / 2 - 26;
+function sizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  W = Math.min(document.documentElement.clientWidth - 32, 620);
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx = W / 2; cy = H / 2;
+  rOut = Math.min(W, H) / 2 - 26;
+}
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);   // the rAF loop redraws
 const rOf = u => rOut - u * (rOut - rIn);      // fast layers fall inward
 
 function draw(t) {
@@ -347,7 +389,7 @@ function updateReadout(t) {
   for (let i = 0; i < N; i++) tempos.push(tempoOf(uAt(i, t)) * 60);
   tempos.sort((a, b) => a - b);
   document.getElementById('tempoLine').textContent =
-    tempos.map(x => Math.round(x)).join(' · ') + ' bpm — neighbors exactly 2:1';
+    tempos.map(x => Math.round(x)).join(' · ') + ' bpm · neighbors exactly 2:1';
   // the loudest layer sits at u≈0.5 — mid-window, always mid-tempo
   let best = 0, bestA = -1;
   for (let i = 0; i < N; i++) {
@@ -406,15 +448,17 @@ function stopAll() {
   if (!actx) return;
   const t = actx.currentTime;
   master.gain.cancelScheduledValues(t);
-  master.gain.setValueAtTime(0, t);
+  master.gain.setValueAtTime(master.gain.value, t);
+  master.gain.linearRampToValueAtTime(0, t + 0.03);   // fade, don't click
   for (const L of layers) {
-    try { L.osc.stop(t); } catch (e) { /* already stopped */ }
-    L.osc.disconnect(); L.tick.disconnect();
+    try { L.osc.stop(t + 0.04); } catch (e) { /* already stopped */ }
   }
-  layers.length = 0;
-  const dying = actx;
+  const dying = actx, dyingLayers = layers.splice(0);
   actx = null; master = null;
-  dying.close();
+  setTimeout(() => {
+    for (const L of dyingLayers) { try { L.osc.disconnect(); L.tick.disconnect(); } catch (e) {} }
+    dying.close();
+  }, 80);
 }
 
 $('btnPlay').addEventListener('click', start);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="sound the first 24 harmonics over any fundamental and watch each one drift from 12-tet in cents — the overtone series, layerable and audible.">
+  <meta name="description" content="sound the first 24 harmonics over any fundamental and watch each one drift from 12-tet in cents · the overtone series, layerable and audible.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -12,6 +12,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(216,208,200,0.58);
       --bg:      #080808;
       --bg2:     #111010;
       --text:    #d8d0c8;
@@ -25,7 +27,7 @@
 
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -60,7 +62,7 @@
     .sub {
       font-size: 0.6rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
     }
 
@@ -114,7 +116,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.58rem;
       letter-spacing: 0.06em;
@@ -134,7 +136,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.65rem;
       letter-spacing: 0.08em;
@@ -148,7 +150,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.62rem;
       letter-spacing: 0.1em;
@@ -293,6 +295,8 @@
     .partial-row.active .p-dot { background: var(--on); border-color: var(--on); }
 
     .partials-header {
+      width: 100%;
+      max-width: 680px;
       display: grid;
       grid-template-columns: 2rem 1fr 5.5rem 5rem 4.5rem 1.5rem;
       gap: 0.5rem;
@@ -314,6 +318,7 @@
     canvas {
       display: block;
       width: 100%;
+      height: 60px;             /* fixed: the drawn and idle sizes now match */
       border: 1px solid var(--border);
       border-radius: 2px;
     }
@@ -369,12 +374,12 @@
       user-select: none;
     }
     .slot-btn:hover {
-      color: var(--dim);
+      color: var(--control);
       border-color: var(--border);
     }
     .slot-btn.filled {
       border-color: var(--border);
-      color: var(--dimmer);
+      color: var(--control);
     }
     .slot-btn.filled:hover {
       color: var(--text);
@@ -423,8 +428,11 @@
     }
 
     /* ── Responsive ───────────────────────────────── */
+    /* touch screens have no hover edge and no slot keys: say only what works */
+    @media (hover: none), (max-width: 600px) { .hint .slots-hint { display: none; } }
     @media (max-width: 600px) {
       .slots { display: none; }
+      .export-btn { display: none; }   /* exports slots, which are hidden here */
       .partial-row {
         grid-template-columns: 1.5rem 1fr 4.5rem 4rem 3.5rem 1rem;
         font-size: 0.68rem;
@@ -442,7 +450,7 @@
 
 <div class="header">
   <h1 class="title">the harmonic series</h1>
-  <p class="sub">click a partial to sound it &mdash; layer as many as you like</p>
+  <p class="sub">click a partial to sound it · layer as many as you like</p>
 </div>
 
 <!-- ── Controls ────────────────────────────────────────── -->
@@ -497,7 +505,7 @@
   <canvas id="scope" height="60" aria-hidden="true"></canvas>
 </div>
 
-<p class="hint">click partials to layer &mdash; hover left edge for slots &mdash; drag glide bar above</p>
+<p class="hint">click partials to layer<span class="slots-hint"> · hover the left edge for slots W X Y Z (hold 3 s to save)</span> · drag the glide bar above · esc clears</p>
 
 <script>
 // ── Audio engine ─────────────────────────────────────────
@@ -505,7 +513,7 @@ let ac = null;
 const nodes  = {};
 const active = new Set();
 let scopeNode = null, analyser = null, scopeBuf = null;
-let master = null, limiter = null;
+let master = null;
 let rafId = null;
 let glideMs = 0;
 
@@ -513,24 +521,19 @@ function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
 
-  // every partial lands on master; master is scaled so the whole stack
-  // stays under unity, and the limiter catches the phase-aligned attack
+  // every partial lands on master; master is scaled so the whole stack,
+  // all 24 in phase, peaks at 0.85. No limiter: its gain riding reshaped
+  // the partial levels this page is about (it engaged above 0.71, i.e. on
+  // any thick stack), and the scaling alone keeps the stack from clipping.
   master = ac.createGain();
   master.gain.value = MASTER_GAIN;
-  limiter = ac.createDynamicsCompressor();
-  limiter.threshold.value = -3;
-  limiter.knee.value      = 0;
-  limiter.ratio.value     = 20;
-  limiter.attack.value    = 0.002;
-  limiter.release.value   = 0.15;
 
   analyser = ac.createAnalyser();
-  analyser.fftSize = 1024;
+  analyser.fftSize = 2048;   // the triggered scope shows half: ~21 ms, a full 55 Hz cycle
   analyser.smoothingTimeConstant = 0.6;
   scopeBuf = new Uint8Array(analyser.fftSize);
 
-  master.connect(limiter);
-  limiter.connect(analyser);
+  master.connect(analyser);
   analyser.connect(ac.destination);
 }
 
@@ -607,10 +610,13 @@ function togglePartial(n) {
   if (ac.state === 'suspended') ac.resume();
 
   if (active.has(n)) {
+    // release this voice and forget it now: a re-press inside the fade
+    // builds a fresh voice, and the timer below only stops the old osc
     const {osc, gain} = nodes[n];
+    delete nodes[n];
     const t = ac.currentTime;
     gain.gain.setTargetAtTime(0, t, 0.04);
-    setTimeout(() => { try { osc.stop(); } catch(e){} delete nodes[n]; }, 300);
+    setTimeout(() => { try { osc.stop(); } catch(e){} }, 300);
     active.delete(n);
     if (active.size === 0) stopScope();
   } else {
@@ -691,11 +697,12 @@ const PARTIAL_AMP_REF = 0.35;
 function partialAmp(n) { return PARTIAL_AMP_REF / Math.pow(n, 0.7); }
 
 // all 24 partials start in phase, so their peak is the plain sum of the
-// amplitudes (~2.07). scale the master so the full stack lands under unity;
-// a single partial still comes through at ~0.16.
+// amplitudes (~2.07). scale the master so the full stack peaks at 0.85,
+// leaving room for a partial re-pressed while its old voice still fades;
+// a single partial still comes through at ~0.14.
 const PEAK_SUM = Array.from({ length: NUM_PARTIALS }, (_, i) => partialAmp(i + 1))
                       .reduce((a, b) => a + b, 0);
-const MASTER_GAIN = 0.95 / PEAK_SUM;
+const MASTER_GAIN = 0.85 / PEAK_SUM;
 
 function renderRows() {
   const fund = getFundamental();
@@ -710,7 +717,7 @@ function renderRows() {
     const isOn  = active.has(n);
     const tooHigh = n > maxN;
     if (tooHigh) over.unshift(n);
-    const barPct = Math.min(100, 100 / n);
+    const barPct = Math.min(100, 100 / Math.pow(n, 0.7));   // same curve as partialAmp
 
     const row = document.createElement('div');
     row.className = 'partial-row' + (isOn ? ' active' : '') +
@@ -758,33 +765,46 @@ function startScope() { if (!rafId) drawScope(); }
 function stopScope() {
   if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
   const canvas = document.getElementById('scope');
+  sizeScope();
   const g = canvas.getContext('2d');
-  g.clearRect(0, 0, canvas.width, canvas.height);
+  g.setTransform(1, 0, 0, 1, 0, 0);
   g.fillStyle = '#0a0a0a';
   g.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function sizeScope() {
+  const canvas = document.getElementById('scope');
+  canvas.width  = Math.round(canvas.offsetWidth * devicePixelRatio);
+  canvas.height = Math.round(60 * devicePixelRatio);
 }
 
 function drawScope() {
   rafId = requestAnimationFrame(drawScope);
   const canvas = document.getElementById('scope');
-  const W = canvas.width  = canvas.offsetWidth * devicePixelRatio;
-  const H = canvas.height = 60 * devicePixelRatio;
+  if (canvas.width !== Math.round(canvas.offsetWidth * devicePixelRatio)) sizeScope();
   const g = canvas.getContext('2d');
-  g.scale(devicePixelRatio, devicePixelRatio);
-  const w = W / devicePixelRatio;
-  const h = H / devicePixelRatio;
+  g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  const w = canvas.width / devicePixelRatio;
+  const h = canvas.height / devicePixelRatio;
 
   g.fillStyle = '#0a0a0a';
   g.fillRect(0, 0, w, h);
   if (!analyser) return;
   analyser.getByteTimeDomainData(scopeBuf);
 
+  // trigger: start at the first rising zero crossing in the first half,
+  // so a steady chord draws in the same place every frame
+  const half = scopeBuf.length >> 1;
+  let start = 0;
+  for (let i = 1; i < half; i++) {
+    if (scopeBuf[i - 1] < 128 && scopeBuf[i] >= 128) { start = i; break; }
+  }
   g.strokeStyle = 'rgba(138,176,200,0.6)';
   g.lineWidth   = 1;
   g.beginPath();
-  const sliceW = w / scopeBuf.length;
-  for (let i = 0; i < scopeBuf.length; i++) {
-    const v = scopeBuf[i] / 128;
+  const sliceW = w / half;
+  for (let i = 0; i < half; i++) {
+    const v = scopeBuf[start + i] / 128;
     const y = h / 2 + (v - 1) * h * 0.42;
     i === 0 ? g.moveTo(0, y) : g.lineTo(i * sliceW, y);
   }
@@ -973,8 +993,8 @@ function renderSlotBtns() {
       (activeSlot === k ? ' active-slot' : '');
     btn.textContent = k;
     btn.title = slotData[k]
-      ? `${k}: ${slotData[k].fundamental_hz} Hz [${slotData[k].partials.join(',')}] — hold 3s to overwrite`
-      : `${k}: empty — hold 3s to save`;
+      ? `${k}: ${slotData[k].fundamental_hz} Hz [${slotData[k].partials.join(',')}] · hold 3s to overwrite`
+      : `${k}: empty · hold 3s to save`;
     btn.style.cursor = letterCursor(k);
 
     btn.addEventListener('mouseenter', () => {
@@ -1084,6 +1104,9 @@ document.getElementById('btn-8vb').addEventListener('click', () => {
 // ── Standard events ───────────────────────────────────────
 document.getElementById('fund-input').addEventListener('input', applyFundamentalChange);
 document.getElementById('clear-btn').addEventListener('click', clearAll);
+// esc is the panic key; a hidden tab stops the chord rather than droning on
+document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearAll(); });
 document.getElementById('export-btn').addEventListener('click', exportJSON);
 
 document.querySelectorAll('.preset-btn').forEach(btn => {
