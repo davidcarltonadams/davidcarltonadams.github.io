@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="press and drag a low sawtooth through a resonant lowpass and watch the spectrum move — the filter you hear, drawn as you sweep it.">
+  <meta name="description" content="press and drag a low sawtooth through a resonant lowpass and watch the spectrum move · the filter you hear, drawn as you sweep it.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
-  <title>dca — sound field</title>
+  <title>sound — David Carlton Adams</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -36,7 +36,7 @@
 
     .sub {
       font-size: 0.65rem;
-      opacity: 0.35;
+      opacity: 0.42;
       letter-spacing: 0.14em;
       font-style: italic;
       text-align: center;
@@ -87,13 +87,13 @@
       justify-content: center;
       z-index: 10;
       transition: background 0.2s;
-      color: rgba(255,255,255,0.4);
+      color: rgba(255,255,255,0.6);
       font-size: 13px;
       line-height: 1;
       user-select: none;
       -webkit-user-select: none;
     }
-    #expand-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); }
+    #expand-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.85); }
 
     body.expanded {
       justify-content: center;
@@ -110,7 +110,7 @@
 
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: rgba(204,200,208,0.58); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -121,7 +121,7 @@
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 2px;
       color: #d8cfc7;
-      opacity: 0.35;
+      opacity: 0.58;
       font-family: Georgia, serif;
       font-size: 0.62rem;
       letter-spacing: 0.12em;
@@ -133,7 +133,7 @@
 
     #hint {
       font-size: 0.58rem;
-      opacity: 0.18;
+      opacity: 0.56;
       letter-spacing: 0.12em;
       font-style: italic;
     }
@@ -164,7 +164,7 @@
   <button id="expand-btn" title="expand / collapse">⤢</button>
 </div>
 
-<div id="hint">press &amp; drag &mdash; release to silence</div>
+<div id="hint">press &amp; drag · release to silence</div>
 <button id="stop-btn" title="stop and free the audio (esc)">◼ silence</button>
 <div id="err"></div>
 
@@ -474,7 +474,7 @@ try {
       g.textAlign = 'left';
       const hz   = filterHz(px);
       const fStr = hz >= 1000 ? (hz/1000).toFixed(1)+' kHz' : Math.round(hz)+' Hz';
-      g.fillText('cutoff ' + fStr, 10, H - 10);
+      g.fillText('cutoff ' + fStr + ' · Q ' + (0.8 + py * 22).toFixed(1), 10, H - 10);
       g.textAlign = 'right';
       g.fillText('level ' + Math.round(py * 100) + '%', W - 10, H - 10);
       g.textAlign = 'left';
