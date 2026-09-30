@@ -278,14 +278,23 @@ function midiFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
 
 // ── canvas ───────────────────────────────────────────────────
 const canvas = document.getElementById('paint');
-const dpr = window.devicePixelRatio || 1;
-const W = Math.min(window.innerWidth - 32, 640), H = 300;
+// sized from the layout viewport and re-sized on resize/rotation (sizing once
+// from innerWidth left a landscape-width canvas overflowing a portrait phone)
+let dpr = window.devicePixelRatio || 1;
+let W = 640;
+const H = 300;
 const AXIS = 22;                          // room for Hz labels at the bottom
 const PH = H - AXIS;                      // paint height
-canvas.width = W * dpr; canvas.height = H * dpr;
-canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
 const c = canvas.getContext('2d');
-c.scale(dpr, dpr);
+function sizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  W = Math.min(document.documentElement.clientWidth - 32, 640);
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeCanvas();
+window.addEventListener('resize', () => { sizeCanvas(); draw(); });
 
 function binX(i) { return i / (NBINS - 1) * W; }
 function xBin(x) { return x / W * (NBINS - 1); }

@@ -408,7 +408,9 @@ let dpr = 1, W = 620, H = 320;
 // between displays, so it is read here rather than captured once.
 function resize() {
   dpr = window.devicePixelRatio || 1;
-  W = Math.min(window.innerWidth - 32, 620);
+  // the layout viewport, not innerWidth: after a landscape load innerWidth
+  // still reported the zoomed-out width and the canvas overflowed (432 px)
+  W = Math.min(document.documentElement.clientWidth - 32, 620);
   H = 320;
   canvas.width = W * dpr; canvas.height = H * dpr;
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
