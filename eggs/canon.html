@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="draw a subject on a microtonal grid and stack canonic voices at any delay and interval — imitation is one melody read at several distances at once.">
+<meta name="description" content="draw a subject on a microtonal grid and stack canonic voices at any delay and interval · imitation is one melody read at several distances at once.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
-<title>Canon Loop Machine — David Carlton Adams</title>
+<title>canon</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
-
+  /* local fonts only: no third party is contacted on load (the site says
+     nothing is collected) */
   * { margin:0; padding:0; box-sizing:border-box; }
 
   :root {
@@ -19,8 +19,9 @@
     --tx: #dcdcf0; --txd: #a0a0c4; --txdd: #8888aa; --txddd: #666680;
     --acc: #4a9eff; --accd: #2a5e9f;
     --grn: #2ecc71; --red: #e74c3c; --org: #f39c12; --purp: #9b59b6;
-    --mono: 'JetBrains Mono', 'SF Mono', monospace;
-    --sans: 'DM Sans', system-ui, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', monospace;
+    --sans: Georgia, serif;
+    --control: rgba(204,200,208,0.60);   /* anything clickable on the house grey: 4.8:1 on --bg */
   }
 
   body { background:var(--bg); color:var(--tx); font-family:var(--mono); overflow-x:hidden; }
@@ -79,7 +80,7 @@
   .vrow.source { opacity:0.5; }
   .vrow.source .vpip { display:none; }
   .vfl { font-size:0.5rem; color:var(--txdd); }
-  .vdel { margin-left:auto; background:none; border:none; color:var(--txddd); font-size:0.68rem; cursor:pointer; padding:0 0.1rem; }
+  .vdel { margin-left:auto; background:none; border:none; color:var(--txdd); font-size:0.68rem; cursor:pointer; padding:0 0.1rem; }
   .vdel:hover { color:var(--red); }
   .vmute { background:none; border:none; color:var(--txdd); font-size:0.5rem; cursor:pointer; letter-spacing:0.03em; }
   .vmute:hover { color:var(--org); }
@@ -104,15 +105,15 @@
   .nota-line{stroke:#3a3a54;stroke-width:1}
   .nota-stem{stroke:#5a5a80;stroke-width:1.2}
   .nota-acc{fill:#8888aa;font-family:serif;font-size:11px}
-  .nota-dev{font-family:'JetBrains Mono',monospace;font-size:7px}
+  .nota-dev{font-family:var(--mono);font-size:7px}
   .nota-rest16{fill:#6a6a88;stroke:#6a6a88}
   .nota-clef{fill:#6868a0;font-family:serif;font-size:48px}
-  .nota-lbl{font-family:'JetBrains Mono',monospace;font-size:8px}
+  .nota-lbl{font-family:var(--mono);font-size:8px}
 
   /* ── Back link ─────────── */
   .eggs-back {
     position: fixed; top: .7rem; left: 1rem;
-    font-size: .58rem; color: #332; text-decoration: none;
+    font-size: .58rem; color: var(--control); text-decoration: none;
     letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
     z-index: 100; transition: color .15s;
   }
@@ -862,7 +863,7 @@ function drawNotation() {
       x:NOTA_LPAD-4, y:staveTop+16,
       'text-anchor':'end', class:'nota-lbl', fill:hexA(v.color,0.7)
     });
-    lbl.textContent = voiceIdx === 0 ? 'dux' : 'c'+(voiceIdx+1);
+    lbl.textContent = voiceIdx === 0 ? 'dux' : 'v'+(voiceIdx+1);
     svg.appendChild(lbl);
 
     // Notes for each step
