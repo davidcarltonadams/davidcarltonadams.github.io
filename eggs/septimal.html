@@ -170,6 +170,9 @@
     <span class="tone-endpoint">bright</span>
   </div>
   <div class="ctrl-group">
+    <span class="ctrl-label">chord</span>
+    <button class="tog" id="preset-otonal" title="the harmonic seventh chord: 1/1 5/4 3/2 7/4">4:5:6:7</button>
+    <button class="tog" id="preset-utonal" title="its subharmonic mirror: 1/1 7/6 7/5 7/4">1/7:1/6:1/5:1/4</button>
     <button class="tog" id="clear-btn">clear</button>
   </div>
 </div>
@@ -710,6 +713,26 @@ function shiftOctave(dir) {
 document.getElementById('oct-dn').addEventListener('click', () => shiftOctave(-1));
 document.getElementById('oct-up').addEventListener('click', () => shiftOctave(1));
 document.getElementById('clear-btn').addEventListener('click', clearAll);
+
+// One-tap 7-limit tetrads: the overtone chord 4:5:6:7 and its undertone
+// mirror 1/7:1/6:1/5:1/4 (= 1/1 7/6 7/5 7/4). Pressing again clears it.
+const PRESETS = {
+  otonal: ['1/1', '5/4', '3/2', '7/4'],
+  utonal: ['1/1', '7/6', '7/5', '7/4'],
+};
+function playPreset(name) {
+  const want = PRESETS[name];
+  const now = nodes.filter(n => n.active).map(n => n.key).sort().join();
+  const same = now === [...want].sort().join();
+  clearAll();
+  if (same) return;
+  for (const k of want) {
+    const nd = nodes.find(n => n.key === k);
+    if (nd && !nd.active) toggleNode(nd);
+  }
+}
+document.getElementById('preset-otonal').addEventListener('click', () => playPreset('otonal'));
+document.getElementById('preset-utonal').addEventListener('click', () => playPreset('utonal'));
 document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
 document.getElementById('lpf-knob').addEventListener('input', function () {
   if (lpf) lpf.frequency.setTargetAtTime(sliderToFreq(+this.value), ac.currentTime, 0.02);
