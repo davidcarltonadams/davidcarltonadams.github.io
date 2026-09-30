@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="watch a live spectrum against just-intonation partial markers — see which harmonics your voice or instrument actually puts out.">
+  <meta name="description" content="a live spectrum and scrolling spectrogram against the harmonic series of a chosen root · the loudest peak is named as a partial with its cents · see which harmonics your voice or instrument actually puts out.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
-  <title>spectrogram — David Carlton Adams</title>
+  <title>spectrogram</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,7 +25,7 @@
 
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: rgba(212,204,196,0.58); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -103,7 +103,7 @@
       font-size: 0.52rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: rgba(212,204,196,0.45);
+      color: rgba(212,204,196,0.58);   /* S1: >= 4.5:1 on #060606 */
       background: none;
       border: 1px solid rgba(212,204,196,0.1);
       padding: 0.35rem 1rem;
@@ -111,8 +111,8 @@
       font-family: inherit;
       transition: all 0.2s;
     }
-    #mic-btn:hover { color: rgba(212,204,196,0.5); border-color: rgba(212,204,196,0.2); }
-    #mic-btn.active { color: rgba(212,204,196,0.7); border-color: rgba(212,204,196,0.3); }
+    #mic-btn:hover { color: rgba(212,204,196,0.8); border-color: rgba(212,204,196,0.2); }
+    #mic-btn.active { color: rgba(212,204,196,0.85); border-color: rgba(212,204,196,0.3); }
 
     #status {
       font-size: 0.52rem;
@@ -132,25 +132,49 @@
       width: 100%;
       height: 300px;
     }
+    #fall-wrap { position: relative; width: min(960px, 100%); margin-top: 0.4rem; }
+    #fall-canvas, #fall-label { height: 160px; }
 
-    #label-canvas {
+    #label-canvas, #fall-label {
       position: absolute;
       top: 0; left: 0;
       pointer-events: none;
     }
 
-    /* Frequency axis */
-    #freq-axis {
-      display: flex;
-      justify-content: space-between;
+    .sub {
       width: min(960px, 100%);
-      padding: 0.2rem 0;
+      font-family: Georgia, serif;
+      font-style: italic;
+      font-size: 0.6rem;
+      letter-spacing: 0.06em;
+      line-height: 1.6;
+      color: rgba(212,204,196,0.5);
+    }
+    #peak {
+      width: min(960px, 100%);
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      color: rgba(212,204,196,0.7);
+      min-height: 1em;
+    }
+
+    /* Frequency axis: each label is centred on its tick */
+    #freq-axis {
+      position: relative;
+      width: min(960px, 100%);
+      height: 1.1rem;
     }
     .freq-tick {
-      font-size: 0.45rem;
-      color: rgba(212,204,196,0.38);
-      letter-spacing: 0.05em;
+      position: absolute;
+      top: 0.2rem;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: 0.5rem;
+      color: rgba(212,204,196,0.5);
+      letter-spacing: 0.03em;
     }
+    .freq-tick.edge-l { transform: none; }
+    .freq-tick.edge-r { transform: translateX(-100%); }
   </style>
 </head>
 <body>
@@ -174,6 +198,7 @@
   <h1>spectrogram</h1>
   <span class="listen-note">listens only · no audio output · headphones recommended if others are playing</span>
 </div>
+<p class="sub">the bright line is loudness by frequency (dBFS, log frequency) · the pane below is the same line scrolling through time, newest at the top · dashed lines are the harmonics of the root, each named by its interval above the octave of the root just below it</p>
 
 <div class="controls">
   <button id="mic-btn">enable mic</button>
@@ -222,17 +247,43 @@
 
 <div id="freq-axis"></div>
 
+<div id="fall-wrap">
+  <canvas id="fall-canvas"></canvas>
+  <canvas id="fall-label"></canvas>
+</div>
+
+<div id="peak"></div>
+
 <script>
 // ── NO AUDIO OUTPUT — see file header comment ──────────────────────────────
 
-const W = 1920, H = 600; // logical resolution
+// Every canvas's backing store is its CSS box × devicePixelRatio, and all
+// drawing is in CSS pixels. (It was a fixed 1920×600 stretched to the box,
+// so on a phone the marker text was squashed about 2.6:1.)
+const H = 300, FH = 160;               // spectrum and waterfall heights, CSS px
+let W = 960;                           // CSS width, measured
+let dpr = window.devicePixelRatio || 1;
 
 const specCanvas  = document.getElementById('spec-canvas');
 const labelCanvas = document.getElementById('label-canvas');
+const fallCanvas  = document.getElementById('fall-canvas');
+const fallLabel   = document.getElementById('fall-label');
 const sCtx        = specCanvas.getContext('2d');
 const lCtx        = labelCanvas.getContext('2d');
-specCanvas.width  = labelCanvas.width  = W;
-specCanvas.height = labelCanvas.height = H;
+const fCtx        = fallCanvas.getContext('2d');
+const flCtx       = fallLabel.getContext('2d');
+const peakEl      = document.getElementById('peak');
+
+function sizeCanvases() {
+  dpr = window.devicePixelRatio || 1;
+  W = Math.max(200, document.getElementById('canvas-wrap').clientWidth);
+  for (const [cv, h] of [[specCanvas, H], [labelCanvas, H], [fallCanvas, FH], [fallLabel, FH]]) {
+    cv.width = Math.round(W * dpr); cv.height = Math.round(h * dpr);
+    cv.style.width = W + 'px'; cv.style.height = h + 'px';
+    cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  fCtx.fillStyle = '#060606'; fCtx.fillRect(0, 0, W, FH);
+}
 
 const micBtn      = document.getElementById('mic-btn');
 const statusEl    = document.getElementById('status');
@@ -263,13 +314,32 @@ function partialColor(n, alpha) {
 }
 
 // ── Partial interval names ─────────────────────────────────────────────────
-const INTERVAL = ['f','P8','5th','P8²','M3','5th²','b7','P8³',
-                  'M2','M3²','TT','5th³','m6','b7²','M7','P8⁴'];
+// each partial named by its interval above the root's octave just below it
+// (the old superscripts counted repeats and went unexplained). 7, 11 and 13
+// carry arrows: 7/4 is a flat ♭7, 11/8 a raised 4th, 13/8 a raised ♭6.
+const INTERVAL = ['root','8ve','5th','8ve','M3','5th','↓♭7','8ve',
+                  'M2','M3','↑4','5th','↑♭6','↓♭7','M7','8ve'];
 
 // ── Draw JI partial markers ────────────────────────────────────────────────
+function dbToY(db) { return H - Math.max(0, Math.min(1, (db + 100) / 100)) * H; }
+
 function drawMarkers() {
   lCtx.clearRect(0, 0, W, H);
+  flCtx.clearRect(0, 0, W, FH);
 
+  // dB scale: the line's height is dBFS, -100 at the floor, 0 at the top
+  lCtx.font = '9px monospace';
+  lCtx.textAlign = 'left';
+  for (const db of [-80, -60, -40, -20]) {
+    const y = dbToY(db);
+    lCtx.strokeStyle = 'rgba(212,204,196,0.07)';
+    lCtx.lineWidth = 1;
+    lCtx.beginPath(); lCtx.moveTo(0, y); lCtx.lineTo(W, y); lCtx.stroke();
+    lCtx.fillStyle = 'rgba(212,204,196,0.45)';
+    lCtx.fillText(db + ' dB', 3, y - 3);
+  }
+
+  let lastLabelX = -Infinity;
   for (let n = 1; n <= maxPartial; n++) {
     const f = rootHz * n;
     if (f > maxFreq * 1.02) break;
@@ -277,33 +347,59 @@ function drawMarkers() {
     const x = freqToX(f);
     const col = partialColor(n, n === 1 ? 0.55 : 0.4);
 
-    lCtx.strokeStyle = col;
-    lCtx.lineWidth = n === 1 ? 2 : 1;
-    lCtx.setLineDash(n === 1 ? [] : [5, 5]);
-    lCtx.beginPath();
-    lCtx.moveTo(x, 0);
-    lCtx.lineTo(x, H);
-    lCtx.stroke();
-    lCtx.setLineDash([]);
-
-    // Partial number label
-    lCtx.fillStyle = partialColor(n, n === 1 ? 0.8 : 0.6);
-    lCtx.font = `bold ${n === 1 ? 28 : 22}px monospace`;
-    lCtx.textAlign = 'center';
-    lCtx.fillText(n, x, 28);
-
-    // Interval name
-    if (INTERVAL[n - 1]) {
-      lCtx.font = '16px monospace';
-      lCtx.fillStyle = partialColor(n, 0.3);
-      lCtx.fillText(INTERVAL[n - 1], x, 50);
+    for (const [g, h] of [[lCtx, H], [flCtx, FH]]) {
+      g.strokeStyle = col;
+      g.lineWidth = n === 1 ? 1.5 : 1;
+      g.setLineDash(n === 1 ? [] : [4, 4]);
+      g.beginPath();
+      g.moveTo(x, g === lCtx ? 58 : 0);
+      g.lineTo(x, h);
+      g.stroke();
+      g.setLineDash([]);
     }
 
-    // Frequency
-    lCtx.font = '14px monospace';
-    lCtx.fillStyle = partialColor(n, 0.2);
-    lCtx.fillText(f < 1000 ? f.toFixed(1) + ' Hz' : (f/1000).toFixed(2) + ' kHz', x, 68);
+    // labels only where there is room: crowded high partials keep their line.
+    // a label at the right edge hangs left of its line instead of off the canvas
+    const ftxt = f < 1000 ? f.toFixed(0) + ' Hz' : (f/1000).toFixed(2) + ' k';
+    lCtx.font = '9px monospace';
+    const m = lCtx.measureText(ftxt);
+    const tw = Math.max(18, (m && m.width) || ftxt.length * 5.4);
+    const atEdge = x > W - tw / 2 - 2;
+    const lx = atEdge ? W - 2 : x;
+    const left = atEdge ? lx - tw : lx - tw / 2;
+    if (left < lastLabelX + 6) continue;
+    lastLabelX = atEdge ? lx : lx + tw / 2;
+    lCtx.textAlign = atEdge ? 'right' : 'center';
+    lCtx.fillStyle = partialColor(n, n === 1 ? 0.85 : 0.7);
+    lCtx.font = `bold ${n === 1 ? 13 : 12}px monospace`;
+    lCtx.fillText(n, lx, 16);
+    lCtx.font = '10px monospace';
+    lCtx.fillStyle = partialColor(n, 0.55);
+    lCtx.fillText(INTERVAL[n - 1] || '', lx, 30);
+    lCtx.font = '9px monospace';
+    lCtx.fillStyle = partialColor(n, 0.4);
+    lCtx.fillText(ftxt, lx, 43);
   }
+
+  // time key, on a dark tab so the rows scrolling under it stay legible
+  const key = 'newest ↑ · ' + Math.round(FH / FALL_PX_PER_S) + ' s ago ↓';
+  flCtx.font = '9px monospace';
+  const kw = flCtx.measureText(key).width;
+  flCtx.fillStyle = 'rgba(6,6,6,0.85)';
+  flCtx.fillRect(W - kw - 10, 0, kw + 10, 15);
+  flCtx.textAlign = 'right';
+  flCtx.fillStyle = 'rgba(212,204,196,0.6)';
+  flCtx.fillText(key, W - 5, 11);
+}
+
+// while the mic is off the spectrum pane says what it is waiting for
+function drawIdle() {
+  sCtx.clearRect(0, 0, W, H);
+  sCtx.font = 'italic 12px Georgia, serif';
+  sCtx.textAlign = 'center';
+  sCtx.fillStyle = 'rgba(212,204,196,0.5)';
+  sCtx.fillText('enable the mic to draw your live spectrum here', W / 2, H / 2);
+  fCtx.fillStyle = '#060606'; fCtx.fillRect(0, 0, W, FH);
 }
 
 // ── Frequency axis ticks ───────────────────────────────────────────────────
@@ -317,15 +413,15 @@ function buildAxis() {
         ? [100, 200, 500, 1000, 2000, 4000, 6000, 8000]
         : [100, 500, 1000, 2000, 4000, 8000, 12000, 16000];
 
-  ticks.forEach(f => {
+  // on a narrow screen keep every other tick, so labels never touch
+  const shown = W < 560 ? ticks.filter((_, i) => i % 2 === 1 || i === ticks.length - 1) : ticks;
+  shown.forEach((f, i) => {
     const el = document.createElement('span');
-    el.className = 'freq-tick';
-    el.textContent = f >= 1000 ? (f/1000) + 'k' : f;
-    // position relative to log scale
+    el.className = 'freq-tick' + (i === shown.length - 1 ? ' edge-r' : '');
+    el.textContent = f >= 1000 ? (f/1000) + ' kHz' : f + ' Hz';
+    // position relative to log scale, label centred on its tick
     const pct = (Math.log(f / MIN_FREQ) / Math.log(maxFreq / MIN_FREQ)) * 100;
-    el.style.position = 'absolute';
     el.style.left = pct + '%';
-    freqAxis.style.position = 'relative';
     freqAxis.appendChild(el);
   });
 }
@@ -335,7 +431,8 @@ function drawSpectrum() {
   if (!analyser) return;
 
   const bufLen = analyser.frequencyBinCount;
-  const data   = new Float32Array(bufLen);
+  if (!specData || specData.length !== bufLen) specData = new Float32Array(bufLen);
+  const data   = specData;
   analyser.getFloatFrequencyData(data);
 
   const sampleRate = audioCtx.sampleRate;
@@ -356,13 +453,68 @@ function drawSpectrum() {
     if (f > maxFreq) break;
 
     const x = freqToX(f);
-    // Map dB: roughly -100 dBFS = floor, 0 dBFS = top
-    const norm = Math.max(0, Math.min(1, (data[i] + 100) / 100));
-    const y    = H - norm * H;
+    // -100 dBFS = floor, 0 dBFS = top (the dB ticks on the left)
+    const y = dbToY(data[i]);
 
     first ? (sCtx.moveTo(x, y), first = false) : sCtx.lineTo(x, y);
   }
   sCtx.stroke();
+
+  drawFall(data, binHz);
+  drawPeak(data, binHz);
+}
+
+// ── Spectrogram waterfall: scroll down, paint the newest row on top ────────
+const FALL_PX_PER_S = 20;              // 160 px = 8 s of history
+let specData = null, fallRow = null, fallAcc = 0, lastFallT = null;
+function drawFall(data, binHz) {
+  const now = performance.now() / 1000;
+  const dt = lastFallT === null ? 0 : Math.min(0.5, now - lastFallT);
+  lastFallT = now;
+  fallAcc += dt * FALL_PX_PER_S * dpr;
+  const shift = Math.floor(fallAcc);
+  if (shift < 1) return;
+  fallAcc -= shift;
+  const cw = fallCanvas.width, ch = fallCanvas.height;
+  // move the history down (device pixels, identity transform)
+  fCtx.save();
+  fCtx.setTransform(1, 0, 0, 1, 0, 0);
+  fCtx.drawImage(fallCanvas, 0, 0, cw, ch - shift, 0, shift, cw, ch - shift);
+  if (!fallRow || fallRow.width !== cw || fallRow.height !== shift) fallRow = fCtx.createImageData(cw, shift);
+  const px = fallRow.data;
+  const lnRatio = Math.log(maxFreq / MIN_FREQ);
+  for (let xd = 0; xd < cw; xd++) {
+    const f = MIN_FREQ * Math.exp((xd / cw) * lnRatio);
+    const k = Math.min(data.length - 1, Math.max(1, Math.round(f / binHz)));
+    const v = Math.max(0, Math.min(1, (data[k] + 95) / 65));   // -95..-30 dBFS
+    const r = 212 * v, g = 192 * Math.pow(v, 1.3), b = 112 * Math.pow(v, 2);
+    for (let yd = 0; yd < shift; yd++) {
+      const o = (yd * cw + xd) * 4;
+      px[o] = 6 + r; px[o + 1] = 6 + g; px[o + 2] = 6 + b; px[o + 3] = 255;
+    }
+  }
+  fCtx.putImageData(fallRow, 0, 0);
+  fCtx.restore();
+}
+
+// ── Peak readout: the loudest bin in range, named as a partial of the root ─
+function drawPeak(data, binHz) {
+  let best = -1, bestDb = -70;                     // quieter than -70 dBFS: no claim
+  const top = Math.min(data.length - 2, Math.floor(maxFreq / binHz));
+  for (let i = Math.ceil(MIN_FREQ / binHz); i <= top; i++) {
+    if (data[i] > bestDb) { bestDb = data[i]; best = i; }
+  }
+  if (best < 0) { peakEl.textContent = 'loudest peak: nothing above -70 dBFS'; return; }
+  // parabolic interpolation between neighbouring bins for a finer frequency
+  const a = data[best - 1], b = data[best], c = data[best + 1];
+  const den = a - 2 * b + c;
+  const off = den !== 0 ? 0.5 * (a - c) / den : 0;
+  const f = (best + Math.max(-0.5, Math.min(0.5, off))) * binHz;
+  const n = Math.max(1, Math.round(f / rootHz));
+  const cents = 1200 * Math.log2(f / (n * rootHz));
+  const sign = cents >= 0 ? '+' : '−';
+  peakEl.textContent = `loudest peak ${f < 1000 ? f.toFixed(1) + ' Hz' : (f / 1000).toFixed(3) + ' kHz'} · ` +
+    `${b.toFixed(0)} dBFS · nearest partial ${n} of ${rootSel.options[rootSel.selectedIndex].text.split(' ·')[0]} ${sign}${Math.abs(cents).toFixed(0)}¢`;
 }
 
 // ── Animation loop ─────────────────────────────────────────────────────────
@@ -378,13 +530,13 @@ function micErrorMessage(err) {
   switch (err && err.name) {
     case 'NotAllowedError':
     case 'PermissionDeniedError':
-      return 'mic permission denied — allow it for this page, then try again';
+      return 'mic permission denied · allow it for this page, then try again';
     case 'NotFoundError':
     case 'DevicesNotFoundError':
       return 'no microphone on this device';
     case 'NotReadableError':
     case 'TrackStartError':
-      return 'mic is busy in another app — close it, then try again';
+      return 'mic is busy in another app · close it, then try again';
     case 'OverconstrainedError':
       return 'no mic matched the requested settings';
     default:
@@ -392,12 +544,20 @@ function micErrorMessage(err) {
   }
 }
 
+let starting = false;   // a second click while the mic prompt is open must not open a second stream
+
 async function startMic() {
   if (running) { stopMic(); return; }
+  if (starting) return;
+  starting = true;
+  try { await openMic(); } finally { starting = false; }
+}
+
+async function openMic() {
 
   // getUserMedia only exists on https (or localhost) — check before asking.
   if (!window.isSecureContext) {
-    statusEl.textContent = 'needs https — mic is blocked on insecure pages';
+    statusEl.textContent = 'needs https · mic is blocked on insecure pages';
     return;
   }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -442,14 +602,16 @@ async function startMic() {
     micBtn.classList.add('active');
     statusEl.textContent = 'listening';
 
+    sCtx.clearRect(0, 0, W, H);
     drawMarkers();
     buildAxis();
+    lastFallT = null;
     loop();
 
   } catch (err) {
     // Release the tracks we already took, or the mic indicator stays lit.
     stopMic();
-    statusEl.textContent = 'audio engine would not start — try reloading';
+    statusEl.textContent = 'audio engine would not start · try reloading';
     console.error(err);
   }
 }
@@ -462,8 +624,8 @@ function stopMic() {
   micBtn.textContent = 'enable mic';
   micBtn.classList.remove('active');
   statusEl.textContent = 'off';
-  sCtx.clearRect(0, 0, W, H);
-  lCtx.clearRect(0, 0, W, H);
+  peakEl.textContent = '';
+  drawIdle();
 }
 
 // ── Controls ───────────────────────────────────────────────────────────────
@@ -471,12 +633,13 @@ micBtn.addEventListener('click', startMic);
 
 rootSel.addEventListener('change', () => {
   rootHz = parseFloat(rootSel.value);
-  if (running) drawMarkers();
+  drawMarkers();
 });
 
 rangeSel.addEventListener('change', () => {
   maxFreq = parseInt(rangeSel.value, 10);
-  if (running) { drawMarkers(); buildAxis(); }
+  drawMarkers(); buildAxis();
+  fCtx.fillStyle = '#060606'; fCtx.fillRect(0, 0, W, FH);   // old rows had the old axis
 });
 
 smoothEl.addEventListener('input', () => {
@@ -485,7 +648,7 @@ smoothEl.addEventListener('input', () => {
 
 partialsSel.addEventListener('change', () => {
   maxPartial = parseInt(partialsSel.value, 10);
-  if (running) drawMarkers();
+  drawMarkers();
 });
 
 // Release mic when page is hidden (tab switch, etc.)
@@ -493,8 +656,14 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && running) stopMic();
 });
 
-// Init axis
-buildAxis();
+// Init: markers and axes draw at load, not only once the mic is on
+function relayout() {
+  sizeCanvases();
+  drawMarkers(); buildAxis();
+  if (!running) drawIdle();
+}
+window.addEventListener('resize', relayout);
+relayout();
 </script>
 </body>
 </html>

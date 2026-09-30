@@ -18,6 +18,7 @@
       --dimmer: rgba(204,200,208,0.17);
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
     }
     body {
       background: var(--bg);
@@ -32,7 +33,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -48,7 +49,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 540px;
@@ -102,7 +103,7 @@
     .btn-row { display: flex; gap: 0.7rem; flex-wrap: wrap; justify-content: center; }
     button {
       background: transparent;
-      color: var(--dimmer);
+      color: var(--control);
       border: 1px solid var(--border);
       padding: 0.32rem 0.85rem;
       font-family: Georgia, serif;
@@ -112,7 +113,7 @@
       cursor: pointer;
       transition: color 0.15s, border-color 0.15s;
     }
-    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
     button.on { color: var(--gold); border-color: rgba(212,192,112,0.4); }
 
     .tracks { display: flex; flex-direction: column; gap: 0.35rem; }
@@ -162,7 +163,7 @@
 
 <div class="header">
   <h1 class="title">rhythm</h1>
-  <p class="sub">a polyrhythm orrery. six planets, one bar — each orbit divides the same cycle by its own integer, so 3-against-4-against-5 is just three moons with different years. every ratio here is also a pitch interval an octave-shift away: the orbits are a chord, slowed down several octaves. align sends every planet home to twelve o'clock.</p>
+  <p class="sub">a polyrhythm orrery. six planets, one bar · each orbit divides the same cycle by its own integer, so 3-against-4-against-5 is just three moons with different years. every ratio here is also a pitch interval: the orbits are a chord, slowed down several octaves. align sends every planet home to twelve o'clock.</p>
 </div>
 
 <div class="layout">
@@ -220,7 +221,11 @@ function ensureAudio() {
     const comp = actx.createDynamicsCompressor();
     master = actx.createGain();
     master.gain.value = 0.8;
-    master.connect(comp); comp.connect(actx.destination);
+    // the default compressor's makeup gain lifts even one click to 0.84 and
+    // a shared downbeat to 1.13; the trim after it lands them at 0.63 and 0.84
+    const trim = actx.createGain();
+    trim.gain.value = 0.75;
+    master.connect(comp); comp.connect(trim); trim.connect(actx.destination);
   }
   if (actx.state === 'suspended') actx.resume();
 }
@@ -339,7 +344,7 @@ function play() {
   startTime = actx.currentTime;
   beatCounters.fill(-1);
   playing = true;
-  $('btnPlay').textContent = 'pause';
+  $('btnPlay').textContent = 'stop';
   $('btnPlay').classList.add('on');
 }
 function stop() {
@@ -349,6 +354,19 @@ function stop() {
   $('btnPlay').classList.remove('on');
 }
 function togglePlay() { playing ? stop() : play(); }
+// A tempo change keeps the bar position at this instant: re-anchor startTime
+// so (now - startTime) / barPeriod is unchanged. Beat indices then mean the
+// same bar positions under both tempos, so beatCounters stay valid: every beat
+// not yet scheduled lies after the old lookahead horizon, hence after now, in
+// the new timing too. (Resetting nothing left the counters built at the old
+// period: going 120 -> 60 after a minute muted every track for 60 s.)
+function setBpm(v) {
+  if (playing && actx && v !== bpm) {
+    const now = actx.currentTime;
+    startTime = now - (now - startTime) * bpm / v;
+  }
+  bpm = v;
+}
 function align() {
   if (!actx) return;
   startTime = actx.currentTime;
@@ -364,7 +382,7 @@ function tap() {
     const iv = [];
     for (let i = 1; i < tapTimes.length; i++) iv.push(tapTimes[i] - tapTimes[i - 1]);
     const avg = iv.reduce((a, b) => a + b, 0) / iv.length;
-    bpm = Math.min(300, Math.max(10, Math.round(60000 / avg)));
+    setBpm(Math.min(300, Math.max(10, Math.round(60000 / avg))));
     $('bpmSlider').value = bpm; $('bpmVal').textContent = bpm;
   }
 }
@@ -410,7 +428,7 @@ $('btnAlign').addEventListener('click', align);
 $('btnTap').addEventListener('click', tap);
 canvas.addEventListener('click', togglePlay);
 $('bpmSlider').addEventListener('input', e => {
-  bpm = parseInt(e.target.value, 10);
+  setBpm(parseInt(e.target.value, 10));
   $('bpmVal').textContent = bpm;
 });
 document.addEventListener('keydown', e => {

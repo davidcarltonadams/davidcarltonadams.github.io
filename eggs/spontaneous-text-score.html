@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="click anywhere to draw a text score from a seeded grammar of verbs, objects and consequences — the seed lives in the url, so any score can be recovered exactly.">
+  <meta name="description" content="click anywhere to draw a text score from a seeded grammar of verbs, objects and consequences · the seed lives in the url, so any score can be recovered exactly.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
-  <title>a spontaneous text score</title>
+  <title>spontaneous-text-score — David Carlton Adams</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -26,7 +26,7 @@
 
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: rgba(204,200,208,0.58); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -38,6 +38,18 @@
       padding: 2rem;
       transition: opacity 0.5s ease;
     }
+
+    /* what this is, until the first advance */
+    .frame {
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+      font-style: italic;
+      color: rgba(212,204,196,0.5);
+      margin-bottom: 1.4rem;
+      transition: opacity 0.5s ease;
+    }
+    .frame.gone { opacity: 0; }
+    @media (max-width: 480px) { .frame { letter-spacing: 0.05em; } }
 
     .instruction {
       font-size: clamp(1.1rem, 3.5vw, 1.7rem);
@@ -54,14 +66,14 @@
       transform: translateX(-50%);
       font-size: 0.55rem;
       letter-spacing: 0.2em;
-      color: rgba(212,204,196,0.38);
+      color: rgba(212,204,196,0.45);
       font-style: italic;
       white-space: nowrap;
     }
 
     #copy-link {
       font: inherit;
-      color: inherit;
+      color: rgba(212,204,196,0.58);
       background: none;
       border: none;
       padding: 0 0 0 0.4rem;
@@ -69,14 +81,14 @@
       cursor: pointer;
       transition: color 0.3s ease;
     }
-    #copy-link:hover { color: rgba(212,204,196,0.65); }
+    #copy-link:hover { color: rgba(212,204,196,0.85); }
 
     #random-btn {
       position: fixed;
       bottom: 1.6rem;
       right: 2rem;
       font-size: 1rem;
-      color: rgba(212,204,196,0.38);
+      color: rgba(212,204,196,0.58);
       background: none;
       border: none;
       cursor: pointer;
@@ -85,7 +97,7 @@
       transition: color 0.3s ease;
       line-height: 1;
     }
-    #random-btn:hover { color: rgba(212,204,196,0.65); }
+    #random-btn:hover { color: rgba(212,204,196,0.85); }
 
     .fade-out { opacity: 0; }
   </style>
@@ -95,6 +107,7 @@
 <a class="eggs-back" href="../eggs.html">← eggs</a>
 
 <div id="score-text" aria-live="polite">
+  <p class="frame" id="frame-el">a text score · perform it yourself · tap for another</p>
   <p class="instruction" id="instruction-el"></p>
 </div>
 
@@ -521,12 +534,14 @@ function show(seed, animate, push) {
 }
 
 function next() {
+  document.getElementById('frame-el').classList.add('gone');
   show(randomSeed(), true, true);
 }
 
 // ── Interactions ───────────────────────────────────────────────────────────
 document.addEventListener('click', e => {
   if (e.target === btn || e.target === copyEl) return;
+  if (e.target.closest && e.target.closest('a')) return;   // a link navigates; don't push a new score first
   // the score is selectable text now; don't wipe a selection someone is
   // in the middle of copying
   const sel = window.getSelection && window.getSelection();

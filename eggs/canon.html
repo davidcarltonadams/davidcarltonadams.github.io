@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="draw a subject on a microtonal grid and stack canonic voices at any delay and interval — imitation is one melody read at several distances at once.">
+<meta name="description" content="draw a subject on a microtonal grid and stack canonic voices at any delay and interval · imitation is one melody read at several distances at once.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
-<title>Canon Loop Machine — David Carlton Adams</title>
+<title>canon</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
-
+  /* local fonts only: no third party is contacted on load (the site says
+     nothing is collected) */
   * { margin:0; padding:0; box-sizing:border-box; }
 
   :root {
@@ -19,8 +19,9 @@
     --tx: #dcdcf0; --txd: #a0a0c4; --txdd: #8888aa; --txddd: #666680;
     --acc: #4a9eff; --accd: #2a5e9f;
     --grn: #2ecc71; --red: #e74c3c; --org: #f39c12; --purp: #9b59b6;
-    --mono: 'JetBrains Mono', 'SF Mono', monospace;
-    --sans: 'DM Sans', system-ui, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', monospace;
+    --sans: Georgia, serif;
+    --control: rgba(204,200,208,0.60);   /* anything clickable on the house grey: 4.8:1 on --bg */
   }
 
   body { background:var(--bg); color:var(--tx); font-family:var(--mono); overflow-x:hidden; }
@@ -79,7 +80,7 @@
   .vrow.source { opacity:0.5; }
   .vrow.source .vpip { display:none; }
   .vfl { font-size:0.5rem; color:var(--txdd); }
-  .vdel { margin-left:auto; background:none; border:none; color:var(--txddd); font-size:0.68rem; cursor:pointer; padding:0 0.1rem; }
+  .vdel { margin-left:auto; background:none; border:none; color:var(--txdd); font-size:0.68rem; cursor:pointer; padding:0 0.1rem; }
   .vdel:hover { color:var(--red); }
   .vmute { background:none; border:none; color:var(--txdd); font-size:0.5rem; cursor:pointer; letter-spacing:0.03em; }
   .vmute:hover { color:var(--org); }
@@ -103,16 +104,18 @@
   #nota { display:block; width:100%; min-height:80px; overflow:hidden; }
   .nota-line{stroke:#3a3a54;stroke-width:1}
   .nota-stem{stroke:#5a5a80;stroke-width:1.2}
+  .nota-beam{stroke:#5a5a80;stroke-width:3;fill:none}
+  .nota-flag{stroke:#5a5a80;stroke-width:1.4;fill:none}
   .nota-acc{fill:#8888aa;font-family:serif;font-size:11px}
-  .nota-dev{font-family:'JetBrains Mono',monospace;font-size:7px}
-  .nota-rest{fill:#444460;font-family:serif;font-size:18px}
+  .nota-dev{font-family:var(--mono);font-size:7px}
+  .nota-rest16{fill:#6a6a88;stroke:#6a6a88}
   .nota-clef{fill:#6868a0;font-family:serif;font-size:48px}
-  .nota-lbl{font-family:'JetBrains Mono',monospace;font-size:8px}
+  .nota-lbl{font-family:var(--mono);font-size:8px}
 
   /* ── Back link ─────────── */
   .eggs-back {
     position: fixed; top: .7rem; left: 1rem;
-    font-size: .58rem; color: #332; text-decoration: none;
+    font-size: .58rem; color: var(--control); text-decoration: none;
     letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
     z-index: 100; transition: color .15s;
   }
@@ -166,10 +169,9 @@
           <span id="swing-v" style="font-size:0.58rem;color:var(--txd);min-width:5ch;text-align:right">even</span>
         </div>
         <div class="r" style="margin-top:-0.25rem;margin-bottom:0.1rem">
-          <span class="l"></span>
-          <div style="flex:1;display:flex;justify-content:space-between;font-size:0.42rem;color:var(--txddd);pointer-events:none">
-            <span>even</span><span>7-let</span><span>5-let</span><span>triplet</span><span>dotted</span><span>2×dot</span>
-          </div>
+          <span class="l" style="visibility:hidden" aria-hidden="true">swing</span>
+          <div id="swing-ticks" style="flex:1;position:relative;height:1.35rem;font-size:0.42rem;color:var(--txddd);pointer-events:none"></div>
+          <span style="font-size:0.58rem;min-width:5ch"></span>
         </div>
         <div class="r">
           <span class="l" title="oscillator waveform">tone</span>
@@ -196,7 +198,7 @@
           <button class="btn sm" id="btn-reload-tuning" title="reload tunings.json">↺</button>
         </div>
         <div class="r">
-          <span class="l" title="Scale filter — 12-TET only">scale</span>
+          <span class="l" title="scale filter · 12-TET only">scale</span>
           <select id="scale-sel">
             <option value="chromatic">chromatic</option>
             <option value="major">major</option>
@@ -237,7 +239,7 @@
   </div>
 
   <div class="roll-sec">
-    <div class="roll-t">piano roll — all voices</div>
+    <div class="roll-t">piano roll · all voices</div>
     <canvas id="roll" height="160"></canvas>
   </div>
 
@@ -430,7 +432,7 @@ const INTERVALS = [
   {name:'P5',          cents:700},
   {name:'m6',          cents:800},
   {name:'M6',          cents:900},
-  {name:'7∂ (969¢)',   cents:1200*Math.log2(7/4)},
+  {name:'7/4',         cents:1200*Math.log2(7/4)},
   {name:'m7',          cents:1000},
   {name:'M7',          cents:1100},
   {name:'P8',          cents:1200},
@@ -487,6 +489,37 @@ function ac() {
 
 function rowFreq(r) { return C4*Math.pow(2,(TUNINGS[curTuning].rowCents(r)+viewOctave*1200)/1200); }
 
+// A canonic voice stays inside the tuning. In an EDO its transposition is
+// rounded to whole steps (a 12-TET "P5" is 11 steps = 694.7 cents in 19-EDO);
+// in an unequal tuning (DCA, well temperaments, custom sets) each note lands
+// on the tuning's nearest pitch. Transpositions are still stored in cents, so
+// old saves load and a tuning switch re-tunes the comes with the dux.
+// (It used to multiply by 2^(cents/1200) directly: 12-TET intervals in 19- and
+// 31-EDO landed 3 to 21 cents off the grid.)
+function tuningPCs(t) {
+  if(t._pcs) return t._pcs;
+  const out=[];
+  for(let i=0;i<(t.defRows||1)*2;i++){ const c=((t.rowCents(i)%1200)+1200)%1200; if(!out.some(x=>Math.abs(x-c)<0.01)) out.push(c); }
+  return (t._pcs=out.sort((a,b)=>a-b));
+}
+function snapCents(row, transCents) {
+  const t=TUNINGS[curTuning], base=t.rowCents(row);
+  if(!transCents) return base;
+  if(t.stepCents) return base+Math.round(transCents/t.stepCents)*t.stepCents;
+  const target=base+transCents, oct=Math.floor(target/1200);
+  let best=target, bd=Infinity;
+  for(const o of [oct-1,oct,oct+1]) for(const c of tuningPCs(t)) {
+    const v=c+o*1200, d=Math.abs(v-target);
+    if(d<bd){ bd=d; best=v; }
+  }
+  return best;
+}
+// the transposition a voice actually gets, for labels (EDOs only)
+function snappedTrans(transCents) {
+  const t=TUNINGS[curTuning];
+  return t.stepCents ? Math.round(transCents/t.stepCents)*t.stepCents : transCents;
+}
+
 // Every voice goes through one master gain so stop can silence the notes that
 // were already handed to the 150 ms scheduler lookahead.
 let masterGain=null;
@@ -497,7 +530,7 @@ function master() {
 }
 
 function playNote(row, transCents, when) {
-  const freq=rowFreq(row)*Math.pow(2,transCents/1200);
+  const freq=C4*Math.pow(2,(snapCents(row,transCents)+viewOctave*1200)/1200);
   if(freq<18||freq>20000) return;
   const c=ac();
   const out=master();
@@ -525,6 +558,7 @@ function playNote(row, transCents, when) {
 // SCHEDULER
 // ═══════════════════════════════════════════════════════════════════════════════
 let schedT=null, curStep=0, nextT=0;
+let absStep=0;   // steps since play, never wrapped: each voice enters at its offset
 const NOTE_TAIL=0.45;   // longest note release + tail, in seconds
 function stepDur() { return 60/bpm/4; }
 function swingDur(step) {
@@ -538,17 +572,32 @@ function sched() {
   const maxOff = voices.reduce((m,v)=>Math.max(m,v.offset),0);
   const onceTot = numSteps + maxOff;
 
+  // stall resync: a blocked main thread would hand every missed step to Web
+  // Audio in the past, fired as one clump. Jump ahead and count the skipped
+  // steps, so every voice stays aligned to the shared step.
+  const now=actx.currentTime;
+  if(nextT<now-0.05) {
+    const skipped=Math.ceil((now+0.02-nextT)/stepDur());
+    curStep+=skipped; absStep+=skipped;
+    nextT=now+0.02;
+    if(loop) curStep%=numSteps;
+    else if(curStep>=onceTot){ stopPlay(); return; }
+  }
+
   while(nextT<actx.currentTime+0.15) {
     voices.forEach(v => {
       if(v.muted) return;
-      if(!loop && curStep < v.offset) return;
+      // a voice is silent until its entry, in loop mode too: the first pass
+      // plays the canon's staggered entries (loop used to start every comes
+      // mid-subject on beat 1)
+      if(absStep < v.offset) return;
       const pat=((curStep-v.offset)%numSteps+numSteps)%numSteps;
       for(let p=0;p<numRows;p++) {
         if(grid[p]&&grid[p][pat]) playNote(p,v.transCents,nextT);
       }
     });
     nextT+=swingDur(curStep);
-    curStep++;
+    curStep++; absStep++;
     if(loop) {
       if(curStep>=numSteps) curStep=0;
     } else {
@@ -568,7 +617,7 @@ function startPlay() {
   g.cancelScheduledValues(now);
   g.setValueAtTime(0,now);
   g.linearRampToValueAtTime(1,now+0.02);   // ramp back up after a stop, no click
-  nextT=now+0.05; curStep=0; playing=true;
+  nextT=now+0.05; curStep=0; absStep=0; playing=true;
   $('btn-play').classList.add('active');
   sched();
 }
@@ -588,10 +637,28 @@ function togglePlay(){ playing?stopPlay():startPlay(); }
 // ═══════════════════════════════════════════════════════════════════════════════
 // GRID CANVAS
 // ═══════════════════════════════════════════════════════════════════════════════
-const CW=24, CH=12;
+let CW=24, CH=12;
 const gc=$('grid'), gx=gc.getContext('2d');
 
-function resizeG() { gc.width=numSteps*CW; gc.height=numRows*CH; }
+// Cells shrink to fit the grid section (a phone showed 14 of 16 steps, and a
+// touch-drag on the grid can't scroll it), never below 16 px; on a touch
+// screen rows grow toward 18 px so a fingertip hits one row.
+function fitCells() {
+  const sec=gc.closest('.grid-sec'), axis=$('paxis');
+  const avail=(sec?sec.clientWidth:600)-(axis?axis.offsetWidth:24)-4;
+  // only in the one-column layout: in two columns the grid's own width sets
+  // its column, so measuring it would shrink the grid for nothing
+  const oneCol=window.matchMedia&&matchMedia('(max-width:720px)').matches;
+  CW=oneCol?Math.max(16,Math.min(24,Math.floor(avail/numSteps))):24;
+  const coarse=window.matchMedia&&matchMedia('(pointer: coarse)').matches;
+  CH=coarse?Math.max(12,Math.min(18,Math.floor(window.innerHeight*0.6/numRows))):12;
+}
+function resizeG() {
+  fitCells();
+  gc.width=numSteps*CW; gc.height=numRows*CH;
+  document.querySelectorAll('#paxis .plbl').forEach(d=>{ d.style.height=CH+'px'; });
+}
+window.addEventListener('resize',()=>{ const w=CW,h=CH; fitCells(); if(w!==CW||h!==CH) resizeG(); });
 
 function drawGrid() {
   const W=gc.width, H=gc.height;
@@ -601,7 +668,10 @@ function drawGrid() {
     const row=numRows-1-p;
     const lb=getRowLabel(p);
     const inSc=t.scaleFilter&&scale.has(p%(t.spo||12));
-    gx.fillStyle=lb.root?'#0d1022':inSc?'#0e0e18':lb.hi?'#0c0c1c':'#080810';
+    // with a scale chosen, rows outside it go dark and cannot be painted
+    // (the in-scale fill used to differ from the others by 2-6 RGB levels)
+    const outSc=scaleActive()&&!inSc;
+    gx.fillStyle=outSc?'#040406':(inSc&&scaleActive())?(lb.root?'#1a1a36':'#15152a'):lb.root?'#0d1022':inSc?'#0e0e18':lb.hi?'#0c0c1c':'#080810';
     gx.fillRect(0,row*CH,W,CH);
     if(lb.root){ gx.fillStyle='#1a1a30'; gx.fillRect(0,row*CH,W,1); }
     for(let s=0;s<numSteps;s++) {
@@ -609,7 +679,7 @@ function drawGrid() {
       gx.fillStyle=s%4===0?'#12121c':'#0b0b12';
       gx.fillRect(x,y,1,CH);
       if(grid[p]&&grid[p][s]) {
-        gx.fillStyle='rgba(190,190,210,0.85)';
+        gx.fillStyle=outSc?'rgba(190,190,210,0.34)':'rgba(190,190,210,0.85)';
         gx.fillRect(x+2,y+1,CW-3,CH-2);
         gx.fillStyle='rgba(255,255,255,0.12)';
         gx.fillRect(x+2,y+1,CW-3,2);
@@ -633,20 +703,25 @@ function gpos(e) {
   const my=(e.clientY-r.top)*gc.height/r.height;
   return {s:Math.floor(mx/CW), p:numRows-1-Math.floor(my/CH)};
 }
+function scaleActive() { return TUNINGS[curTuning].scaleFilter && scale!==SCALES.chromatic; }
 function gpaint(e) {
   const {s,p}=gpos(e);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ grid[p][s]=paintV; markNotaDirty(); }
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){
+    // painting is limited to the chosen scale; erasing works anywhere
+    if(paintV && scaleActive() && !scale.has(p%(TUNINGS[curTuning].spo||12))) return;
+    grid[p][s]=paintV; markNotaDirty();
+  }
 }
 gc.addEventListener('mousedown',e=>{
-  const {s,p}=gpos(e);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; markNotaDirty(); }
+  const e0=e, {s,p}=gpos(e);
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; gpaint(e0); }
 });
 gc.addEventListener('mousemove',e=>{ if(painting) gpaint(e); });
 window.addEventListener('mouseup',()=>painting=false);
 gc.addEventListener('touchstart',e=>{
   e.preventDefault();
-  const {s,p}=gpos(e.touches[0]);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; markNotaDirty(); }
+  const e0=e.touches[0], {s,p}=gpos(e0);
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; gpaint(e0); }
 },{passive:false});
 gc.addEventListener('touchmove',e=>{ e.preventDefault(); if(painting) gpaint(e.touches[0]); },{passive:false});
 window.addEventListener('touchend',()=>painting=false);
@@ -683,7 +758,7 @@ function drawRoll() {
 
   voices.forEach(v=>{
     if(v.muted) return;
-    const tRows=t.stepCents?v.transCents/t.stepCents:v.transCents/50;
+    const tRows=t.stepCents?Math.round(v.transCents/t.stepCents):v.transCents/50;
     for(let loop=0;loop<2;loop++) {
       for(let s=0;s<numSteps;s++) {
         const absStep=loop*numSteps+s+v.offset;
@@ -784,6 +859,16 @@ function drawLedgerLines(svg, x, sp, staveTop) {
   }
 }
 
+function drawRest16(svg, x, y) {
+  const g = mkSVG('g', {class:'nota-rest16'});
+  g.appendChild(mkSVG('path', {d:`M${x+3} ${y-7} L${x-1} ${y+9}`, fill:'none', 'stroke-width':1.3}));
+  for(const [dx, dy, sx, sy] of [[-2, -5.5, 2.6, -6], [-3.2, -1.5, 1.6, -2]]) {
+    g.appendChild(mkSVG('circle', {cx:x+dx, cy:y+dy, r:1.8, stroke:'none'}));
+    g.appendChild(mkSVG('path', {d:`M${x+dx} ${y+dy+1} Q${x+dx+2.6} ${y+dy+2} ${x+sx} ${y+sy}`, fill:'none', 'stroke-width':1.1}));
+  }
+  svg.appendChild(g);
+}
+
 function drawNotation() {
   notaDirty = false;
   const container = $('nota');
@@ -792,7 +877,8 @@ function drawNotation() {
   if(!visVoices.length) return;
 
   const W = container.clientWidth || 800;
-  const totalH = 8 + visVoices.length * (NOTA_STAVE_H + NOTA_GAP) + 8;
+  const NOTA_TOP = 24;   // room above the first staff for up-stems and beams
+  const totalH = NOTA_TOP + visVoices.length * (NOTA_STAVE_H + NOTA_GAP) + 8;
   const stepW = (W - NOTA_LPAD - NOTA_RPAD) / numSteps;
 
   const svg = mkSVG('svg', {width:W, height:totalH, style:'display:block'});
@@ -800,7 +886,7 @@ function drawNotation() {
 
   visVoices.forEach((v, vi) => {
     const voiceIdx = voices.indexOf(v);
-    const staveTop = 8 + vi * (NOTA_STAVE_H + NOTA_GAP);
+    const staveTop = NOTA_TOP + vi * (NOTA_STAVE_H + NOTA_GAP);
     const staveBot = staffPosToY(0, staveTop); // y of E4 bottom line
 
     // 5 staff lines at staffPos 0,2,4,6,8
@@ -821,10 +907,12 @@ function drawNotation() {
       x:NOTA_LPAD-4, y:staveTop+16,
       'text-anchor':'end', class:'nota-lbl', fill:hexA(v.color,0.7)
     });
-    lbl.textContent = voiceIdx === 0 ? 'dux' : 'c'+(voiceIdx+1);
+    lbl.textContent = voiceIdx === 0 ? 'dux' : 'v'+(voiceIdx+1);
     svg.appendChild(lbl);
 
-    // Notes for each step
+    // Notes for each step. Stems, beams and flags are drawn after the loop,
+    // once each beat's notes are known: every note is a 16th of the grid.
+    const chords = new Array(numSteps).fill(null);
     for(let s = 0; s < numSteps; s++) {
       const pat = ((s - v.offset) % numSteps + numSteps) % numSteps;
       const pitchRows = [];
@@ -836,27 +924,22 @@ function drawNotation() {
       const midY = staffPosToY(4, staveTop); // B4 = middle of staff
 
       if(pitchRows.length === 0) {
-        // 16th rest
-        const rest = mkSVG('text', {x:nx, y:midY+4, 'text-anchor':'middle', class:'nota-rest'});
-        rest.textContent = '\u{1D13E}'; // 𝄾
-        svg.appendChild(rest);
+        // 16th rest, drawn as a path: a slanted stem with two hooks. (The
+        // U+1D13E glyph was an eighth rest and rendered as an empty box in
+        // fonts without musical symbols.)
+        drawRest16(svg, nx, midY);
         continue;
       }
 
+      chords[s] = { nx, ys: [], sps: [] };
       pitchRows.forEach(p => {
-        const cents = TUNINGS[curTuning].rowCents(p) + v.transCents + viewOctave * 1200;
+        const cents = snapCents(p, v.transCents) + viewOctave * 1200;
         const {staffPos, accidental, deviation} = centsToNoteInfo(cents);
         const ny = staffPosToY(staffPos, staveTop);
+        chords[s].ys.push(ny); chords[s].sps.push(staffPos);
 
         // Ledger lines (if needed)
         drawLedgerLines(svg, nx, staffPos, staveTop);
-
-        // Stem (up if below middle line B4=sp4, down otherwise)
-        const stemUp = staffPos < 4;
-        const stemX  = stemUp ? nx + 5 : nx - 5;
-        svg.appendChild(mkSVG('line', {
-          x1:stemX, y1:ny, x2:stemX, y2:stemUp ? ny-28 : ny+28, class:'nota-stem'
-        }));
 
         // Note head
         const nh = mkSVG('ellipse', {
@@ -885,12 +968,53 @@ function drawNotation() {
         }
       });
     }
+    drawBeams(svg, chords);
   });
+}
+
+// 16ths: runs of consecutive notes inside one beat (4 steps) share a stem
+// direction and a double beam; a note alone in its run gets two flags. (Bare
+// stems read as quarter notes.) One stem per chord, from its far note.
+function drawBeams(svg, chords) {
+  let s = 0;
+  while(s < chords.length) {
+    if(!chords[s]) { s++; continue; }
+    const beat = Math.floor(s / 4), run = [];
+    while(s < chords.length && chords[s] && Math.floor(s / 4) === beat) run.push(chords[s++]);
+    const allSp = run.flatMap(c => c.sps), allY = run.flatMap(c => c.ys);
+    const up = allSp.reduce((a, b) => a + b, 0) / allSp.length < 4;
+    const beamY = up ? Math.min(...allY) - 26 : Math.max(...allY) + 26;
+    const xs = run.map(c => up ? c.nx + 5 : c.nx - 5);
+    run.forEach((c, i) => {
+      const far = up ? Math.max(...c.ys) : Math.min(...c.ys);
+      svg.appendChild(mkSVG('line', {x1:xs[i], y1:far, x2:xs[i], y2:beamY, class:'nota-stem'}));
+    });
+    const dir = up ? 1 : -1;   // second beam / flag sits toward the notes
+    if(run.length > 1) {
+      for(const k of [0, 1]) {
+        const y = beamY + dir * k * 5;
+        svg.appendChild(mkSVG('path', {d:`M${xs[0]} ${y} L${xs[xs.length - 1]} ${y}`, class:'nota-beam'}));
+      }
+    } else {
+      for(const k of [0, 1]) {
+        const y = beamY + dir * k * 5;
+        svg.appendChild(mkSVG('path', {d:`M${xs[0]} ${y} q4 ${dir * 3} 6 ${dir * 9}`, class:'nota-flag'}));
+      }
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // VOICES UI
 // ═══════════════════════════════════════════════════════════════════════════════
+// "→ 694.7¢" when the tuning rounds a typed transposition; empty when exact
+function effLabel(tc) {
+  const t=TUNINGS[curTuning];
+  if(!t.stepCents) return tc ? '→ nearest' : '';
+  const e=snappedTrans(tc);
+  return Math.abs(e-tc)>0.05 ? `→ ${e.toFixed(1)}¢` : '';
+}
+
 function buildVoicesUI() {
   const list=$('vlist');
   list.innerHTML='';
@@ -905,6 +1029,7 @@ function buildVoicesUI() {
       <input class="vf" type="number" value="${v.offset}" min="0" max="${numSteps*4}" ${isOrig?'disabled':''} data-i="${i}" data-f="off">
       <span class="vfl" title="transposition in cents">¢</span>
       <input class="vf w" type="number" value="${Math.round(v.transCents)}" step="100" min="-2400" max="2400" ${isOrig?'disabled':''} data-i="${i}" data-f="cents">
+      <span class="vfl" id="veff${i}" title="the transposition this tuning can play">${isOrig?'':effLabel(v.transCents)}</span>
       ${!isOrig?`<button class="vmute" data-i="${i}">${v.muted?'unmute':'mute'}</button><button class="vdel" data-i="${i}">×</button>`:''}
     `;
     list.appendChild(row);
@@ -914,7 +1039,7 @@ function buildVoicesUI() {
     inp.addEventListener('input',e=>{
       const i=+e.target.dataset.i, f=e.target.dataset.f;
       if(f==='off') voices[i].offset=Math.max(0,parseInt(e.target.value)||0);
-      if(f==='cents'){ const v=parseFloat(e.target.value); if(!isNaN(v)) voices[i].transCents=v; }
+      if(f==='cents'){ const v=parseFloat(e.target.value); if(!isNaN(v)) voices[i].transCents=v; const el=$('veff'+i); if(el) el.textContent=effLabel(voices[i].transCents); }
       markNotaDirty();
     });
   });
@@ -929,16 +1054,37 @@ function buildVoicesUI() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // INTERVAL SELECTOR
 // ═══════════════════════════════════════════════════════════════════════════════
+// Labels say what the voice will really get in the current tuning:
+// "P5 · 11 steps (694.7¢)" in 19-EDO, "P5 (700¢)" in 12-TET.
 function buildIntervals() {
-  const sel=$('iv-sel');
+  const sel=$('iv-sel'), prev=sel.value;
+  const t=TUNINGS[curTuning];
   sel.innerHTML='';
+  // 7/4 rounds onto the m7 in 12-TET: don't offer the same comes twice
+  const kOf=iv=>t.stepCents?Math.round(iv.cents/t.stepCents):null;
+  const plainKs=new Set(INTERVALS.filter(iv=>iv.name!=='7/4').map(kOf));
   INTERVALS.forEach(iv=>{
+    if(iv.name==='7/4' && t.stepCents && plainKs.has(kOf(iv))) return;
     const opt=document.createElement('option');
     opt.value=iv.cents.toFixed(3);
-    opt.textContent=`${iv.name} (${Math.round(iv.cents)}¢)`;
-    if(iv.name==='P5') opt.selected=true;
+    if(t.stepCents && t.stepCents!==100) {
+      const k=Math.round(iv.cents/t.stepCents);
+      opt.textContent=`${iv.name} · ${k} step${Math.abs(k)===1?'':'s'} (${(k*t.stepCents).toFixed(1)}¢)`;
+    } else if(t.stepCents) {
+      opt.textContent=`${iv.name} (${Math.round(snappedTrans(iv.cents))}¢)`;
+    } else {
+      opt.textContent=`${iv.name} (≈${Math.round(iv.cents)}¢, nearest pitch)`;
+    }
+    if(prev ? opt.value===prev : iv.name==='P5') opt.selected=true;
     sel.appendChild(opt);
   });
+  // the kept choice was dropped (7/4 leaving for 12-TET): take the nearest interval
+  // still offered (7/4 → m7), never the browser's fallback to the first option
+  if(prev && sel.value!==prev) {
+    let best=null;
+    for(const o of sel.options) if(!best || Math.abs(+o.value-+prev)<Math.abs(+best.value-+prev)) best=o;
+    if(best) sel.value=best.value;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -975,6 +1121,8 @@ function switchTuning(t, quiet) {
   resizeG();
   $('scale-sel').disabled=!TUNINGS[t].scaleFilter;
   if(!TUNINGS[t].scaleFilter) scale=SCALES.chromatic;
+  buildIntervals();
+  if(typeof buildVoicesUI==='function' && $('vlist')) buildVoicesUI();
   markNotaDirty();
 }
 
@@ -1019,7 +1167,7 @@ function scheduleAutoSave() {
 
 function saveGrid() {
   const state = {
-    v: 1, tuning: curTuning, numSteps, bpm, swingRatio, oscType,
+    v: 1, tuning: curTuning, numSteps, bpm, swingRatio, oscType, viewOctave,
     voices: voices.map(v => ({offset:v.offset, transCents:v.transCents, muted:!!v.muted})),
     grid: grid.map(row => row ? [...row] : null),
   };
@@ -1041,13 +1189,25 @@ function loadGrid() {
       switchTuning(s.tuning, true);
     }
     if(s.numSteps) updateSteps(s.numSteps);
-    if(s.bpm) { bpm=s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
-    if(s.swingRatio != null) {
-      swingRatio = s.swingRatio;
+    if(Number.isFinite(+s.bpm) && +s.bpm >= 20 && +s.bpm <= 400) { bpm=+s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
+    if(Number.isFinite(+s.swingRatio) && +s.swingRatio >= 0.5 && +s.swingRatio <= 0.875) {
+      swingRatio = +s.swingRatio;
       $('swing-r').value = Math.round((swingRatio-0.5)/0.375*100);
       $('swing-v').textContent = swingLabel(swingRatio);
     }
-    if(s.oscType) { oscType=s.oscType; $('osc-sel').value=oscType; }
+    // a save is untrusted text: only a sound the menu offers
+    if(s.oscType && [...$('osc-sel').options].some(o => o.value === s.oscType)) { oscType=s.oscType; $('osc-sel').value=oscType; }
+    // an imported sequence can grow the grid and shift the view octave;
+    // restore both (older saves carry neither and load as before)
+    if(Number.isInteger(s.viewOctave) && Math.abs(s.viewOctave) <= 2) {
+      viewOctave = s.viewOctave;
+      $('oct-v').textContent = (viewOctave >= 0 ? '+' : '') + viewOctave;
+    }
+    if(Array.isArray(s.grid) && s.grid.length > numRows) {
+      numRows = Math.min(s.grid.length, 3 * 31 + 1);
+      grid = Array.from({length: numRows}, () => new Array(numSteps).fill(false));
+    }
+    buildAxis(); resizeG();
     if(s.grid) {
       grid.forEach(row => row && row.fill(false));
       for(let p=0; p<Math.min(s.grid.length,numRows); p++) {
@@ -1061,7 +1221,9 @@ function loadGrid() {
     if(s.voices && s.voices.length > 0) {
       voices.length = 0;
       s.voices.forEach((v,i) => {
-        voices.push({offset:v.offset||0, transCents:v.transCents||0, color:VCOL[i%VCOL.length], muted:!!v.muted});
+        // numbers only: the voice row puts these into markup
+        const tc = Number(v && v.transCents);
+        voices.push({offset:Math.max(0, parseInt(v && v.offset) || 0), transCents:Number.isFinite(tc) ? tc : 0, color:VCOL[i%VCOL.length], muted:!!(v && v.muted)});
       });
       buildVoicesUI();
     }
@@ -1134,6 +1296,21 @@ $('btn-reload-tuning').addEventListener('click', () => {
     .catch(()=>{ btn.textContent='✗'; setTimeout(()=>btn.textContent='↺', 1200); });
 });
 
+// Tick labels sit where their ratio really is on the slider, which is linear
+// from 0.5 to 0.875 (they used to be spaced evenly, off by up to 21 %).
+// Two rows, so 7-let (19 %) and 5-let (27 %) don't collide.
+(function swingTicks() {
+  const T=[['even',0.5,0],['7-let',4/7,1],['5-let',3/5,0],['triplet',2/3,1],['dotted',3/4,0],['2×dot',7/8,1]];
+  const box=$('swing-ticks');
+  T.forEach(([name,r,row])=>{
+    const pct=(r-0.5)/0.375*100;
+    const sp=document.createElement('span');
+    sp.textContent=name;
+    sp.style.cssText=`position:absolute;left:${pct}%;top:${row?0.62:0}rem;transform:translateX(-${pct}%);white-space:nowrap`;
+    box.appendChild(sp);
+  });
+})();
+
 $('swing-r').addEventListener('input',e=>{
   swingRatio = 0.5 + (parseInt(e.target.value)/100)*0.375;
   $('swing-v').textContent = swingLabel(swingRatio);
@@ -1145,7 +1322,7 @@ $('btn-add').addEventListener('click',()=>{
   if(voices.length>=VCOL.length) return;
   voices.push({
     offset:parseInt($('dist-n').value)||4,
-    transCents:parseFloat($('iv-sel').value)||700,
+    transCents:(c=>Number.isFinite(c)?c:700)(parseFloat($('iv-sel').value)),   // unison is 0, not "use the default"
     color:VCOL[voices.length],
     muted:false,
   });
@@ -1183,24 +1360,46 @@ function loadGridOrSeq() {
     try {
       const s = JSON.parse(raw);
       if(!s || s.v !== 1 || !Array.isArray(s.events)) throw new Error('bad');
-      const C4 = 261.626;
-      const fund = s.fundamental_hz || 220;
-      // Map events to grid rows: row 0 = C4 in 12-TET
-      // Fundamental in semitones from C4, then add ratio semitones
-      const fundSt = 12 * Math.log2(fund / C4);
-      // Target octave: put 1/1 around row 12 (C5)
-      const BASE_ROW = 12;
-      const fundRow  = BASE_ROW + Math.round(fundSt);
-      const len = Math.min(s.events.length, 64);
+      // Import into 31-EDO, whose steps sit close to the just ratios a
+      // sequence carries (5/4 0.8 cents off, 7/4 1.1), instead of 12-TET
+      // (5/4 13.7, 7/4 31 off). The view octave follows the lowest note, so
+      // the whole line fits where it can; anything that still falls off the
+      // grid is counted, not silently dropped. (It used to fix 1/1 near C5 in
+      // 12-TET: a 110 Hz bag lost 1/1, 16/15 and 9/8 without a word.)
+      const okInt = n => Number.isInteger(n) && n > 0;
+      const fund = Number.isFinite(+s.fundamental_hz) && +s.fundamental_hz > 0 ? +s.fundamental_hz : 220;
+      const evs = s.events.filter(ev => ev && okInt(ev.p) && okInt(ev.q) && ev.p <= 1e6 && ev.q <= 1e6);
+      if(!evs.length) throw new Error('no playable events');   // falls back to the saved grid
+      const len = Math.min(evs.length, 64);
+      $('tuning-sel').value = '31';
+      switchTuning('31', true);
+      const step = TUNINGS['31'].stepCents;
+      // the 1/1 goes on its nearest step, so every interval keeps its own
+      // 31-EDO error instead of inheriting the fundamental's offset
+      const fundC = 1200 * Math.log2(fund / C4), fundSnap = Math.round(fundC / step) * step;
+      const cents = evs.slice(0, len).map(ev => fundSnap + 1200 * Math.log2(ev.p / ev.q));
+      viewOctave = Math.max(-2, Math.min(2, Math.floor(Math.min(...cents) / 1200)));
+      $('oct-v').textContent = (viewOctave >= 0 ? '+' : '') + viewOctave;
+      // grow the grid upward if the line spans more than the default rows
+      const topRow = Math.max(...cents.map(c => Math.round((c - viewOctave * 1200) / step)));
+      if(topRow >= numRows) {
+        numRows = Math.min(topRow + 1, 3 * 31 + 1);
+        grid = Array.from({length: numRows}, () => new Array(numSteps).fill(false));
+      }
+      buildAxis();
       updateSteps(Math.max(16, len));
-      if(s.bpm) { bpm=s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
-      // Clear grid
+      const b = Number(s.bpm);
+      if(Number.isFinite(b) && b > 0) { bpm = Math.max(20, Math.min(300, b)); $('bpm-n').value = bpm; $('bpm-r').value = bpm; }
       grid.forEach(row => row && row.fill(false));
-      s.events.slice(0, len).forEach((ev, col) => {
-        const ratioSt = 12 * Math.log2(ev.p / ev.q);
-        const row = fundRow + Math.round(ratioSt);
-        if(row >= 0 && row < numRows && col < numSteps) grid[row][col] = true;
+      let placed = 0, worst = 0;
+      cents.forEach((c, col) => {
+        const exact = (c - viewOctave * 1200) / step, row = Math.round(exact);
+        if(row >= 0 && row < numRows && col < numSteps) {
+          grid[row][col] = true; placed++;
+          worst = Math.max(worst, Math.abs(row - exact) * step);
+        }
       });
+      const lost = evs.length - placed;
       markNotaDirty();
       // Brief toast
       const toast = document.createElement('div');
@@ -1209,11 +1408,16 @@ function loadGridOrSeq() {
         background:'rgba(74,158,255,0.12)', border:'1px solid rgba(74,158,255,0.3)',
         color:'rgba(74,158,255,0.9)', fontFamily:'monospace', fontSize:'0.62rem',
         padding:'0.4rem 1rem', letterSpacing:'0.08em', zIndex:9999,
-        pointerEvents:'none', transition:'opacity 0.4s',
+        pointerEvents:'none', transition:'opacity 0.4s', maxWidth:'90vw', textAlign:'center',
       });
-      toast.textContent = `sequence loaded · ${len} steps`;
+      const moved = fundSnap - fundC;
+      toast.textContent = `sequence loaded into 31-EDO · ${placed} note${placed === 1 ? '' : 's'}`
+        + (lost ? ` · ${lost} did not fit` : '')
+        + ` · intervals within ${worst.toFixed(1)}¢ of just`
+        + (Math.abs(moved) >= 0.05 ? ` · 1/1 moved ${moved > 0 ? '+' : '−'}${Math.abs(moved).toFixed(1)}¢ onto a step` : '')
+        + ` · each note one 16th, durations not carried`;
       document.body.appendChild(toast);
-      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2200);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 5200);
     } catch(e) { loadGrid(); }
   } else {
     loadGrid();

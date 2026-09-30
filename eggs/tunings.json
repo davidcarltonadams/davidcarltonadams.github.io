@@ -5,7 +5,7 @@
     {
       "id": "k3",
       "name": "Kirnberger III",
-      "description": "Well-temperament. Four 1/4-comma narrow fifths C-G-D-A-E give pure major third C-E (386¢). Remaining fifths pure. Warm in C major, increasingly bright toward F#. Bach-associated.",
+      "description": "Well-temperament. Four 1/4-comma narrow fifths C-G-D-A-E give pure major third C-E (386¢). F#-C# is narrowed by the schisma (2¢); the other seven fifths are pure. Warm in C major, increasingly bright toward F#. Bach-associated.",
       "type": "welltemp",
       "pitches": [0, 0.90225, 1.93157, 2.94135, 3.86314, 4.98045, 5.90224, 6.96578, 7.92180, 8.89735, 9.96090, 10.88269]
     },

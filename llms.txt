@@ -14,10 +14,11 @@
 - [Teaching](https://davidcarltonadams.com/teaching.html): courses, private lessons, teaching philosophy
 - [Systems](https://davidcarltonadams.com/systems.html): the non-music side — a multi-agent AI operations system he built and runs daily, three interactive demos, design principles, program record
 - [Contact](https://davidcarltonadams.com/contact.html): email and profiles
-- [Eggs](https://davidcarltonadams.com/eggs.html): three dozen browser-based
-  musical instruments and toys — just intonation lattices, rhythm machines,
+- [Eggs](https://davidcarltonadams.com/eggs.html): forty browser-based
+  musical instruments and toys: just intonation lattices, rhythm machines,
   psychoacoustic illusions, tuning explorers. All run client-side in the
-  browser with no accounts and no data collection.
+  browser with no accounts, and the site collects no data; the performance
+  clock's shared sessions use a public PeerJS relay.
 - [Nest](https://davidcarltonadams.com/nest.html): a concept map of the eggs —
   an 8-dimensional similarity embedding flattened to 2D.
 

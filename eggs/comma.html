@@ -16,6 +16,7 @@
       --text:   #ccc8d0;
       --dim:    rgba(204,200,208,0.40);
       --dimmer: rgba(204,200,208,0.17);
+      --control: rgba(204,200,208,0.58);   /* 4.55:1 on --bg: anything clickable */
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
     }
@@ -32,7 +33,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -48,7 +49,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 540px;
@@ -65,7 +66,7 @@
       font-size: 0.72rem;
       letter-spacing: 0.14em;
     }
-    .chord-name { color: var(--dimmer); transition: color 0.12s; }
+    .chord-name { color: var(--dim); transition: color 0.12s; }
     .chord-name.lit { color: var(--gold); }
 
     .ratio-line {
@@ -76,6 +77,7 @@
       min-height: 1em;
     }
 
+    .name-line { color: var(--text); letter-spacing: 0.18em; margin-top: -1.1rem; }
     .drift-line {
       font-size: 0.6rem;
       letter-spacing: 0.1em;
@@ -100,7 +102,7 @@
     .ctrl-label {
       font-size: 0.57rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
     }
     .ctrl-val {
@@ -132,7 +134,7 @@
     }
     button {
       background: transparent;
-      color: var(--dimmer);
+      color: var(--control);
       border: 1px solid var(--border);
       padding: 0.32rem 0.85rem;
       font-family: Georgia, serif;
@@ -142,13 +144,13 @@
       cursor: pointer;
       transition: color 0.15s, border-color 0.15s;
     }
-    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
     button.on { color: var(--gold); border-color: rgba(212,192,112,0.4); }
 
     .hint {
       font-size: 0.53rem;
       letter-spacing: 0.1em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
     }
   </style>
@@ -158,7 +160,7 @@
 
 <div class="header">
   <h1 class="title">comma</h1>
-  <p class="sub">the syntonic comma pump. four familiar chords — C, A minor, D minor, G — each tuned purely from a note the previous chord leaves behind. no voice ever moves by anything but a pure interval, yet every time the progression comes home, home has sunk by 81/80 — a syntonic comma, 21.5 cents. escher's staircase is an illusion; this one really descends. about 56 cycles to fall a full octave. reverse to climb, temper to stand still.</p>
+  <p class="sub">the syntonic comma pump. four familiar chords (C, A minor, D minor, G), each tuned purely from a note the previous chord leaves behind. no voice ever moves by anything but a pure interval, yet every time the progression comes home, home has sunk by 81/80, a syntonic comma, 21.5 cents. escher's staircase is an illusion; this one really descends. about 56 cycles to fall a full octave. reverse to climb, temper to stand still. the G chord's root is 40/27, one comma under the 3/2 you started from.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -170,6 +172,7 @@
   <span class="chord-name" data-c="G">G</span>
 </div>
 <div class="ratio-line" id="ratioLine">&nbsp;</div>
+<div class="ratio-line name-line" id="nameLine">&nbsp;</div>
 <div class="drift-line" id="driftLine">cycle 0 · tonic ±0.0¢</div>
 
 <div class="controls">
@@ -205,7 +208,7 @@
   <button id="btnReset">reset</button>
 </div>
 
-<p class="hint">click the canvas to start · esc stops and frees the voices · gold bars are notes held over from the previous chord — the pure links the comma sneaks through</p>
+<p class="hint">click the canvas to start · esc stops and frees the voices · gold bars are notes held over from the previous chord · the pure links the comma sneaks through · − marks a note one syntonic comma (81/80) under its just C-major self</p>
 
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -366,6 +369,40 @@ function advance(now) {
   updateReadout();
 }
 
+// Letter names relative to the original C, Johnston style: C D E F G A B =
+// 1 9/8 5/4 4/3 3/2 5/3 15/8, and each "−" (or "+") is one syntonic comma
+// (81/80) below (above) that note. A voice is 3^b·5^c (octaves ignored);
+// its letter is the fifths-chain position b + 4c, and the drifted base adds
+// (−4, +1) per comma sunk, so every cycle hangs one more "−" on each voice.
+const JOHNSTON = { '-1': [-1, 0], 0: [0, 0], 1: [1, 0], 2: [2, 0], 3: [-1, 1], 4: [0, 1], 5: [1, 1] };
+function exps35(r) {
+  for (let c = -4; c <= 4; c++) for (let b = -8; b <= 8; b++) {
+    const oct = Math.log2(r / (Math.pow(3, b) * Math.pow(5, c)));
+    if (Math.abs(oct - Math.round(oct)) < 1e-9) return [b, c];
+  }
+  return null;
+}
+function johnstonName(b, c) {
+  const idx = b + 4 * c;
+  const nat = ((idx + 1) % 7 + 7) % 7 - 1;          // −1…5: F C G D A E B
+  const sh = (idx - nat) / 7;                         // sharps (+) / flats (−), 25/24 each
+  const [b0, c0] = JOHNSTON[nat];
+  const d = c - (c0 + 2 * sh);                        // commas below the Johnston note
+  const letter = 'FCGDAEB'[nat + 1] + (sh > 0 ? '♯'.repeat(sh) : '♭'.repeat(-sh));
+  const n = Math.abs(d), sign = d > 0 ? '−' : '+';
+  return letter + (n === 0 ? '' : n <= 3 ? sign.repeat(n) : sign + n);
+}
+function updateNameLine(name) {
+  const el = document.getElementById('nameLine');
+  if (mode === 'tempered') { el.innerHTML = '&nbsp;'; return; }
+  const m = Math.round(Math.log(base) / Math.log(COMMA));   // commas the tonic has sunk
+  const table = mode === 'corrected' ? CORR : PURE;
+  el.textContent = table[name].map(r => {
+    const e = exps35(r);
+    return e ? johnstonName(e[0] - 4 * m, e[1] + m) : '?';
+  }).join('  ');
+}
+
 function updateReadout() {
   const name = SEQ[idx];
   document.querySelectorAll('.chord-name').forEach(el =>
@@ -373,6 +410,7 @@ function updateReadout() {
   document.getElementById('ratioLine').textContent =
     mode === 'tempered' ? 'equal-tempered · every interval slightly impure · nothing moves'
                         : RATIOS[name];
+  updateNameLine(name);
   const cents = 1200 * Math.log2(base);
   const s = (cents <= -0.05 ? '−' : cents >= 0.05 ? '+' : '±') +
             Math.abs(cents).toFixed(1);
@@ -476,7 +514,7 @@ function draw(now) {
   c.font = "15px Georgia, serif"; c.textBaseline = 'middle';
   if (mode === 'tempered') c.fillText('· anchored', 12, H - 24);
   else if (mode === 'corrected') c.fillText('↺ snapping back', 12, H - 24);
-  else c.fillText(dir === 1 ? '↓ sinking' : '↑ climbing', 12, dir === 1 ? H - 24 : 24);
+  else c.fillText(dir === 1 ? '↓ sinking' : '↑ climbing', 40, dir === 1 ? H - 24 : 24);   // x 40 clears the C3 ruler label
 }
 
 // ── Loop ─────────────────────────────────────────────────────
@@ -565,6 +603,18 @@ $('btnReverse').addEventListener('click', () => {
   updateReadout();
 });
 $('btnStop').addEventListener('click', stopAll);
+// a hidden tab stops rAF, and the sequencer and the master fade both live in
+// loop(), so the chord used to drone on. Pause instead: fade, suspend, and
+// show "play"; the drift position is kept for when the visitor comes back.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden || !running) return;
+  setRunning(false);
+  if (!actx) return;
+  const ctx = actx;
+  master.gain.cancelScheduledValues(ctx.currentTime);
+  master.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+  setTimeout(() => { if (ctx.state === 'running' && !running) ctx.suspend(); }, 150);
+});
 $('btnReset').addEventListener('click', reset);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') stopAll();

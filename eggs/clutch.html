@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="run a shepard staircase and a comma pump off one clock at the same cents per second — one drifts away for real, the other only seems to.">
+  <meta name="description" content="run a shepard staircase and a comma pump off one clock at the same cents per second · one drifts away for real, the other only seems to.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -16,6 +16,7 @@
       --text:   #ccc8d0;
       --dim:    rgba(204,200,208,0.40);
       --dimmer: rgba(204,200,208,0.17);
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
     }
@@ -38,7 +39,7 @@
     body > * { max-width: 100%; }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -61,7 +62,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 560px;
@@ -121,7 +122,7 @@
     }
     button {
       background: transparent;
-      color: var(--dimmer);
+      color: var(--control);
       border: 1px solid var(--border);
       padding: 0.32rem 0.85rem;
       font-family: Georgia, serif;
@@ -131,13 +132,13 @@
       cursor: pointer;
       transition: color 0.15s, border-color 0.15s;
     }
-    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
     button.on { color: var(--gold); border-color: rgba(212,192,112,0.4); }
     /* voice toggles: lit = sounding, dark = muted. Default state is lit,
        because both sides sound until you silence one. */
     button.voice { color: var(--gold); border-color: rgba(212,192,112,0.4); }
     button.voice.muted {
-      color: rgba(204,200,208,0.45);
+      color: var(--control);
       border-color: rgba(255,255,255,0.06);
       text-decoration: line-through;
       text-decoration-color: rgba(204,200,208,0.3);
@@ -163,7 +164,7 @@
 <div class="header">
   <h1 class="title">clutch</h1>
   <p class="pairing">escher × comma</p>
-  <p class="sub">two eggs, one clock. on the left, escher — the staircase that always descends and never arrives. on the right, comma — the pump that arrives 21.5 cents lower every time it comes home. their rates are locked: both fall at exactly the same cents per second. only one of them means it. eventually the pump leaves the room; the staircase never does. first pairing of the clutch — the duets live in the spaces between eggs.</p>
+  <p class="sub">two eggs, one clock. on the left, escher: the staircase that always descends and never arrives. on the right, comma: the pump that arrives 21.5 cents lower every time it comes home. their rates are locked: both fall at exactly the same cents per second. only one of them means it. eventually the pump leaves the room; the staircase never does. first pairing of the clutch · the duets live in the spaces between eggs.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -172,7 +173,7 @@
 
 <div class="controls">
   <div class="ctrl-group">
-    <span class="ctrl-label">tempo · BPM</span>
+    <span class="ctrl-label">tempo · bpm</span>
     <input type="range" id="bpmSlider" min="40" max="750" value="121" step="1">
     <span class="ctrl-val" id="bpmVal">121</span>
   </div>
@@ -182,8 +183,8 @@
   <button id="btnPlay">play</button>
   <button id="btnReverse">reverse</button>
   <button id="btnReset" title="back to the state the page loaded in">reset</button>
-  <button id="btnMuteL" class="voice" title="escher — the staircase, left channel">escher <span class="side">· staircase</span></button>
-  <button id="btnMuteR" class="voice" title="comma — the pump, right channel">comma <span class="side">· pump</span></button>
+  <button id="btnMuteL" class="voice" title="escher · the staircase, left channel">escher <span class="side">· staircase</span></button>
+  <button id="btnMuteR" class="voice" title="comma · the pump, right channel">comma <span class="side">· pump</span></button>
 </div>
 
 <p class="hint">click the canvas to start · escher sounds left, comma sounds right · a lit button is sounding, a struck-through one is muted · esc stops and frees the audio</p>
@@ -410,7 +411,7 @@ function draw(now) {
   c.textAlign = 'center';
   const roomy = W >= 520;          // narrow frames get the bare names
   const tag = (name, epithet, muted) =>
-    (roomy ? name + ' · ' + epithet : name) + (muted && roomy ? ' — muted' : '');
+    (roomy ? name + ' · ' + epithet : name) + (muted && roomy ? ' · muted' : '');
   c.fillStyle = muteL ? 'rgba(204,200,208,0.12)' : 'rgba(204,200,208,0.3)';
   c.fillText(tag('escher', 'the staircase', muteL), MID / 2, 16);
   c.fillStyle = muteR ? 'rgba(204,200,208,0.12)' : 'rgba(204,200,208,0.3)';
@@ -490,8 +491,8 @@ function verdict() {
   if (!running && cycles === 0) { el.textContent = 'press play'; return; }
   const rate = (dir === 1 ? '−' : '+') + centsPerSec().toFixed(1);
   el.innerHTML =
-    `both fall at <span class="gold">${rate}¢/s</span> · ` +
-    `net displacement — staircase: <span class="gold">${signed(staircaseCents())}¢</span> ` +
+    `both ${dir === 1 ? 'fall' : 'rise'} at <span class="gold">${rate}¢/s</span> · ` +
+    `net displacement · staircase: <span class="gold">${signed(staircaseCents())}¢</span> ` +
     `<span class="fold">(folds)</span> · ` +
     `pump: <span class="gold">${signed(1200 * Math.log2(base))}¢</span> · cycle ${cycles}`;
 }
@@ -633,6 +634,27 @@ function resetAll() {
   verdict();
 }
 $('btnReset').addEventListener('click', resetAll);
+
+// ── hidden tab ───────────────────────────────────────────────
+// Master gain is steered from rAF, and a hidden tab stops rAF, so the ten
+// oscillators used to keep sounding the last chord (RMS 0.132 hidden vs 0.133
+// playing). On hide: ramp the master to 0 over ~50 ms and suspend the clock.
+// On return: resume only if it was playing.
+let resumeOnShow = false;
+document.addEventListener('visibilitychange', () => {
+  if (!actx) return;
+  if (document.hidden) {
+    resumeOnShow = running;
+    if (running) setRunning(false);
+    const ctx = actx;
+    master.gain.setTargetAtTime(0, ctx.currentTime, 0.012);   // ~50 ms to silence
+    setTimeout(() => { if (document.hidden && ctx.state === 'running') ctx.suspend(); }, 400);   // the limiter's release trails the ramp
+  } else {
+    if (actx.state === 'suspended') actx.resume();
+    if (resumeOnShow) setRunning(true);
+    resumeOnShow = false;
+  }
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { stopAll(); }
 });

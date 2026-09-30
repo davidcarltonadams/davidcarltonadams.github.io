@@ -13,7 +13,7 @@
 
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -28,6 +28,7 @@
       --accent:  rgba(212,204,196,0.8);
       --on-bg:   rgba(212,204,196,0.10);
       --border:  rgba(212,204,196,0.18);
+      --control: rgba(212,204,196,0.58);   /* anything clickable: 4.6:1 on --bg */
     }
 
     body {
@@ -41,6 +42,22 @@
       justify-content: center;
       gap: 2.5rem;
       padding: 2rem 1.5rem 3rem;
+    }
+
+    /* ── Title + epigraph ───────────────────────────────────── */
+    .header { text-align: center; max-width: 30rem; }
+    .title {
+      font-size: 0.95rem; font-weight: normal;
+      letter-spacing: 0.24em; text-transform: lowercase; color: var(--text);
+    }
+    .sub {
+      font-size: 0.6rem; letter-spacing: 0.08em; line-height: 1.7;
+      color: var(--dim); font-style: italic; margin-top: 0.4rem;
+    }
+    #ji-line {
+      font-size: 0.6rem; letter-spacing: 0.12em;
+      color: var(--dim); margin-top: 0.3rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
     }
 
     /* ── Pitch display ──────────────────────────────────────── */
@@ -62,7 +79,7 @@
     #freq-hz {
       font-size: 0.6rem;
       letter-spacing: 0.2em;
-      color: var(--dimmer);
+      color: var(--dim);
       margin-top: 0.4rem;
       font-style: italic;
     }
@@ -149,7 +166,7 @@
     .note-btn {
       font-size: 0.55rem;
       letter-spacing: 0.06em;
-      color: var(--dimmer);
+      color: var(--control);
       background: none;
       border: 1px solid transparent;
       padding: 0.3rem 0.45rem;
@@ -158,7 +175,7 @@
       border-radius: 2px;
       transition: all 0.15s;
     }
-    .note-btn:hover { color: var(--dim); border-color: var(--border); }
+    .note-btn:hover { color: var(--accent); border-color: var(--border); }
     .note-btn.selected {
       color: var(--text);
       border-color: var(--dim);
@@ -176,7 +193,7 @@
     .partial-btn {
       font-size: 0.55rem;
       letter-spacing: 0.08em;
-      color: var(--dimmer);
+      color: var(--control);
       background: none;
       border: 1px solid var(--border);
       padding: 0.3rem 0.5rem;
@@ -187,7 +204,7 @@
       min-width: 2rem;
       text-align: center;
     }
-    .partial-btn:hover { color: var(--dim); }
+    .partial-btn:hover { color: var(--accent); }
     .partial-btn.on {
       color: var(--text);
       border-color: var(--dim);
@@ -199,7 +216,7 @@
       font-size: 0.6rem;
       letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: var(--dimmer);
+      color: var(--control);
       background: none;
       border: 1px solid var(--border);
       padding: 0.6rem 2rem;
@@ -209,7 +226,7 @@
       border-radius: 2px;
       transition: all 0.2s;
     }
-    #toggle-btn:hover { color: var(--dim); border-color: var(--dim); }
+    #toggle-btn:hover { color: var(--accent); border-color: var(--dim); }
     #toggle-btn.playing {
       color: var(--text);
       border-color: rgba(212,204,196,0.4);
@@ -220,9 +237,15 @@
 
 <a class="eggs-back" href="../eggs.html">← eggs</a>
 
+<div class="header">
+  <h1 class="title">drone</h1>
+  <p class="sub">just intonation on C · C4 = 261.63 Hz, so A4 sounds at 436.05 Hz, 15.6¢ below A440 · beating detunes a twin up to 8¢</p>
+</div>
+
 <div id="freq-display">
   <div id="note-name">A</div>
   <div id="freq-hz">220.00 Hz · A3</div>
+  <div id="ji-line">5/3 above C · 884.4¢ · −15.6¢ from 12-tet</div>
 </div>
 
 <canvas id="beat-canvas" width="720" height="80"></canvas>
@@ -266,20 +289,20 @@
 <script>
 // ── Pitch data ─────────────────────────────────────────────────────────────
 const NOTES = [
-  { name: 'C',  ratio: 1/1 },
-  { name: 'D',  ratio: 9/8 },
-  { name: 'E',  ratio: 5/4 },
-  { name: 'F',  ratio: 4/3 },
-  { name: 'G',  ratio: 3/2 },
-  { name: 'A',  ratio: 5/3 },
-  { name: 'B',  ratio: 15/8 },
+  { name: 'C',  ratio: 1/1,   frac: '1/1',  et: 0 },
+  { name: 'D',  ratio: 9/8,   frac: '9/8',  et: 200 },
+  { name: 'E',  ratio: 5/4,   frac: '5/4',  et: 400 },
+  { name: 'F',  ratio: 4/3,   frac: '4/3',  et: 500 },
+  { name: 'G',  ratio: 3/2,   frac: '3/2',  et: 700 },
+  { name: 'A',  ratio: 5/3,   frac: '5/3',  et: 900 },
+  { name: 'B',  ratio: 15/8,  frac: '15/8', et: 1100 },
 ];
 // JI ratios relative to C4 = 261.63 Hz
 const C4 = 261.63;
 
 const PARTIALS = [2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 16, 21];
 const PARTIAL_LABELS = ['2', '3', '4', '5', '6', '7', '8', '9', '11', '13', '16', '21'];
-const PARTIAL_NAMES  = ['octave', '5th', '2nd oct', 'M3', '5th', 'b7', '3rd oct', 'M2', '+4th', '13th', '4th oct', '7th of 5th'];
+const PARTIAL_NAMES  = ['octave', '5th', '2nd oct', 'M3', '5th', 'b7', '3rd oct', 'M2', '+4th', 'neutral 6th', '4th oct', '7th of 5th'];
 
 let state = {
   noteIdx:   5,   // A
@@ -315,30 +338,82 @@ const FADE = 0.015; // fade in/out seconds — eliminates clicks
 const BEAT_GAIN = 0.7;
 let ctx, masterGain, oscNodes = [], beatNode = null;
 
+// Headroom without a limiter (a compressor would flatten the very beats this
+// egg is about). The partials start together at sine phase 0, so they stay
+// phase-locked to the fundamental; the twin drifts through every phase. The
+// true peak of the active set is therefore the max over one period and all
+// twin phases, which a small grid finds. The master gain is capped so that
+// peak lands under 0.9: nothing changes until the volume would clip (the
+// fundamental + twin reach it above 52%), then the slider tops out there.
+const PEAK_CEILING = 0.88;   // 0.9 target, less the grid's sampling error
+let peakCache = { key: '', peak: 1 };
+function activePeak() {
+  const beat = state.beatCents > 0;
+  const parts = [...state.partials].sort((a, b) => a - b);
+  const key = (beat ? 'b' : '') + parts.join(',');
+  if (key === peakCache.key) return peakCache.peak;
+  let peak = 0;
+  const NX = 720, NP = beat ? 48 : 1;
+  for (let j = 0; j < NP; j++) {
+    const phi = (j / NP) * 2 * Math.PI;
+    for (let i = 0; i < NX; i++) {
+      const x = (i / NX) * 2 * Math.PI;
+      let v = Math.sin(x) + (beat ? BEAT_GAIN * Math.sin(x + phi) : 0);
+      for (const p of parts) v += (0.5 / p) * Math.sin(p * x);
+      peak = Math.max(peak, Math.abs(v));
+    }
+  }
+  peakCache = { key, peak };
+  return peak;
+}
+function masterLevel() { return Math.min(state.volume, PEAK_CEILING / activePeak()); }
+
+// The cap holds in steady state; in a change the master leads. When the peak
+// grows (twin in, a partial added) the master drops first and the new sound
+// waits until it is down; when the peak shrinks the old sound leaves first and
+// the master rises after. (Master and twin used to ramp together at the same
+// time constant, and the product overshot: 1.03 as the beat left 0.) Returns
+// when incoming sound may start. All times are linear ramps from t0.
+const LEAD = 0.02;   // scheduling lookahead, so every node of a change starts on one sample
+function moveMaster(t0) {
+  const g = masterGain.gain, cur = g.value, target = masterLevel();
+  g.cancelScheduledValues(t0);
+  g.setValueAtTime(cur, t0);
+  if (target < cur) { g.linearRampToValueAtTime(target, t0 + FADE); return t0 + FADE; }
+  g.setValueAtTime(cur, t0 + FADE);
+  g.linearRampToValueAtTime(target, t0 + 2 * FADE);
+  return t0;
+}
+
 function startAudio() {
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   masterGain = ctx.createGain();
-  masterGain.gain.value = state.volume;
+  masterGain.gain.value = masterLevel();
   masterGain.connect(ctx.destination);
 }
 
 function startDrone() {
   if (!ctx) startAudio();
   if (ctx.state === 'suspended') ctx.resume();
-  stopDrone();
+  const t0 = ctx.currentTime + LEAD;
+  stopDrone(t0);
+  const at = moveMaster(t0);
 
   const freq = rootFreq();
 
+  // every oscillator starts at \`at\`: started "now", they could land in
+  // different render quanta and lose the phase lock activePeak() assumes
   function makeOsc(f, gainVal) {
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.value = f;
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(gainVal, ctx.currentTime + FADE);
+    gain.gain.value = 0;
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(gainVal, at + FADE);
     osc.connect(gain);
     gain.connect(masterGain);
-    osc.start();
+    osc.start(at);
     return { osc, gain };
   }
 
@@ -356,10 +431,11 @@ function startDrone() {
   }
 }
 
-function stopDrone() {
-  const now = ctx ? ctx.currentTime : 0;
+function stopDrone(t0) {
+  const now = t0 ?? (ctx ? ctx.currentTime : 0);
   oscNodes.forEach(({ osc, gain }) => {
     try {
+      gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(gain.gain.value, now);
       gain.gain.linearRampToValueAtTime(0, now + FADE);
       osc.stop(now + FADE + 0.001);
@@ -375,7 +451,12 @@ function retuneBeat() {
   if (!ctx || !beatNode) return;
   const now = ctx.currentTime;
   beatNode.osc.frequency.setTargetAtTime(beatFreq(), now, 0.02);
-  beatNode.gain.gain.setTargetAtTime(state.beatCents > 0 ? BEAT_GAIN : 0, now, 0.02);
+  const g = beatNode.gain.gain, cur = g.value, want = state.beatCents > 0 ? BEAT_GAIN : 0;
+  const at = moveMaster(now);   // the twin enters after the master drops, leaves before it rises
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(cur, now);
+  g.setValueAtTime(cur, at);
+  g.linearRampToValueAtTime(want, at + FADE);
 }
 
 function restartIfPlaying() {
@@ -432,6 +513,7 @@ animFrame = requestAnimationFrame(drawBeat);
 // ── UI ─────────────────────────────────────────────────────────────────────
 const noteNameEl  = document.getElementById('note-name');
 const freqHzEl    = document.getElementById('freq-hz');
+const jiLineEl    = document.getElementById('ji-line');
 const pitchWheel  = document.getElementById('pitch-wheel');
 const octaveSlider = document.getElementById('octave-slider');
 const octaveVal    = document.getElementById('octave-val');
@@ -447,6 +529,11 @@ function updateDisplay() {
   const nl = noteLabel();
   noteNameEl.textContent = NOTES[state.noteIdx].name;
   freqHzEl.textContent   = f.toFixed(2) + ' Hz · ' + nl;
+  // the ratio above C, and how far that sits from the 12-tet note of that name
+  const n = NOTES[state.noteIdx];
+  const cents = 1200 * Math.log2(n.ratio), dev = cents - n.et;
+  jiLineEl.textContent = n.frac + ' above C · ' + cents.toFixed(1) + '¢ · '
+    + (dev < 0 ? '−' : '+') + Math.abs(dev).toFixed(1) + '¢ from 12-tet';
 
   // pitch buttons
   pitchWheel.querySelectorAll('.note-btn').forEach((b, i) => {
@@ -466,7 +553,7 @@ NOTES.forEach((n, i) => {
   const btn = document.createElement('button');
   btn.className = 'note-btn' + (i === state.noteIdx ? ' selected' : '');
   btn.textContent = n.name;
-  btn.title = n.name + ' (' + n.ratio.toFixed(4) + ')';
+  btn.title = n.name + ' (' + n.frac + ' above C)';
   btn.addEventListener('click', () => {
     state.noteIdx = i;
     restartIfPlaying();
@@ -513,7 +600,7 @@ beatSlider.addEventListener('input', () => {
 volSlider.addEventListener('input', () => {
   state.volume = parseFloat(volSlider.value);
   volVal.textContent = Math.round(state.volume * 100) + '%';
-  if (masterGain) masterGain.gain.setTargetAtTime(state.volume, ctx.currentTime, 0.05);
+  if (masterGain) moveMaster(ctx.currentTime);   // one scheduler for the master, so a change mid-transition is not lost
 });
 
 // Toggle

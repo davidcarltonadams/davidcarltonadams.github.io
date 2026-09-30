@@ -6,11 +6,14 @@
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+  <meta name="description" content="two tones sounded together make pitches neither one plays · the difference |B−A|, the cubic tone 2A−B and the faint sum A+B, each playable so you can hear where it sits.">
   <title>combination tones</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(208,204,200,0.58);
       --bg:      #070709;
       --bg2:     #101012;
       --text:    #d0ccc8;
@@ -21,6 +24,7 @@
       --col-b:   #a0b888;
       --col-d:   #c8906a;
       --col-s:   #b08acc;
+      --col-c:   #7ac0b0;
     }
 
     body {
@@ -45,7 +49,7 @@
     .sub {
       font-size: 0.58rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.35rem;
       line-height: 1.7;
@@ -138,7 +142,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.62rem;
       letter-spacing: 0.07em;
@@ -190,6 +194,7 @@
     .r-name.b { color: var(--col-b); }
     .r-name.diff { color: var(--col-d); }
     .r-name.sum  { color: var(--col-s); }
+    .r-name.cubic { color: var(--col-c); }
 
     .r-freq {
       font-size: 0.72rem;
@@ -220,6 +225,23 @@
     .result-row.playing .r-toggle.b { background: var(--col-b); border-color: var(--col-b); }
     .result-row.playing .r-toggle.diff { background: var(--col-d); border-color: var(--col-d); }
     .result-row.playing .r-toggle.sum  { background: var(--col-s); border-color: var(--col-s); }
+    .result-row.playing .r-toggle.cubic { background: var(--col-c); border-color: var(--col-c); }
+    .result-row.off { cursor: default; opacity: 0.45; }
+
+    /* phone: two lines per row (name, Hz, dot / note, description); the
+       five-column grid was 408 px wide at 390 and hid the dots off-screen */
+    @media (max-width: 480px) {
+      .result-row {
+        grid-template-columns: 1fr auto 1.2rem;
+        grid-template-areas: "name freq tog" "note desc desc";
+        row-gap: 0.15rem;
+      }
+      .r-name { grid-area: name; }
+      .r-freq { grid-area: freq; }
+      .r-toggle { grid-area: tog; }
+      .r-note { grid-area: note; }
+      .r-desc { grid-area: desc; text-align: right; }
+    }
 
     .hint {
       font-size: 0.54rem;
@@ -232,13 +254,13 @@
 </head>
 <body>
 
-<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:#332;text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
+<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:var(--control);text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
 <a href="../eggs.html" class="eggs-back">← eggs</a>
 
 <div class="header">
   <h1 class="title">combination tones</h1>
   <p class="sub">
-    two tones produce two more — the difference (|B&minus;A|) rings in the ear; the sum (A+B) arises there too, though scarcely audibly<br>
+    two tones produce more · the difference (|B&minus;A|) rings in the ear · the cubic tone (2A&minus;B, just below the lower tone) is the one the ear makes most readily when the two are close · the sum (A+B) arises there too, though scarcely audibly<br>
     Tartini discovered the difference tone on the violin in 1714
   </p>
 </div>
@@ -247,13 +269,13 @@
 <div class="tone-controls">
   <div class="tone-row">
     <span class="tone-label a">tone A</span>
-    <input type="range" id="slider-a" class="tone-slider a" min="100" max="1200" step="0.5" value="264">
+    <input type="range" id="slider-a" class="tone-slider a" min="100" max="1200" step="0.01" value="264">
     <span class="tone-val" id="val-a">264.0 Hz</span>
     <span class="tone-note" id="note-a"></span>
   </div>
   <div class="tone-row">
     <span class="tone-label b">tone B</span>
-    <input type="range" id="slider-b" class="tone-slider b" min="100" max="1200" step="0.5" value="330">
+    <input type="range" id="slider-b" class="tone-slider b" min="100" max="1200" step="0.01" value="330">
     <span class="tone-val" id="val-b">330.0 Hz</span>
     <span class="tone-note" id="note-b"></span>
   </div>
@@ -281,7 +303,7 @@
 <!-- ── Results ────────────────────────────────────────────── -->
 <div class="results" id="results"></div>
 
-<p class="hint">click a row to hear that tone — synthesized here so you can hear where it sits; in your ear they arise from cochlear nonlinearity · esc clears all</p>
+<p class="hint">click a row to hear that tone · synthesized here so you can hear where it sits · in your ear they arise from cochlear nonlinearity · play A and B alone first and listen for them · esc clears all</p>
 
 <script>
 const NOTE_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
@@ -310,16 +332,12 @@ function initAudio() {
   ac = new (window.AudioContext || window.webkitAudioContext)();
 }
 
-function toggleVoice(id, freq, col) {
+function toggleVoice(id, freq) {
   initAudio();
   if (ac.state === 'suspended') ac.resume();
 
   if (playing.has(id)) {
-    if (voices[id]) {
-      voices[id].gain.gain.setTargetAtTime(0, ac.currentTime, 0.05);
-      const osc = voices[id].osc;
-      setTimeout(() => { try { osc.stop(); } catch(e){} delete voices[id]; }, 400);
-    }
+    releaseVoice(id, 400);
     playing.delete(id);
   } else {
     if (freq <= 0) return;
@@ -328,7 +346,7 @@ function toggleVoice(id, freq, col) {
     osc.type = 'sine';
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0, ac.currentTime);
-    gain.gain.setTargetAtTime(id === 'diff' || id === 'sum' ? 0.06 : 0.10, ac.currentTime, 0.02);
+    gain.gain.setTargetAtTime(id === 'a' || id === 'b' ? 0.10 : 0.06, ac.currentTime, 0.02);
     osc.connect(gain);
     gain.connect(ac.destination);
     osc.start();
@@ -343,13 +361,19 @@ function updateFreq(id, freq) {
   if (voices[id]) voices[id].osc.frequency.setTargetAtTime(freq, ac.currentTime, 0.02);
 }
 
+// fade a voice out and forget it at once: a re-press inside the fade
+// builds a fresh voice, and the timer only ever stops the osc it captured
+function releaseVoice(id, ms) {
+  const v = voices[id];
+  if (!v) return;
+  delete voices[id];
+  v.gain.gain.setTargetAtTime(0, ac ? ac.currentTime : 0, 0.05);
+  setTimeout(() => { try { v.osc.stop(); } catch(e){} }, ms);
+}
+
 function clearAll() {
   for (const id of [...playing]) {
-    if (voices[id]) {
-      voices[id].gain.gain.setTargetAtTime(0, ac ? ac.currentTime : 0, 0.05);
-      const osc = voices[id].osc;
-      setTimeout(() => { try { osc.stop(); } catch(e){} delete voices[id]; }, 300);
-    }
+    releaseVoice(id, 300);
     playing.delete(id);
   }
   renderResults();
@@ -357,12 +381,16 @@ function clearAll() {
 }
 
 // ── Compute tones ─────────────────────────────────────────
+// the cubic difference tone is 2·lower − upper: named 2A−B when A is the
+// lower tone, 2B−A when B is; at or below 0 Hz it does not exist
+function cubicTone(fa, fb) { return 2 * Math.min(fa, fb) - Math.max(fa, fb); }
+function cubicLabel(fa, fb) { return fa <= fb ? '2A−B' : '2B−A'; }
 function computeTones() {
   const fa = getFA();
   const fb = getFB();
   const fd = Math.abs(fb - fa);
   const fs = fa + fb;
-  return { a: fa, b: fb, diff: fd, sum: fs };
+  return { a: fa, b: fb, diff: fd, sum: fs, cubic: cubicTone(fa, fb) };
 }
 
 // ── Render results ────────────────────────────────────────
@@ -371,19 +399,25 @@ function toneDesc(id, fa, fb) {
   if (id === 'b')    return 'primary tone';
   if (id === 'diff') {
     const fd = Math.abs(fb - fa);
-    return `|B − A| = ${fd.toFixed(1)} Hz — difference tone (Tartini)`;
+    return `|B − A| = ${fd.toFixed(1)} Hz · difference tone (Tartini)`;
+  }
+  if (id === 'cubic') {
+    const fc = cubicTone(fa, fb);
+    return fc > 0 ? `${cubicLabel(fa, fb).replace('−', ' − ')} = ${fc.toFixed(1)} Hz · cubic difference tone`
+                  : 'below 0 Hz for tones this far apart';
   }
   if (id === 'sum')  {
-    return `A + B = ${(fa+fb).toFixed(1)} Hz — sum tone`;
+    return `A + B = ${(fa+fb).toFixed(1)} Hz · sum tone`;
   }
 }
 
 function renderResults() {
-  const { a, b, diff, sum } = computeTones();
+  const { a, b, diff, sum, cubic } = computeTones();
   const rows = [
     { id: 'a',    freq: a,    label: 'tone A',       cls: 'a'    },
     { id: 'b',    freq: b,    label: 'tone B',       cls: 'b'    },
     { id: 'diff', freq: diff, label: 'difference',   cls: 'diff' },
+    { id: 'cubic', freq: cubic, label: 'cubic ' + cubicLabel(a, b), cls: 'cubic' },
     { id: 'sum',  freq: sum,  label: 'sum',          cls: 'sum'  },
   ];
 
@@ -391,16 +425,16 @@ function renderResults() {
   el.innerHTML = '';
   for (const row of rows) {
     const div = document.createElement('div');
-    div.className = 'result-row' + (playing.has(row.id) ? ' playing' : '');
+    const exists = row.freq > 0;
+    div.className = 'result-row' + (playing.has(row.id) ? ' playing' : '') + (exists ? '' : ' off');
     div.innerHTML = `
       <span class="r-name ${row.cls}">${row.label}</span>
-      <span class="r-freq">${row.freq.toFixed(1)} Hz</span>
+      <span class="r-freq">${exists ? row.freq.toFixed(1) + ' Hz' : '·'}</span>
       <span class="r-note">${freqToNote(row.freq)}</span>
       <span class="r-desc">${toneDesc(row.id, a, b)}</span>
       <span class="r-toggle ${row.cls}"></span>
     `;
-    div.addEventListener('click', () => toggleVoice(row.id, row.freq,
-      row.id === 'a' ? '#8ab0c8' : row.id === 'b' ? '#a0b888' : row.id === 'diff' ? '#c8906a' : '#b08acc'));
+    div.addEventListener('click', () => { if (exists || playing.has(row.id)) toggleVoice(row.id, row.freq); });
     el.appendChild(div);
   }
 }
@@ -418,14 +452,15 @@ function drawSpectrum() {
   g.fillStyle = '#090910';
   g.fillRect(0, 0, w, h);
 
-  const { a, b, diff, sum } = computeTones();
+  const { a, b, diff, sum, cubic } = computeTones();
 
   const MAX_FREQ = Math.max(sum * 1.15, 1400);
   const TONES = [
-    { freq: a,    col: '#8ab0c8', label: 'A',    amp: 0.80 },
-    { freq: b,    col: '#a0b888', label: 'B',    amp: 0.80 },
-    { freq: diff, col: '#c8906a', label: '|B−A|',  amp: 0.45 },
-    { freq: sum,  col: '#b08acc', label: 'A+B',  amp: 0.30 },
+    { id: 'a',     freq: a,     col: '#8ab0c8', label: 'A',               amp: 0.80 },
+    { id: 'b',     freq: b,     col: '#a0b888', label: 'B',               amp: 0.80 },
+    { id: 'diff',  freq: diff,  col: '#c8906a', label: '|B−A|',           amp: 0.45 },
+    { id: 'cubic', freq: cubic, col: '#7ac0b0', label: cubicLabel(a, b),  amp: 0.45 },
+    { id: 'sum',   freq: sum,   col: '#b08acc', label: 'A+B',             amp: 0.30 },
   ];
 
   // Draw frequency axis
@@ -450,39 +485,44 @@ function drawSpectrum() {
     g.stroke();
   }
 
-  // Draw vertical lines for each tone
-  for (const tone of TONES) {
-    if (tone.freq <= 0 || tone.freq > MAX_FREQ * 1.05) continue;
+  // Draw vertical lines for each tone. Each label is a two-line block
+  // (name over Hz) above its spike; a block that would touch one already
+  // placed steps up a row, so close tones no longer print over each other.
+  const placed = [];
+  const order = TONES.filter(t => t.freq > 0 && t.freq <= MAX_FREQ * 1.05)
+                     .sort((p, q) => q.amp - p.amp);
+  for (const tone of order) {
     const x = (tone.freq / MAX_FREQ) * w;
-    const isPlaying = playing.has(
-      tone.label === 'A' ? 'a' : tone.label === 'B' ? 'b' :
-      tone.label === '|B−A|' ? 'diff' : 'sum'
-    );
+    const isPlaying = playing.has(tone.id);
     const alpha = isPlaying ? 0.85 : 0.35;
 
-    // Vertical line (spike)
-    const spikeH = (h - 22) * tone.amp;
+    // Vertical line (spike), leaving room above for two label rows
+    const spikeH = (h - 48) * tone.amp;
     g.beginPath();
     g.moveTo(x, h - 14);
     g.lineTo(x, h - 14 - spikeH);
-    g.strokeStyle = tone.col.replace('#', 'rgba(')
-      .replace(/(.{2})(.{2})(.{2})/, (_, r, g2, b) =>
-        `rgba(${parseInt(r,16)},${parseInt(g2,16)},${parseInt(b,16)},${alpha})`);
-    // Just use a helper
     g.strokeStyle = hexA(tone.col, alpha);
     g.lineWidth = isPlaying ? 2 : 1;
     g.stroke();
 
-    // Label
+    const valTxt = tone.freq.toFixed(0) + ' Hz';
+    g.font = `7px Georgia, serif`;
+    const bw = Math.max(g.measureText(valTxt).width || 20, 18) + 6;
+    let base = h - 17 - spikeH;                     // baseline of the Hz line
+    for (let tries = 0; tries < 4; tries++) {
+      const hit = placed.some(p => Math.abs(p.x - x) < (p.w + bw) / 2 && Math.abs(p.base - base) < 17);
+      if (!hit) break;
+      base -= 17;
+    }
+    base = Math.max(17, base);
+    placed.push({ x, w: bw, base });
+
+    g.textAlign = 'center';
+    g.fillStyle = hexA(tone.col, alpha * 0.8);
+    g.fillText(valTxt, x, base);
     g.font = `italic 8px Georgia, serif`;
     g.fillStyle = hexA(tone.col, alpha);
-    g.textAlign = 'center';
-    g.fillText(tone.label, x, h - 16 - spikeH);
-
-    // Frequency value
-    g.font = `7px Georgia, serif`;
-    g.fillStyle = hexA(tone.col, alpha * 0.7);
-    g.fillText(tone.freq.toFixed(0) + 'Hz', x, h - 7 - spikeH - 8);
+    g.fillText(tone.label, x, base - 8);
   }
 }
 
@@ -505,6 +545,7 @@ function updateUI() {
   if (ac && playing.has('b')) updateFreq('b', fb);
   if (ac && playing.has('diff')) updateFreq('diff', Math.abs(fb - fa));
   if (ac && playing.has('sum'))  updateFreq('sum',  fa + fb);
+  if (ac && playing.has('cubic') && cubicTone(fa, fb) > 0) updateFreq('cubic', cubicTone(fa, fb));
 
   renderResults();
   drawSpectrum();
@@ -522,6 +563,7 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 });
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearAll(); });
 window.addEventListener('resize', drawSpectrum);
 
 // ── Init ──────────────────────────────────────────────────

@@ -13,6 +13,7 @@
     :root {
       --bg: #060608; --bg2: #0c0c10; --text: #ccc8d0;
       --dim: rgba(204,200,208,0.38); --dimmer: rgba(204,200,208,0.18);
+      --control: rgba(204,200,208,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --border: rgba(255,255,255,0.07);
       --ji: #a0c888; --tet: #8ab0c8; --warm: #c8a060;
     }
@@ -24,7 +25,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -34,7 +35,7 @@
       letter-spacing: 0.2em; text-transform: lowercase; text-align: center;
     }
     .sub {
-      font-size: 0.58rem; letter-spacing: 0.1em; color: var(--dimmer);
+      font-size: 0.58rem; letter-spacing: 0.1em; color: var(--dim);
       font-style: italic; margin-top: 0.35rem; text-align: center;
       line-height: 1.8;
     }
@@ -66,6 +67,18 @@
       transition: background 0.25s, width 0.25s;
     }
 
+    /* ── Thirds and fifths above each note ── */
+    .iv-block { width: 100%; max-width: 780px; margin-top: -1rem; }
+    .iv-caption { font-size: 0.5rem; letter-spacing: 0.1em; font-style: italic; color: var(--dim); margin: 0.45rem 0 0.2rem; }
+    .iv-grid { display: grid; grid-template-columns: repeat(12,1fr); gap: 3px; }
+    .iv-cell {
+      font-family: 'SF Mono','Fira Code',monospace; font-size: clamp(0.36rem,1vw,0.52rem);
+      text-align: center; padding: 0.2rem 0; border-radius: 2px;
+      border: 1px solid transparent; transition: color 0.25s, background 0.25s;
+    }
+    .iv-cell.root { border-color: rgba(255,255,255,0.18); }
+    .iv-cell.wolf { background: rgba(210,100,90,0.14); }
+
     /* ── Fifth slider ── */
     .slider-section { width: 100%; max-width: 780px; }
     .fifth-readout {
@@ -81,14 +94,15 @@
       -webkit-appearance: none; width: 12px; height: 12px;
       border-radius: 50%; background: var(--ji); cursor: pointer;
     }
-    .landmarks { position: relative; height: 2.2rem; }
+    .landmarks { position: relative; height: 3.4rem; }
     .landmark {
       position: absolute; transform: translateX(-50%);
       display: flex; flex-direction: column; align-items: center; gap: 2px;
     }
     .landmark-tick { width: 1px; height: 5px; background: var(--dim); }
+    .landmark.low .landmark-label { margin-top: 1.45rem; }   /* 19-TET/⅓ comma and ¼ comma/31-TET sit 0.05–0.2¢ apart: stack them */
     .landmark-label {
-      font-size: 0.42rem; color: var(--dimmer); font-style: italic;
+      font-size: 0.42rem; color: var(--dim); font-style: italic;
       letter-spacing: 0.05em; white-space: nowrap; text-align: center; line-height: 1.2;
     }
 
@@ -102,7 +116,7 @@
     }
     .ctrl-btn {
       background: none; border: 1px solid var(--border); border-radius: 2px;
-      color: var(--dim); font-family: Georgia,serif; font-size: 0.6rem;
+      color: var(--control); font-family: Georgia,serif; font-size: 0.6rem;
       letter-spacing: 0.06em; padding: 0.25rem 0.65rem; cursor: pointer;
       transition: color 0.12s, border-color 0.12s; white-space: nowrap;
     }
@@ -118,9 +132,10 @@
       align-items: center; justify-content: center;
       width: 100%; max-width: 780px;
     }
-    .note-row { display: flex; gap: 0.2rem; align-items: center; }
+    .note-row { display: flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; justify-content: center; }
     .note-row .ctrl-btn { padding: 0.2rem 0.4rem; min-width: 1.4rem; }
-    .note-row span { font-size: 0.52rem; color: var(--dimmer); font-style: italic; margin-right: 0.2rem; }
+    @media (max-width: 480px) { .note-row .ctrl-btn { padding: 0.2rem 0.22rem; min-width: 1.3rem; } }
+    .note-row span { font-size: 0.52rem; color: var(--dim); font-style: italic; margin-right: 0.2rem; }
     #root-hz { font-size: 0.52rem; color: var(--ji); letter-spacing: 0.04em; font-style: italic; }
 
     /* ── WTK section ── */
@@ -135,7 +150,7 @@
     }
     .piece-btn {
       background: none; border: 1px solid var(--border); border-radius: 2px;
-      color: var(--dimmer); font-family: Georgia,serif; cursor: pointer;
+      color: var(--control); font-family: Georgia,serif; cursor: pointer;
       text-align: center; padding: 0.35rem 0.1rem; line-height: 1.3;
       transition: color 0.12s, border-color 0.12s;
     }
@@ -143,13 +158,13 @@
     .piece-btn.selected { color: var(--ji); border-color: var(--ji); }
     .piece-btn.playing-piece { color: var(--warm); border-color: var(--warm); }
     .p-num { display: block; font-size: 0.58rem; }
-    .p-key { display: block; font-size: 0.42rem; font-style: italic; color: var(--dimmer); margin-top: 1px; }
+    .p-key { display: block; font-size: 0.42rem; font-style: italic; color: var(--dim); margin-top: 1px; }
     .playback-bar {
       display: flex; gap: 0.5rem; align-items: center;
       justify-content: center; flex-wrap: wrap;
     }
     .tempo-row { display: flex; align-items: center; gap: 0.4rem;
-      font-size: 0.55rem; color: var(--dimmer); font-style: italic; }
+      font-size: 0.55rem; color: var(--dim); font-style: italic; }
     .ctrl-range {
       -webkit-appearance: none; width: 80px; height: 2px;
       background: var(--border); outline: none; border-radius: 1px;
@@ -158,10 +173,10 @@
       -webkit-appearance: none; width: 10px; height: 10px;
       border-radius: 50%; background: var(--dim); cursor: pointer;
     }
-    .play-status { font-size: 0.52rem; color: var(--dimmer); font-style: italic; }
+    .play-status { font-size: 0.52rem; color: var(--dim); font-style: italic; }
     .hint {
       font-size: 0.52rem; letter-spacing: 0.1em;
-      color: rgba(204,200,208,0.38); font-style: italic; text-align: center;
+      color: var(--dim); font-style: italic; text-align: center;
       max-width: 520px;
     }
 
@@ -169,7 +184,7 @@
     .timbre-section { width: 100%; max-width: 780px; }
     .timbre-toggle {
       background: none; border: 1px solid var(--border); border-radius: 2px;
-      color: var(--dimmer); font-family: Georgia,serif; font-size: 0.6rem;
+      color: var(--control); font-family: Georgia,serif; font-size: 0.6rem;
       letter-spacing: 0.1em; padding: 0.3rem 1rem; cursor: pointer;
       width: 100%; text-align: center;
       transition: color 0.12s, border-color 0.12s;
@@ -186,7 +201,7 @@
     .tp-row { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center; }
     .tp-btn {
       background: none; border: 1px solid var(--border); border-radius: 2px;
-      color: var(--dimmer); font-family: Georgia,serif; font-size: 0.58rem;
+      color: var(--control); font-family: Georgia,serif; font-size: 0.58rem;
       letter-spacing: 0.06em; padding: 0.2rem 0.6rem; cursor: pointer;
       transition: color 0.12s, border-color 0.12s;
     }
@@ -204,12 +219,12 @@
     }
     .fave-slot { display: flex; gap: 0.2rem; align-items: center; }
     .fave-name {
-      font-size: 0.48rem; color: var(--dimmer); font-style: italic;
+      font-size: 0.48rem; color: var(--dim); font-style: italic;
       min-width: 3.5rem; text-align: center;
     }
     .fave-btn {
       background: none; border: 1px solid var(--border); border-radius: 2px;
-      color: rgba(204,200,208,0.45); font-family: Georgia,serif; font-size: 0.46rem;
+      color: var(--control); font-family: Georgia,serif; font-size: 0.46rem;
       letter-spacing: 0.04em; padding: 0.12rem 0.38rem; cursor: pointer;
       transition: color 0.12s, border-color 0.12s;
     }
@@ -260,13 +275,19 @@
 
 <div>
   <h1 class="title">temperament</h1>
-  <p class="sub">drag the fifth &mdash; watch twelve notes reshape<br>play the Well-Tempered Clavier in any tuning</p>
+  <p class="sub">drag the fifth · watch twelve notes reshape<br>play the Well-Tempered Clavier in any tuning</p>
 </div>
 
 <div class="pc-grid" id="pc-grid"></div>
+<div class="iv-block">
+  <div class="iv-caption">major third above each note · pure 5/4 = 386.3¢</div>
+  <div class="iv-grid" id="m3-grid"></div>
+  <div class="iv-caption">fifth above each note · pure 3/2 = 702.0¢</div>
+  <div class="iv-grid" id="p5-grid"></div>
+</div>
 
 <div class="slider-section">
-  <div class="fifth-readout" id="fifth-readout">700.00¢ &mdash; 12-TET</div>
+  <div class="fifth-readout" id="fifth-readout">700.00¢ · 12-TET</div>
   <div class="slider-wrap">
     <input type="range" class="fifth-slider" id="fifth-slider" min="690" max="704" step="0.01" value="700">
     <div class="landmarks" id="landmarks"></div>
@@ -283,11 +304,16 @@
   <div class="note-row">
     <span>root</span>
     <button class="ctrl-btn note-btn on" data-note="C">C</button>
+    <button class="ctrl-btn note-btn" data-note="C♯">C♯</button>
     <button class="ctrl-btn note-btn" data-note="D">D</button>
+    <button class="ctrl-btn note-btn" data-note="E♭">E♭</button>
     <button class="ctrl-btn note-btn" data-note="E">E</button>
     <button class="ctrl-btn note-btn" data-note="F">F</button>
+    <button class="ctrl-btn note-btn" data-note="F♯">F♯</button>
     <button class="ctrl-btn note-btn" data-note="G">G</button>
+    <button class="ctrl-btn note-btn" data-note="A♭">A♭</button>
     <button class="ctrl-btn note-btn" data-note="A">A</button>
+    <button class="ctrl-btn note-btn" data-note="B♭">B♭</button>
     <button class="ctrl-btn note-btn" data-note="B">B</button>
   </div>
   <div class="note-row">
@@ -298,6 +324,7 @@
   <span id="root-hz">C3 · 130.8 Hz</span>
   <button class="ctrl-btn" id="btn-drone">drone</button>
   <button class="ctrl-btn" id="btn-scale">scale ▶</button>
+  <button class="ctrl-btn" id="btn-triad">triad ▶</button>
   <button class="ctrl-btn" id="btn-stop-all">■ stop all</button>
 </div>
 
@@ -320,7 +347,7 @@
   </div>
 </div>
 
-<p class="hint">C major sounds pure · C♯ major sounds tense · each key has its own character · that was the point</p>
+<p class="hint" id="key-hint"></p>
 
 <!-- ── Timbre section ── -->
 <div class="timbre-section" id="timbre-section">
@@ -497,8 +524,9 @@ const REGULAR = [
   { name: '12-TET',         fifth: 700.000 },
   { name: '⅙ comma',        fifth: 698.371 },
   { name: '¼ comma',        fifth: 696.578 },
-  { name: '31-TET',         fifth: 1200*18/31 },
-  { name: '19-TET',         fifth: 1200*11/19 },
+  // 12 keys can only hold 12 of 19 (or 31) notes: the closing fifth is left over
+  { name: '31-TET (12 of 31)', fifth: 1200*18/31 },
+  { name: '19-TET (12 of 19)', fifth: 1200*11/19 },
 ];
 
 const PC   = 23.460;   // Pythagorean comma
@@ -668,7 +696,7 @@ const TP = {
     bass:2, treble:-2
   },
   'cc-orig': {
-    label: 'cc orig',
+    label: 'plain saw',
     sine:0, sq:0, saw:1, tri:0,
     cutoff:2200, q:0.4,
     attack:0.005, decay:0.14, sustain:0.45, release:0.055,
@@ -676,7 +704,7 @@ const TP = {
     bass:0, treble:0
   },
   'cc-spec': {
-    label: 'cc spec',
+    label: 'cavern',
     sine:0.35, sq:0.05, saw:0.1, tri:0.5,
     cutoff:1100, q:1.4,
     attack:0.22, decay:2.5, sustain:0.82, release:0.45,
@@ -716,7 +744,7 @@ let dryGain = null, preDelayNode = null, convolver = null, wetLowCut = null, wet
 let droneOsc = null, droneGain = null;
 let droneOn = false;
 
-const NOTE_MIDI = { C:60, D:62, E:64, F:65, G:67, A:69, B:71 };
+const NOTE_MIDI = { 'C':60, 'C♯':61, 'D':62, 'E♭':63, 'E':64, 'F':65, 'F♯':66, 'G':67, 'A♭':68, 'A':69, 'B♭':70, 'B':71 };
 let droneNote = 'C', droneOct = 3;
 function getDroneMidi() { return NOTE_MIDI[droneNote] + (droneOct - 4) * 12; }
 
@@ -959,6 +987,7 @@ function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   g.setTargetAtTime(0.0001, off, rel);
 
   v.freeAt = off + rel * 7;
+  v.startAt = t;
   v.midi = midi;
 }
 
@@ -1017,6 +1046,21 @@ function playScale() {
   scaleTimers.push(setTimeout(clearHighlights, degrees.length * dur * 1000 + 200));
 }
 
+// The major triad on the chosen root, held, so each key's third can be heard
+function playTriad() {
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  stopScale();
+  const root = getDroneMidi();
+  const t = ac.currentTime + 0.02;
+  clearHighlights();
+  for (const d of [0, 4, 7]) {
+    playNoteAt(root + d, t, 2.2, 0.16);
+    highlightPc(((root + d) % 12 + 12) % 12, 0);
+  }
+  scaleTimers.push(setTimeout(clearHighlights, 2400));
+}
+
 // One control that silences everything: Escape on a keyboard, "stop all" on a
 // phone. Drone, scale, fugue playback and any held pitch-class cell.
 function stopAll() {
@@ -1031,6 +1075,19 @@ function stopAll() {
   silencePool();
   clearHighlights();
 }
+
+// S3 · a hidden tab stops the sustained sounds (drone, held pitch-class
+// cells) and shows them stopped. The fugue is a sequencer and plays on:
+// the background policy for sequencers is David's call (G-3).
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  releaseAllCells();
+  if (droneOn) {
+    stopDrone();
+    droneOn = false;
+    document.getElementById('btn-drone').classList.remove('on');
+  }
+});
 
 // ── 4. KERN PARSER ────────────────────────────────────────────────────────────
 
@@ -1091,7 +1148,11 @@ function parseKern(text) {
       for (let i = tokens.length - 1; i >= 1; i--) {
         if (tokens[i] === '*v' && tokens[i - 1] === '*v') {
           spineTime[i - 1] = Math.max(spineTime[i - 1], spineTime[i]);
-          if (spineTie[i] !== null && spineTie[i - 1] === null) spineTie[i - 1] = spineTie[i];
+          // a join keeps the open ties of both halves
+          if (spineTie[i] !== null) {
+            if (spineTie[i - 1] === null) spineTie[i - 1] = spineTie[i];
+            else for (const [m, idx] of spineTie[i]) if (!spineTie[i - 1].has(m)) spineTie[i - 1].set(m, idx);
+          }
           spineTime.splice(i, 1);
           spineTie.splice(i, 1);
           spineSkip.splice(i, 1);
@@ -1099,14 +1160,19 @@ function parseKern(text) {
         }
       }
 
+      // a split hands the open ties to both halves: a note held into the
+      // split may go on in either one (WTC II/3's bass G♯: "[1G#", *^, then
+      // "1G#_" in the new right half), and must not be struck again there
       for (let i = tokens.length - 1; i >= 0; i--) {
         if (tokens[i] === '*^') {
+          const ties = spineTie[i] ? new Map(spineTie[i]) : null;
           if (tokens[i + 1] === '') {
             spineTime[i + 1] = spineTime[i];
+            spineTie[i + 1] = ties;
             spineSkip[i + 1] = false;
           } else {
             spineTime.splice(i + 1, 0, spineTime[i]);
-            spineTie.splice(i + 1, 0, null);
+            spineTie.splice(i + 1, 0, ties);
             spineSkip.splice(i + 1, 0, false);
           }
         }
@@ -1123,7 +1189,10 @@ function parseKern(text) {
     for (let v = 0; v < Math.min(tokens.length, spineTime.length); v++) {
       const tok = tokens[v].trim();
       if (!tok || tok === '.') continue;
-      const dur = parseKernDuration(tok);
+      // a chord is several space-separated notes in one token ("2gg 2ee");
+      // every note sounds, and the spine advances by the first one's length
+      const subs = tok.split(' ').filter(Boolean);
+      const dur = parseKernDuration(subs[0]);
       if (dur === null) continue;
 
       if (spineSkip[v]) {
@@ -1131,20 +1200,34 @@ function parseKern(text) {
         continue;
       }
 
-      const midi = parseKernPitch(tok);
-      const tieEnd   = tok.includes(']');
-      const tieStart = tok.includes('[');
-
-      if (tieEnd && spineTie[v] !== null) {
-        events[spineTie[v]].dur += dur;
-        if (!tieStart) spineTie[v] = null;
-      } else if (midi !== null) {
-        const idx = events.length;
-        events.push({ t: spineTime[v], dur, midi });
-        spineTie[v] = tieStart ? idx : null;
-      } else {
-        spineTie[v] = null;
+      // open ties on this spine: midi → event index. Humdrum ties: [ start,
+      // _ middle, ] end. Accidentals and tie marks are read per note, so one
+      // note's sharp or tie no longer leaks onto its chord-mate.
+      const open = spineTie[v];
+      const next = new Map();
+      const notes = subs.map(sub => ({
+        d: parseKernDuration(sub) ?? dur,
+        midi: parseKernPitch(sub),
+        end: sub.includes(']') || sub.includes('_'),
+        start: sub.includes('[') || sub.includes('_'),
+      }));
+      // a tie-end mark on a pitch with no open tie is an encoding slip
+      // (WTC II/3 "8f##] 8e"): give it to the chord note that is tied
+      if (open && notes.some(n => n.end && n.midi !== null && !open.has(n.midi)))
+        for (const n of notes) if (n.midi !== null && open.has(n.midi)) n.end = true;
+      for (const n of notes) {
+        if (n.midi === null) continue;
+        if (n.end && open && open.has(n.midi)) {
+          const idx = open.get(n.midi);
+          events[idx].dur += n.d;
+          if (n.start) next.set(n.midi, idx);
+        } else {
+          const idx = events.length;
+          events.push({ t: spineTime[v], dur: n.d, midi: n.midi });
+          if (n.start) next.set(n.midi, idx);
+        }
       }
+      spineTie[v] = next.size ? next : null;
       spineTime[v] += dur;
     }
   }
@@ -1202,6 +1285,32 @@ function startPlayback() {
   schedLoop();
   document.getElementById('play-status').textContent = 'playing…';
   document.getElementById('btn-play').classList.add('on');
+}
+
+// Change tempo mid-piece without losing the place: keep the current beat,
+// re-anchor the clock to the new tempo, drop the notes the lookahead already
+// timed at the old tempo, and schedule on from where the music is.
+function retempo(bpm) {
+  if (!score || !ac) { playBPM = bpm; return; }
+  const now  = ac.currentTime;
+  const beat = Math.max(0, (now - playStartAC) * playBPM / 60);
+  playBPM = bpm;
+  playStartAC = now - beat * 60 / playBPM;
+  clearTimeout(schedTimer);
+  clearTimeout(endTimer);
+  schedTimer = endTimer = null;
+  playToken++;                         // pending highlight timers were timed at the old tempo
+  if (pool) for (const v of pool) {
+    if (v.startAt > now) {             // scheduled, not yet sounding: drop it
+      v.mute.gain.cancelScheduledValues(0);
+      v.mute.gain.setValueAtTime(0, now);
+      v.freeAt = now;
+      v.midi = -1;
+    }
+  }
+  const i = score.events.findIndex(e => e.t >= beat);
+  schedIdx = i < 0 ? score.events.length : i;
+  schedLoop();
 }
 
 function silencePool() {
@@ -1371,7 +1480,7 @@ function setTemperament(pcCents, name, fifthVal, well) {
 
   if (!well) {
     document.getElementById('fifth-readout').textContent =
-      `${fifthVal.toFixed(2)}¢ — ${name}`;
+      `${fifthVal.toFixed(2)}¢ · ${name}`;
     document.getElementById('fifth-slider').value = fifthVal;
   } else {
     document.getElementById('fifth-readout').textContent = name;
@@ -1409,10 +1518,12 @@ function clearHighlights() {
 function buildLandmarks() {
   const wrap = document.getElementById('landmarks');
   const range = SLIDER_MAX - SLIDER_MIN;
-  LANDMARKS.forEach(lm => {
+  LANDMARKS.forEach((lm, i) => {
     const pct = (lm.fifth - SLIDER_MIN) / range * 100;
     const el = document.createElement('div');
-    el.className = 'landmark';
+    // a landmark within 0.5¢ of the one before drops a row so labels don't overprint
+    const crowded = i > 0 && lm.fifth - LANDMARKS[i - 1].fifth < 0.5;
+    el.className = 'landmark' + (crowded ? ' low' : '');
     el.style.left = `${pct}%`;
     el.innerHTML = `<div class="landmark-tick"></div><div class="landmark-label">${lm.label}<br>${lm.fifth.toFixed(2)}¢</div>`;
     wrap.appendChild(el);
@@ -1491,6 +1602,52 @@ function updateRootDisplay() {
   const freq = midiToFreq(midi);
   document.getElementById('root-hz').textContent =
     `${droneNote}${droneOct} · ${freq.toFixed(1)} Hz`;
+  updateKeyHint();
+  updateIntervals();
+}
+
+// The standard well-temperament chart: the major third and the fifth above
+// each of the 12 notes, coloured by distance from pure. A fifth more than
+// 10¢ from 3/2 is flagged as a wolf.
+function ivColor(dev, span) {
+  const t = Math.min(1, Math.abs(dev) / span);
+  if (t < 0.02) return 'rgba(160,200,136,0.95)';
+  return `rgba(${Math.round(160 + t * 50)},${Math.round(200 - t * 100)},${Math.round(136 - t * 46)},${0.7 + t * 0.25})`;
+}
+function updateIntervals() {
+  const pc = currentPcCents;
+  const r = NOTE_MIDI[droneNote] % 12;
+  const short = window.innerWidth < 500;
+  const fill = (id, step, pure, span, wolfAt) => {
+    const grid = document.getElementById(id);
+    if (!grid.children.length) for (let i = 0; i < 12; i++) grid.appendChild(document.createElement('div'));
+    [...grid.children].forEach((el, i) => {
+      const v = ((pc[(i + step) % 12] - pc[i]) % 1200 + 1200) % 1200;
+      const dev = v - pure;
+      el.className = 'iv-cell' + (i === r ? ' root' : '') + (wolfAt && Math.abs(dev) > wolfAt ? ' wolf' : '');
+      el.textContent = v.toFixed(short ? 0 : 1);
+      el.style.color = ivColor(dev, span);
+      el.title = `${PC_NAMES[i]}–${PC_NAMES[(i + step) % 12]} ${v.toFixed(1)}¢ (${dev >= 0 ? '+' : '−'}${Math.abs(dev).toFixed(1)}¢ from pure)` + (wolfAt && Math.abs(dev) > wolfAt ? ' · wolf' : '');
+    });
+  };
+  fill('m3-grid', 4, 1200 * Math.log2(5 / 4), 21.5, 0);
+  fill('p5-grid', 7, 1200 * Math.log2(3 / 2), 12, 10);
+}
+
+// Key character lives in the thirds: read them off the current temperament
+// instead of promising it. Pure 5/4 = 386.3¢.
+function updateKeyHint() {
+  const pc = currentPcCents;
+  const m3 = Array.from({ length: 12 }, (_, i) => ((pc[(i + 4) % 12] - pc[i]) % 1200 + 1200) % 1200);
+  const lo = Math.min(...m3), hi = Math.max(...m3);
+  const r = NOTE_MIDI[droneNote] % 12;
+  const el = document.getElementById('key-hint');
+  if (hi - lo < 0.05) {
+    el.textContent = `every major third ${lo.toFixed(1)}¢ · pure 5/4 is 386.3¢ · all 12 keys alike`;
+  } else {
+    const at = v => PC_NAMES.filter((_, i) => Math.abs(m3[i] - v) < 0.05).join(' ');
+    el.textContent = `major third on ${PC_NAMES[r]} ${m3[r].toFixed(1)}¢ · narrowest ${lo.toFixed(1)}¢ (${at(lo)}) · widest ${hi.toFixed(1)}¢ (${at(hi)}) · pure 5/4 is 386.3¢`;
+  }
 }
 
 // ── 7. TIMBRE UI ──────────────────────────────────────────────────────────────
@@ -1547,7 +1704,7 @@ function getFaveName(n) {
   if (!raw) return null;
   try {
     const d = JSON.parse(raw);
-    return d._preset || 'custom';
+    return (TP[d._preset] && TP[d._preset].label) || d._preset || 'custom';
   } catch(e) { return null; }
 }
 
@@ -1697,6 +1854,7 @@ document.getElementById('btn-drone').addEventListener('click', function() {
 });
 
 document.getElementById('btn-scale').addEventListener('click', playScale);
+document.getElementById('btn-triad').addEventListener('click', playTriad);
 document.getElementById('btn-stop-all').addEventListener('click', stopAll);
 
 let currentBook = '1';
@@ -1722,12 +1880,9 @@ document.getElementById('btn-play').addEventListener('click', () => {
 document.getElementById('btn-stop').addEventListener('click', stopPlayback);
 
 document.getElementById('tempo-slider').addEventListener('input', function() {
-  playBPM = parseInt(this.value);
-  document.getElementById('tempo-val').textContent = playBPM;
-  if (isPlaying) {
-    stopPlayback();
-    startPlayback();
-  }
+  const bpm = parseInt(this.value);
+  document.getElementById('tempo-val').textContent = bpm;
+  if (isPlaying) retempo(bpm); else playBPM = bpm;
 });
 
 document.addEventListener('keydown', e => {
