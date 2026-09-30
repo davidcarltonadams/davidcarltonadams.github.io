@@ -261,15 +261,23 @@ amps[0] = 1; // start with fundamental
 
 // ── Canvas setup
 const wvCanvas = document.getElementById('wvCanvas');
-const dpr = window.devicePixelRatio || 1;
-const CW = Math.min(window.innerWidth - 32, 600);
+// sized from the layout viewport and re-sized on resize/rotation (sizing once
+// from innerWidth left a landscape-width canvas overflowing a portrait phone)
+let dpr = window.devicePixelRatio || 1;
+let CW = 600;
 const CH = 130;
-wvCanvas.width  = CW * dpr;
-wvCanvas.height = CH * dpr;
-wvCanvas.style.width  = CW + 'px';
-wvCanvas.style.height = CH + 'px';
 const wc = wvCanvas.getContext('2d');
-wc.scale(dpr, dpr);
+function sizeWave() {
+  dpr = window.devicePixelRatio || 1;
+  CW = Math.min(document.documentElement.clientWidth - 32, 600);
+  wvCanvas.width  = CW * dpr;
+  wvCanvas.height = CH * dpr;
+  wvCanvas.style.width  = CW + 'px';
+  wvCanvas.style.height = CH + 'px';
+  wc.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeWave();
+window.addEventListener('resize', () => { sizeWave(); drawWaveform(); });
 
 // ── Draw waveform (mathematical, normalized)
 function drawWaveform() {

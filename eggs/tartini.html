@@ -406,13 +406,21 @@ function updatePlayUI() {
 
 // ── Canvas ───────────────────────────────────────────────────
 const canvas = $('cv');
-const dpr = window.devicePixelRatio || 1;
-const W = Math.min(window.innerWidth - 32, 620);
+// sized from the layout viewport and re-sized on resize/rotation (sizing once
+// from innerWidth left a landscape-width canvas overflowing a portrait phone)
+let dpr = window.devicePixelRatio || 1;
+let W = 620;
 const H = 300;
-canvas.width = W * dpr; canvas.height = H * dpr;
-canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
 const c = canvas.getContext('2d');
-c.scale(dpr, dpr);
+function sizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  W = Math.min(document.documentElement.clientWidth - 32, 620);
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);   // the rAF loop redraws
 
 // staged/synthetic spectrum for pose mode (?pose=1) — no real audio
 // signal is required for a photogenic capture; gaussian bumps stand
