@@ -9,12 +9,17 @@ Commit hashes below were re-pointed 2026-09-30 to the rewritten history on main.
 
 ## 2026-09-30 · audit + repair
 
-Night audit of all 41 eggs and the four hub pages, then repair lanes. (seat: finish this list)
+Night audit of all 41 eggs and the four hub pages, then repairs in four groups of eggs plus the hub pages.
+- group A (spiral, diamond, tuning, stern-brocot, farey, lattice, septimal, undertone, temperament, eikosany, comma) · voice bugs on spiral and diamond fixed · spiral and eikosany no longer clip · temperament's fugues gain 51 missing chord notes, hold their ties, and lose 14 wrong pitches · new: tuning's held triad across systems, stern-brocot's bag playback, eikosany's own chords, mirror chords on septimal and undertone, note names on lattice · phone layouts fit
+- group B (partials, sumtones, tartini, sculptor, consonance, spectrogram, risset, escher, brush, flicker, beating) · partials and sumtones stuck notes fixed · tartini at ghost 0 is truly linear · risset stays phase-locked · sculptor and escher no longer clip · spectrogram gains a scrolling spectrogram · beating dyad mode · sumtones cubic tone · consonance drone is a harmonic tone · brush plays on first press and names its 24-per-octave snap
+- group C (rhythm, sequence, drift, clutch, night-shift, clock, vuza, euclidean, phase, canon, pulse) · rhythm keeps every track through a tempo change · sequence opens on a just major scale, edits steps, and stops within 20 ms · clock draws its QR on the page and drops malformed sync messages · canon's voices sit on the tuning's own pitches, with engraved rests and beams · euclidean presets and rotation · phase in stereo with a lock mode · sequencers no longer bunch notes after a stall
+- group D (mtok, modes, lissajous, drone, sound, text-score, spontaneous-text-score) · mtok stuck notes fixed, 19- and 31-TET keys spelled, big chords no longer distort · modes spells every seven-note scale with seven letters, keys at true pitch · lissajous draws closed figures and plays a kept scale · drone stays under clipping and says A4 is 436.05 Hz · sound's resonant top no longer jumps 13 dB
+- every group · buttons and links lifted to 4.5:1 contrast · em dashes out of on-page prose · most held tones fade when the tab is hidden · thumbnails re-shot
 - tools.html · eikosany credited to Erv Wilson, partials has 24, drone's partials are 2 to 9 plus 11, 13, 16, 21, sound is not generative · tags and footer readable
-- eggs.html, tools.html, llms.txt · forty eggs · "nothing collected" now names clock's outside servers · farey, brush, mtok, vuza, comma, lissajous cards corrected · nest map no longer stretched
-- nest · septimal "oblique" and sumtones blurbs fixed in the vector store · rebake separates eggs with identical vectors, so phase, farey, rhythm and clutch can be clicked
+- eggs.html, tools.html, llms.txt · forty eggs · "nothing collected" now means by this site, and names the PeerJS relay behind clock's shared sessions · every card and tool blurb says what its egg does now · nest map no longer stretched
+- nest · septimal "oblique", sumtones and spectrogram blurbs fixed in the vector store · rebake separates eggs with identical vectors, so phase, farey, rhythm and clutch can be clicked · labels no longer overprint · back link and captions readable
+- raw-eggs · links readable
 - Kirnberger III · one fifth (F♯–C♯) carries the schisma, here and in tunings.json
-- lanes A to D, site · (seat)
 
 ---
 
@@ -65,7 +70,7 @@ Night audit of all 41 eggs and the four hub pages, then repair lanes. (seat: fin
 
 ## MTOK — Microtonal Touch Keyboard (mtok.html)
 
-### v1.3 — 2026-03-23 — commit 40ee725
+### v1.3 — 2026-03-23 — commit 3a5ea7c
 **External tuning support (tunings.json)**
 - Loads tunings.json on startup; adds K3/Vallotti/DCA Beta to selector
 - `wellTempToMTOKKeys()`: converts welltemp entries to 12-key piano layout with adjusted frequency ratios
