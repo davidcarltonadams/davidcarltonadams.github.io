@@ -544,8 +544,16 @@ function micErrorMessage(err) {
   }
 }
 
+let starting = false;   // a second click while the mic prompt is open must not open a second stream
+
 async function startMic() {
   if (running) { stopMic(); return; }
+  if (starting) return;
+  starting = true;
+  try { await openMic(); } finally { starting = false; }
+}
+
+async function openMic() {
 
   // getUserMedia only exists on https (or localhost) — check before asking.
   if (!window.isSecureContext) {
