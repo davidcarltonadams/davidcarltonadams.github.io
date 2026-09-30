@@ -218,6 +218,15 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* phone: fit all 14 white keys to the width. The keys take touchstart
+       with preventDefault (no double fire), so a min-width scroller could
+       never be swiped and its top third was out of reach. */
+    @media (max-width: 540px) {
+      .keyboard { min-width: 0; }
+      .key-label { font-size: 0.5rem; letter-spacing: 0; }
+      .degree-label { font-size: 0.44rem; }
+    }
+
     .hint {
       font-size: 0.54rem;
       letter-spacing: 0.12em;
