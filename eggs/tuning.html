@@ -632,6 +632,9 @@ document.addEventListener('keyup', e => {
 
 // A window switch or app swipe swallows every keyup — drop the lot
 window.addEventListener('blur', stopAll);
+// a hidden tab (phone lock, background tab) need not blur: the latched triad
+// would keep sounding, so hide stops everything and the buttons show it
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopAll(); });
 
 // ── Tuning buttons ─────────────────────────────────────────────────────
 document.getElementById('tuning-btns').addEventListener('click', e => {
