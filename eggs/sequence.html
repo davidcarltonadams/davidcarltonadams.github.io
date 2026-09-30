@@ -346,13 +346,35 @@ let schedTimer  = null;
 
 // ─── Audio ────────────────────────────────────────────────────────────────────
 
-let ax = null;
+let ax = null, master = null;
 let droneFund = null, droneGain = null;  // sustained fundamental drone
-let noteOsc = null, noteGain = null;     // current melody note
+const voiced = new Set();                // every scheduled note, so stop can reach it
+let endTimer = null;                     // end of a non-looping pass
 
 function ensureAx() {
-  if (!ax) ax = new (window.AudioContext || window.webkitAudioContext)();
+  if (!ax) {
+    ax = new (window.AudioContext || window.webkitAudioContext)();
+    master = ax.createGain();
+    master.connect(ax.destination);
+  }
   if (ax.state === 'suspended') ax.resume();
+}
+
+// Stop and pause silence what is sounding and cancel what is queued: each
+// note ramps to 0 over 20 ms, then its oscillator stops. (Notes used to go
+// straight to the destination with no handle, so the current note rang out:
+// up to 6 s at 120 bpm in dwell mode, 37 s at 20 bpm.)
+function silenceVoices() {
+  if (!ax) return;
+  const now = ax.currentTime;
+  for (const v of voiced) {
+    const g = v.g.gain;
+    if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(now);
+    else { g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); }
+    g.linearRampToValueAtTime(0, now + 0.02);
+    try { v.o.stop(now + 0.03); } catch (e) { /* already stopped */ }
+  }
+  voiced.clear();
 }
 
 function startFundDrone() {
@@ -362,18 +384,23 @@ function startFundDrone() {
   droneFund.type = 'sine';
   droneFund.frequency.value = fundHz;
   droneGain.gain.value = 0;
-  droneFund.connect(droneGain); droneGain.connect(ax.destination);
+  droneFund.connect(droneGain); droneGain.connect(master);
   droneFund.start();
   droneGain.gain.linearRampToValueAtTime(0.18, ax.currentTime + 0.5);
 }
 
-function stopFundDrone() {
+function stopFundDrone(at, fade = 0.6) {
   if (!droneFund) return;
-  const now = ax.currentTime;
-  droneGain.gain.cancelScheduledValues(now);
-  droneGain.gain.setValueAtTime(droneGain.gain.value, now);
-  droneGain.gain.linearRampToValueAtTime(0, now + 0.6);
-  droneFund.stop(now + 0.65);
+  const t = Math.max(at || 0, ax.currentTime);
+  const g = droneGain.gain;
+  if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(t);
+  else { g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); }
+  g.linearRampToValueAtTime(0, t + fade);
+  droneFund.stop(t + fade + 0.05);
+  // a drone fading out at the end of a pass stays reachable by stop/pause
+  const v = { o: droneFund, g: droneGain };
+  voiced.add(v);
+  droneFund.onended = () => voiced.delete(v);
   droneFund = null; droneGain = null;
 }
 
@@ -388,8 +415,11 @@ function playNote(ev, startTime, dur) {
   g.gain.linearRampToValueAtTime(vol, startTime + 0.025);
   g.gain.setValueAtTime(vol, startTime + dur * 0.82);
   g.gain.linearRampToValueAtTime(0, startTime + dur * 0.98);
-  o.connect(g); g.connect(ax.destination);
+  o.connect(g); g.connect(master);
   o.start(startTime); o.stop(startTime + dur);
+  const v = { o, g };
+  voiced.add(v);
+  o.onended = () => voiced.delete(v);
 }
 
 // ─── Sequencer engine ─────────────────────────────────────────────────────────
@@ -405,13 +435,40 @@ function applySwing(idx, rawSec) {
   return rawSec * (pairPos === 0 ? swing * 2 : 2 - swing * 2);
 }
 
+function stepDur(i) { return applySwing(i, parseDur(seq[i].dur, beatSec())); }
+
+// A non-looping pass has handed its last note to Web Audio: keep the drone and
+// the play state until that note ends, not until it is scheduled (up to 120 ms
+// early, and the last note is often a long cadence).
+function finishAt(endAt) {
+  stopFundDrone(endAt);
+  clearTimeout(endTimer);
+  endTimer = setTimeout(() => {
+    playing = false;
+    updatePlayBtn();
+  }, Math.max(0, (endAt - ax.currentTime) * 1000));
+}
+
 function scheduleAhead() {
   if (!playing || seq.length === 0) return;
   const LOOKAHEAD = 0.12; // seconds
+  // stall resync: a main-thread stall (tab switch, GC) would hand every missed
+  // note to Web Audio in the past, where they fire as one clump. Skip the notes
+  // whose whole span already went by, then restart just ahead of now.
+  const now = ax.currentTime;
+  if (nextEventAt < now - 0.05) {
+    let guard = seq.length * 64;
+    while (guard-- > 0 && curIdx < seq.length && nextEventAt + stepDur(curIdx) <= now) {
+      nextEventAt += stepDur(curIdx);
+      curIdx++;
+      if (curIdx >= seq.length && looping) curIdx = 0;
+    }
+    nextEventAt = now + 0.02;
+    if (curIdx >= seq.length) { finishAt(now); return; }
+  }
   while (nextEventAt < ax.currentTime + LOOKAHEAD) {
     const ev  = seq[curIdx];
-    const dur = parseDur(ev.dur, beatSec());
-    const swungDur = applySwing(curIdx, dur);
+    const swungDur = stepDur(curIdx);
     playNote(ev, nextEventAt, swungDur);
     highlightStep(curIdx);
     nextEventAt += swungDur;
@@ -420,10 +477,7 @@ function scheduleAhead() {
       if (looping) {
         curIdx = 0;
       } else {
-        playing = false;
-        updatePlayBtn();
-        stopFundDrone();
-        clearTimeout(schedTimer);
+        finishAt(nextEventAt);
         return;
       }
     }
@@ -435,8 +489,9 @@ function togglePlay() {
   ensureAx();
   if (playing) {
     playing = false;
-    clearTimeout(schedTimer);
-    stopFundDrone();
+    clearTimeout(schedTimer); clearTimeout(endTimer);
+    silenceVoices();
+    stopFundDrone(0, 0.08);
     updatePlayBtn();
   } else {
     playing = true;
@@ -451,11 +506,12 @@ function togglePlay() {
 
 function stopSeq() {
   playing = false;
-  clearTimeout(schedTimer);
+  clearTimeout(schedTimer); clearTimeout(endTimer);
+  silenceVoices();
+  if (ax) stopFundDrone(0, 0.08);
   curIdx = 0;
   nextEventAt = 0;
   updatePlayBtn();
-  stopFundDrone();
   clearHighlights();
   document.getElementById('progressBar').style.width = '0%';
   updateInfoPanel(null);
