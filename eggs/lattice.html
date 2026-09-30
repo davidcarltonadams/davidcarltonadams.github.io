@@ -17,6 +17,7 @@
       --text:     #d8d0c8;
       --dim:      rgba(216,208,200,0.4);
       --dimmer:   rgba(216,208,200,0.18);
+      --control: rgba(216,208,200,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --accent:   #8ab0c8;
       --acc-bg:   rgba(138,176,200,0.18);
       --border:   rgba(255,255,255,0.07);
@@ -47,7 +48,7 @@
     .sub {
       font-size: 0.6rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.3rem;
     }
@@ -81,7 +82,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.63rem;
       letter-spacing: 0.07em;
@@ -111,7 +112,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.6rem;
       padding: 0.22rem 0.48rem;
@@ -148,7 +149,7 @@
       min-height: 1.3rem;
       font-size: 0.58rem;
       letter-spacing: 0.1em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
     }
@@ -207,7 +208,7 @@
     /* ── Back link ───────────────────────────────────── */
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -217,7 +218,7 @@
     .hint {
       font-size: 0.54rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
     }

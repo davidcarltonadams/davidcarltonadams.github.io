@@ -16,6 +16,7 @@
       --text:    #d0ccc8;
       --dim:     rgba(208,204,200,0.38);
       --dimmer:  rgba(208,204,200,0.18);
+      --control: rgba(208,204,200,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --border:  rgba(255,255,255,0.07);
       --just:    #a0b888;
       --tet12:   #8ab0c8;
@@ -47,7 +48,7 @@
     .sub {
       font-size: 0.58rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.35rem;
       line-height: 1.7;
@@ -65,7 +66,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.68rem;
       letter-spacing: 0.1em;
@@ -85,7 +86,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.68rem;
       letter-spacing: 0.1em;
@@ -109,7 +110,7 @@
     .info {
       font-size: 0.6rem;
       letter-spacing: 0.1em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
       min-height: 1.4rem;
@@ -119,7 +120,7 @@
     .comma-info {
       font-size: 0.58rem;
       letter-spacing: 0.1em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
       line-height: 1.8;
@@ -136,7 +137,7 @@
     .hint {
       font-size: 0.54rem;
       letter-spacing: 0.12em;
-      color: rgba(208,204,200,0.38);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
     }
@@ -144,7 +145,7 @@
 </head>
 <body>
 
-<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:#332;text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
+<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:var(--control);text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
 <a href="../eggs.html" class="eggs-back">← eggs</a>
 
 <div class="header">
@@ -162,7 +163,7 @@
 </div>
 
 <div class="modes" role="group" aria-label="Starting register" style="gap:0.3rem">
-  <span style="font-size:0.58rem;color:var(--dimmer);font-style:italic;align-self:center">root&nbsp;</span>
+  <span style="font-size:0.58rem;color:var(--dim);font-style:italic;align-self:center">root&nbsp;</span>
   <button class="reg-btn" id="reg-c3" data-r="130.81">C3</button>
   <button class="reg-btn on" id="reg-c4" data-r="261.63">C4</button>
   <button class="reg-btn" id="reg-c5" data-r="523.25">C5</button>
