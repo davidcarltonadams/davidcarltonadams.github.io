@@ -16,6 +16,7 @@
       --text:   #ccc8d0;
       --dim:    rgba(204,200,208,0.40);
       --dimmer: rgba(204,200,208,0.17);
+      --control: rgba(204,200,208,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
     }
@@ -32,7 +33,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -45,7 +46,7 @@
     }
     .sub {
       font-size: 0.57rem; letter-spacing: 0.11em;
-      color: var(--dimmer); font-style: italic;
+      color: var(--dim); font-style: italic;
       margin-top: 0.42rem; line-height: 1.9;
       max-width: 600px; margin-left: auto; margin-right: auto;
     }
@@ -56,7 +57,7 @@
     .tab {
       font-family: Georgia, serif; font-size: 0.62rem;
       letter-spacing: 0.12em; text-transform: lowercase; font-style: italic;
-      color: var(--dim); background: none;
+      color: var(--control); background: none;
       border: none; border-right: 1px solid var(--border);
       padding: 0.5rem 1.4rem; cursor: pointer;
       transition: color 0.13s, background 0.13s;
@@ -74,12 +75,12 @@
     }
     .lbl {
       font-size: 0.51rem; letter-spacing: 0.13em;
-      font-style: italic; color: var(--dimmer);
+      font-style: italic; color: var(--dim);
     }
     .btn {
       font-family: Georgia, serif; font-size: 0.6rem;
       letter-spacing: 0.1em; text-transform: lowercase; font-style: italic;
-      color: var(--dim); background: none;
+      color: var(--control); background: none;
       border: 1px solid var(--border);
       padding: 0.38rem 0.8rem; cursor: pointer;
       transition: color 0.13s, border-color 0.13s;
@@ -87,7 +88,7 @@
     .btn:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
     select {
       font-family: Georgia, serif; font-size: 0.6rem; font-style: italic;
-      color: var(--dim); background: var(--bg2);
+      color: var(--control); background: var(--bg2);
       border: 1px solid var(--border);
       padding: 0.28rem 0.5rem; cursor: pointer; outline: none;
     }
@@ -98,7 +99,7 @@
       min-height: 3.5rem; align-items: flex-start;
     }
     .info-block { display: flex; flex-direction: column; gap: 0.18rem; }
-    .info-label { font-size: 0.46rem; letter-spacing: 0.14em; font-style: italic; color: var(--dimmer); }
+    .info-label { font-size: 0.46rem; letter-spacing: 0.14em; font-style: italic; color: var(--dim); }
     .info-val   { font-size: 1.3rem; color: var(--gold); font-weight: normal; letter-spacing: 0.02em; }
     .info-sub   { font-size: 0.5rem; font-style: italic; color: var(--dim); }
 
@@ -111,7 +112,7 @@
       border: 1px solid rgba(212,192,112,0.3);
       padding: 0.2rem 0.55rem; letter-spacing: 0.06em;
     }
-    .chord-lbl { font-size: 0.48rem; letter-spacing: 0.12em; font-style: italic; color: var(--dimmer); }
+    .chord-lbl { font-size: 0.48rem; letter-spacing: 0.12em; font-style: italic; color: var(--dim); }
   </style>
 </head>
 <body>
@@ -171,7 +172,7 @@
 <div class="ctrl-row">
   <span class="chord-lbl">chord:</span>
   <div class="chord-strip" id="chordStrip">
-    <span style="font-size:0.5rem;font-style:italic;color:var(--dimmer)">click nodes to add pitches</span>
+    <span style="font-size:0.5rem;font-style:italic;color:var(--dim)">click nodes to add pitches</span>
   </div>
 </div>
 
@@ -501,7 +502,7 @@ function clearInfoPanel() {
 function updateChordStrip() {
   const strip = document.getElementById('chordStrip');
   if (chord.size === 0) {
-    strip.innerHTML = '<span style="font-size:0.5rem;font-style:italic;color:var(--dimmer)">click nodes to add pitches</span>';
+    strip.innerHTML = '<span style="font-size:0.5rem;font-style:italic;color:var(--dim)">click nodes to add pitches</span>';
     return;
   }
   const chips = [...chord]

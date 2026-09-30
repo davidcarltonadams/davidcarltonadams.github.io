@@ -17,6 +17,7 @@
       --text:   #d8d0c8;
       --dim:    rgba(216,208,200,0.4);
       --dimmer: rgba(216,208,200,0.18);
+      --control: rgba(216,208,200,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --accent: #8ab0c8;
       --acc-bg: rgba(138,176,200,0.18);
       --border: rgba(255,255,255,0.07);
@@ -35,7 +36,7 @@
     }
     .sub {
       font-size: 0.6rem; letter-spacing: 0.12em;
-      color: var(--dimmer); font-style: italic; margin-top: 0.3rem;
+      color: var(--dim); font-style: italic; margin-top: 0.3rem;
     }
 
     /* ── Controls ─────────────────────────────────────── */
@@ -48,7 +49,7 @@
     .btn-row { display: flex; gap: 0.22rem; }
     .tog {
       background: none; border: 1px solid var(--border); border-radius: 2px;
-      color: var(--dim); font-family: Georgia, serif; font-size: 0.63rem;
+      color: var(--control); font-family: Georgia, serif; font-size: 0.63rem;
       letter-spacing: 0.07em; padding: 0.28rem 0.6rem; cursor: pointer;
       transition: color 0.1s, border-color 0.1s, background 0.1s;
     }
@@ -63,7 +64,7 @@
     .fund-input:focus { outline: none; border-color: var(--accent); }
     .oct-btn {
       background: none; border: 1px solid var(--border); border-radius: 2px;
-      color: var(--dim); font-family: Georgia, serif; font-size: 0.6rem;
+      color: var(--control); font-family: Georgia, serif; font-size: 0.6rem;
       padding: 0.22rem 0.48rem; cursor: pointer;
       transition: color 0.1s, border-color 0.1s;
     }
@@ -99,7 +100,7 @@
     }
     .info-display {
       min-height: 1.3rem; font-size: 0.58rem; letter-spacing: 0.1em;
-      color: var(--dimmer); font-style: italic; text-align: center;
+      color: var(--dim); font-style: italic; text-align: center;
     }
 
     /* ── Legend ───────────────────────────────────────── */
@@ -118,7 +119,7 @@
     /* ── Back link ────────────────────────────────────── */
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -127,7 +128,7 @@
     /* ── Hint ─────────────────────────────────────────── */
     .hint {
       font-size: 0.54rem; letter-spacing: 0.12em;
-      color: var(--dimmer); font-style: italic; text-align: center;
+      color: var(--dim); font-style: italic; text-align: center;
     }
   </style>
 </head>

@@ -16,6 +16,7 @@
       --text:   #ccc8d0;
       --dim:    rgba(204,200,208,0.40);
       --dimmer: rgba(204,200,208,0.17);
+      --control: rgba(204,200,208,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
       --blue:   #7ab8d4;
@@ -34,7 +35,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -50,7 +51,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.11em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       line-height: 1.9;
@@ -123,7 +124,7 @@
       letter-spacing: 0.1em;
       text-transform: lowercase;
       font-style: italic;
-      color: var(--dim);
+      color: var(--control);
       background: none;
       border: 1px solid var(--border);
       padding: 0.4rem 0.75rem;
@@ -141,7 +142,7 @@
       display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem;
       min-height: 1.8rem;
     }
-    .path-lbl { font-size: 0.51rem; letter-spacing: 0.13em; font-style: italic; color: var(--dimmer); }
+    .path-lbl { font-size: 0.51rem; letter-spacing: 0.13em; font-style: italic; color: var(--dim); }
     .path-badge {
       font-size: 0.51rem; letter-spacing: 0.09em;
       padding: 0.1rem 0.35rem;
@@ -149,14 +150,14 @@
     }
     .path-badge.L { color: var(--blue);  border-color: rgba(122,184,212,0.32); }
     .path-badge.R { color: var(--green); border-color: rgba(136,192,128,0.32); }
-    .path-node { font-size: 0.5rem; color: rgba(204,200,208,0.55); }
+    .path-node { font-size: 0.5rem; color: var(--control); }
     .path-sep  { font-size: 0.48rem; color: var(--dimmer); }
 
     /* Clickable path nodes */
     button.path-node {
       background: none; border: none; cursor: pointer;
       font-family: Georgia, serif; font-size: 0.5rem;
-      padding: 0; color: rgba(204,200,208,0.55);
+      padding: 0; color: var(--control);
       font-style: italic;
       transition: color 0.12s;
       text-decoration: underline;
@@ -178,13 +179,13 @@
 
     select {
       font-family: Georgia, serif; font-size: 0.6rem; font-style: italic;
-      color: var(--dim); background: var(--bg2);
+      color: var(--control); background: var(--bg2);
       border: 1px solid var(--border);
       padding: 0.28rem 0.5rem; cursor: pointer; outline: none;
     }
     .kbd-hint {
       font-size: 0.5rem; font-style: italic; letter-spacing: 0.09em;
-      color: var(--dimmer); margin-left: auto;
+      color: var(--dim); margin-left: auto;
     }
     kbd {
       font-family: 'SF Mono','Fira Code',monospace; font-style: normal;
@@ -234,10 +235,10 @@
     }
     .bag-title {
       font-size: 0.51rem; letter-spacing: 0.13em;
-      font-style: italic; color: var(--dimmer);
+      font-style: italic; color: var(--dim);
     }
     .bag-count {
-      font-size: 0.48rem; color: var(--dimmer);
+      font-size: 0.48rem; color: var(--dim);
       font-family: 'SF Mono','Fira Code',monospace;
     }
     .bag-tray {
@@ -248,7 +249,7 @@
       align-items: center;
     }
     .bag-empty {
-      font-size: 0.52rem; font-style: italic; color: var(--dimmer);
+      font-size: 0.52rem; font-style: italic; color: var(--dim);
     }
     .bag-chip {
       display: flex; align-items: center; gap: 0.28rem;
@@ -272,7 +273,7 @@
     }
     .chip-dur:hover { color: var(--text); border-color: rgba(204,200,208,0.4); }
     .chip-remove {
-      font-size: 0.55rem; color: var(--dimmer);
+      font-size: 0.55rem; color: var(--control);
       cursor: pointer; font-style: normal; line-height: 1;
       transition: color 0.1s;
     }
