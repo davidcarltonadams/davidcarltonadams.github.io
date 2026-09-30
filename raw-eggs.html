@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="css/style.css">
   <style>
     body { background: #080808; color: #555; }
+    /* S1: anything clickable at >= 4.5:1 on #080808, text at the --dim floor */
+    .eggs-wrap { --control: #7a7a7a; --dim: #555; }   /* 4.67:1 · 2.69:1 */
 
     .eggs-wrap {
       max-width: 520px;
@@ -20,7 +22,7 @@
 
     .eggs-epigraph {
       font-size: 0.68rem;
-      color: #333;
+      color: var(--dim);
       letter-spacing: 0.06em;
       line-height: 1.7;
       margin-bottom: 3rem;
@@ -47,23 +49,23 @@
 
     .egg-link {
       font-size: 0.75rem;
-      color: #444;
+      color: var(--control);
       text-decoration: none;
       letter-spacing: 0.06em;
       transition: color 0.15s;
     }
-    .egg-link:hover { color: #888; }
+    .egg-link:hover { color: #ccc; }
 
     .egg-desc {
       font-size: 0.6rem;
-      color: #2a2a2a;
+      color: var(--dim);
       letter-spacing: 0.04em;
       flex: 1;
     }
 
     .egg-status {
       font-size: 0.55rem;
-      color: #333;
+      color: var(--dim);
       letter-spacing: 0.08em;
       font-style: italic;
     }
@@ -71,9 +73,11 @@
     .eggs-footer {
       margin-top: 3rem;
       font-size: 0.58rem;
-      color: #1a1a1a;
+      color: var(--dim);
       letter-spacing: 0.06em;
     }
+    .eggs-footer a { color: var(--control); transition: color 0.15s; }
+    .eggs-footer a:hover { color: #ccc; }
   </style>
 </head>
 <body>
@@ -129,7 +133,7 @@
     </li>
   </ul>
 
-  <p class="eggs-footer">the hatched ones are at <a href="eggs.html" style="color:inherit">eggs.html</a>.<br>the polished ones are at <a href="tools.html" style="color:inherit">tools.html</a>.</p>
+  <p class="eggs-footer">the hatched ones are at <a href="eggs.html">eggs.html</a>.<br>the polished ones are at <a href="tools.html">tools.html</a>.</p>
 
 </div>
 </main>
