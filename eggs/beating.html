@@ -45,7 +45,7 @@
     .sub {
       font-size: 0.58rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.35rem;
       line-height: 1.7;
@@ -170,6 +170,17 @@
       margin-top: 0.35rem;
     }
 
+    .beat-dyad {
+      font-size: 0.58rem;
+      letter-spacing: 0.08em;
+      color: rgba(204,202,212,0.62);
+      font-style: italic;
+      margin-top: 0.5rem;
+      max-width: 440px;
+      line-height: 1.6;
+    }
+    .beat-dyad:empty { display: none; }
+
     .beat-desc {
       font-size: 0.62rem;
       letter-spacing: 0.1em;
@@ -234,7 +245,7 @@
 <div class="header">
   <h1 class="title">beating</h1>
   <p class="sub">
-    two pitches close together produce a third rhythm —<br>
+    two pitches close together produce a third rhythm ·<br>
     the interference of their waves, audible as a pulse
   </p>
 </div>
@@ -242,12 +253,12 @@
 <div class="controls">
   <div class="freq-row">
     <span class="freq-label a">A</span>
-    <input type="range" id="slider-a" class="freq-slider a" min="80" max="880" step="0.1" value="440">
+    <input type="range" id="slider-a" class="freq-slider a" min="80" max="880" step="0.01" value="440">
     <span class="freq-val" id="val-a">440.0 Hz</span>
   </div>
   <div class="freq-row">
     <span class="freq-label b">B</span>
-    <input type="range" id="slider-b" class="freq-slider b" min="80" max="880" step="0.1" value="443">
+    <input type="range" id="slider-b" class="freq-slider b" min="80" max="880" step="0.01" value="443">
     <span class="freq-val" id="val-b">443.0 Hz</span>
   </div>
 </div>
@@ -256,21 +267,21 @@
   <span class="preset-label">tuning reference · string players</span>
   <div class="preset-row">
     <button class="preset-btn" data-a="440" data-b="441">1 Hz beat</button>
-    <button class="preset-btn" data-a="440" data-b="443">3 Hz — sharp A</button>
-    <button class="preset-btn" data-a="440" data-b="444">4 Hz — very sharp</button>
+    <button class="preset-btn" data-a="440" data-b="443">3 Hz · sharp A</button>
+    <button class="preset-btn" data-a="440" data-b="444">4 Hz · very sharp</button>
     <button class="preset-btn" data-a="440" data-b="440">in tune (no beat)</button>
     <button class="preset-btn" data-a="261.63" data-b="261.63">C4 in tune</button>
-    <button class="preset-btn" data-a="392" data-b="392.4">tempered fifth · 0.4 Hz</button>
+    <button class="preset-btn" data-a="392" data-b="392.44" data-chord="the tempered fifth C4–G4 as a chord beats 0.89 Hz, where C's 3rd partial meets G's 2nd">G4 pure vs tempered · 0.4 Hz</button>
   </div>
-  <span class="preset-label" style="margin-top:0.8rem;display:block">JI vs 12-TET · A=440 base · A is JI, B is ET</span>
+  <span class="preset-label" style="margin-top:0.8rem;display:block">same note, two tunings · the upper note of each interval over A440 · A is JI, B is ET</span>
   <div class="preset-row">
-    <button class="preset-btn" data-a="660" data-b="659.26" title="3/2 vs 2^(7/12)">P5 · 0.7 Hz</button>
-    <button class="preset-btn" data-a="586.67" data-b="587.33" title="4/3 vs 2^(5/12)">P4 · 0.7 Hz</button>
-    <button class="preset-btn" data-a="550" data-b="554.37" title="5/4 vs 2^(4/12)">M3 · 4.4 Hz</button>
-    <button class="preset-btn" data-a="528" data-b="523.25" title="6/5 vs 2^(3/12)">m3 · 4.8 Hz</button>
-    <button class="preset-btn" data-a="733.33" data-b="739.99" title="5/3 vs 2^(9/12)">M6 · 6.7 Hz</button>
-    <button class="preset-btn" data-a="704" data-b="698.46" title="8/5 vs 2^(8/12)">m6 · 5.5 Hz</button>
-    <button class="preset-btn" data-a="770" data-b="783.99" title="7/4 vs 2^(10/12)">7th harm · 14 Hz</button>
+    <button class="preset-btn" data-chord="the ET fifth A4–E5 as a chord beats 1.5 Hz, where A's 3rd partial meets E's 2nd" data-a="660" data-b="659.26" title="3/2 vs 2^(7/12)">P5 · 0.7 Hz</button>
+    <button class="preset-btn" data-chord="the ET fourth A4–D5 as a chord beats 2.0 Hz, where A's 4th partial meets D's 3rd" data-a="586.67" data-b="587.33" title="4/3 vs 2^(5/12)">P4 · 0.7 Hz</button>
+    <button class="preset-btn" data-chord="the ET major third A4–C♯5 as a chord beats 17.5 Hz, where A's 5th partial meets C♯'s 4th" data-a="550" data-b="554.37" title="5/4 vs 2^(4/12)">M3 · 4.4 Hz</button>
+    <button class="preset-btn" data-chord="the ET minor third A4–C5 as a chord beats 23.7 Hz, where A's 6th partial meets C's 5th" data-a="528" data-b="523.25" title="6/5 vs 2^(3/12)">m3 · 4.8 Hz</button>
+    <button class="preset-btn" data-chord="the ET major sixth A4–F♯5 as a chord beats 20.0 Hz, where A's 5th partial meets F♯'s 3rd" data-a="733.33" data-b="739.99" title="5/3 vs 2^(9/12)">M6 · 6.7 Hz</button>
+    <button class="preset-btn" data-chord="the ET minor sixth A4–F5 as a chord beats 27.7 Hz, where A's 8th partial meets F's 5th" data-a="704" data-b="698.46" title="8/5 vs 2^(8/12)">m6 · 5.5 Hz</button>
+    <button class="preset-btn" data-chord="against the 7th harmonic, the ET minor seventh A4–G5 beats 56 Hz where A's 7th partial meets G's 4th, fast enough to read as roughness" data-a="770" data-b="783.99" title="7/4 vs 2^(10/12)">7th harm · 14 Hz</button>
   </div>
 </div>
 
@@ -279,6 +290,7 @@
   <div class="beat-label">beats per second</div>
   <div class="beat-desc" id="beat-desc"></div>
   <div class="beat-cents" id="beat-cents"></div>
+  <div class="beat-dyad" id="beat-dyad"></div>
 </div>
 
 <div class="wave-wrap">
@@ -291,7 +303,7 @@
 
 <button class="play-btn" id="play-btn">listen</button>
 
-<p class="hint">A440 + A443 = 3 beats/sec — what a string player hears when tuning slightly off</p>
+<p class="hint">A440 + A443 = 3 beats/sec · what a string player hears when tuning slightly off · both voices are pure sines, so what you hear is unison beating · a chord beats where its partials meet</p>
 
 <script>
 // ── Audio ─────────────────────────────────────────────────
@@ -363,13 +375,13 @@ document.getElementById('play-btn').addEventListener('click', () => {
 
 // ── Beat rate display ─────────────────────────────────────
 function beatDesc(rate) {
-  if (rate < 0.05) return 'perfectly in tune — no beating';
-  if (rate < 0.5)  return 'very slow flutter — barely perceptible';
-  if (rate < 2)    return 'slow, liquid pulse — like a vibrato';
-  if (rate < 5)    return 'clear beating — what a string player hears tuning';
-  if (rate < 10)   return 'fast beating — audibly rough';
-  if (rate < 20)   return 'very fast — starts to roughen into dissonance';
-  return 'roughness — perceived as timbral dissonance, not separate pulses';
+  if (rate < 0.05) return 'perfectly in tune · no beating';
+  if (rate < 0.5)  return 'very slow flutter · barely perceptible';
+  if (rate < 2)    return 'slow, liquid pulse · like a vibrato';
+  if (rate < 5)    return 'clear beating · what a string player hears tuning';
+  if (rate < 10)   return 'fast beating · audibly rough';
+  if (rate < 20)   return 'very fast · starts to roughen into dissonance';
+  return 'roughness · perceived as timbral dissonance, not separate pulses';
 }
 
 // ── Interval readout ──────────────────────────────────────
@@ -498,24 +510,31 @@ function update() {
   drawWave();
 }
 
-document.getElementById('slider-a').addEventListener('input', update);
-document.getElementById('slider-b').addEventListener('input', update);
+// the interval presets play one note in two tunings (unison beating);
+// the chord line says what the interval itself beats, at its partials
+const dyadLine = document.getElementById('beat-dyad');
+const sliderInput = () => { dyadLine.textContent = ''; update(); };
+document.getElementById('slider-a').addEventListener('input', sliderInput);
+document.getElementById('slider-b').addEventListener('input', sliderInput);
 
 document.querySelectorAll('.preset-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('slider-a').value = btn.dataset.a;
     document.getElementById('slider-b').value = btn.dataset.b;
+    dyadLine.textContent = btn.dataset.chord || '';
     update();
   });
 });
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && playing) {
-    stopAudio(); playing = false;
-    document.getElementById('play-btn').classList.remove('on');
-    document.getElementById('play-btn').textContent = 'listen';
-  }
-});
+function stopFromOutside() {
+  if (!playing) return;
+  stopAudio(); playing = false;
+  document.getElementById('play-btn').classList.remove('on');
+  document.getElementById('play-btn').textContent = 'listen';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') stopFromOutside(); });
+// a hidden tab stops the drone; the button reads "listen" again
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopFromOutside(); });
 
 window.addEventListener('resize', drawWave);
 update();
