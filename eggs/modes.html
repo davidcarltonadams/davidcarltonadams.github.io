@@ -579,7 +579,9 @@ function buildKeyboard() {
   const kb = document.getElementById('keyboard');
   kb.innerHTML = '';
 
-  // Two octaves: 14 white keys, black keys as absolute-positioned overlays
+  // Two octaves at true pitch, C4 to B5: C is always a white key, whatever the
+  // root. The scale is shown by highlighting its pitch classes, and every
+  // scale tone sits inside the range (tonic 0..11 plus an octave ≤ 23).
   const whiteKeys = [0,2,4,5,7,9,11,12,14,16,17,19,21,23]; // semitones above C4
   const whiteCount = whiteKeys.length;
   const keyW = 100 / whiteCount;
@@ -589,15 +591,15 @@ function buildKeyboard() {
   whiteKeys.forEach((semi, wi) => {
     const div = document.createElement('div');
     div.className = 'key white';
-    div.dataset.semi = semi + currentRoot;
+    div.dataset.semi = semi;
     div.style.width = keyW + '%';
     div.style.left = (wi * keyW) + '%';
     div.style.position = 'absolute';
     div.style.height = '100%';
 
-    div.innerHTML = `<span class="key-label">${noteName(semi + currentRoot, flats)}</span>`;
-    div.addEventListener('mousedown', () => playNote(semi + currentRoot));
-    div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi + currentRoot); }, {passive: false});
+    div.innerHTML = `<span class="key-label">${noteName(semi, flats)}</span>`;
+    div.addEventListener('mousedown', () => playNote(semi));
+    div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi); }, {passive: false});
     kb.appendChild(div);
   });
 
@@ -608,13 +610,13 @@ function buildKeyboard() {
     const semi = parseInt(semiStr);
     const div = document.createElement('div');
     div.className = 'key black';
-    div.dataset.semi = semi + currentRoot;
+    div.dataset.semi = semi;
     const leftPct = (leftWi + 1) * keyW - keyW * 0.29;
     div.style.left = leftPct + '%';
     div.style.width = keyW * 0.58 + '%';
-    div.innerHTML = `<span class="key-label" style="margin-top:4px">${noteName(semi + currentRoot, flats)}</span>`;
-    div.addEventListener('mousedown', () => playNote(semi + currentRoot));
-    div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi + currentRoot); }, {passive: false});
+    div.innerHTML = `<span class="key-label" style="margin-top:4px">${noteName(semi, flats)}</span>`;
+    div.addEventListener('mousedown', () => playNote(semi));
+    div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi); }, {passive: false});
     kb.appendChild(div);
   }
 
