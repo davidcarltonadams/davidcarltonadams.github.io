@@ -696,7 +696,11 @@ function genCode() {
 }
 
 // ── URL param helpers ──────────────────────────────────────────────────────
-const params = new URLSearchParams(window.location.search);
+// Session data rides in the fragment (#room=…&s=…): browsers never send the
+// fragment to any server, so the score stays out of the site host's logs too.
+// Links made before this used the query string (?room=…) and still open.
+const HASH_PARAMS = new URLSearchParams(window.location.hash.slice(1));
+const params = HASH_PARAMS.has('room') ? HASH_PARAMS : new URLSearchParams(window.location.search);
 const ROOM   = params.get('room');
 const IS_COND = params.has('c');
 const SESS_DATA = params.get('s');
@@ -705,12 +709,18 @@ const SESS_PW   = params.get('pw');
 function buildURL(room, isCond, sections, pw) {
   const u = new URL(window.location.href);
   u.search = '';
-  u.searchParams.set('room', room);
-  if (isCond) u.searchParams.set('c', '1');
-  if (sections && sections.length) u.searchParams.set('s', b64encode(JSON.stringify(sections)));
-  if (pw) u.searchParams.set('pw', pw);
+  const h = new URLSearchParams();
+  h.set('room', room);
+  if (isCond) h.set('c', '1');
+  if (sections && sections.length) h.set('s', b64encode(JSON.stringify(sections)));
+  if (pw) h.set('pw', pw);
+  u.hash = h.toString();
   return u.toString();
 }
+
+// Following a link that differs only in its fragment does not reload the page
+// (e.g. "open conductor view" from the session page), so reload on purpose.
+window.addEventListener('hashchange', () => window.location.reload());
 
 // ── Session data ───────────────────────────────────────────────────────────
 let sections = [];
