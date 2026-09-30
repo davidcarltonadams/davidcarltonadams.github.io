@@ -14,9 +14,10 @@
       --bg:     #070709;
       --bg2:    #0d0d10;
       --text:   #ccc8d0;
-      --dim:    rgba(204,200,208,0.38);
-      --dimmer: rgba(204,200,208,0.16);
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
       --border: rgba(255,255,255,0.07);
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
     }
     body {
       background: var(--bg);
@@ -31,7 +32,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -47,7 +48,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.4rem;
       line-height: 1.85;
@@ -147,7 +148,7 @@
 <div class="header">
   <h1 class="title">drift</h1>
   <p class="sub">
-    voices wander through just intonation — each move a simple ratio step, each moment a chord.<br>
+    voices wander through just intonation · each move a simple ratio step, each moment a chord.<br>
     the harmonic series is the landscape; the music is what happens between destinations.
   </p>
 </div>
@@ -163,7 +164,7 @@
   </div>
 
   <div class="ctrl-group">
-    <span class="ctrl-label">step interval — <span id="speedDisp">8s</span></span>
+    <span class="ctrl-label">step interval · <span id="speedDisp">8s</span></span>
     <input type="range" id="speedSlider" min="3" max="30" value="8" step="1" style="width:120px"
            oninput="document.getElementById('speedDisp').textContent=this.value+'s'">
   </div>
@@ -180,8 +181,8 @@
   <div class="ctrl-group">
     <span class="ctrl-label">prime limit</span>
     <select id="primeLimit">
-      <option value="3">3-limit — pythagorean</option>
-      <option value="5">5-limit — classical JI</option>
+      <option value="3">3-limit · pythagorean</option>
+      <option value="5">5-limit · classical ji</option>
       <option value="7" selected>7-limit</option>
       <option value="11">11-limit</option>
       <option value="13">13-limit</option>
@@ -191,14 +192,14 @@
   <div class="ctrl-group">
     <span class="ctrl-label">fundamental</span>
     <select id="fundSelect">
-      <option value="82.41">E2 — 82 Hz</option>
-      <option value="98">G2 — 98 Hz</option>
-      <option value="110">A2 — 110 Hz</option>
-      <option value="130.81">C3 — 131 Hz</option>
-      <option value="146.83">D3 — 147 Hz</option>
-      <option value="196">G3 — 196 Hz</option>
-      <option value="220" selected>A3 — 220 Hz</option>
-      <option value="261.63">C4 — 262 Hz</option>
+      <option value="82.41">E2 · 82 Hz</option>
+      <option value="98">G2 · 98 Hz</option>
+      <option value="110">A2 · 110 Hz</option>
+      <option value="130.81">C3 · 131 Hz</option>
+      <option value="146.83">D3 · 147 Hz</option>
+      <option value="196">G3 · 196 Hz</option>
+      <option value="220" selected>A3 · 220 Hz</option>
+      <option value="261.63">C4 · 262 Hz</option>
     </select>
   </div>
 
@@ -210,7 +211,7 @@
 
   <div class="ctrl-group">
     <span class="ctrl-label">root drone</span>
-    <label style="font-size:0.6rem;font-style:italic;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:0.35rem">
+    <label style="font-size:0.6rem;font-style:italic;color:var(--control);cursor:pointer;display:flex;align-items:center;gap:0.35rem">
       <input type="checkbox" id="droneCheck" checked onchange="toggleDrone(this.checked)"> on
     </label>
   </div>
