@@ -729,6 +729,7 @@ function onFundChange() {
 const cv   = document.getElementById('cv');
 const gx   = cv.getContext('2d');
 const CH   = 114;
+let   LW   = 0;          // logical canvas width in CSS px
 const LINE_H = 56;
 const TREE_Y0 = 60;
 
@@ -737,12 +738,19 @@ const AXIS_REFS = [
 ];
 
 function cx(cents) {
-  return 6 + (cents / 1200) * (cv.width - 12);
+  return 6 + (cents / 1200) * (LW - 12);
 }
 
 function resizeCv() {
   const w = Math.min(cv.parentElement.clientWidth, 860);
-  if (cv.width !== w) { cv.width = w; cv.height = CH; }
+  // draw at device-pixel ratio (the 5.5–7 px labels were blurry on phones);
+  // every coordinate below stays in CSS px: LW × CH
+  const dpr = window.devicePixelRatio || 1;
+  if (LW !== w || cv.width !== Math.round(w * dpr)) {
+    LW = w;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(CH * dpr);
+    gx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 }
 resizeCv();
 window.addEventListener('resize', () => { resizeCv(); drawCanvas(); });
@@ -777,7 +785,7 @@ function animTick(now) {
 
     if (hoverX >= 0) {
       const dx = Math.abs(cx(r.cents) - hoverX);
-      const win = cv.width * 0.075;
+      const win = LW * 0.075;
       if (dx < win) {
         const proximity = 1 - dx / win;
         const simplicity = Math.max(0, 1 - (r.th - 2) / 7);
@@ -817,7 +825,7 @@ function animTick(now) {
 // ─── Canvas drawing ───────────────────────────────────────────────────────────
 
 function drawCanvas() {
-  const W = cv.width;
+  const W = LW;
   gx.clearRect(0, 0, W, CH);
   gx.fillStyle = '#070709';
   gx.fillRect(0, 0, W, CH);
@@ -1392,9 +1400,9 @@ document.addEventListener('visibilitychange', () => {
     if (touchEcho()) return;
     tryEnsureAx();
     const rect = cv.getBoundingClientRect();
-    const my = (e.clientY - rect.top) * (cv.height / rect.height);
+    const my = (e.clientY - rect.top) * (CH / rect.height);
     if (my < LINE_H) {
-      hoverX = (e.clientX - rect.left) * (cv.width / rect.width);
+      hoverX = (e.clientX - rect.left) * (LW / rect.width);
       cv.style.cursor = 'crosshair';
     } else {
       hoverX = -1;
@@ -1422,10 +1430,10 @@ document.addEventListener('visibilitychange', () => {
     tapStart = null;
     if (moved > 10) return;
     const rect = cv.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (cv.width / rect.width);
-    const y = (e.clientY - rect.top) * (cv.height / rect.height);
+    const x = (e.clientX - rect.left) * (LW / rect.width);
+    const y = (e.clientY - rect.top) * (CH / rect.height);
     if (y >= LINE_H) return;
-    const reach = 14 * (cv.width / rect.width);
+    const reach = 14 * (LW / rect.width);
     let best = null;
     for (const r of HOVER_RATIOS) {           // sorted simplest first
       const dx = Math.abs(cx(r.cents) - x);
