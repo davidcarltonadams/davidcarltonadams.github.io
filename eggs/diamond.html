@@ -115,6 +115,7 @@
       -webkit-overflow-scrolling: touch;
       display: flex;
       justify-content: center;
+      justify-content: safe center;   /* overflow spills right, where scroll reaches */
     }
 
     /* CSS grid: 1 header col + 7 data cols; 1 header row + 7 data rows */
@@ -277,6 +278,19 @@
     .hint {
       font-size: 0.54rem; letter-spacing: 0.12em;
       color: var(--dimmer); font-style: italic; text-align: center;
+    }
+
+    /* phone: all 8 columns fit in the viewport, so every O-tonality row header
+       and the U-tonality-on-1 column can be reached without scrolling */
+    @media (max-width: 640px) {
+      .diamond-grid {
+        width: 100%;
+        grid-template-columns: 34px repeat(7, minmax(38px, 1fr));
+        grid-template-rows: auto repeat(7, 52px);
+        gap: 2px;
+      }
+      .row-header { padding-right: 0.25rem; }
+      .cell-ratio.long { font-size: 0.54rem; }
     }
   </style>
 </head>
@@ -719,7 +733,22 @@ function initAudio() {
 }
 
 function startVoice(key, freq) {
-  if (voices[key]) return;
+  const held = voices[key];
+  if (held) {
+    // Still sounding. Inside its 420 ms release window, cancel the pending
+    // teardown and fade back up on the same oscillator; otherwise a fast
+    // re-click leaves the cell lit but silent (same fix as lattice/septimal).
+    if (held.releaseId === null) return;
+    clearTimeout(held.releaseId);
+    held.releaseId = null;
+    const t = ac.currentTime;
+    held.osc.frequency.setValueAtTime(freq, t);
+    held.gain.gain.cancelScheduledValues(t);
+    held.gain.gain.setValueAtTime(held.gain.gain.value, t);
+    held.gain.gain.setTargetAtTime(0.09, t, 0.015);
+    if (!rafId) drawScope();
+    return;
+  }
   initAudio();
   if (ac.state === 'suspended') ac.resume();
   const osc  = ac.createOscillator();
@@ -729,15 +758,16 @@ function startVoice(key, freq) {
   gain.gain.setValueAtTime(0, ac.currentTime);
   gain.gain.setTargetAtTime(0.09, ac.currentTime, 0.015);
   osc.connect(gain); gain.connect(masterGain); osc.start();
-  voices[key] = { osc, gain };
+  voices[key] = { osc, gain, releaseId: null };
   if (!rafId) drawScope();
 }
 
 function stopVoice(key) {
-  if (!voices[key]) return;
-  const { osc, gain } = voices[key];
+  const v = voices[key];
+  if (!v || v.releaseId !== null) return;   // already releasing
+  const { osc, gain } = v;
   gain.gain.setTargetAtTime(0, ac.currentTime, 0.06);
-  setTimeout(() => {
+  v.releaseId = setTimeout(() => {
     try { osc.stop(); } catch (_) {}
     delete voices[key];
     if (Object.keys(voices).length === 0 && rafId) {
