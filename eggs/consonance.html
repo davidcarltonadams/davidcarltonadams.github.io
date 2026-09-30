@@ -476,6 +476,7 @@ function clearCursorPitch() {
 }
 
 function muteAll() {
+  dragging = false;   // the mouseup of a drag cut off by Esc or a hidden tab never comes
   clearCursorPitch();
   if (droneOn) { stopDrone(); droneOn = false; updateDroneBtn(); }
 }
