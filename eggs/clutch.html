@@ -490,8 +490,8 @@ function verdict() {
   if (!running && cycles === 0) { el.textContent = 'press play'; return; }
   const rate = (dir === 1 ? '−' : '+') + centsPerSec().toFixed(1);
   el.innerHTML =
-    `both fall at <span class="gold">${rate}¢/s</span> · ` +
-    `net displacement — staircase: <span class="gold">${signed(staircaseCents())}¢</span> ` +
+    `both ${dir === 1 ? 'fall' : 'rise'} at <span class="gold">${rate}¢/s</span> · ` +
+    `net displacement · staircase: <span class="gold">${signed(staircaseCents())}¢</span> ` +
     `<span class="fold">(folds)</span> · ` +
     `pump: <span class="gold">${signed(1200 * Math.log2(base))}¢</span> · cycle ${cycles}`;
 }
@@ -633,6 +633,27 @@ function resetAll() {
   verdict();
 }
 $('btnReset').addEventListener('click', resetAll);
+
+// ── hidden tab ───────────────────────────────────────────────
+// Master gain is steered from rAF, and a hidden tab stops rAF, so the ten
+// oscillators used to keep sounding the last chord (RMS 0.132 hidden vs 0.133
+// playing). On hide: ramp the master to 0 over ~50 ms and suspend the clock.
+// On return: resume only if it was playing.
+let resumeOnShow = false;
+document.addEventListener('visibilitychange', () => {
+  if (!actx) return;
+  if (document.hidden) {
+    resumeOnShow = running;
+    if (running) setRunning(false);
+    const ctx = actx;
+    master.gain.setTargetAtTime(0, ctx.currentTime, 0.012);   // ~50 ms to silence
+    setTimeout(() => { if (document.hidden && ctx.state === 'running') ctx.suspend(); }, 400);   // the limiter's release trails the ramp
+  } else {
+    if (actx.state === 'suspended') actx.resume();
+    if (resumeOnShow) setRunning(true);
+    resumeOnShow = false;
+  }
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { stopAll(); }
 });
