@@ -15,8 +15,10 @@
       --bg:      #070809;
       --bg2:     #0e0f12;
       --text:    #ccc8d0;
-      --dim:     rgba(204,200,208,0.38);
+      --dim:     rgba(204,200,208,0.40);
       --dimmer:  rgba(204,200,208,0.18);
+      /* anything clickable, and the lines that carry the explanation: 4.55:1 */
+      --control: rgba(204,200,208,0.58);
       --border:  rgba(255,255,255,0.07);
       --accent:  #a09acc;
     }
@@ -43,7 +45,7 @@
     .sub {
       font-size: 0.58rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.35rem;
     }
@@ -61,7 +63,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.65rem;
       letter-spacing: 0.09em;
@@ -84,7 +86,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dimmer);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.62rem;
       letter-spacing: 0.06em;
@@ -108,7 +110,7 @@
     .reading-note {
       font-size: 0.54rem;
       letter-spacing: 0.1em;
-      color: var(--dimmer);
+      color: var(--control);
       font-style: italic;
       text-align: center;
       max-width: 420px;
@@ -205,7 +207,7 @@
     .mode-desc {
       font-size: 0.6rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--control);
       font-style: italic;
       line-height: 1.7;
     }
@@ -230,15 +232,25 @@
     .hint {
       font-size: 0.54rem;
       letter-spacing: 0.12em;
-      color: rgba(204,200,208,0.38);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
+    }
+
+    /* tempo slider: a page-coloured thumb instead of the browser's blue */
+    #tempo-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+      background: var(--accent); cursor: pointer;
+    }
+    #tempo-slider::-moz-range-thumb {
+      width: 12px; height: 12px; border: 0; border-radius: 50%;
+      background: var(--accent); cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:#332;text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
+<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:var(--control);text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
 <a href="../eggs.html" class="eggs-back">← eggs</a>
 
 <div class="header">
@@ -263,8 +275,8 @@
 </div>
 
 <div class="mode-info" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:0.25rem">
-  <button id="auto-play-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--dim);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">▶ play scale</button>
-  <button id="silence-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--dim);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">◼ silence</button>
+  <button id="auto-play-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--control);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">▶ play scale</button>
+  <button id="silence-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--control);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">◼ silence</button>
   <div style="display:flex;align-items:center;gap:0.5rem">
     <span style="font-size:0.58rem;color:var(--dimmer);font-style:italic;letter-spacing:0.08em">tempo</span>
     <input type="range" id="tempo-slider" min="40" max="220" value="90"
