@@ -526,6 +526,11 @@ try {
   canvas.addEventListener('touchstart', e => { e.preventDefault(); begin(e); }, { passive: false });
   canvas.addEventListener('touchmove',  e => { e.preventDefault(); drag(e);  }, { passive: false });
   canvas.addEventListener('touchend',   e => { e.preventDefault(); end();    }, { passive: false });
+  // the OS can take a touch away (a system gesture, a notification): release
+  canvas.addEventListener('touchcancel', () => end());
+  // nothing keeps sounding once the page is left
+  window.addEventListener('blur', () => end());
+  document.addEventListener('visibilitychange', () => { if (document.hidden) end(); });
 
   document.getElementById('stop-btn').addEventListener('click', () => silence());
   document.addEventListener('keydown', e => { if (e.key === 'Escape') silence(); });
