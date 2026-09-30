@@ -576,6 +576,7 @@ function fundHz() { return parseFloat(document.getElementById('fundSel').value);
 function tone(freq, start, dur, vol = 0.25) {
   const o = ax.createOscillator(), g = ax.createGain();
   o.type = 'sine'; o.frequency.value = freq;
+  g.gain.value = 0;             // a not-yet-started tone reads 0, so a stop ramps from silence
   g.gain.setValueAtTime(0, start);
   g.gain.linearRampToValueAtTime(vol, start + 0.04);
   g.gain.setValueAtTime(vol, start + dur - 0.15);
@@ -1219,6 +1220,7 @@ function stepTone(freq, start, dur, vol) {
   const o = ax.createOscillator(), g = ax.createGain();
   const atk = Math.min(0.02, dur / 4), rel = Math.min(0.08, dur / 3);
   o.type = 'sine'; o.frequency.value = freq;
+  g.gain.value = 0;             // steps are queued ahead: a stop before one starts must hold 0, not the default 1
   g.gain.setValueAtTime(0, start);
   g.gain.linearRampToValueAtTime(vol, start + atk);
   g.gain.setValueAtTime(vol, start + dur - rel);
