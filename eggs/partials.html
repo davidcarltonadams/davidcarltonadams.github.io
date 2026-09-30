@@ -505,7 +505,7 @@ let ac = null;
 const nodes  = {};
 const active = new Set();
 let scopeNode = null, analyser = null, scopeBuf = null;
-let master = null, limiter = null;
+let master = null;
 let rafId = null;
 let glideMs = 0;
 
@@ -513,24 +513,19 @@ function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
 
-  // every partial lands on master; master is scaled so the whole stack
-  // stays under unity, and the limiter catches the phase-aligned attack
+  // every partial lands on master; master is scaled so the whole stack,
+  // all 24 in phase, peaks at 0.85. No limiter: its gain riding reshaped
+  // the partial levels this page is about (it engaged above 0.71, i.e. on
+  // any thick stack), and the scaling alone keeps the stack from clipping.
   master = ac.createGain();
   master.gain.value = MASTER_GAIN;
-  limiter = ac.createDynamicsCompressor();
-  limiter.threshold.value = -3;
-  limiter.knee.value      = 0;
-  limiter.ratio.value     = 20;
-  limiter.attack.value    = 0.002;
-  limiter.release.value   = 0.15;
 
   analyser = ac.createAnalyser();
   analyser.fftSize = 1024;
   analyser.smoothingTimeConstant = 0.6;
   scopeBuf = new Uint8Array(analyser.fftSize);
 
-  master.connect(limiter);
-  limiter.connect(analyser);
+  master.connect(analyser);
   analyser.connect(ac.destination);
 }
 
@@ -694,11 +689,12 @@ const PARTIAL_AMP_REF = 0.35;
 function partialAmp(n) { return PARTIAL_AMP_REF / Math.pow(n, 0.7); }
 
 // all 24 partials start in phase, so their peak is the plain sum of the
-// amplitudes (~2.07). scale the master so the full stack lands under unity;
-// a single partial still comes through at ~0.16.
+// amplitudes (~2.07). scale the master so the full stack peaks at 0.85,
+// leaving room for a partial re-pressed while its old voice still fades;
+// a single partial still comes through at ~0.14.
 const PEAK_SUM = Array.from({ length: NUM_PARTIALS }, (_, i) => partialAmp(i + 1))
                       .reduce((a, b) => a + b, 0);
-const MASTER_GAIN = 0.95 / PEAK_SUM;
+const MASTER_GAIN = 0.85 / PEAK_SUM;
 
 function renderRows() {
   const fund = getFundamental();
