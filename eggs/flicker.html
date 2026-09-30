@@ -7,10 +7,12 @@
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
   <title>flicker</title>
-  <meta name="description" content="accelerate a polyrhythm until it fuses into the interval with the same ratio — rhythm and pitch are one continuum">
+  <meta name="description" content="accelerate a polyrhythm until it fuses into the interval with the same ratio · rhythm and pitch are one continuum">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(204,200,208,0.58);
       --bg:     #070709;
       --bg2:    #0d0d11;
       --text:   #ccc8d0;
@@ -32,7 +34,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -48,7 +50,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 540px;
@@ -65,7 +67,7 @@
     .chip {
       font-family: 'SF Mono','Fira Code',monospace;
       font-size: 0.62rem; letter-spacing: 0.1em;
-      color: var(--dim);
+      color: var(--control);
       border: 1px solid var(--border);
       border-radius: 2px;
       padding: 0.32rem 0.65rem;
@@ -74,6 +76,7 @@
       transition: color .12s, border-color .12s;
       user-select: none; -webkit-user-select: none;
     }
+    .chip:hover { color: var(--text); }
     .chip.lit { color: var(--gold); border-color: rgba(212,192,112,0.45); }
     .chip:focus-visible, button:focus-visible {
       outline: 1px solid var(--gold);
@@ -142,7 +145,7 @@
 <a class="eggs-back" href="../eggs.html">&larr; eggs</a>
 
 <div class="header">
-  <div class="title">flicker</div>
+  <h1 class="title">flicker</h1>
   <p class="sub">a polyrhythm and an interval with the same ratio are the same
   phenomenon at different speeds &middot; spin 3 against 2 fast enough and the
   rhythm fuses into a perfect fifth &middot; henry cowell called it in 1930</p>
@@ -166,7 +169,7 @@
 
 <p class="foot">below ~8 pulses a second you count a rhythm &middot; past ~30
 the pulses fuse and the ratio becomes pitch &middot; the numbers on the label
-never change &mdash; only how fast you are listening</p>
+never change &middot; only how fast you are listening</p>
 
 <script>
 // ── flicker — the rhythm→pitch continuum ─────────────────────
@@ -184,7 +187,7 @@ const RATIOS = [
   { label: '2:3',   terms: [2, 3],    name: 'perfect fifth' },
   { label: '3:4',   terms: [3, 4],    name: 'perfect fourth' },
   { label: '4:5',   terms: [4, 5],    name: 'major third' },
-  { label: '6:7',   terms: [6, 7],    name: 'septimal third' },
+  { label: '6:7',   terms: [6, 7],    name: 'septimal minor third' },
   { label: '8:9',   terms: [8, 9],    name: 'whole tone' },
   { label: '15:16', terms: [15, 16],  name: 'semitone' },
   { label: '4:5:6', terms: [4, 5, 6], name: 'major triad' },
@@ -254,13 +257,27 @@ function ensureAudio() {
     combWave = actx.createPeriodicWave(real, imag);
   }
   if (voices.length) return;          // still built from the last listen
+  buildVoices(null);
+}
+
+// Build the three voices. With startAt, every oscillator starts at that
+// one instant already at its exact rate, so the pulse trains share a
+// downbeat there (each impulse train fires at phase 0).
+function buildVoices(startAt) {
   const pans = [-0.45, 0.45, 0];
+  const rates = voiceRates(ratio.terms, baseRate);
   for (let i = 0; i < 3; i++) {
     const osc = actx.createOscillator();
     osc.setPeriodicWave(combWave);
-    osc.frequency.value = 1;
     const g = actx.createGain();
-    g.gain.value = 0;
+    if (startAt === null) {
+      osc.frequency.value = 1;
+      g.gain.value = 0;
+    } else {
+      const on = i < rates.length;
+      osc.frequency.value = on ? rates[i] : 1;
+      g.gain.setValueAtTime(on ? LEVEL * compGain(rates[i]) : 0, startAt);
+    }
     osc.connect(g);
     if (actx.createStereoPanner) {
       const p = actx.createStereoPanner();
@@ -269,9 +286,30 @@ function ensureAudio() {
     } else {
       g.connect(master);
     }
-    osc.start();
+    if (startAt === null) osc.start(); else osc.start(startAt);
     voices.push({ osc, g });
   }
+}
+
+// A ratio change used to glide the running oscillators to new rates.
+// They kept their accumulated phases, so the trains lost their shared
+// downbeat (0 common attacks after a 2:3 -> 3:4 change) while the canvas
+// kept flashing one. Now the old voices fade over ~10 ms and fresh ones
+// start together at t0; the canvas phases are set to meet t0 as well.
+const REALIGN = 0.03;                  // s from the click to the shared downbeat
+function realignVoices() {
+  if (!actx || !running || !voices.length) return false;
+  const t = actx.currentTime, t0 = t + REALIGN;
+  for (const v of voices) {
+    v.g.gain.cancelScheduledValues(t);
+    v.g.gain.setValueAtTime(v.g.gain.value, t);
+    v.g.gain.setTargetAtTime(0, t, 0.008);
+    v.osc.onended = () => { v.osc.disconnect(); v.g.disconnect(); };
+    v.osc.stop(t0 + 0.05);
+  }
+  voices = [];
+  buildVoices(t0);
+  return true;
 }
 
 function pushRates() {
@@ -352,8 +390,16 @@ chipsEl.addEventListener('click', e => {
     kids[i].classList.toggle('lit', on);
     kids[i].setAttribute('aria-pressed', on ? 'true' : 'false');
   }
-  phases = [0, 0, 0]; alignPh = 0;
-  pushRates(); refreshText();
+  if (realignVoices()) {
+    // every ring (and the centre) reaches its next flash exactly at t0
+    const rates = voiceRates(ratio.terms, baseRate);
+    phases = [0, 1, 2].map(i => i < rates.length ? 1 - (rates[i] * REALIGN) % 1 : 0);
+    alignPh = 1 - (alignFreq(ratio.terms, baseRate) * REALIGN) % 1;
+  } else {
+    phases = [0, 0, 0]; alignPh = 0;
+    pushRates();
+  }
+  refreshText();
 });
 
 slider.addEventListener('input', () => {
@@ -369,6 +415,10 @@ playBtn.addEventListener('click', () => {
   pushRates();
   setRunning(true);
 });
+
+// esc hushes; so does a hidden tab (the button then reads "listen")
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && running) setRunning(false); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && running) setRunning(false); });
 
 sweepBtn.addEventListener('click', () => {
   if (sweeping) { stopSweep(); return; }
@@ -390,9 +440,9 @@ function refreshText() {
   readout.textContent = rates.map(fmtRate).join(' : ') + ' pulses/sec';
   const z = zoneFor(rates[0]);
   zoneEl.textContent =
-    z === 'rhythm' ? 'rhythm — you can count it' :
-    z === 'flutter' ? 'flutter — too fast to count, no pitch yet' :
-    'pitch — the ratio is now ' + ratio.name;
+    z === 'rhythm' ? 'rhythm · you can count it' :
+    z === 'flutter' ? 'flutter · too fast to count, no pitch yet' :
+    'pitch · the ratio is now ' + ratio.name;
   constEl.textContent =
     ratio.label + ' · ' + centsLine(ratio.terms) + ' · ' + ratio.name +
     ' · the ratio never changes';
@@ -400,12 +450,21 @@ function refreshText() {
 
 // ── canvas ───────────────────────────────────────────────────
 const canvas = document.getElementById('cv');
-const dpr = window.devicePixelRatio || 1;
-const W = Math.min(window.innerWidth - 32, 560), H = 320;
-canvas.width = W * dpr; canvas.height = H * dpr;
-canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+// sized from the layout viewport and re-sized on resize/rotation (sizing once
+// from innerWidth left a landscape-width canvas overflowing a portrait phone)
+let dpr = window.devicePixelRatio || 1;
+let W = 560;
+const H = 320;
 const c = canvas.getContext('2d');
-c.scale(dpr, dpr);
+function sizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  W = Math.min(document.documentElement.clientWidth - 32, 560);
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeCanvas();
+window.addEventListener('resize', sizeCanvas);   // the rAF loop redraws
 
 function draw() {
   c.clearRect(0, 0, W, H);
