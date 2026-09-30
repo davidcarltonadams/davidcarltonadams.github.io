@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
   <title>tartini</title>
-  <meta name="description" content="Two sine tones pushed through a nonlinear stage produce audible ghost pitches — difference and summation tones — labeled live on a spectrum plot.">
+  <meta name="description" content="two sine tones pushed through a nonlinear stage produce ghost pitches · the difference, the sum and the cubic tones 2A−B and 2B−A · labeled live on a measured spectrum.">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -174,7 +174,7 @@
 
 <div class="header">
   <h1 class="title">tartini</h1>
-  <p class="sub">two sine tones, summed and pushed through a nonlinear stage — a speaker driven hard, an eardrum, a fuzz circuit, all shrug the same way — and pitches appear that neither oscillator is playing. Giuseppe Tartini heard the loudest one, |f<sub>A</sub>&minus;f<sub>B</sub>|, on solo violin double-stops in 1714 and called it his "terzo suono," the third sound. its quieter twin f<sub>A</sub>+f<sub>B</sub> rings alongside it. this isn't synthesized separately — it's genuinely in the signal, the same intermodulation math your ear does to any two loud tones.</p>
+  <p class="sub">two sine tones, summed and pushed through a nonlinear stage (a speaker driven hard, the inner ear, a fuzz circuit all shrug the same way), and pitches appear that neither oscillator is playing. Giuseppe Tartini heard the difference tone |f<sub>A</sub>&minus;f<sub>B</sub>| on solo violin double-stops in 1714 and called it his "terzo suono," the third sound. in this signal the cubic tones 2A&minus;B and 2B&minus;A come out strongest, about 13 dB above the rest, and the sum f<sub>A</sub>+f<sub>B</sub> matches the difference exactly, because both come from one squared term · in the ear the sum is the hardest to hear. none of it is synthesized separately · it is in the signal, the same intermodulation math your ear does to any two loud tones.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -212,7 +212,7 @@
   <button id="btnPlay">listen</button>
 </div>
 
-<p class="hint">0 ghost = clean linear mix, no ghosts possible, and the readout above goes empty to match · turn it up to fold the sum through a soft asymmetric curve — all four derived tones arrive together, the moment it leaves 0 · "stop" fully kills both oscillators and closes the audio graph</p>
+<p class="hint">0 ghost = clean linear mix, no ghosts possible, and the readout above goes empty to match · the two gains are scaled so their sum never passes full scale, so 0 stays clean at any setting · turn it up to fold the sum through a soft asymmetric curve · all four derived tones arrive together, the moment it leaves 0 · "stop" (or esc) fully kills both oscillators and closes the audio graph</p>
 
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -263,7 +263,7 @@ let axisCur = axisTarget(getFA(), getFB());
 
 function freqToNote(freq) {
   if (!(freq > 0)) return '—';
-  const NAMES = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+  const NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
   const midi = 69 + 12 * Math.log2(freq / 440);
   const rnd = Math.round(midi);
   const cents = Math.round((midi - rnd) * 100);
@@ -305,10 +305,27 @@ function makeCurve(amt) {
 function toneAudible(freq) { return getGhost() > 0 && freq > 0; }
 
 // ── Audio graph ─────────────────────────────────────────────
+// Input level. Two sines peak at gA + gB, and a WaveShaperNode hard-
+// clips anything outside [-1, 1], so an unscaled 0.55 + 0.55 clipped
+// even at ghost 0 (2A-B at -41 dB under a readout saying the mix was
+// linear). Scale the sum to at most 0.95 so ghost 0 is exactly clean at
+// every gain setting (offline: derived bins below -145 dB at 1 + 1).
+// The shaper itself is untouched: its nonlinearity is the demonstration.
+const INPUT_PEAK = 0.95;
+function inputScale() { return INPUT_PEAK / Math.max(INPUT_PEAK, getGainA() + getGainB()); }
+function applyInputScale() {
+  if (!actx || !sumGain) return;
+  const t = actx.currentTime, target = inputScale();
+  // duck fast, recover slow, so the sum never overshoots mid-ramp
+  const tau = target < sumGain.gain.value ? 0.004 : 0.06;
+  sumGain.gain.cancelScheduledValues(t);
+  sumGain.gain.setValueAtTime(sumGain.gain.value, t);
+  sumGain.gain.setTargetAtTime(target, t, tau);
+}
 let actx = null, master = null, analyser = null, shaper = null, sumGain = null;
 let oscA = null, oscB = null, gA = null, gB = null;
 let oscillators = [];      // tracked so stopAll() can be verified/tested
-let freqData = null;
+let freqData = null, freqDb = null;
 let running = false;
 
 function ensureAudio() {
@@ -323,6 +340,7 @@ function ensureAudio() {
   analyser.smoothingTimeConstant = 0.6;
   analyser.connect(master);
   freqData = new Uint8Array(analyser.frequencyBinCount);
+  freqDb = new Float32Array(analyser.frequencyBinCount);
 
   shaper = actx.createWaveShaper();
   shaper.oversample = '4x';
@@ -330,7 +348,7 @@ function ensureAudio() {
   shaper.connect(analyser);
 
   sumGain = actx.createGain();
-  sumGain.gain.value = 1;
+  sumGain.gain.value = inputScale();
   sumGain.connect(shaper);
 
   oscA = actx.createOscillator(); oscA.type = 'sine';
@@ -373,7 +391,7 @@ function stopAll() {
     try { master && master.disconnect(); } catch (e) {}
     try { actx.close && actx.close(); } catch (e) {}
     actx = null; master = null; analyser = null; shaper = null; sumGain = null;
-    oscA = null; oscB = null; gA = null; gB = null; freqData = null;
+    oscA = null; oscB = null; gA = null; gB = null; freqData = null; freqDb = null;
   }
   oscillators = [];
   updatePlayUI();
@@ -397,6 +415,13 @@ c.scale(dpr, dpr);
 // staged/synthetic spectrum for pose mode (?pose=1) — no real audio
 // signal is required for a photogenic capture; gaussian bumps stand
 // in for what the analyser would show at that ghost setting.
+// level of a derived tone re the primaries, from offline renders of this
+// page's own curve: cubic ~ 20log10(ghost) - 15 dB, diff = sum ~ -28 dB.
+// 3.64 bytes per dB is the analyser's -100..-30 dB byte scale.
+function poseByte(ghost, offDb) {
+  if (!(ghost > 0)) return 0;
+  return Math.max(0, 235 + 3.64 * (20 * Math.log10(ghost) + offDb));
+}
 function synthSpectrum(fa, fb, ghost) {
   const n = 1024;
   const data = new Uint8Array(n);
@@ -405,10 +430,10 @@ function synthSpectrum(fa, fb, ghost) {
   const peaks = [
     { f: fa,     amp: 235,               w: 2.2 },
     { f: fb,     amp: 235,               w: 2.2 },
-    { f: g.diff, amp: ghost > 0 ? 60 + 150 * ghost : 0, w: 3.2 },
-    { f: g.sum,  amp: ghost > 0 ? 40 + 110 * ghost : 0, w: 3.2 },
-    { f: g.c1,   amp: ghost > 0 ? 25 + 70 * ghost : 0,  w: 4 },
-    { f: g.c2,   amp: ghost > 0 ? 25 + 70 * ghost : 0,  w: 4 },
+    { f: g.diff, amp: poseByte(ghost, -28), w: 3.2 },
+    { f: g.sum,  amp: poseByte(ghost, -28), w: 3.2 },
+    { f: g.c1,   amp: poseByte(ghost, -15), w: 3.2 },
+    { f: g.c2,   amp: poseByte(ghost, -15), w: 3.2 },
   ];
   for (let i = 0; i < n; i++) {
     const f = i * binHz;
@@ -428,10 +453,29 @@ let posed = false;
 function currentSpectrum() {
   if (actx && running) {
     analyser.getByteFrequencyData(freqData);
-    return { data: freqData, binHz: actx.sampleRate / FFT_SIZE };
+    analyser.getFloatFrequencyData(freqDb);
+    return { data: freqData, db: freqDb, binHz: actx.sampleRate / FFT_SIZE };
   }
   if (posed) return synthSpectrum(getFA(), getFB(), getGhost());
   return null;
+}
+
+// Is a derived tone really in the measured spectrum? The old test was
+// byte > 40, about -89 dBFS, which the analyser's own floor passed, so
+// every marker lit at ghost 0. Now: the tone's bin (±1) must sit within
+// LIT_DB of the louder primary, measured in dB. A tone within 4 bins of
+// a primary is inside its window skirt and can't be told apart, so
+// there the marker follows the math (lit only when ghost > 0).
+const LIT_DB = 60;
+function litAt(spec, freq, fa, fb) {
+  if (!spec || !(freq > 0)) return false;
+  if (!spec.db) return ampAt(spec, freq) > 40;       // pose: synthetic bytes
+  const bin = f => Math.round(f / spec.binHz);
+  const k = bin(freq);
+  if (Math.abs(k - bin(fa)) <= 4 || Math.abs(k - bin(fb)) <= 4) return getGhost() > 0;
+  const at = j => { let m = -Infinity; for (let i = j - 1; i <= j + 1; i++) if (i >= 0 && i < spec.db.length) m = Math.max(m, spec.db[i]); return m; };
+  const ref = Math.max(at(bin(fa)), at(bin(fb)));
+  return at(k) > ref - LIT_DB;
 }
 
 function ampAt(spec, freq) {
@@ -468,6 +512,9 @@ function draw() {
     c.strokeStyle = 'rgba(255,255,255,0.05)';
     c.beginPath(); c.moveTo(x, base); c.lineTo(x, base - 3); c.stroke();
   }
+  c.textAlign = 'right';
+  c.fillText('Hz', W - padR, base + 21);
+  c.textAlign = 'center';
 
   const spec = currentSpectrum();
 
@@ -488,7 +535,6 @@ function draw() {
   // labeled markers
   const fa = getFA(), fb = getFB(), ghost = getGhost();
   const g = computeGhosts(fa, fb);
-  const THRESH = 40;
   const markers = [
     { f: fa,      label: 'A',        col: 'rgba(138,176,200,ALPHA)', always: true  },
     { f: fb,      label: 'B',        col: 'rgba(160,184,136,ALPHA)', always: true  },
@@ -499,8 +545,7 @@ function draw() {
   ];
   for (const m of markers) {
     if (!(m.f > 0) || m.f > axisCur) continue;
-    const amp = ampAt(spec, m.f);
-    const lit = m.always || amp > THRESH;
+    const lit = m.always || litAt(spec, m.f, fa, fb);
     const alpha = lit ? 0.95 : 0.16;
     const x = xOf(m.f);
     c.strokeStyle = m.col.replace('ALPHA', alpha);
@@ -549,10 +594,12 @@ $('freqB').addEventListener('input', e => {
 });
 $('gainA').addEventListener('input', e => {
   $('gainAVal').textContent = parseFloat(e.target.value).toFixed(2);
+  applyInputScale();
   if (actx) gA.gain.setTargetAtTime(getGainA(), actx.currentTime, 0.02);
 });
 $('gainB').addEventListener('input', e => {
   $('gainBVal').textContent = parseFloat(e.target.value).toFixed(2);
+  applyInputScale();
   if (actx) gB.gain.setTargetAtTime(getGainB(), actx.currentTime, 0.02);
 });
 $('ghost').addEventListener('input', e => {
@@ -561,6 +608,9 @@ $('ghost').addEventListener('input', e => {
   updateReadout();
 });
 $('btnPlay').addEventListener('click', () => { running ? stopAll() : start(); });
+// esc stops; a hidden tab stops too (the button then reads "listen" again)
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && running) stopAll(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && running) stopAll(); });
 
 // ── Pose (for headless thumbnail capture) ───────────────────
 // ?pose=1 seeds a dissonant pair + a mid-high ghost amount and
@@ -601,7 +651,7 @@ $('btnPlay').addEventListener('click', () => { running ? stopAll() : start(); })
   const note = document.createElement('div');
   note.className = 'simulated-note';
   note.setAttribute('role', 'status');
-  note.textContent = 'SIMULATED · pose mode (?pose=1) · this spectrum is synthetic, not measured — drop the ?pose=1 for the real instrument';
+  note.textContent = 'SIMULATED · pose mode (?pose=1) · this spectrum is synthetic, not measured · drop the ?pose=1 for the real instrument';
   document.body.appendChild(note);
 })();
 
