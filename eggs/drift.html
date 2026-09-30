@@ -321,7 +321,7 @@ function ensureCtx() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   masterGain = audioCtx.createGain();
-  masterGain.gain.value = getVolume();
+  masterGain.gain.value = 0;                     // faded in by startAll
   masterGain.connect(audioCtx.destination);
 }
 
@@ -330,7 +330,7 @@ function getVolume() {
 }
 
 function setVolume(v) {
-  if (masterGain) masterGain.gain.value = v / 100 * 0.8;
+  if (masterGain) masterGain.gain.setTargetAtTime(v / 100 * 0.8, audioCtx.currentTime, 0.02);
 }
 
 // Drone: fade in/out so the checkbox can be toggled mid-play without a click
@@ -381,6 +381,9 @@ function startAll() {
   const nv = parseInt(document.getElementById('voiceCount').value);
   const lim = parseInt(document.getElementById('primeLimit').value);
 
+  // fade the master in: voices start at full level, so a hard start clicks
+  masterGain.gain.setTargetAtTime(getVolume(), audioCtx.currentTime, 0.05);
+
   // Drone
   if (document.getElementById('droneCheck').checked) startDrone(fund);
 
@@ -408,7 +411,9 @@ function addVoice(i, fund, lim) {
   osc.connect(g);
   g.connect(masterGain);
   osc.start();
-  const v = { osc, gain: g, p, q, fund, accent: ACCENTS[i % ACCENTS.length], timer: null };
+  const c = ratioCents(p, q);
+  const v = { osc, gain: g, p, q, fund, accent: ACCENTS[i % ACCENTS.length], timer: null,
+              glide: { c0: c, c1: c, t0: 0, t1: 0 } };
   voices.push(v);
   return v;
 }
@@ -428,6 +433,16 @@ function dropVoice(v) {
   } catch (e) {}
   try { v.osc.stop(t + VOICE_FADE + 0.02); } catch (e) {}
   v.osc.onended = () => { try { v.osc.disconnect(); v.gain.disconnect(); } catch (e) {} };
+}
+
+// Where a voice is right now, in cents over the 1/1. Glides are exponential
+// in frequency, so the pitch moves linearly in cents: the trail can draw the
+// same path the ear hears. (The dot used to jump to the destination while the
+// audio glided for up to 4 s, and the glide was linear in Hz.)
+function voiceCents(v, now) {
+  const g = v.glide;
+  if (now >= g.t1 || g.t1 <= g.t0) return g.c1;
+  return g.c0 + (g.c1 - g.c0) * Math.max(0, (now - g.t0) / (g.t1 - g.t0));
 }
 
 function scheduleNext(v) {
@@ -457,22 +472,34 @@ function moveVoice(v) {
   const speed = parseInt(document.getElementById('speedSlider').value);
   const glide = Math.min(speed * 0.38, 4.0);
   const freq = v.fund * next.p / next.q;
+  const now = audioCtx.currentTime;
+  const c0 = voiceCents(v, now);
+  v.glide = { c0, c1: ratioCents(next.p, next.q), t0: now, t1: now + glide };
 
-  v.osc.frequency.cancelScheduledValues(audioCtx.currentTime);
-  v.osc.frequency.setValueAtTime(v.osc.frequency.value, audioCtx.currentTime);
-  v.osc.frequency.linearRampToValueAtTime(freq, audioCtx.currentTime + glide);
+  v.osc.frequency.cancelScheduledValues(now);
+  v.osc.frequency.setValueAtTime(v.fund * Math.pow(2, c0 / 1200), now);
+  v.osc.frequency.exponentialRampToValueAtTime(freq, now + glide);
 
   updateStatus();
 }
 
+// Fade the master to 0 over 50 ms, then stop and close: a hard stop clicked.
 function stopAll() {
   timers.forEach(clearTimeout);
   timers = [];
   voices.forEach(v => clearTimeout(v.timer));
-  if (droneOsc) { try { droneOsc.stop(); } catch(e){} droneOsc = null; droneGain = null; }
-  voices.forEach(v => { try { v.osc.stop(); } catch(e){} });
+  if (audioCtx) {
+    const ctx = audioCtx, g = masterGain.gain, t = ctx.currentTime;
+    if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(t);
+    else { g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); }
+    g.linearRampToValueAtTime(0, t + 0.05);
+    const oscs = voices.map(v => v.osc).concat(droneOsc ? [droneOsc] : []);
+    oscs.forEach(o => { try { o.stop(t + 0.06); } catch (e) {} });
+    setTimeout(() => ctx.close().catch(() => {}), 150);
+  }
+  droneOsc = null; droneGain = null;
   voices = [];
-  if (audioCtx) { audioCtx.close().catch(()=>{}); audioCtx = null; masterGain = null; }
+  audioCtx = null; masterGain = null;
 }
 
 function togglePlay() {
@@ -513,20 +540,22 @@ document.getElementById('fundSelect').addEventListener('change', e => {
   const fund = parseFloat(e.target.value);
   const t = audioCtx.currentTime;
   voices.forEach(v => {
+    const c0 = voiceCents(v, t);
+    glideTo(v.osc.frequency, v.fund * Math.pow(2, c0 / 1200), fund * v.p / v.q, t);
+    v.glide = { c0, c1: ratioCents(v.p, v.q), t0: t, t1: t + FUND_GLIDE };
     v.fund = fund;
-    glideTo(v.osc.frequency, fund * v.p / v.q, t);
   });
-  if (droneOsc) glideTo(droneOsc.frequency, fund, t);
+  if (droneOsc) glideTo(droneOsc.frequency, droneOsc.frequency.value, fund, t);
 });
 
 // Ramp a frequency param from wherever it is now, so a mid-drift retune
-// doesn't jump — and so the drift ramp already scheduled gets cancelled.
+// doesn't jump, and so the drift ramp already scheduled gets cancelled.
 const FUND_GLIDE = 0.9;   // seconds
 
-function glideTo(param, target, t) {
+function glideTo(param, from, target, t) {
   param.cancelScheduledValues(t);
-  param.setValueAtTime(param.value, t);
-  param.linearRampToValueAtTime(target, t + FUND_GLIDE);
+  param.setValueAtTime(from, t);
+  param.exponentialRampToValueAtTime(target, t + FUND_GLIDE);
 }
 
 // ─── Status display ───────────────────────────────────────────────────────────
@@ -638,8 +667,9 @@ function drawLabels() {
 
 function drawVoiceDots(W) {
   const x = W - 1;
+  const now = audioCtx ? audioCtx.currentTime : 0;
   for (const v of voices) {
-    const cents = ratioCents(v.p, v.q);
+    const cents = voiceCents(v, now);
     const y = Math.round(cy(cents));
     const [r, g, b] = v.accent.rgb;
 
