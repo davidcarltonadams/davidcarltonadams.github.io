@@ -201,7 +201,7 @@ try {
   });
 
   // ── audio ───────────────────────────────────────────────────────
-  let ac, osc, filt, vol, acOsc, acGain, scope, scopeBuf, freqBuf;
+  let ac, osc, filt, vol, lim, trim, acOsc, acGain, scope, scopeBuf, freqBuf;
 
   function initAudio() {
     ac    = new (window.AudioContext || window.webkitAudioContext)();
@@ -230,12 +230,25 @@ try {
     scopeBuf = new Uint8Array(scope.fftSize);
     freqBuf  = new Uint8Array(scope.frequencyBinCount);
 
-    // graph: [osc, acOsc→acGain] → filt → vol → scope → out
+    // Safety limiter: across the top of the field the resonance (Q up to
+    // 22.8) lands on a low harmonic and peaked at 2.8. Threshold -6 dB, 20:1,
+    // 3 ms; the trim cancels the compressor's automatic makeup gain
+    // ((1 / 0.5187) ** 0.6 = 1.483), so everything under the threshold,
+    // the middle of the field included, sounds exactly as before.
+    lim  = ac.createDynamicsCompressor();
+    lim.threshold.value = -6; lim.knee.value = 0; lim.ratio.value = 20;
+    lim.attack.value = 0.003; lim.release.value = 0.25;
+    trim = ac.createGain();
+    trim.gain.value = 0.674;
+
+    // graph: [osc, acOsc→acGain] → filt → vol → lim → trim → scope → out
     osc.connect(filt);
     acOsc.connect(acGain);
     acGain.connect(filt);
     filt.connect(vol);
-    vol.connect(scope);
+    vol.connect(lim);
+    lim.connect(trim);
+    trim.connect(scope);
     scope.connect(ac.destination);
 
     osc.start();
@@ -307,7 +320,7 @@ try {
     acOsc.stop(t + 0.3);
     setTimeout(() => { try { dying.close(); } catch (e) {} }, 400);
 
-    ac = osc = filt = vol = acOsc = acGain = scope = null;
+    ac = osc = filt = vol = lim = trim = acOsc = acGain = scope = null;
     scopeBuf = freqBuf = null;
     held = false;
     audioLive = false;
