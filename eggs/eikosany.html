@@ -113,6 +113,9 @@
       padding: 0.2rem 0.55rem; letter-spacing: 0.06em;
     }
     .chord-lbl { font-size: 0.48rem; letter-spacing: 0.12em; font-style: italic; color: var(--dim); }
+    /* volume slider: the inline -webkit-appearance:none left the browser's blue thumb */
+    #volR::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: var(--control); cursor: pointer; }
+    #volR::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--control); border: none; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -309,7 +312,7 @@ function hexanyLayout(nodes, cx, cy, r) {
 
 const LIMIT_COLOR = {
   1: '#aaaaaa', 3: '#7ab8d4', 5: '#88c080',
-  7: '#d4c070', 9: '#d4c070', 11: '#c880d8', 13: '#d88080',
+  7: '#d4c070', 11: '#c880d8', 13: '#d88080',   // primeLimit never returns 9
 };
 function limitColor(lim) { return LIMIT_COLOR[lim] || '#aaaaaa'; }
 
