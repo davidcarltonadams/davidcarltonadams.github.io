@@ -736,7 +736,7 @@ function scaleAsText() {
     const cents = ratioToCents(k.a, k.b);
     return `${i + 1}.  ${k.label.padEnd(9)} ${cents.toFixed(1)}¢`;
   });
-  return `ratio roulette — kept scale\n${lines.join('\n')}`;
+  return `lissajous · kept scale\n${lines.join('\n')}`;
 }
 
 function copyScale() {
