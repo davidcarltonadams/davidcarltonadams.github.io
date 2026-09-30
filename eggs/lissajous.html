@@ -451,17 +451,34 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && sou
 // ─── CANVAS ───────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('liss-canvas');
 const ctx    = canvas.getContext('2d');
-const W = canvas.width, H = canvas.height;
-const CX = W / 2, CY = H / 2;
-const R = W * 0.43;
+let W = 380, H = 380, CX = 190, CY = 190, R = 380 * 0.43, DPR = 1;
+
+// The square fits the phone (1rem gutters each side, so 358 px at 390) and
+// is backed at device pixels, so it is sharp on a retina screen.
+function sizeCanvas() {
+  DPR = window.devicePixelRatio || 1;
+  // clientWidth, not innerWidth: on a phone innerWidth grows to fit any
+  // overflow, including the 380 px canvas itself before this first runs
+  W = H = Math.max(200, Math.min(380, document.documentElement.clientWidth - 32));
+  CX = W / 2; CY = H / 2; R = W * 0.43;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+// an offscreen layer at the same backing size, drawn in CSS pixels
+function makeLayer() {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * DPR); c.height = Math.round(H * DPR);
+  const g = c.getContext('2d');
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  return [c, g];
+}
 
 // Persistent trail layer
 let trailCanvas, trailCtx;
 function initTrail() {
-  trailCanvas = document.createElement('canvas');
-  trailCanvas.width = W;
-  trailCanvas.height = H;
-  trailCtx = trailCanvas.getContext('2d');
+  [trailCanvas, trailCtx] = makeLayer();
   clearTrail();
 }
 
@@ -507,7 +524,7 @@ function drawFrame() {
   prevY = y;
 
   // Compose: trail + cursor dot
-  ctx.drawImage(trailCanvas, 0, 0);
+  ctx.drawImage(trailCanvas, 0, 0, W, H);
 
   // Cursor dot
   ctx.beginPath();
@@ -835,7 +852,16 @@ function loop() {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
+sizeCanvas();
 initTrail();
+// a rotation or window resize refits the square (a phone's URL bar collapsing
+// changes only the height, so width changes are the only ones that count)
+let lastW = document.documentElement.clientWidth;
+window.addEventListener('resize', () => {
+  if (document.documentElement.clientWidth === lastW) return;
+  lastW = document.documentElement.clientWidth;
+  sizeCanvas(); initTrail(); prevX = prevY = null;
+});
 buildIntervalButtons();
 updateInfo();
 renderKept();
