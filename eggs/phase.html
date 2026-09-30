@@ -483,6 +483,15 @@ function schedulerTick() {
   if (!playing || syncPaused) return;
   const now = ax.currentTime;
 
+  // stall resync: a blocked main thread would hand every missed step to Web
+  // Audio in the past, fired as a clump. Each voice walks its own grid past the
+  // stall, counting the skipped steps, so the a-b offset (the point of the
+  // egg) is exactly what it would have been.
+  if (nextA_time < now - 0.05 || nextB_time < now - 0.05) {
+    while (nextA_time < now + 0.02) { nextA_time += stepDurA(nextA_step % NUM_STEPS); nextA_step++; }
+    while (nextB_time < now + 0.02) { nextB_time += stepDurB(nextB_step % NUM_STEPS); nextB_step++; }
+  }
+
   // Voice A
   while (nextA_time < now + LOOKAHEAD) {
     const step = nextA_step % NUM_STEPS;
