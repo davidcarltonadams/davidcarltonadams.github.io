@@ -8,11 +8,11 @@
 
 ## Main pages
 
-- [About](https://davidcarltonadams.com/): bio, recent performances, press
+- [About](https://davidcarltonadams.com/): bio, recent performances, press, CV (PDF)
 - [Works](https://davidcarltonadams.com/works.html): filterable catalogue of 50 compositions, 2008–present
 - [Media](https://davidcarltonadams.com/media.html): recordings and video
 - [Teaching](https://davidcarltonadams.com/teaching.html): courses, private lessons, teaching philosophy
-- [Systems](https://davidcarltonadams.com/systems.html): the non-music side — a multi-agent AI operations system he built and runs daily, three interactive demos, design principles, program record
+- [Systems](https://davidcarltonadams.com/systems.html): the non-music side — a multi-agent AI operations system he built and runs daily, three interactive demos, design principles, program record, résumés (PDF)
 - [Contact](https://davidcarltonadams.com/contact.html): email and profiles
 - [Eggs](https://davidcarltonadams.com/eggs.html): forty browser-based
   musical instruments and toys: just intonation lattices, rhythm machines,
