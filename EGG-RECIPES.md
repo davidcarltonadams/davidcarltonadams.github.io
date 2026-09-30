@@ -32,9 +32,13 @@ Born 2026-07-23, the night of escher + comma + nest.
   --text:   #ccc8d0;
   --dim:    rgba(204,200,208,0.40);
   --dimmer: rgba(204,200,208,0.17);
+  --control: rgba(204,200,208,0.58);  /* 4.55:1 on --bg · anything clickable (S1) */
   --border: rgba(255,255,255,0.07);
   --gold:   #d4c070;
 }
+/* buttons, toggles, selects, .eggs-back, "? what is this": color var(--control),
+   hover/active brighter (var(--text) or --gold). --dim / --dimmer are for
+   decoration only: 2.69:1 and 1.37:1 on --bg, too faint for a control. */
 /* Georgia serif body · 'SF Mono' for numbers/labels ·
    lowercase titles letter-spaced 0.24em · italic .sub epigraph in
    var(--dim), NOT var(--dimmer): the epigraph is meant to be read,
@@ -67,6 +71,102 @@ btn.addEventListener('click', () => {
 
 Full iOS lore (silent switch, canvas BCR, panic patterns): memory file
 `web_audio_ios_lessons.md`.
+
+## House fixes S1–S5 (from the 2026-09-30 audit)
+
+Five bugs the audit found again and again. Use these forms; don't invent
+variants.
+
+**S1 · control contrast.** The `--control` token above. On a background
+other than `#070709`, solve for the alpha that reaches 4.5:1 there:
+
+```js
+// WCAG contrast of rgba(fg, a) over bg; raise a until >= 4.5
+const lin = c => (c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+const L = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+const over = (fg, a, bg) => fg.map((v, i) => v * a + bg[i] * (1 - a));
+const ratio = (x, y) => { const [h, l] = [L(x), L(y)].sort((p, q) => q - p); return (h + 0.05) / (l + 0.05); };
+ratio(over([204, 200, 208], 0.58, [7, 7, 9]), [7, 7, 9]);   // 4.55
+```
+
+**S2 · release identity guard.** A delayed cleanup deletes only the voice
+it scheduled. A re-press during the release makes a new voice, and the old
+timeout must not orphan it:
+
+```js
+function release(key) {
+  const v = voices.get(key);
+  if (!v) return;
+  const t = actx.currentTime;
+  v.gain.gain.cancelScheduledValues(t);
+  v.gain.gain.setValueAtTime(v.gain.gain.value, t);   // anchor, no click
+  v.gain.gain.linearRampToValueAtTime(0, t + 0.08);
+  v.osc.stop(t + 0.1);
+  setTimeout(() => { if (voices.get(key) === v) voices.delete(key); }, 150);
+}
+const live = new Set();                 // every started osc, releasing ones too
+// on start: live.add(osc); osc.onended = () => live.delete(osc);
+function panic() { for (const o of live) { try { o.stop(); } catch (e) {} } live.clear(); voices.clear(); }
+```
+
+**S3 · nothing hangs on a hidden tab.** Sustained-tone eggs fade and stop
+(or suspend) when the tab hides, and come back in an honest state.
+Sequencers that keep playing are left alone (hidden-tab policy is David's).
+
+```js
+document.addEventListener('visibilitychange', () => {
+  if (!actx) return;
+  if (document.hidden) {
+    const t = actx.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(0, t + 0.05);
+    setTimeout(() => { stopAll(); showStopped(); }, 60);   // or actx.suspend()
+  }
+});
+```
+
+**S4 · gain staging.** Worst-case peak at the loudest settings ≤ 0.9,
+measured before and after. Normalise first (by voice count or summed partial
+amplitude); a safety limiter is the backstop, never the fix.
+
+```js
+// measure: render the loudest case offline, read the peak
+const oc = new OfflineAudioContext(1, 44100 * 2, 44100);
+// ... build the loudest chord into oc.destination ...
+const buf = await oc.startRendering();
+const peak = buf.getChannelData(0).reduce((m, x) => Math.max(m, Math.abs(x)), 0);
+
+// normalise: sum of amplitudes can't exceed LEVEL
+const perVoice = LEVEL / Math.max(1, activeVoices);   // or / Σ partial amps
+
+// safety limiter, master → lim → destination (only near the ceiling)
+const lim = actx.createDynamicsCompressor();
+lim.threshold.value = -6; lim.knee.value = 0; lim.ratio.value = 20;
+lim.attack.value = 0.003; lim.release.value = 0.1;
+```
+
+Never put a limiter on tartini, sumtones, beating, roughness, consonance,
+partials, or anything about combination tones, beats or roughness: its
+nonlinearity would add the very products the egg is demonstrating.
+
+**S5 · scheduler stall resync.** A backgrounded tab or a GC pause leaves
+`next` far behind the audio clock. Jump ahead instead of machine-gunning the
+backlog, and advance the tick counter so voices stay aligned:
+
+```js
+function schedule() {
+  const now = actx.currentTime;
+  if (next < now - 0.05) {
+    tick += Math.ceil((now + 0.02 - next) / tickDur);   // count the ticks we skip
+    next = now + 0.02;                                   // resume right away
+  }
+  while (next < now + LOOKAHEAD) { playTick(tick, next); next += tickDur; tick++; }
+}
+```
+
+(`eggs/clutch.html` has the minimal form for a scheduler with no tick
+counter: `if (nextBeatTime < t - 0.5) nextBeatTime = t + 0.02`.)
 
 ## Voice pool (persistent oscillators)
 
