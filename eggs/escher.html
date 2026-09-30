@@ -145,7 +145,7 @@
 
 <div class="header">
   <h1 class="title">escher</h1>
-  <p class="sub">an endless rising tone. every voice glides upward forever, yet the pitch never leaves the middle of the band — a Shepard–Risset glissando, the auditory cousin of Escher's staircase. voices fade in at the bottom and out at the top under a fixed brightness bell, so the ear hears only ascent. reverse it to fall forever. step it through any EDO from 2 to 120 to hear the illusion quantized.</p>
+  <p class="sub">an endless rising tone. every voice glides upward forever, yet the pitch never leaves the middle of the band · a Shepard–Risset glissando, the auditory cousin of Escher's staircase. voices fade in at the bottom and out at the top under a fixed brightness bell, so the ear hears only ascent. reverse it to fall forever. step it through any EDO from 2 to 120 to hear the illusion quantized.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -171,7 +171,7 @@
         <option value="5">5 · slendro-ish</option>
         <option value="7">7</option>
         <option value="19">19</option>
-        <option value="22">22 · shruti</option>
+        <option value="22">22 · equal (not the shrutis)</option>
         <option value="24">24 · quarter-tones</option>
         <option value="31">31</option>
         <option value="43">43 · equal (EDO)</option>
@@ -215,7 +215,10 @@
 //  stays centered — endless motion with no destination.
 // ─────────────────────────────────────────────────────────────
 
-const FMIN = 27.5;               // band floor (A0)
+const FMIN_A0 = 27.5;            // band floor (A0)
+const BAND_TOP = 16000;          // band ceiling: 10 octaves from A0 would reach
+                                 // 28 kHz, past Nyquist (Chrome clamped 75 voices)
+let   FMIN = FMIN_A0;            // A0, or lower when N octaves from A0 would pass BAND_TOP
 let   N    = 7;                   // voices = octaves of span
 let   SIGMA = 0.20;              // width of brightness bell (in fraction of band)
 let   rate  = 6;                 // semitones/sec (glide) or steps/sec (step)
@@ -265,6 +268,7 @@ function ensureAudio() {
   master = actx.createGain();
   master.gain.value = 0.0;
   master.connect(actx.destination);
+  updateBand();
   buildVoices();
 }
 
@@ -289,22 +293,55 @@ function buildVoices() {
 // teardown and not a pause wearing a stop's clothes.
 function stopAll() {
   setRunning(false);
+  resumeOnShow = false;
   if (!actx) return;
-  try { master.gain.cancelScheduledValues(actx.currentTime); } catch(e){}
-  master.gain.value = 0;
-  for (const v of voices) { try { v.osc.stop(); } catch(e){} v.osc.disconnect(); v.gain.disconnect(); }
+  const t = actx.currentTime;
+  try {                                   // 30 ms fade, not a hard zero (clicked)
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(0, t + 0.03);
+  } catch(e){}
+  const dying = voices;
   voices = [];
   lastMaster = null;
-  if (actx.state === 'running') actx.suspend();
+  for (const v of dying) { try { v.osc.stop(t + 0.04); } catch(e){} }
+  setTimeout(() => {
+    for (const v of dying) { try { v.osc.disconnect(); v.gain.disconnect(); } catch(e){} }
+    if (!running && actx && actx.state === 'running') actx.suspend();
+  }, 80);
 }
 
 function voiceFreq(x) { return FMIN * Math.pow(2, N * x); }
+// the band spans N octaves ending at or below min(BAND_TOP, 0.45·sr):
+// N ≤ 9 keeps A0 as the floor, N = 10 slides the floor down instead
+function updateBand() {
+  const top = Math.min(BAND_TOP, 0.45 * (actx ? actx.sampleRate : 44100));
+  FMIN = Math.min(FMIN_A0, top / Math.pow(2, N));
+}
 
 // Gaussian bell centered at band middle (x = 0.5), in log-freq
 function bell(x) {
   const d = x - 0.5;
   return Math.exp(-(d * d) / (2 * SIGMA * SIGMA));
 }
+
+// Gain staging. Each voice's gain is bell², so the summed level grows with
+// the voice count and the bell's width: 10 voices at spread 0.34 peaked at
+// 1.17. Scale the master by the worst-case Σ bell² relative to the default
+// (7 voices, 0.20): defaults sound exactly as before, wide settings no
+// louder than the default.
+function bellSumMax() {
+  let m = 0;
+  for (let s = 0; s < 32; s++) {
+    let sum = 0;
+    for (let k = 0; k < N; k++) { const a = bell(((s / 32 + k) / N) % 1); sum += a * a; }
+    m = Math.max(m, sum);
+  }
+  return m;
+}
+const REF_SUM = bellSumMax();          // at load: N = 7, SIGMA = 0.20
+let levelNorm = 1;
+function updateNorm() { levelNorm = Math.min(1, REF_SUM / bellSumMax()); }
 
 function updateAudio(dt) {
   if (!actx || !voices.length) return;
@@ -356,7 +393,7 @@ function updateAudio(dt) {
     if (g !== v.lastG) { v.gain.gain.setTargetAtTime(g, t, gTau);     v.lastG = g; }
   }
   // master fade to avoid click on start/stop
-  const mTarget = running ? 0.32 : 0.0;
+  const mTarget = running ? 0.32 * levelNorm : 0.0;
   if (mTarget !== lastMaster) { master.gain.setTargetAtTime(mTarget, t, 0.05); lastMaster = mTarget; }
 }
 
@@ -452,14 +489,15 @@ function draw() {
   c.fillStyle = running ? 'rgba(212,192,112,0.5)' : 'rgba(204,200,208,0.15)';
   c.font = "13px Georgia, serif"; c.textAlign = 'left'; c.textBaseline = 'middle';
   const up = rate >= 0;
-  c.fillText(up ? '↑ rising' : '↓ falling', 12, up ? 24 : H - 24);
+  // between the top (or bottom) two Hz labels, not on top of them
+  c.fillText(up ? '↑ rising' : '↓ falling', 12, up ? 32 : H - 32);
 
   // stepped mode is otherwise opaque — say which degree of the scale we are on
   if (mode === 'step') {
     const label = degreeLabel();
     c.font = "9px 'SF Mono', monospace";
     c.fillStyle = 'rgba(212,192,112,0.45)';
-    c.fillText(label, 12, up ? H - 24 : 24);
+    c.fillText(label, 12, up ? H - 32 : 32);
     if ($('degVal').textContent !== label) $('degVal').textContent = label;
   }
 }
@@ -546,10 +584,12 @@ $('edoNum').addEventListener('input', e => {
 $('edoNum').addEventListener('change', e => { setEdo(parseFloat(e.target.value)); });
 $('voxSlider').addEventListener('input', e => {
   N = parseInt(e.target.value, 10); $('voxVal').textContent = N;
+  updateBand(); updateNorm();
   if (actx && voices.length) buildVoices();   // don't resurrect a stopped bank
 });
 $('sigSlider').addEventListener('input', e => {
   SIGMA = parseFloat(e.target.value); $('sigVal').textContent = SIGMA.toFixed(2);
+  updateNorm();
 });
 
 $('btnPlay').addEventListener('click', () => { ensureAudio(); if (actx.state === 'suspended') actx.resume(); setRunning(!running); });
@@ -560,7 +600,31 @@ $('btnStop').addEventListener('click', stopAll);
 canvas.addEventListener('click', () => { ensureAudio(); if (actx.state === 'suspended') actx.resume(); if (!running) setRunning(true); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') stopAll(); });
 
+// A hidden tab gets no animation frames, and the phase only advances in
+// the frame loop, so the endless glide froze into a static chord. Fade
+// out and pause while hidden; pick up again on return.
+let resumeOnShow = false;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (!running || !actx) return;
+    resumeOnShow = true;
+    setRunning(false);
+    const t = actx.currentTime;
+    master.gain.cancelScheduledValues(t);
+    master.gain.setValueAtTime(master.gain.value, t);
+    master.gain.linearRampToValueAtTime(0, t + 0.05);
+    lastMaster = 0;
+  } else if (resumeOnShow) {
+    resumeOnShow = false;
+    if (!actx || !voices.length) return;
+    if (actx.state === 'suspended') actx.resume();
+    lastClock = null;                    // no catch-up jump in the phase
+    setRunning(true);
+  }
+});
+
 // init
+updateBand(); updateNorm();
 updateSteppedUI();
 $('degVal').textContent = degreeLabel();
 fmtRate();
