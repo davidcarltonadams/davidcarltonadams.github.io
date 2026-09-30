@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="draw any musical interval as a lissajous figure, spin for a random one, keep a scale — simple integer ratios close into a stable shape, irrational ones never do">
+  <meta name="description" content="draw any musical interval as a lissajous figure, spin for a random one, keep a scale · simple integer ratios close into a stable shape, irrational ones never do">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
-  <title>Lissajous — David Carlton Adams</title>
+  <title>lissajous — David Carlton Adams</title>
   <link rel="stylesheet" href="../css/style.css">
   <style>
     body { background: #0c0c10; color: #c0c0cc; }
@@ -23,7 +23,7 @@
       font-size: 0.85rem;
       font-weight: 400;
       letter-spacing: 0.2em;
-      text-transform: uppercase;
+      text-transform: lowercase;
       color: #888;
       margin-bottom: 0.2rem;
     }
@@ -51,7 +51,6 @@
       display: block;
       background: #06060a;
       border-radius: 4px;
-      cursor: crosshair;
     }
 
     /* Controls */
@@ -100,7 +99,7 @@
       background: #151520;
     }
     .iv-btn .iv-name { display: block; font-size: 0.62rem; color: inherit; }
-    .iv-btn .iv-ratio { display: block; font-size: 0.52rem; color: #777; margin-top: 0.15rem; }
+    .iv-btn .iv-ratio { display: block; font-size: 0.52rem; color: #858585; margin-top: 0.15rem; }
     .iv-btn.active .iv-ratio { color: #999; }
 
     /* Custom ratio row */
@@ -152,7 +151,7 @@
 
     /* Kept scale tray */
     .kept-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-    .kept-empty { font-size: 0.58rem; color: #444; letter-spacing: 0.04em; font-style: italic; }
+    .kept-empty { font-size: 0.58rem; color: #808080; letter-spacing: 0.04em; font-style: italic; }
     .kept-chip {
       position: relative;
       background: #0f0f14;
@@ -171,7 +170,7 @@
     .kept-chip .x {
       position: absolute; top: 0; right: 0.15rem; bottom: 0;
       display: flex; align-items: center;
-      color: #555; font-size: 0.7rem; line-height: 1;
+      color: #8a8a8a; font-size: 0.7rem; line-height: 1;
     }
     .kept-chip:hover .x { color: #c0392b; }
 
@@ -194,13 +193,13 @@
     /* back link — parked below the fixed site nav so it clears the name link */
     .eggs-back {
       position: fixed; top: calc(var(--nav-h) + 0.6rem); left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: rgba(204,200,208,0.58); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 90; transition: color .15s;
     }
     .eggs-back:hover { color: #aaa; }
 
-    .hint { font-size: 0.6rem; color: #333; letter-spacing: 0.05em; margin-top: 1rem; text-align: center; }
+    .hint { font-size: 0.6rem; color: #808080; letter-spacing: 0.05em; margin-top: 1rem; text-align: center; }
   </style>
 </head>
 <body>
@@ -238,7 +237,7 @@
 <main>
 <div class="liss-wrap">
 
-  <h1 class="liss-title">Lissajous</h1>
+  <h1 class="liss-title">lissajous</h1>
   <p class="liss-sub">every musical ratio has a shape · select, spin, or dial in a ratio · keep the ones worth a scale</p>
 
   <div class="liss-main">
@@ -306,7 +305,7 @@
     </div>
   </div>
 
-  <p class="hint">the figure closes when the ratio reduces to integers · irrational ratios never close · spin for a random interval, keep the ones worth a scale</p>
+  <p class="hint">the figure closes when the ratio reduces to integers · irrational ratios never close · spin for a random interval (spin also starts the tone), keep the ones worth a scale</p>
 
 </div>
 </main>
