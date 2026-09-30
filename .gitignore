@@ -11,3 +11,8 @@ kaleidoscope-config*.js
 # application PDFs with personal info stay local-only
 assets/docs/*UNT*.pdf
 assets/docs/ADAMS - List of compositions and performances of original works.pdf
+# audit 2026-09-30 (P1-12): untracked sources that would re-publish what the 08-31 pass removed
+assets/docs/*.docx
+performance/audio/
+performance/*.musicxml
+CNAME.bak
