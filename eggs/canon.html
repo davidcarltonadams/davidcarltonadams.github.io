@@ -1060,7 +1060,11 @@ function buildIntervals() {
   const sel=$('iv-sel'), prev=sel.value;
   const t=TUNINGS[curTuning];
   sel.innerHTML='';
+  // 7/4 rounds onto the m7 in 12-TET: don't offer the same comes twice
+  const kOf=iv=>t.stepCents?Math.round(iv.cents/t.stepCents):null;
+  const plainKs=new Set(INTERVALS.filter(iv=>iv.name!=='7/4').map(kOf));
   INTERVALS.forEach(iv=>{
+    if(iv.name==='7/4' && t.stepCents && plainKs.has(kOf(iv))) return;
     const opt=document.createElement('option');
     opt.value=iv.cents.toFixed(3);
     if(t.stepCents && t.stepCents!==100) {
@@ -1308,7 +1312,7 @@ $('btn-add').addEventListener('click',()=>{
   if(voices.length>=VCOL.length) return;
   voices.push({
     offset:parseInt($('dist-n').value)||4,
-    transCents:parseFloat($('iv-sel').value)||700,
+    transCents:(c=>Number.isFinite(c)?c:700)(parseFloat($('iv-sel').value)),   // unison is 0, not "use the default"
     color:VCOL[voices.length],
     muted:false,
   });
@@ -1354,7 +1358,8 @@ function loadGridOrSeq() {
       // 12-TET: a 110 Hz bag lost 1/1, 16/15 and 9/8 without a word.)
       const okInt = n => Number.isInteger(n) && n > 0;
       const fund = Number.isFinite(+s.fundamental_hz) && +s.fundamental_hz > 0 ? +s.fundamental_hz : 220;
-      const evs = s.events.filter(ev => ev && okInt(ev.p) && okInt(ev.q));
+      const evs = s.events.filter(ev => ev && okInt(ev.p) && okInt(ev.q) && ev.p <= 1e6 && ev.q <= 1e6);
+      if(!evs.length) throw new Error('no playable events');   // falls back to the saved grid
       const len = Math.min(evs.length, 64);
       $('tuning-sel').value = '31';
       switchTuning('31', true);
