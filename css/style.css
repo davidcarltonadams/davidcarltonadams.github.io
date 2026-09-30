@@ -1101,6 +1101,9 @@ footer .social-links { margin-top: 1.1rem; }
   }
   .nav-links li.nav-social a { border-bottom: none; padding: 0.25rem; }
   .nav-links li.nav-social svg { width: 20px; height: 20px; }
+
+  /* iOS Safari zooms the page on focus for inputs under 16 px */
+  #works-search, .year-inputs input { font-size: 16px; }
 }
 
 /* ── Responsive tweaks ───────────────────────────────────────── */
