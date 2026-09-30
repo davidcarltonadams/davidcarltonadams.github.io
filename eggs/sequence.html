@@ -298,14 +298,30 @@ function isPosInt(n)      { return Number.isInteger(n) && n > 0; }
 function ratioCents(p, q) { return 1200 * Math.log2(p / q); }
 function tenneyH(p, q)    { return Math.log2(p * q); }
 
+function gcd(a, b) { while (b) [a, b] = [b, a % b]; return a; }
+function octs(n) { return n === 1 ? 'an octave' : `${n} octaves`; }
+
+// Name the octave-reduced interval, then say how many octaves up or down.
+// (Clamping to the ET table called 9/4, 5/2 and 3/1 "octave", and left
+// ratios below 1/1 with no name at all.)
 function intervalName(p, q) {
   const k = `${p}/${q}`;
   if (NAMES[k]) return NAMES[k];
-  const c = ratioCents(p, q);
-  const s = Math.round(c / 100);
-  const dev = c - s * 100;
-  const nm = ET_IVLS[Math.min(s, 12)] || '';
-  return `≈ ${nm} (${dev >= 0 ? '+' : ''}${dev.toFixed(0)}¢)`;
+  let rp = p, rq = q, oct = 0;
+  while (rp >= 2 * rq) { rq *= 2; oct++; }
+  while (rp < rq)      { rp *= 2; oct--; }
+  const g = gcd(rp, rq); rp /= g; rq /= g;
+  let base = NAMES[`${rp}/${rq}`];
+  if (!base) {
+    const c = ratioCents(rp, rq);          // 0 <= c < 1200
+    let s = Math.round(c / 100);
+    const dev = c - s * 100;
+    if (s === 12) { s = 0; oct++; }
+    base = `≈ ${ET_IVLS[s]} (${dev >= 0 ? '+' : ''}${dev.toFixed(0)}¢)`;
+  }
+  if (oct === 0) return base;
+  if (base === 'unison') return oct > 0 ? octs(oct) : `${octs(-oct)} down`;
+  return oct > 0 ? `${base} + ${octs(oct)}` : `${base}, ${octs(-oct)} down`;
 }
 
 const TH_FLOOR     = 1;     // minimum tenney height used for duration (1/1 is 0)
@@ -541,6 +557,19 @@ function setDurMode(m) {
   renderStrip();
 }
 
+// show the fundamental actually in use: select the matching option, or add one
+function syncFundSelect() {
+  const sel = document.getElementById('fundSel');
+  let opt = [...sel.options].find(o => Math.abs(parseFloat(o.value) - fundHz) < 0.01);
+  if (!opt) {
+    opt = document.createElement('option');
+    opt.value = String(fundHz);
+    opt.textContent = `from file · ${+fundHz.toFixed(2)} Hz`;
+    sel.appendChild(opt);
+  }
+  sel.value = opt.value;
+}
+
 function onFundChange() {
   fundHz = parseFloat(document.getElementById('fundSel').value);
   if (droneFund) droneFund.frequency.linearRampToValueAtTime(fundHz, ax.currentTime + 0.3);
@@ -559,7 +588,7 @@ function highlightStep(i) {
     el.classList.toggle('active', j === i);
     if (j < i) el.classList.add('played');
   });
-  updateInfoPanel(seq[i]);
+  updateInfoPanel(seq[i], i);
   // Scroll active chip into view
   const el = document.querySelector('.ev.active');
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -571,7 +600,7 @@ function clearHighlights() {
   });
 }
 
-function updateInfoPanel(ev) {
+function updateInfoPanel(ev, i) {
   if (!ev) {
     ['infoRatio','infoName','infoCents','infoStep'].forEach(id => {
       document.getElementById(id).textContent = '—';
@@ -581,7 +610,7 @@ function updateInfoPanel(ev) {
   document.getElementById('infoRatio').textContent = `${ev.p}/${ev.q}`;
   document.getElementById('infoName').textContent  = intervalName(ev.p, ev.q);
   document.getElementById('infoCents').textContent = `${ratioCents(ev.p, ev.q).toFixed(1)}¢`;
-  document.getElementById('infoStep').textContent  = `${curIdx}/${seq.length}`;
+  document.getElementById('infoStep').textContent  = `${i + 1}/${seq.length}`;
 }
 
 function animProgress() {
@@ -663,6 +692,10 @@ function loadJSON(data) {
     }
     durMode = ['dwell', 'resolve', 'manual'].includes(j.dur_mode) ? j.dur_mode
             : (j.tenney_time ? 'dwell' : 'manual');
+    // the file's durs for 1/1 can be 0 or Infinity (tenney height 0): in dwell
+    // and resolve, recompute every dur with the floored calcDur
+    if (durMode !== 'manual') seq.forEach(ev => { ev.dur = calcDur(ev.p, ev.q); });
+    syncFundSelect();
     document.getElementById('dwellBtn')  .classList.toggle('on', durMode === 'dwell');
     document.getElementById('resolveBtn').classList.toggle('on', durMode === 'resolve');
     document.getElementById('infoFund').textContent = `${fundHz} Hz`;
