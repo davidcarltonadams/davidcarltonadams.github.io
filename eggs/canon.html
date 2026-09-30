@@ -1123,7 +1123,7 @@ function scheduleAutoSave() {
 
 function saveGrid() {
   const state = {
-    v: 1, tuning: curTuning, numSteps, bpm, swingRatio, oscType,
+    v: 1, tuning: curTuning, numSteps, bpm, swingRatio, oscType, viewOctave,
     voices: voices.map(v => ({offset:v.offset, transCents:v.transCents, muted:!!v.muted})),
     grid: grid.map(row => row ? [...row] : null),
   };
@@ -1152,6 +1152,17 @@ function loadGrid() {
       $('swing-v').textContent = swingLabel(swingRatio);
     }
     if(s.oscType) { oscType=s.oscType; $('osc-sel').value=oscType; }
+    // an imported sequence can grow the grid and shift the view octave;
+    // restore both (older saves carry neither and load as before)
+    if(Number.isInteger(s.viewOctave) && Math.abs(s.viewOctave) <= 2) {
+      viewOctave = s.viewOctave;
+      $('oct-v').textContent = (viewOctave >= 0 ? '+' : '') + viewOctave;
+    }
+    if(Array.isArray(s.grid) && s.grid.length > numRows) {
+      numRows = Math.min(s.grid.length, 3 * 31 + 1);
+      grid = Array.from({length: numRows}, () => new Array(numSteps).fill(false));
+    }
+    buildAxis(); resizeG();
     if(s.grid) {
       grid.forEach(row => row && row.fill(false));
       for(let p=0; p<Math.min(s.grid.length,numRows); p++) {
@@ -1302,24 +1313,45 @@ function loadGridOrSeq() {
     try {
       const s = JSON.parse(raw);
       if(!s || s.v !== 1 || !Array.isArray(s.events)) throw new Error('bad');
-      const C4 = 261.626;
-      const fund = s.fundamental_hz || 220;
-      // Map events to grid rows: row 0 = C4 in 12-TET
-      // Fundamental in semitones from C4, then add ratio semitones
-      const fundSt = 12 * Math.log2(fund / C4);
-      // Target octave: put 1/1 around row 12 (C5)
-      const BASE_ROW = 12;
-      const fundRow  = BASE_ROW + Math.round(fundSt);
-      const len = Math.min(s.events.length, 64);
+      // Import into 31-EDO, whose steps sit close to the just ratios a
+      // sequence carries (5/4 0.8 cents off, 7/4 1.1), instead of 12-TET
+      // (5/4 13.7, 7/4 31 off). The view octave follows the lowest note, so
+      // the whole line fits where it can; anything that still falls off the
+      // grid is counted, not silently dropped. (It used to fix 1/1 near C5 in
+      // 12-TET: a 110 Hz bag lost 1/1, 16/15 and 9/8 without a word.)
+      const okInt = n => Number.isInteger(n) && n > 0;
+      const fund = Number.isFinite(+s.fundamental_hz) && +s.fundamental_hz > 0 ? +s.fundamental_hz : 220;
+      const evs = s.events.filter(ev => ev && okInt(ev.p) && okInt(ev.q));
+      const len = Math.min(evs.length, 64);
+      $('tuning-sel').value = '31';
+      switchTuning('31', true);
+      const step = TUNINGS['31'].stepCents;
+      // the 1/1 goes on its nearest step, so every interval keeps its own
+      // 31-EDO error instead of inheriting the fundamental's offset
+      const fundC = 1200 * Math.log2(fund / C4), fundSnap = Math.round(fundC / step) * step;
+      const cents = evs.slice(0, len).map(ev => fundSnap + 1200 * Math.log2(ev.p / ev.q));
+      viewOctave = Math.max(-2, Math.min(2, Math.floor(Math.min(...cents) / 1200)));
+      $('oct-v').textContent = (viewOctave >= 0 ? '+' : '') + viewOctave;
+      // grow the grid upward if the line spans more than the default rows
+      const topRow = Math.max(...cents.map(c => Math.round((c - viewOctave * 1200) / step)));
+      if(topRow >= numRows) {
+        numRows = Math.min(topRow + 1, 3 * 31 + 1);
+        grid = Array.from({length: numRows}, () => new Array(numSteps).fill(false));
+      }
+      buildAxis();
       updateSteps(Math.max(16, len));
-      if(s.bpm) { bpm=s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
-      // Clear grid
+      const b = Number(s.bpm);
+      if(Number.isFinite(b) && b > 0) { bpm = Math.max(20, Math.min(300, b)); $('bpm-n').value = bpm; $('bpm-r').value = bpm; }
       grid.forEach(row => row && row.fill(false));
-      s.events.slice(0, len).forEach((ev, col) => {
-        const ratioSt = 12 * Math.log2(ev.p / ev.q);
-        const row = fundRow + Math.round(ratioSt);
-        if(row >= 0 && row < numRows && col < numSteps) grid[row][col] = true;
+      let placed = 0, worst = 0;
+      cents.forEach((c, col) => {
+        const exact = (c - viewOctave * 1200) / step, row = Math.round(exact);
+        if(row >= 0 && row < numRows && col < numSteps) {
+          grid[row][col] = true; placed++;
+          worst = Math.max(worst, Math.abs(row - exact) * step);
+        }
       });
+      const lost = evs.length - placed;
       markNotaDirty();
       // Brief toast
       const toast = document.createElement('div');
@@ -1328,11 +1360,16 @@ function loadGridOrSeq() {
         background:'rgba(74,158,255,0.12)', border:'1px solid rgba(74,158,255,0.3)',
         color:'rgba(74,158,255,0.9)', fontFamily:'monospace', fontSize:'0.62rem',
         padding:'0.4rem 1rem', letterSpacing:'0.08em', zIndex:9999,
-        pointerEvents:'none', transition:'opacity 0.4s',
+        pointerEvents:'none', transition:'opacity 0.4s', maxWidth:'90vw', textAlign:'center',
       });
-      toast.textContent = `sequence loaded · ${len} steps`;
+      const moved = fundSnap - fundC;
+      toast.textContent = `sequence loaded into 31-EDO · ${placed} note${placed === 1 ? '' : 's'}`
+        + (lost ? ` · ${lost} did not fit` : '')
+        + ` · intervals within ${worst.toFixed(1)}¢ of just`
+        + (Math.abs(moved) >= 0.05 ? ` · 1/1 moved ${moved > 0 ? '+' : '−'}${Math.abs(moved).toFixed(1)}¢ onto a step` : '')
+        + ` · each note one 16th, durations not carried`;
       document.body.appendChild(toast);
-      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2200);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 5200);
     } catch(e) { loadGrid(); }
   } else {
     loadGrid();
