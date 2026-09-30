@@ -1189,13 +1189,14 @@ function loadGrid() {
       switchTuning(s.tuning, true);
     }
     if(s.numSteps) updateSteps(s.numSteps);
-    if(s.bpm) { bpm=s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
-    if(s.swingRatio != null) {
-      swingRatio = s.swingRatio;
+    if(Number.isFinite(+s.bpm) && +s.bpm >= 20 && +s.bpm <= 400) { bpm=+s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
+    if(Number.isFinite(+s.swingRatio) && +s.swingRatio >= 0.5 && +s.swingRatio <= 0.875) {
+      swingRatio = +s.swingRatio;
       $('swing-r').value = Math.round((swingRatio-0.5)/0.375*100);
       $('swing-v').textContent = swingLabel(swingRatio);
     }
-    if(s.oscType) { oscType=s.oscType; $('osc-sel').value=oscType; }
+    // a save is untrusted text: only a sound the menu offers
+    if(s.oscType && [...$('osc-sel').options].some(o => o.value === s.oscType)) { oscType=s.oscType; $('osc-sel').value=oscType; }
     // an imported sequence can grow the grid and shift the view octave;
     // restore both (older saves carry neither and load as before)
     if(Number.isInteger(s.viewOctave) && Math.abs(s.viewOctave) <= 2) {
@@ -1220,7 +1221,9 @@ function loadGrid() {
     if(s.voices && s.voices.length > 0) {
       voices.length = 0;
       s.voices.forEach((v,i) => {
-        voices.push({offset:v.offset||0, transCents:v.transCents||0, color:VCOL[i%VCOL.length], muted:!!v.muted});
+        // numbers only: the voice row puts these into markup
+        const tc = Number(v && v.transCents);
+        voices.push({offset:Math.max(0, parseInt(v && v.offset) || 0), transCents:Number.isFinite(tc) ? tc : 0, color:VCOL[i%VCOL.length], muted:!!(v && v.muted)});
       });
       buildVoicesUI();
     }
