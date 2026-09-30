@@ -388,6 +388,7 @@ let ax = null, master = null;
 let droneFund = null, droneGain = null;  // sustained fundamental drone
 const voiced = new Set();                // every scheduled note, so stop can reach it
 let endTimer = null;                     // end of a non-looping pass
+const queuedSteps = [];                  // {i, start} of steps handed to Web Audio, so pause can resume from the first unplayed one
 
 function ensureAx() {
   if (!ax) {
@@ -511,6 +512,8 @@ function scheduleAhead() {
   while (nextEventAt < ax.currentTime + LOOKAHEAD) {
     const ev  = seq[curIdx];
     const swungDur = stepDur(curIdx);
+    queuedSteps.push({ i: curIdx, start: nextEventAt });
+    while (queuedSteps.length && queuedSteps[0].start < now - 1) queuedSteps.shift();
     playNote(ev, nextEventAt, swungDur);
     highlightStep(curIdx);
     nextEventAt += swungDur;
@@ -533,6 +536,17 @@ function togglePlay() {
   if (playing) {
     playing = false;
     clearTimeout(schedTimer); clearTimeout(endTimer);
+    // the lookahead has already moved curIdx past notes queued but not yet
+    // started: pause silences them, so resume from the earliest of those
+    const now = ax.currentTime;
+    const next = queuedSteps.filter(q => q.start > now && q.i < seq.length)
+                            .sort((a, b) => a.start - b.start)[0];
+    queuedSteps.length = 0;
+    if (next) {
+      curIdx = next.i;
+      document.querySelectorAll('.ev').forEach((el, j) => { if (j >= curIdx) el.classList.remove('played'); });
+      highlightStep(curIdx);
+    }
     silenceVoices();
     stopFundDrone(0, 0.08);
     updatePlayBtn();
@@ -551,6 +565,7 @@ function stopSeq() {
   playing = false;
   clearTimeout(schedTimer); clearTimeout(endTimer);
   silenceVoices();
+  queuedSteps.length = 0;
   if (ax) stopFundDrone(0, 0.08);
   curIdx = 0;
   nextEventAt = 0;
@@ -669,6 +684,7 @@ function renderStrip() {
 
 function jumpTo(i) {
   curIdx = i;
+  queuedSteps.length = 0;   // a jump outranks what was queued before it
   if (!playing) highlightStep(i);
   openEditor(i);
 }
