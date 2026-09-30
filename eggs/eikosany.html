@@ -504,7 +504,17 @@ function ensureCtx() {
     ax = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = ax.createGain();
     masterGain.gain.value = getVolume();
-    masterGain.connect(ax.destination);
+    // gentle limiter: a full eikosany (20 sines at 0.22) summed past 1.0 before
+    const lim = ax.createDynamicsCompressor();
+    lim.threshold.value = -10; lim.knee.value = 6; lim.ratio.value = 8;
+    lim.attack.value = 0.004; lim.release.value = 0.15;
+    // the compressor adds ~1.6× makeup gain; the trim puts a single node back
+    // at its old level (0.15) and holds the worst case under 0.9
+    const trim = ax.createGain();
+    trim.gain.value = 0.63;
+    masterGain.connect(lim);
+    lim.connect(trim);
+    trim.connect(ax.destination);
   }
   if (ax.state === 'suspended') ax.resume();
 }
