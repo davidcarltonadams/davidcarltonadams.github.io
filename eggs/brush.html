@@ -365,6 +365,10 @@ function nearestHarmonic(freq, f0) {
 // by gain only. Voice 0 is the drone (ratio 1, the play button). Keyed
 // voices come and go with note on/off.
 let actx = null, master = null, limiter = null;
+// The limiter's automatic makeup gain lifts its output to about 1.0 for a
+// dense canvas, and a many-key onset overshoots before it reacts (1.30 peak
+// measured at full volume). The master trims that ceiling to 0.9 (S4).
+const OUT_TRIM = 0.68;
 const voices = new Map();                 // id -> voice
 let nextVoiceId = 1;
 let playing = false;
@@ -376,7 +380,7 @@ function ensureAudio() {
   limiter.threshold.value = -12; limiter.knee.value = 6;
   limiter.ratio.value = 12; limiter.attack.value = 0.003; limiter.release.value = 0.12;
   master = actx.createGain();
-  master.gain.value = parseFloat(document.getElementById('volSlider').value);
+  master.gain.value = parseFloat(document.getElementById('volSlider').value) * OUT_TRIM;
   limiter.connect(master); master.connect(actx.destination);
 }
 
@@ -666,7 +670,7 @@ document.getElementById('f0Slider').addEventListener('input', e => {
   draw(); updateReadout();
 });
 document.getElementById('volSlider').addEventListener('input', e => {
-  if (master) master.gain.setTargetAtTime(parseFloat(e.target.value), actx.currentTime, 0.02);
+  if (master) master.gain.setTargetAtTime(parseFloat(e.target.value) * OUT_TRIM, actx.currentTime, 0.02);
 });
 
 // ── presets ──────────────────────────────────────────────────
