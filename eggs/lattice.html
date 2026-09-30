@@ -134,6 +134,7 @@
     @media (max-width: 600px) {
       #lattice { min-width: 640px; }
     }
+    #lattice circle.twin { stroke: #d4c070; stroke-width: 1.6; stroke-dasharray: 4 3; }
 
     /* ── Chord / info displays ───────────────────────── */
     .chord-display {
@@ -286,6 +287,7 @@
     </svg>
     major thirds
   </span>
+  <span class="legend-item">↓ ↑ = a syntonic comma (81/80, 21.5¢) below / above the Pythagorean note</span>
 </div>
 
 <div class="scope-wrap">
@@ -443,6 +445,34 @@ function svgEl(tag, attrs) {
 }
 
 // ═══════════════════════════════════════════════════════
+// Note names (Pythagorean letter + syntonic-comma arrows)
+// ═══════════════════════════════════════════════════════
+// Named from the root's nearest 12-TET pitch (A at the default 220 Hz). The
+// letter is the one p + 4q fifths up the chain from the root; each factor of
+// 5 moves the note a syntonic comma off that Pythagorean spelling (↓ per 5
+// above, ↑ per 5 below), so 5/4 over A is C♯↓ and 10/9 is B↓ beside 9/8's B.
+const PC_TO_LOF = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6, 1: 7, 8: -4, 3: -3, 10: -2, 5: -1 };
+function rootLof() {
+  const pc = ((Math.round(12 * Math.log2(fundamental / 440)) + 9) % 12 + 12) % 12;
+  return PC_TO_LOF[pc];
+}
+function lofName(k) {
+  const letter = 'FCGDAEB'[((k + 1) % 7 + 7) % 7];
+  const acc = Math.floor((k + 1) / 7);
+  return letter + (acc === 2 ? '𝄪' : acc > 0 ? '♯'.repeat(acc) : '♭'.repeat(-acc));
+}
+function noteName(nd) {
+  return lofName(rootLof() + nd.p + 4 * nd.q) + (nd.q > 0 ? '↓'.repeat(nd.q) : '↑'.repeat(-nd.q));
+}
+// the same letter one syntonic comma away: (p ± 4, q ∓ 1)
+function commaTwins(nd) {
+  return [nodeMap[`${nd.p + 4},${nd.q - 1}`], nodeMap[`${nd.p - 4},${nd.q + 1}`]].filter(Boolean);
+}
+function renameNodes() {
+  for (const nd of nodes) if (nd.nameEl) nd.nameEl.textContent = noteName(nd);
+}
+
+// ═══════════════════════════════════════════════════════
 // Build SVG
 // ═══════════════════════════════════════════════════════
 
@@ -534,6 +564,21 @@ function buildSVG() {
     rt.textContent = nd.key;
     nd.ratioTextEl = rt;
     g.appendChild(rt);
+
+    // Note name (inside circle, top)
+    const ne = svgEl('text', {
+      x: cx,
+      y: cy - 15,
+      'text-anchor':      'middle',
+      'dominant-baseline':'middle',
+      'font-family':      'Georgia, serif',
+      'font-size':        7.5 * FS,
+      fill: 'rgba(216,208,200,0.55)',
+      'pointer-events':   'none',
+    });
+    ne.textContent = noteName(nd);
+    nd.nameEl = ne;
+    g.appendChild(ne);
 
     // Cents deviation (inside circle, lower; skip if 0)
     if (nd.dev !== 0) {
@@ -750,11 +795,22 @@ function showInfo(nd) {
   const devStr = nd.dev !== 0
     ? ' · ' + fmtDev(nd.dev) + ' from the nearest 12-TET pitch'
     : ' · lands exactly on 12-TET';
+  clearTwins();
+  const twins = commaTwins(nd);
+  twins.forEach(t => t.circleEl.classList.add('twin'));
+  const twinStr = twins.length
+    ? ' · comma twin ' + twins.map(t => `${t.key} (${noteName(t)})`).join(', ') + ', 81/80 = 21.5¢ apart'
+    : '';
   document.getElementById('info-display').textContent =
-    nd.name + '  ·  ' + cStr + devStr;
+    nd.name + '  ·  ' + noteName(nd) + '  ·  ' + cStr + devStr + twinStr;
+}
+
+function clearTwins() {
+  document.querySelectorAll('#lattice circle.twin').forEach(c => c.classList.remove('twin'));
 }
 
 function clearInfo() {
+  clearTwins();
   document.getElementById('info-display').textContent = '';
 }
 
@@ -782,6 +838,7 @@ fundEl.addEventListener('input', () => {
   const v = parseFloat(fundEl.value);
   if (!isFinite(v) || v < 10) return;
   fundamental = v;
+  renameNodes();
   if (!ac) return;
   const t = ac.currentTime;
   for (const nd of nodes) {
