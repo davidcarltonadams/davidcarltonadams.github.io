@@ -167,10 +167,9 @@
           <span id="swing-v" style="font-size:0.58rem;color:var(--txd);min-width:5ch;text-align:right">even</span>
         </div>
         <div class="r" style="margin-top:-0.25rem;margin-bottom:0.1rem">
-          <span class="l"></span>
-          <div style="flex:1;display:flex;justify-content:space-between;font-size:0.42rem;color:var(--txddd);pointer-events:none">
-            <span>even</span><span>7-let</span><span>5-let</span><span>triplet</span><span>dotted</span><span>2×dot</span>
-          </div>
+          <span class="l" style="visibility:hidden" aria-hidden="true">swing</span>
+          <div id="swing-ticks" style="flex:1;position:relative;height:1.35rem;font-size:0.42rem;color:var(--txddd);pointer-events:none"></div>
+          <span style="font-size:0.58rem;min-width:5ch"></span>
         </div>
         <div class="r">
           <span class="l" title="oscillator waveform">tone</span>
@@ -644,7 +643,10 @@ function drawGrid() {
     const row=numRows-1-p;
     const lb=getRowLabel(p);
     const inSc=t.scaleFilter&&scale.has(p%(t.spo||12));
-    gx.fillStyle=lb.root?'#0d1022':inSc?'#0e0e18':lb.hi?'#0c0c1c':'#080810';
+    // with a scale chosen, rows outside it go dark and cannot be painted
+    // (the in-scale fill used to differ from the others by 2-6 RGB levels)
+    const outSc=scaleActive()&&!inSc;
+    gx.fillStyle=outSc?'#040406':(inSc&&scaleActive())?(lb.root?'#1a1a36':'#15152a'):lb.root?'#0d1022':inSc?'#0e0e18':lb.hi?'#0c0c1c':'#080810';
     gx.fillRect(0,row*CH,W,CH);
     if(lb.root){ gx.fillStyle='#1a1a30'; gx.fillRect(0,row*CH,W,1); }
     for(let s=0;s<numSteps;s++) {
@@ -652,7 +654,7 @@ function drawGrid() {
       gx.fillStyle=s%4===0?'#12121c':'#0b0b12';
       gx.fillRect(x,y,1,CH);
       if(grid[p]&&grid[p][s]) {
-        gx.fillStyle='rgba(190,190,210,0.85)';
+        gx.fillStyle=outSc?'rgba(190,190,210,0.34)':'rgba(190,190,210,0.85)';
         gx.fillRect(x+2,y+1,CW-3,CH-2);
         gx.fillStyle='rgba(255,255,255,0.12)';
         gx.fillRect(x+2,y+1,CW-3,2);
@@ -676,20 +678,25 @@ function gpos(e) {
   const my=(e.clientY-r.top)*gc.height/r.height;
   return {s:Math.floor(mx/CW), p:numRows-1-Math.floor(my/CH)};
 }
+function scaleActive() { return TUNINGS[curTuning].scaleFilter && scale!==SCALES.chromatic; }
 function gpaint(e) {
   const {s,p}=gpos(e);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ grid[p][s]=paintV; markNotaDirty(); }
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){
+    // painting is limited to the chosen scale; erasing works anywhere
+    if(paintV && scaleActive() && !scale.has(p%(TUNINGS[curTuning].spo||12))) return;
+    grid[p][s]=paintV; markNotaDirty();
+  }
 }
 gc.addEventListener('mousedown',e=>{
-  const {s,p}=gpos(e);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; markNotaDirty(); }
+  const e0=e, {s,p}=gpos(e);
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; gpaint(e0); }
 });
 gc.addEventListener('mousemove',e=>{ if(painting) gpaint(e); });
 window.addEventListener('mouseup',()=>painting=false);
 gc.addEventListener('touchstart',e=>{
   e.preventDefault();
-  const {s,p}=gpos(e.touches[0]);
-  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; markNotaDirty(); }
+  const e0=e.touches[0], {s,p}=gpos(e0);
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; gpaint(e0); }
 },{passive:false});
 gc.addEventListener('touchmove',e=>{ e.preventDefault(); if(painting) gpaint(e.touches[0]); },{passive:false});
 window.addEventListener('touchend',()=>painting=false);
@@ -1207,6 +1214,21 @@ $('btn-reload-tuning').addEventListener('click', () => {
     })
     .catch(()=>{ btn.textContent='✗'; setTimeout(()=>btn.textContent='↺', 1200); });
 });
+
+// Tick labels sit where their ratio really is on the slider, which is linear
+// from 0.5 to 0.875 (they used to be spaced evenly, off by up to 21 %).
+// Two rows, so 7-let (19 %) and 5-let (27 %) don't collide.
+(function swingTicks() {
+  const T=[['even',0.5,0],['7-let',4/7,1],['5-let',3/5,0],['triplet',2/3,1],['dotted',3/4,0],['2×dot',7/8,1]];
+  const box=$('swing-ticks');
+  T.forEach(([name,r,row])=>{
+    const pct=(r-0.5)/0.375*100;
+    const sp=document.createElement('span');
+    sp.textContent=name;
+    sp.style.cssText=`position:absolute;left:${pct}%;top:${row?0.62:0}rem;transform:translateX(-${pct}%);white-space:nowrap`;
+    box.appendChild(sp);
+  });
+})();
 
 $('swing-r').addEventListener('input',e=>{
   swingRatio = 0.5 + (parseInt(e.target.value)/100)*0.375;
