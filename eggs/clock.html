@@ -19,6 +19,7 @@
       --ghost:   rgba(212,204,196,0.08);
       --border:  rgba(212,204,196,0.1);
       --accent:  rgba(212,204,196,0.55);
+      --control: rgba(212,204,196,0.57);   /* anything clickable: 4.56:1 on --bg */
     }
 
     body {
@@ -45,16 +46,22 @@
       font-size: 0.65rem;
       font-weight: 400;
       letter-spacing: 0.22em;
-      color: var(--dimmer);
-      text-transform: uppercase;
-      margin-bottom: 2rem;
+      color: var(--dim);
+      margin-bottom: 0.6rem;
+    }
+    .setup-sub {
+      font-size: 0.57rem;
+      letter-spacing: 0.06em;
+      line-height: 1.8;
+      color: var(--dim);
+      font-style: italic;
+      margin-bottom: 1.6rem;
     }
 
     .setup-section-label {
       font-size: 0.52rem;
       letter-spacing: 0.18em;
-      color: var(--dimmer);
-      text-transform: uppercase;
+      color: var(--dim);
       margin-bottom: 0.75rem;
       margin-top: 1.8rem;
     }
@@ -127,7 +134,7 @@
     .remove-btn {
       background: none;
       border: none;
-      color: var(--dimmer);
+      color: var(--control);
       cursor: pointer;
       font-size: 1rem;
       padding: 0 0.2rem;
@@ -143,13 +150,14 @@
       margin-top: 0.2rem;
       font-style: italic;
     }
+    .input-hint.honest { font-size: 0.52rem; margin-top: 0.7rem; color: var(--dim); }
 
     /* Add section button */
     #add-section-btn {
       margin-top: 0.8rem;
       background: none;
       border: 1px dashed var(--border);
-      color: var(--dimmer);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.6rem;
       letter-spacing: 0.1em;
@@ -158,7 +166,7 @@
       border-radius: 2px;
       transition: all 0.15s;
     }
-    #add-section-btn:hover { color: var(--dim); border-color: var(--dim); }
+    #add-section-btn:hover { color: var(--text); border-color: var(--dim); }
 
     /* Session options */
     .setup-opts {
@@ -172,7 +180,7 @@
     .setup-opts label {
       font-size: 0.55rem;
       letter-spacing: 0.1em;
-      color: var(--dimmer);
+      color: var(--dim);
     }
 
     .setup-opts input[type=text] {
@@ -229,8 +237,7 @@
     .url-label {
       font-size: 0.5rem;
       letter-spacing: 0.18em;
-      color: var(--dimmer);
-      text-transform: uppercase;
+      color: var(--dim);
       margin-bottom: 0.35rem;
     }
     .url-box {
@@ -253,7 +260,7 @@
     .copy-btn {
       background: none;
       border: 1px solid var(--border);
-      color: var(--dimmer);
+      color: var(--control);
       font-family: 'SF Mono', monospace;
       font-size: 0.5rem;
       letter-spacing: 0.1em;
@@ -263,22 +270,21 @@
       white-space: nowrap;
       transition: all 0.15s;
     }
-    .copy-btn:hover { color: var(--dim); border-color: var(--dim); }
+    .copy-btn:hover { color: var(--text); border-color: var(--dim); }
     .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
 
-    #qr-img {
+    #qr-canvas {
       margin-top: 1.2rem;
-      width: 160px;
-      height: 160px;
-      border: 1px solid var(--border);
+      max-width: 100%;
+      height: auto;
       background: #fff;
-      padding: 6px;
       border-radius: 2px;
       display: block;
+      image-rendering: pixelated;
     }
     .qr-note {
-      font-size: 0.47rem;
-      color: var(--dimmer);
+      font-size: 0.5rem;
+      color: var(--dim);
       margin-top: 0.4rem;
       font-style: italic;
     }
@@ -320,8 +326,8 @@
       line-height: 1;
       letter-spacing: -0.02em;
       color: var(--text);
-      font-feature-settings: "tnum";
-      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum", "lnum";
+      font-variant-numeric: lining-nums tabular-nums;
     }
 
     .cond-section-info {
@@ -342,7 +348,7 @@
     .ctrl-btn {
       background: none;
       border: 1px solid var(--border);
-      color: var(--dimmer);
+      color: var(--control);
       font-family: Georgia, serif;
       font-style: italic;
       font-size: 0.62rem;
@@ -352,7 +358,7 @@
       border-radius: 2px;
       transition: all 0.2s;
     }
-    .ctrl-btn:hover { color: var(--dim); border-color: var(--dim); }
+    .ctrl-btn:hover { color: var(--text); border-color: var(--dim); }
     .ctrl-btn.primary { color: var(--text); border-color: var(--dim); }
     .ctrl-btn:disabled { opacity: 0.3; cursor: default; }
 
@@ -410,8 +416,8 @@
       line-height: 1;
       letter-spacing: -0.02em;
       color: var(--text);
-      font-feature-settings: "tnum";
-      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum", "lnum";
+      font-variant-numeric: lining-nums tabular-nums;
       margin-bottom: 0.2em;
     }
 
@@ -479,7 +485,7 @@
     .unlock-form button {
       background: none;
       border: 1px solid var(--border);
-      color: var(--dimmer);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.55rem;
       letter-spacing: 0.1em;
@@ -488,7 +494,7 @@
       border-radius: 2px;
       transition: all 0.15s;
     }
-    .unlock-form button:hover { color: var(--dim); border-color: var(--dim); }
+    .unlock-form button:hover { color: var(--text); border-color: var(--dim); }
 
     #perf-status {
       position: fixed;
@@ -517,7 +523,7 @@
     ══════════════════════════════════════════════ */
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -563,7 +569,9 @@
      SETUP VIEW (default)
 ══════════════════════════════════════════ -->
 <div id="setup-view">
-  <p class="setup-title">performance clock</p>
+  <h1 class="setup-title">performance clock</h1>
+  <p class="setup-sub">write timed sections · create a session · send performers the link or the qr code · open the conductor view and press start · every phone then shows the same clock and its current section.<br>
+  the live start/pause signal runs through peerjs's public server, which sees the room code and each device's network address · the score itself never travels over it.</p>
 
   <p class="setup-section-label">sections</p>
   <div id="section-list"></div>
@@ -573,9 +581,10 @@
   <div class="setup-opts">
     <label>room code</label>
     <input type="text" id="room-input" maxlength="8" placeholder="auto" autocomplete="off" spellcheck="false">
-    <label>session password&nbsp;<span style="font-size:0.45rem;color:rgba(212,204,196,0.38)">(optional — all performers)</span></label>
+    <label>session password&nbsp;<span style="font-size:0.45rem;color:var(--dim)">(optional · performers are asked for it)</span></label>
     <input type="text" id="session-pw" maxlength="20" placeholder="none" autocomplete="off">
   </div>
+  <p class="input-hint honest">passwords and hide codes keep text off the screen · they do not encrypt it · anyone holding a link can read every section in it</p>
 
   <button id="create-btn">create session →</button>
 </div>
@@ -603,7 +612,7 @@
     </div>
   </div>
 
-  <img id="qr-img" alt="QR code for performer URL" src="">
+  <canvas id="qr-canvas" role="img" aria-label="QR code for the performer link"></canvas>
   <p class="qr-note">performers scan to load score · share performer URL in chat as fallback</p>
 
   <a id="open-conductor-btn" href="#">open conductor view →</a>
@@ -646,6 +655,7 @@
 </div>
 
 <script src="../vendor/peerjs-1.5.4.min.js"></script>
+<script src="../vendor/qrcode-generator-1.4.4.js"></script>
 <script>
 // ── Utility ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -696,7 +706,11 @@ function genCode() {
 }
 
 // ── URL param helpers ──────────────────────────────────────────────────────
-const params = new URLSearchParams(window.location.search);
+// Session data rides in the fragment (#room=…&s=…): browsers never send the
+// fragment to any server, so the score stays out of the site host's logs too.
+// Links made before this used the query string (?room=…) and still open.
+const HASH_PARAMS = new URLSearchParams(window.location.hash.slice(1));
+const params = HASH_PARAMS.has('room') ? HASH_PARAMS : new URLSearchParams(window.location.search);
 const ROOM   = params.get('room');
 const IS_COND = params.has('c');
 const SESS_DATA = params.get('s');
@@ -705,12 +719,18 @@ const SESS_PW   = params.get('pw');
 function buildURL(room, isCond, sections, pw) {
   const u = new URL(window.location.href);
   u.search = '';
-  u.searchParams.set('room', room);
-  if (isCond) u.searchParams.set('c', '1');
-  if (sections && sections.length) u.searchParams.set('s', b64encode(JSON.stringify(sections)));
-  if (pw) u.searchParams.set('pw', pw);
+  const h = new URLSearchParams();
+  h.set('room', room);
+  if (isCond) h.set('c', '1');
+  if (sections && sections.length) h.set('s', b64encode(JSON.stringify(sections)));
+  if (pw) h.set('pw', pw);
+  u.hash = h.toString();
   return u.toString();
 }
+
+// Following a link that differs only in its fragment does not reload the page
+// (e.g. "open conductor view" from the session page), so reload on purpose.
+window.addEventListener('hashchange', () => window.location.reload());
 
 // ── Session data ───────────────────────────────────────────────────────────
 let sections = [];
@@ -730,7 +750,7 @@ if (SESS_DATA) {
 function reportSessionDataError() {
   if (!sessionDataError) return;
   const el = $('load-error');
-  el.textContent = "this link's sections could not be read — the score data is damaged or truncated. ask for a fresh link.";
+  el.textContent = "this link's sections could not be read · the score data is damaged or truncated. ask for a fresh link.";
   el.classList.remove('hidden');
 }
 
@@ -772,7 +792,38 @@ function broadcast(msg) {
   hostConns.forEach(conn => { try { conn.send(msg); } catch(e) {} });
 }
 
+// Whoever answers at the room's peer id can send anything, so every message is
+// checked before it touches the clock: a known type, finite times, a whole
+// state object. (One {type:'sync', state:null} used to throw inside the
+// performer's frame loop and freeze the clock until a reload.)
+const MAX_SPAN_MS = 7 * 24 * 3600 * 1000;   // no piece runs a week
+const isEpochMs  = v => typeof v === 'number' && Number.isFinite(v) && Math.abs(v - Date.now()) < MAX_SPAN_MS;
+const isElapsed  = v => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < MAX_SPAN_MS;
+
+function cleanState(st) {
+  if (!st || typeof st !== 'object') return null;
+  if (st.paused !== true && st.paused !== false) return null;
+  if (st.startTime !== null && !isEpochMs(st.startTime)) return null;
+  if (st.pausedAt !== null && st.pausedAt !== undefined && !isElapsed(st.pausedAt)) return null;
+  const out = { startTime: st.startTime, paused: st.paused, pausedAt: st.pausedAt ?? null };
+  if (out.paused && (out.startTime === null || out.pausedAt === null)) return null;
+  return out;
+}
+
+function validMsg(msg) {
+  if (!msg || typeof msg !== 'object') return false;
+  switch (msg.type) {
+    case 'start':  return isEpochMs(msg.startTime);
+    case 'pause':  return isElapsed(msg.elapsed);
+    case 'resume': return msg.startTime === undefined ? isElapsed(state.pausedAt) : isEpochMs(msg.startTime);
+    case 'reset':  return true;
+    case 'sync':   return cleanState(msg.state) !== null;
+    default:       return false;
+  }
+}
+
 function applyMsg(msg) {
+  if (!validMsg(msg)) { console.warn('clock: ignored a malformed message'); return; }
   if (msg.type === 'start') {
     state.startTime = msg.startTime;
     state.paused    = false;
@@ -797,7 +848,7 @@ function applyMsg(msg) {
     state.pausedAt  = null;
     onClockReset();
   } else if (msg.type === 'sync') {
-    state = msg.state;
+    state = cleanState(msg.state);
     if (state.startTime && !state.paused) onClockStart();
     else if (state.paused) onClockPause();
     else onClockReset();
@@ -826,7 +877,7 @@ function startPeerHost(roomCode) {
   });
 
   peer.on('error', err => {
-    $('cond-meta').textContent = 'peer error: ' + err.type + ' — check room code and reload';
+    $('cond-meta').textContent = 'peer error: ' + err.type + ' · check room code and reload';
     console.error('Peer error:', err);
   });
 }
@@ -841,12 +892,14 @@ function startPeerClient(roomCode) {
     clientConn.on('open', () => {
       $('perf-status').textContent = roomCode + ' · connected';
     });
-    clientConn.on('data', msg => applyMsg(msg));
+    clientConn.on('data', msg => {
+      try { applyMsg(msg); } catch (e) { console.warn('clock: message failed', e); }
+    });
     clientConn.on('close', () => {
-      $('perf-status').textContent = 'disconnected — reload to reconnect';
+      $('perf-status').textContent = 'disconnected · reload to reconnect';
     });
     clientConn.on('error', err => {
-      $('perf-status').textContent = 'connection error — reload to retry';
+      $('perf-status').textContent = 'connection error · reload to retry';
       console.warn('Client conn error:', err);
     });
   });
@@ -885,6 +938,8 @@ let unlockedSections = new Set();
 let lastRenderedId = null; // track rendered section so DOM isn't rebuilt every frame
 
 function perfTick() {
+  // ask for the next frame first: one bad frame must not end the loop
+  perfAnimId = requestAnimationFrame(perfTick);
   const elapsed = getElapsed();
   $('perf-clock').textContent = fmtClock(elapsed);
 
@@ -912,8 +967,6 @@ function perfTick() {
   } else {
     $('perf-next').textContent = '';
   }
-
-  perfAnimId = requestAnimationFrame(perfTick);
 }
 
 function renderPerfContent(section) {
@@ -996,6 +1049,9 @@ function onClockReset() {
 }
 
 // ── Setup view ─────────────────────────────────────────────────────────────
+// every value typed into a row is escaped before it goes back into markup
+const esc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 let setupSections = [
   { id: 's0', label: 'begin', offset: 0, type: 'text', content: '', password: '' }
 ];
@@ -1014,7 +1070,7 @@ function renderSetup() {
 
     row.innerHTML = `
       <div>
-        <input type="text" class="f-label" value="${s.label}" placeholder="A" maxlength="8">
+        <input type="text" class="f-label" value="${esc(s.label)}" placeholder="A" maxlength="8">
         <p class="input-hint">label</p>
       </div>
       <div>
@@ -1023,12 +1079,12 @@ function renderSetup() {
       </div>
       <div class="content-area">
         ${s.type === 'image'
-          ? `<div class="img-drop" data-id="${s.id}">
-               ${s.content ? `<img src="${s.content}" alt="">` : ''}
+          ? `<div class="img-drop" data-id="${esc(s.id)}">
+               ${s.content ? `<img src="${esc(s.content)}" alt="">` : ''}
                <span>${s.content ? 'change image' : 'drop image / click'}</span>
                <input type="file" accept="image/*">
              </div>`
-          : `<textarea class="f-content" placeholder="score instruction, rehearsal note, or leave blank">${s.content}</textarea>`
+          : `<textarea class="f-content" placeholder="score instruction, rehearsal note, or leave blank">${esc(s.content)}</textarea>`
         }
       </div>
       <select class="f-type">
@@ -1042,8 +1098,8 @@ function renderSetup() {
     const pwRow = document.createElement('div');
     pwRow.style.cssText = 'grid-column:1/-1;display:flex;gap:0.5rem;align-items:center;margin-top:0.3rem';
     pwRow.innerHTML = `
-      <span style="font-size:0.47rem;color:rgba(212,204,196,0.45);letter-spacing:0.1em;text-transform:uppercase">lock</span>
-      <input type="text" class="f-pw" value="${s.password}" placeholder="optional password to reveal content" maxlength="20"
+      <span style="font-size:0.47rem;color:var(--dim);letter-spacing:0.1em">hide</span>
+      <input type="text" class="f-pw" value="${esc(s.password)}" placeholder="optional code: hides this section until typed (not encryption)" maxlength="20"
              style="flex:1;font-size:0.62rem;padding:0.25rem 0.4rem">
     `;
     row.appendChild(pwRow);
@@ -1140,18 +1196,43 @@ $('create-btn').addEventListener('click', async () => {
   $('performer-url-text').textContent   = perfURL;
   $('open-conductor-btn').href = condURL;
 
-  // QR codes cap out around 3KB of data — skip if URL is too large (e.g. base64 images)
-  if (perfURL.length < 2800) {
-    $('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=d4ccc4&bgcolor=060606&data=${encodeURIComponent(perfURL)}`;
-    $('qr-img').style.display = 'block';
-    document.querySelector('.qr-note').textContent = 'performers scan to load score · share performer URL in chat as fallback';
+  // QR codes cap out near 3 KB, so a link carrying image data may not fit
+  if (drawQR(perfURL)) {
+    $('qr-canvas').style.display = 'block';
+    document.querySelector('.qr-note').textContent = 'performers scan to load the score · drawn on this page, no qr service sees the link · the copied link works too';
   } else {
-    $('qr-img').style.display = 'none';
-    document.querySelector('.qr-note').textContent = 'URL too large for QR (contains image data) — share performer URL directly';
+    $('qr-canvas').style.display = 'none';
+    document.querySelector('.qr-note').textContent = 'link too long for a qr code (it carries image data) · share the performer link directly';
   }
 
   showView('session-view');
 });
+
+// ── QR code ────────────────────────────────────────────────────────────────
+// Drawn locally with vendor/qrcode-generator-1.4.4.js (MIT, pinned). It used to
+// be an <img> from api.qrserver.com whose request carried the whole performer
+// URL: every section, image and password hash. Dark modules on white with a
+// 4-module quiet zone, the polarity every scanner reads.
+function drawQR(text) {
+  let qr = null;
+  for (const ec of ['M', 'L']) {               // M if it fits, else L
+    try { const q = qrcode(0, ec); q.addData(text); q.make(); qr = q; break; }
+    catch (e) { /* too long at this level */ }
+  }
+  if (!qr) return false;
+  const n = qr.getModuleCount(), quiet = 4, cells = n + 2 * quiet;
+  const px = Math.max(2, Math.ceil(600 / cells));  // backing pixels per module
+  const cv = $('qr-canvas');
+  cv.width = cv.height = cells * px;
+  cv.style.width = Math.min(440, Math.max(180, cells * 3)) + 'px';
+  const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+  g.fillStyle = '#000';
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++)
+      if (qr.isDark(r, c)) g.fillRect((c + quiet) * px, (r + quiet) * px, px, px);
+  return true;
+}
 
 // ── Conductor view ─────────────────────────────────────────────────────────
 function buildTimeline() {

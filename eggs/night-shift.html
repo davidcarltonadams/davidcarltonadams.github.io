@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="a bell machine that plays just partials of a low C to nobody, striking sparser as the night deepens — hear a harmonic series in real time.">
+  <meta name="description" content="a bell machine that plays just partials of a low C to nobody, striking sparser as the night deepens · hear a harmonic series in real time.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -13,9 +13,10 @@
     :root {
       --bg:     #070709;
       --text:   #ccc8d0;
-      --dim:    rgba(204,200,208,0.38);
-      --dimmer: rgba(204,200,208,0.16);
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
       --border: rgba(255,255,255,0.07);
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
     }
     body {
       background: var(--bg);
@@ -46,7 +47,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.4rem;
       line-height: 1.85;
@@ -73,11 +74,11 @@
     }
     #gate.gone { opacity: 0; pointer-events: none; }
     #gate .invite {
-      font-size: .62rem; letter-spacing: .2em; color: var(--dim);
+      font-size: .62rem; letter-spacing: .2em; color: var(--control);
       font-style: italic;
     }
     #gate .silent-note {
-      font-size: .5rem; letter-spacing: .12em; color: var(--dimmer);
+      font-size: .5rem; letter-spacing: .12em; color: var(--dim);
     }
 
     .controls {
@@ -90,14 +91,14 @@
       font-style: italic; font-family: Georgia, serif;
     }
     #hush {
-      background: none; border: 1px solid var(--border); color: var(--dim);
+      background: none; border: 1px solid var(--border); color: var(--control);
       font-size: .56rem; letter-spacing: .16em; padding: .38rem .9rem;
       cursor: pointer; font-family: inherit; transition: color .15s, border-color .15s;
     }
     #hush:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
 
     .footer {
-      font-size: 0.52rem; letter-spacing: 0.13em; color: #2a2a30;
+      font-size: 0.52rem; letter-spacing: 0.13em; color: var(--dim);
       font-style: italic; text-align: center; line-height: 2;
     }
   </style>
@@ -106,7 +107,7 @@
   <a class="eggs-back" href="../eggs.html">&larr; eggs</a>
 
   <div class="header">
-    <div class="title">night shift</div>
+    <h1 class="title">night shift</h1>
     <div class="sub">
       the machine that stays home, playing to an empty room.<br>
       partials of a low C &middot; sparser the later it gets &middot; touch a star to ring it
@@ -277,9 +278,13 @@ function glow(p, delayMs) {
 }
 
 function ratioLabel(p) {
-  // octave-reduced ratio over the nearest power of two below p
+  // octave-reduced ratio over the nearest power of two below p, in lowest
+  // terms. (Was: partial 1 read "octave", 4 read "octave", 6 read "6/4".)
+  if (p === 1) return 'fundamental';
   let d = 1; while (d * 2 <= p) d *= 2;
-  return d === p ? 'octave' : p + '/' + d;
+  if (d === p) { const n = Math.log2(p); return n === 1 ? 'octave' : n + ' octaves'; }
+  let a = p, b = d; while (b) [a, b] = [b, a % b];
+  return (p / a) + '/' + (d / a);
 }
 
 let lastStruck = null, lastStruckAt = 0;
@@ -334,6 +339,8 @@ function begin() {
   if (ctx.state === 'suspended') ctx.resume();
   if (!running) {
     running = true;
+    master.gain.cancelScheduledValues(ctx.currentTime);   // undo a hush's fade
+    master.gain.setValueAtTime(0.85, ctx.currentTime);
     gate.classList.add('gone');
     setHushLabel();
     // a first breath: the low fundamental, then the shift begins
@@ -369,11 +376,16 @@ hushBtn.addEventListener('click', () => {
   }
   hushed = true;
   setHushLabel();
-  if (!running) return;      // nothing sounding yet — the hush just waits
+  if (!running) return;      // nothing sounding yet: the hush just waits
   running = false;
   clearTimeout(nextTimer);
-  panicAll();
-  if (ctx) ctx.suspend();
+  // fade the master over 80 ms, then free the bells and sleep the clock
+  // (stopping ringing bells outright clicked, one click per bell)
+  const t = ctx.currentTime, mg = master.gain;
+  mg.cancelScheduledValues(t);
+  mg.setValueAtTime(mg.value, t);
+  mg.linearRampToValueAtTime(0, t + 0.08);
+  setTimeout(() => { if (!running) { panicAll(); ctx.suspend(); } }, 110);
 });
 
 setHushLabel();
@@ -394,10 +406,10 @@ function tickClock() {
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   const hour = d.getHours();
-  const phase = (hour >= 23 || hour < 6) ? 'deep night — sparsest'
-              : (hour < 9)  ? 'early — waking up'
-              : (hour < 18) ? 'daytime — it plays anyway'
-              : 'evening — settling';
+  const phase = (hour >= 23 || hour < 6) ? 'deep night, sparsest'
+              : (hour < 9)  ? 'early, waking up'
+              : (hour < 18) ? 'daytime, it plays anyway'
+              : 'evening, settling';
   document.getElementById('nowline').textContent = hh + ':' + mm + ' · ' + phase;
 }
 setInterval(tickClock, 20000);

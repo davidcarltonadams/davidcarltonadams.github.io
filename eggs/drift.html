@@ -14,9 +14,10 @@
       --bg:     #070709;
       --bg2:    #0d0d10;
       --text:   #ccc8d0;
-      --dim:    rgba(204,200,208,0.38);
-      --dimmer: rgba(204,200,208,0.16);
+      --dim:    rgba(204,200,208,0.40);
+      --dimmer: rgba(204,200,208,0.17);
       --border: rgba(255,255,255,0.07);
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
     }
     body {
       background: var(--bg);
@@ -31,7 +32,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -47,7 +48,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.4rem;
       line-height: 1.85;
@@ -147,7 +148,7 @@
 <div class="header">
   <h1 class="title">drift</h1>
   <p class="sub">
-    voices wander through just intonation — each move a simple ratio step, each moment a chord.<br>
+    voices wander through just intonation · each move a simple ratio step, each moment a chord.<br>
     the harmonic series is the landscape; the music is what happens between destinations.
   </p>
 </div>
@@ -163,7 +164,7 @@
   </div>
 
   <div class="ctrl-group">
-    <span class="ctrl-label">step interval — <span id="speedDisp">8s</span></span>
+    <span class="ctrl-label">step interval · <span id="speedDisp">8s</span></span>
     <input type="range" id="speedSlider" min="3" max="30" value="8" step="1" style="width:120px"
            oninput="document.getElementById('speedDisp').textContent=this.value+'s'">
   </div>
@@ -180,8 +181,8 @@
   <div class="ctrl-group">
     <span class="ctrl-label">prime limit</span>
     <select id="primeLimit">
-      <option value="3">3-limit — pythagorean</option>
-      <option value="5">5-limit — classical JI</option>
+      <option value="3">3-limit · pythagorean</option>
+      <option value="5">5-limit · classical ji</option>
       <option value="7" selected>7-limit</option>
       <option value="11">11-limit</option>
       <option value="13">13-limit</option>
@@ -191,14 +192,14 @@
   <div class="ctrl-group">
     <span class="ctrl-label">fundamental</span>
     <select id="fundSelect">
-      <option value="82.41">E2 — 82 Hz</option>
-      <option value="98">G2 — 98 Hz</option>
-      <option value="110">A2 — 110 Hz</option>
-      <option value="130.81">C3 — 131 Hz</option>
-      <option value="146.83">D3 — 147 Hz</option>
-      <option value="196">G3 — 196 Hz</option>
-      <option value="220" selected>A3 — 220 Hz</option>
-      <option value="261.63">C4 — 262 Hz</option>
+      <option value="82.41">E2 · 82 Hz</option>
+      <option value="98">G2 · 98 Hz</option>
+      <option value="110">A2 · 110 Hz</option>
+      <option value="130.81">C3 · 131 Hz</option>
+      <option value="146.83">D3 · 147 Hz</option>
+      <option value="196">G3 · 196 Hz</option>
+      <option value="220" selected>A3 · 220 Hz</option>
+      <option value="261.63">C4 · 262 Hz</option>
     </select>
   </div>
 
@@ -210,7 +211,7 @@
 
   <div class="ctrl-group">
     <span class="ctrl-label">root drone</span>
-    <label style="font-size:0.6rem;font-style:italic;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:0.35rem">
+    <label style="font-size:0.6rem;font-style:italic;color:var(--control);cursor:pointer;display:flex;align-items:center;gap:0.35rem">
       <input type="checkbox" id="droneCheck" checked onchange="toggleDrone(this.checked)"> on
     </label>
   </div>
@@ -321,7 +322,7 @@ function ensureCtx() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   masterGain = audioCtx.createGain();
-  masterGain.gain.value = getVolume();
+  masterGain.gain.value = 0;                     // faded in by startAll
   masterGain.connect(audioCtx.destination);
 }
 
@@ -330,7 +331,7 @@ function getVolume() {
 }
 
 function setVolume(v) {
-  if (masterGain) masterGain.gain.value = v / 100 * 0.8;
+  if (masterGain) masterGain.gain.setTargetAtTime(v / 100 * 0.8, audioCtx.currentTime, 0.02);
 }
 
 // Drone: fade in/out so the checkbox can be toggled mid-play without a click
@@ -381,6 +382,9 @@ function startAll() {
   const nv = parseInt(document.getElementById('voiceCount').value);
   const lim = parseInt(document.getElementById('primeLimit').value);
 
+  // fade the master in: voices start at full level, so a hard start clicks
+  masterGain.gain.setTargetAtTime(getVolume(), audioCtx.currentTime, 0.05);
+
   // Drone
   if (document.getElementById('droneCheck').checked) startDrone(fund);
 
@@ -408,7 +412,9 @@ function addVoice(i, fund, lim) {
   osc.connect(g);
   g.connect(masterGain);
   osc.start();
-  const v = { osc, gain: g, p, q, fund, accent: ACCENTS[i % ACCENTS.length], timer: null };
+  const c = ratioCents(p, q), f = fund * p / q;
+  const v = { osc, gain: g, p, q, fund, accent: ACCENTS[i % ACCENTS.length], timer: null,
+              glide: { c0: c, c1: c, t0: 0, t1: 0, f0: f, f1: f } };
   voices.push(v);
   return v;
 }
@@ -428,6 +434,24 @@ function dropVoice(v) {
   } catch (e) {}
   try { v.osc.stop(t + VOICE_FADE + 0.02); } catch (e) {}
   v.osc.onended = () => { try { v.osc.disconnect(); v.gain.disconnect(); } catch (e) {} };
+}
+
+// Where a voice is right now, in cents over the 1/1. Glides are exponential
+// in frequency, so the pitch moves linearly in cents: the trail can draw the
+// same path the ear hears. (The dot used to jump to the destination while the
+// audio glided for up to 4 s, and the glide was linear in Hz.)
+function voiceCents(v, now) {
+  const g = v.glide;
+  if (now >= g.t1 || g.t1 <= g.t0) return g.c1;
+  return g.c0 + (g.c1 - g.c0) * Math.max(0, (now - g.t0) / (g.t1 - g.t0));
+}
+// The frequency actually sounding now, from the same exponential ramp the
+// oscillator runs (Hz endpoints kept apart from the drawn cents, so a
+// fundamental change mid-glide cannot make the next ramp start elsewhere).
+function voiceHz(v, now) {
+  const g = v.glide;
+  if (now >= g.t1 || g.t1 <= g.t0) return g.f1;
+  return g.f0 * Math.pow(g.f1 / g.f0, Math.max(0, (now - g.t0) / (g.t1 - g.t0)));
 }
 
 function scheduleNext(v) {
@@ -457,22 +481,34 @@ function moveVoice(v) {
   const speed = parseInt(document.getElementById('speedSlider').value);
   const glide = Math.min(speed * 0.38, 4.0);
   const freq = v.fund * next.p / next.q;
+  const now = audioCtx.currentTime;
+  const c0 = voiceCents(v, now), f0 = voiceHz(v, now);
+  v.glide = { c0, c1: ratioCents(next.p, next.q), t0: now, t1: now + glide, f0, f1: freq };
 
-  v.osc.frequency.cancelScheduledValues(audioCtx.currentTime);
-  v.osc.frequency.setValueAtTime(v.osc.frequency.value, audioCtx.currentTime);
-  v.osc.frequency.linearRampToValueAtTime(freq, audioCtx.currentTime + glide);
+  v.osc.frequency.cancelScheduledValues(now);
+  v.osc.frequency.setValueAtTime(f0, now);
+  v.osc.frequency.exponentialRampToValueAtTime(freq, now + glide);
 
   updateStatus();
 }
 
+// Fade the master to 0 over 50 ms, then stop and close: a hard stop clicked.
 function stopAll() {
   timers.forEach(clearTimeout);
   timers = [];
   voices.forEach(v => clearTimeout(v.timer));
-  if (droneOsc) { try { droneOsc.stop(); } catch(e){} droneOsc = null; droneGain = null; }
-  voices.forEach(v => { try { v.osc.stop(); } catch(e){} });
+  if (audioCtx) {
+    const ctx = audioCtx, g = masterGain.gain, t = ctx.currentTime;
+    if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(t);
+    else { g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); }
+    g.linearRampToValueAtTime(0, t + 0.05);
+    const oscs = voices.map(v => v.osc).concat(droneOsc ? [droneOsc] : []);
+    oscs.forEach(o => { try { o.stop(t + 0.06); } catch (e) {} });
+    setTimeout(() => ctx.close().catch(() => {}), 150);
+  }
+  droneOsc = null; droneGain = null;
   voices = [];
-  if (audioCtx) { audioCtx.close().catch(()=>{}); audioCtx = null; masterGain = null; }
+  audioCtx = null; masterGain = null;
 }
 
 function togglePlay() {
@@ -513,27 +549,50 @@ document.getElementById('fundSelect').addEventListener('change', e => {
   const fund = parseFloat(e.target.value);
   const t = audioCtx.currentTime;
   voices.forEach(v => {
+    const c0 = voiceCents(v, t), f0 = voiceHz(v, t), f1 = fund * v.p / v.q;
+    glideTo(v.osc.frequency, f0, f1, t);
+    v.glide = { c0, c1: ratioCents(v.p, v.q), t0: t, t1: t + FUND_GLIDE, f0, f1 };
     v.fund = fund;
-    glideTo(v.osc.frequency, fund * v.p / v.q, t);
   });
-  if (droneOsc) glideTo(droneOsc.frequency, fund, t);
+  if (droneOsc) glideTo(droneOsc.frequency, droneOsc.frequency.value, fund, t);
 });
 
 // Ramp a frequency param from wherever it is now, so a mid-drift retune
-// doesn't jump — and so the drift ramp already scheduled gets cancelled.
+// doesn't jump, and so the drift ramp already scheduled gets cancelled.
 const FUND_GLIDE = 0.9;   // seconds
 
-function glideTo(param, target, t) {
+function glideTo(param, from, target, t) {
   param.cancelScheduledValues(t);
-  param.setValueAtTime(param.value, t);
-  param.linearRampToValueAtTime(target, t + FUND_GLIDE);
+  param.setValueAtTime(from, t);
+  param.exponentialRampToValueAtTime(target, t + FUND_GLIDE);
 }
 
 // ─── Status display ───────────────────────────────────────────────────────────
 
+// The sounding chord as whole numbers: the voices (and the 1/1 drone when it
+// is on) over a common denominator, reduced, low to high. e.g. 4:5:6:7.
+function chordString(withDrone) {
+  const rs = voices.map(v => [v.p, v.q]);
+  if (withDrone) rs.push([1, 1]);
+  if (!rs.length) return '';
+  const lcm = rs.reduce((m, [, q]) => m / gcd(m, q) * q, 1);
+  let ns = rs.map(([p, q]) => p * lcm / q);
+  const g = ns.reduce((a, b) => gcd(a, b));
+  ns = [...new Set(ns.map(n => n / g))].sort((a, b) => a - b);
+  return ns.join(':');
+}
+
 function updateStatus() {
   const el = document.getElementById('voiceStatus');
   const chips = [];
+  const withDrone = playing && document.getElementById('droneCheck').checked;
+  if (playing && voices.length) {
+    const ch = chordString(withDrone);
+    chips.push(`<div class="v-chip">
+      <span class="v-ratio">${ch.length > 28 ? ch.slice(0, 27) + '…' : ch}</span>
+      <span class="v-detail">the chord in whole numbers${withDrone ? ', drone included' : ''}</span>
+    </div>`);
+  }
 
   if (playing && document.getElementById('droneCheck').checked) {
     chips.push(`<div class="v-chip v-drone">
@@ -549,7 +608,7 @@ function updateStatus() {
     // the prime-limit colour, so the chip says both who and what.
     chips.push(`<div class="v-chip" style="border-color:${v.accent.hex}44">
       <span class="v-ratio" style="color:${v.accent.hex}">${v.p}/${v.q}</span>
-      <span class="v-detail">${cents.toFixed(1)}¢ · <span style="color:${limitColor(lim)}">${lim}-limit</span></span>
+      <span class="v-detail">${cents.toFixed(1)}¢ · <span style="color:${limitColor(lim)}">${lim}-limit</span> · th ${tenneyHeight(v.p, v.q).toFixed(1)}</span>
     </div>`);
   });
 
@@ -581,15 +640,41 @@ function cy(cents) {
   return CH - 1 - ((cents - CENTS_MIN) / (CENTS_MAX - CENTS_MIN)) * (CH - 2);
 }
 
+// The reference grid lives in the trail area and scrolls with it. It is
+// painted across the whole area once (load, resize), then only into the
+// freshly exposed right-hand column each frame. (It used to be repainted
+// across the whole area every frame at 2-9 % alpha and never cleared, so every
+// line piled up to near-solid white within a second and the octave > fifth >
+// other hierarchy vanished.)
+function gridStyle(r) {
+  const isOct = r.c % 1200 < 1;
+  const isFifth = Math.abs((r.c % 1200) - 702) < 1;
+  return isOct ? 'rgba(255,255,255,0.09)'
+       : isFifth ? 'rgba(255,255,255,0.045)'
+       : 'rgba(255,255,255,0.022)';
+}
+function drawGrid(x0, w) {
+  for (const r of REFS) {
+    gx.fillStyle = gridStyle(r);
+    gx.fillRect(x0, Math.round(cy(r.c)), w, 1);
+  }
+}
+
 function resizeCanvas() {
   const w = Math.min(cv.parentElement.clientWidth, 900);
-  if (cv.width !== w) { cv.width = w; cv.height = CH; }
+  if (cv.width !== w) {
+    cv.width = w; cv.height = CH;          // clears the canvas
+    gx.fillStyle = '#070709';
+    gx.fillRect(0, 0, w, CH);
+    drawGrid(LW, w - LW);
+  }
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
+// Label panel only (x < LW): it is repainted opaque every frame, so nothing
+// drawn here accumulates.
 function drawLabels() {
-  const W = cv.width;
   gx.fillStyle = '#070709';
   gx.fillRect(0, 0, LW, CH);
 
@@ -599,30 +684,22 @@ function drawLabels() {
   for (const r of REFS) {
     const y = Math.round(cy(r.c));
     const isOct = r.c % 1200 < 1;
-    const isFifth = Math.abs((r.c % 1200) - 702) < 1;
-
-    // Grid line across trail area
-    gx.fillStyle = isOct
-      ? 'rgba(255,255,255,0.09)'
-      : isFifth
-        ? 'rgba(255,255,255,0.045)'
-        : 'rgba(255,255,255,0.022)';
-    gx.fillRect(LW, y, W - LW, 1);
 
     // Label
     gx.fillStyle = isOct ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.20)';
-    gx.fillText(r.t, LW - 3, y + 3);
+    gx.fillText(r.t, LW - 5, y + 3);
 
-    // Tick mark
+    // Tick mark, at the panel's edge
     gx.fillStyle = isOct ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.10)';
-    gx.fillRect(LW, y, 3, 1);
+    gx.fillRect(LW - 3, y, 3, 1);
   }
 }
 
 function drawVoiceDots(W) {
   const x = W - 1;
+  const now = audioCtx ? audioCtx.currentTime : 0;
   for (const v of voices) {
-    const cents = ratioCents(v.p, v.q);
+    const cents = voiceCents(v, now);
     const y = Math.round(cy(cents));
     const [r, g, b] = v.accent.rgb;
 
@@ -643,9 +720,10 @@ function drawVoiceDots(W) {
     const img = gx.getImageData(LW + 1, 0, W - LW - 1, CH);
     gx.putImageData(img, LW, 0);
 
-    // Fade + clear right column
+    // Fade + clear right column, then give it its slice of the grid
     gx.fillStyle = 'rgba(7,7,9,0.88)';
     gx.fillRect(W - 2, 0, 2, CH);
+    drawGrid(W - 2, 2);
 
     drawVoiceDots(W);
   }
