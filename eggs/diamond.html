@@ -188,7 +188,8 @@
     }
 
     /* Diagonal cells (i === j, always 1/1) */
-    .cell.diagonal { opacity: 0.55; cursor: default; }
+    .cell.diagonal { opacity: 0.55; }
+    .cell.diagonal.on { opacity: 1; }
 
     .cell-ratio {
       font-size: 0.72rem; font-style: italic;
@@ -471,8 +472,10 @@ for (let j = 0; j < 7; j++) {
     const cents = ratioToCents(num, den);
     const dev   = deviationFromET(cents);
     const key   = `${num}/${den}`;
-    const vkey  = `${j},${i}`;   // voice key: the CELL, not the ratio — a diamond
-                                 // repeats ratios (4/3 is both 1/3 and 3/9)
+    // voice key: the CELL, not the ratio (a diamond repeats ratios: 4/3 is
+    // both 1/3 and 3/9), except the diagonal: 1/1 is one pitch, one voice,
+    // shared by all 14 tonalities
+    const vkey  = i === j ? '1/1' : `${j},${i}`;
     const hp    = cellHighestPrime(ODDS[i], ODDS[j]);
     cells[j][i] = {
       num, den, key, vkey, cents, dev, hp,
@@ -490,7 +493,7 @@ for (let j = 0; j < 7; j++) {
 // ═══════════════════════════════════════════════════════
 
 function cellColors(nd) {
-  const p = PRIME_VAR[nd.hp];
+  const p = nd.isDiag ? '1' : PRIME_VAR[nd.hp];   // every diagonal cell is the same 1/1: unison colour
   return {
     bg:  `var(--c${p}-bg)`,
     br:  `var(--c${p}-br)`,
@@ -556,12 +559,10 @@ function buildGrid() {
         <span class="cell-ratio${long ? ' long' : ''}">${nd.key}</span>
         ${nd.isDiag ? '' : `<span class="cell-dev" style="color:${devTextColor(nd.dev)}">${fmtDev(nd.dev)}</span>`}`;
 
-      if (!nd.isDiag) {
-        el.addEventListener('click',      () => toggleCell(nd));
-        el.addEventListener('mouseenter', () => showInfo(nd));
-        el.addEventListener('mouseleave', clearInfo);
-        el.addEventListener('touchstart', e => { e.preventDefault(); showInfo(nd); toggleCell(nd); }, { passive: false });
-      }
+      el.addEventListener('click',      () => toggleCell(nd));
+      el.addEventListener('mouseenter', () => showInfo(nd));
+      el.addEventListener('mouseleave', clearInfo);
+      el.addEventListener('touchstart', e => { e.preventDefault(); showInfo(nd); toggleCell(nd); }, { passive: false });
 
       nd.el = el;
       nd._colors = c;
@@ -576,13 +577,9 @@ function buildGrid() {
 
 // U-tonality: all cells in column i (same rawNum)
 function toggleUtonality(i) {
-  const col     = cells.map(row => row[i]).filter(nd => !nd.isDiag);
+  const col     = cells.map(row => row[i]);          // all 7 identities, 1/1 included
   const allOn   = col.every(nd => nd.active);
-  col.forEach(nd => {
-    if (allOn) { if (nd.active) { nd.active = false; if (ac) stopVoice(nd.vkey); } }
-    else        { if (!nd.active) { nd.active = true; startVoice(nd.vkey, fundamental * nd.num / nd.den); } }
-    updateVisual(nd);
-  });
+  col.forEach(nd => setCell(nd, !allOn));
   updateRowColHighlight();
   updateHeaders();
   updateChord();
@@ -590,13 +587,9 @@ function toggleUtonality(i) {
 
 // O-tonality: all cells in row j (same rawDen)
 function toggleOtonality(j) {
-  const row   = cells[j].filter(nd => !nd.isDiag);
+  const row   = cells[j];                            // all 7 identities, 1/1 included
   const allOn = row.every(nd => nd.active);
-  row.forEach(nd => {
-    if (allOn) { if (nd.active) { nd.active = false; if (ac) stopVoice(nd.vkey); } }
-    else        { if (!nd.active) { nd.active = true; startVoice(nd.vkey, fundamental * nd.num / nd.den); } }
-    updateVisual(nd);
-  });
+  row.forEach(nd => setCell(nd, !allOn));
   updateRowColHighlight();
   updateHeaders();
   updateChord();
@@ -606,11 +599,18 @@ function toggleOtonality(j) {
 // Cell interaction
 // ═══════════════════════════════════════════════════════
 
+// Turn one cell on or off. The seven 1/1 cells are one voice, so they
+// switch (and light) together.
+function setCell(nd, on) {
+  const group = nd.isDiag ? cells.map((row, k) => row[k]) : [nd];
+  if (nd.active === on) return;
+  group.forEach(g => { g.active = on; updateVisual(g); });
+  if (on) startVoice(nd.vkey, fundamental * nd.num / nd.den);
+  else if (ac) stopVoice(nd.vkey);
+}
+
 function toggleCell(nd) {
-  nd.active = !nd.active;
-  if (nd.active) startVoice(nd.vkey, fundamental * nd.num / nd.den);
-  else if (ac)   stopVoice(nd.vkey);
-  updateVisual(nd);
+  setCell(nd, !nd.active);
   updateRowColHighlight();
   updateHeaders();
   updateChord();
@@ -628,6 +628,7 @@ function updateVisual(nd) {
     nd.el.style.borderColor = c.br;
     nd.el.style.color = 'rgba(216,208,200,0.65)';
   }
+  nd.el.classList.toggle('on', nd.active);
 }
 
 function updateRowColHighlight() {
@@ -638,7 +639,8 @@ function updateRowColHighlight() {
   // For each active cell, highlight its row and column
   for (let j = 0; j < 7; j++) {
     for (let i = 0; i < 7; i++) {
-      if (!cells[j][i].active) continue;
+      // 1/1 belongs to every tonality, so it lights no particular row or column
+      if (!cells[j][i].active || cells[j][i].isDiag) continue;
       // Highlight other cells in same column (U-tonality)
       for (let jj = 0; jj < 7; jj++) {
         if (jj !== j && cells[jj][i].el) cells[jj][i].el.classList.add('col-lit');
@@ -653,12 +655,12 @@ function updateRowColHighlight() {
 
 function updateHeaders() {
   for (let i = 0; i < 7; i++) {
-    const anyColActive = cells.some(row => row[i].active);
+    const anyColActive = cells.some(row => row[i].active && !row[i].isDiag);
     const hdr = document.getElementById(`col-hdr-${i}`);
     if (hdr) hdr.classList.toggle('active', anyColActive);
   }
   for (let j = 0; j < 7; j++) {
-    const anyRowActive = cells[j].some(nd => nd.active);
+    const anyRowActive = cells[j].some(nd => nd.active && !nd.isDiag);
     const hdr = document.getElementById(`row-hdr-${j}`);
     if (hdr) hdr.classList.toggle('active', anyRowActive);
   }
@@ -670,8 +672,9 @@ function showInfo(nd) {
   const devStr = nd.dev !== 0 ? `${fmtDev(nd.dev)} from 12-TET` : '0¢ deviation (12-TET coincidence)';
   const oStr  = `O-ton. on ${nd.rawDen}`;
   const uStr  = `U-ton. on ${nd.rawNum}`;
-  document.getElementById('info-display').textContent =
-    `${nd.key}  ·  ${name}  ·  ${cStr}  ·  ${devStr}  ·  ${oStr} × ${uStr}`;
+  document.getElementById('info-display').textContent = nd.isDiag
+    ? `1/1  ·  unison  ·  the root  ·  one voice, in every O- and U-tonality`
+    : `${nd.key}  ·  ${name}  ·  ${cStr}  ·  ${devStr}  ·  ${oStr} × ${uStr}`;
 }
 
 function clearInfo() {
@@ -679,7 +682,8 @@ function clearInfo() {
 }
 
 function updateChord() {
-  const flat  = cells.flat().filter(nd => nd.active);
+  const seen  = new Set();   // the seven 1/1 cells are one pitch: list it once
+  const flat  = cells.flat().filter(nd => nd.active && !seen.has(nd.vkey) && seen.add(nd.vkey));
   const el    = document.getElementById('chord-display');
   el.textContent = flat.length === 0 ? '—' : flat.map(nd => nd.key).join('   ');
 }
