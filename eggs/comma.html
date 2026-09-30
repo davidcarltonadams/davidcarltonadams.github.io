@@ -159,7 +159,7 @@
 
 <div class="header">
   <h1 class="title">comma</h1>
-  <p class="sub">the syntonic comma pump. four familiar chords — C, A minor, D minor, G — each tuned purely from a note the previous chord leaves behind. no voice ever moves by anything but a pure interval, yet every time the progression comes home, home has sunk by 81/80 — a syntonic comma, 21.5 cents. escher's staircase is an illusion; this one really descends. about 56 cycles to fall a full octave. reverse to climb, temper to stand still.</p>
+  <p class="sub">the syntonic comma pump. four familiar chords (C, A minor, D minor, G), each tuned purely from a note the previous chord leaves behind. no voice ever moves by anything but a pure interval, yet every time the progression comes home, home has sunk by 81/80, a syntonic comma, 21.5 cents. escher's staircase is an illusion; this one really descends. about 56 cycles to fall a full octave. reverse to climb, temper to stand still.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -206,7 +206,7 @@
   <button id="btnReset">reset</button>
 </div>
 
-<p class="hint">click the canvas to start · esc stops and frees the voices · gold bars are notes held over from the previous chord — the pure links the comma sneaks through</p>
+<p class="hint">click the canvas to start · esc stops and frees the voices · gold bars are notes held over from the previous chord · the pure links the comma sneaks through</p>
 
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -477,7 +477,7 @@ function draw(now) {
   c.font = "15px Georgia, serif"; c.textBaseline = 'middle';
   if (mode === 'tempered') c.fillText('· anchored', 12, H - 24);
   else if (mode === 'corrected') c.fillText('↺ snapping back', 12, H - 24);
-  else c.fillText(dir === 1 ? '↓ sinking' : '↑ climbing', 12, dir === 1 ? H - 24 : 24);
+  else c.fillText(dir === 1 ? '↓ sinking' : '↑ climbing', 40, dir === 1 ? H - 24 : 24);   // x 40 clears the C3 ruler label
 }
 
 // ── Loop ─────────────────────────────────────────────────────
