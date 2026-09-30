@@ -1143,7 +1143,8 @@ function applyPresetObj(p) {
 function loadPreset(key) {
   if (!key) return;
   if (key === 'custom') {
-    const saved = localStorage.getItem('mtok-preset');
+    let saved = null;
+    try { saved = localStorage.getItem('mtok-preset'); } catch(_) {}  // storage may be blocked
     if (saved) try { applyPresetObj(JSON.parse(saved)); } catch(_) {}
     return;
   }
@@ -1158,10 +1159,14 @@ function savePreset() {
     lpf: Math.round(params.lpf*100), drive: Math.round(params.drive*100),
     vol: Math.round(params.vol*100), xyModes: [...activeXYModes],
   };
-  try { localStorage.setItem('mtok-preset', JSON.stringify(state)); } catch(_) {}
+  let ok = true;
+  try { localStorage.setItem('mtok-preset', JSON.stringify(state)); } catch(_) { ok = false; }
   const btn = document.getElementById('btn-save-preset');
-  if (btn) { btn.textContent = 'saved!'; setTimeout(() => btn.textContent = 'save', 1500); }
-  ensureCustomPresetOption();
+  if (btn) {
+    btn.textContent = ok ? 'saved!' : "can't save here";
+    setTimeout(() => btn.textContent = 'save', 1500);
+  }
+  if (ok) ensureCustomPresetOption();
 }
 
 // The saved preset survives in localStorage but its <option> does not survive a
