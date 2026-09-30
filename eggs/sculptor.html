@@ -90,10 +90,34 @@
       color: var(--dimmer);
       text-align: right;
     }
+    /* bipolar slider: a centre tick marks 0 and the gold fill grows from the
+       centre toward the value, so a row at 0.00 shows no fill at all
+       (accent-color filled from the left edge, so 0 looked half-on) */
     input[type=range].h-slider {
+      --lo: 50%; --hi: 50%;
       width: 100%;
-      accent-color: var(--gold);
+      height: 16px;
+      -webkit-appearance: none; appearance: none;
+      background:
+        linear-gradient(to right, transparent var(--lo), var(--gold) var(--lo),
+          var(--gold) var(--hi), transparent var(--hi)) no-repeat 0 50% / 100% 2px,
+        linear-gradient(rgba(204,200,208,0.45), rgba(204,200,208,0.45)) no-repeat
+          50% 50% / 1px 10px,
+        linear-gradient(rgba(255,255,255,0.12), rgba(255,255,255,0.12)) no-repeat
+          0 50% / 100% 2px;
+      cursor: pointer;
     }
+    input[type=range].h-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--gold); border: none;
+    }
+    input[type=range].h-slider::-moz-range-thumb {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--gold); border: none;
+    }
+    input[type=range].h-slider.zero::-webkit-slider-thumb { background: rgba(204,200,208,0.45); }
+    input[type=range].h-slider.zero::-moz-range-thumb { background: rgba(204,200,208,0.45); }
     .h-val {
       font-size: 0.55rem;
       font-family: 'SF Mono','Fira Code',monospace;
@@ -217,13 +241,13 @@ const NAMES = [
   'octave',
   'major third · 5∶4',
   'fifth',
-  '7th harmonic · ♭7',
+  '7th harmonic · ↓♭7',
   'octave',
   'major second · 9∶8',
   'major third',
   '11th harmonic · ↑4',
   'fifth',
-  '13th harmonic · ↑6',
+  '13th harmonic · ↑♭6',
   '7th harmonic',
   'major seventh · 15∶8',
   'octave',
@@ -305,6 +329,16 @@ function drawWaveform() {
   wc.stroke();
 }
 
+// fill from the centre (0) to the value; the thumb is 12px wide, so the
+// thumb's centre travels between 6px and (width - 6px)
+function paintSlider(slider, v) {
+  const pos = `calc(6px + (100% - 12px) * ${(v + 1) / 2})`;
+  const mid = '50%';
+  slider.style.setProperty('--lo', v < 0 ? pos : mid);
+  slider.style.setProperty('--hi', v < 0 ? mid : pos);
+  slider.classList.toggle('zero', Math.abs(v) < 0.005);
+}
+
 // ── Build harmonic rows
 const rowsEl = document.getElementById('harmonicRows');
 const sliders = [];
@@ -332,9 +366,12 @@ for (let h = 0; h < NUM_H; h++) {
   name.className = 'h-name';
   name.textContent = NAMES[h];
 
+  paintSlider(slider, amps[h]);
+
   slider.addEventListener('input', () => {
     amps[h] = parseFloat(slider.value);
     val.textContent = amps[h].toFixed(2);
+    paintSlider(slider, amps[h]);
     drawWaveform();
     syncOscillators();
   });
@@ -368,6 +405,7 @@ function applyPreset(name) {
     amps[h] = Math.max(-1, Math.min(1, preset[h] / peak));
     sliders[h].value = amps[h];
     valSpans[h].textContent = amps[h].toFixed(2);
+    paintSlider(sliders[h], amps[h]);
   }
   drawWaveform();
   syncOscillators();
@@ -379,6 +417,29 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 
 // ── Audio
 let actx = null, masterGain = null, oscNodes = [], playing = false;
+
+// Gain staging. All 16 oscillators start in sine phase and glide in
+// proportion, so the sound's peak is the drawn waveform's peak. Unscaled,
+// every slider at +1 peaked at 3.94 (hard clipping) while the canvas,
+// normalized, showed a clean shape. Scale the partials so the summed
+// peak never passes PEAK_ROOM: a lone sine keeps its level, a sawtooth
+// drops 1.4 dB, and at volume 1 the worst case is 0.6 * 1.5 = 0.9.
+const PART_GAIN = 0.6, PEAK_ROOM = 1.5;
+function wavePeak() {
+  const N = 2048;
+  let peak = 0;
+  for (let i = 0; i < N; i++) {
+    const t = i / N;
+    let v = 0;
+    for (let h = 0; h < NUM_H; h++) {
+      if (amps[h] !== 0) v += amps[h] * Math.sin(2 * Math.PI * (h + 1) * t);
+    }
+    peak = Math.max(peak, Math.abs(v));
+  }
+  return peak;
+}
+function partGain(h, scale) { return amps[h] * PART_GAIN * scale; }
+function waveScale() { return PEAK_ROOM / Math.max(PEAK_ROOM, wavePeak()); }
 
 function ensureAudio() {
   if (actx) return;
@@ -393,12 +454,13 @@ function startAudio() {
   stopAudio();
   if (actx.state === 'suspended') actx.resume();
   const root = parseFloat(document.getElementById('rootSlider').value);
+  const scale = waveScale();
   for (let h = 0; h < NUM_H; h++) {
     const osc  = actx.createOscillator();
     const gain = actx.createGain();
     osc.type = 'sine';
     osc.frequency.value = root * (h + 1);
-    gain.gain.value = amps[h] * 0.6;
+    gain.gain.value = partGain(h, scale);
     osc.connect(gain);
     gain.connect(masterGain);
     osc.start();
@@ -407,10 +469,17 @@ function startAudio() {
   playing = true;
 }
 
+// fade each partial over ~10 ms before stopping it (a bare stop clicked)
 function stopAudio() {
+  const t = actx ? actx.currentTime : 0;
   for (const { osc, gain } of oscNodes) {
-    try { osc.stop(); } catch(e) {}
-    osc.disconnect(); gain.disconnect();
+    try {
+      gain.gain.cancelScheduledValues(t);
+      gain.gain.setValueAtTime(gain.gain.value, t);
+      gain.gain.setTargetAtTime(0, t, 0.01);
+      osc.stop(t + 0.08);
+    } catch(e) {}
+    osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch(e) {} };
   }
   oscNodes = [];
   playing = false;
@@ -418,23 +487,27 @@ function stopAudio() {
 
 function syncOscillators() {
   if (!playing || !actx) return;
+  // every partial moves with the same time constant, so mid-ramp the
+  // waveform is a blend of two shapes that both peak under PEAK_ROOM
+  const scale = waveScale();
   for (let h = 0; h < NUM_H; h++) {
     if (!oscNodes[h]) continue;
-    oscNodes[h].gain.gain.setTargetAtTime(amps[h] * 0.6, actx.currentTime, 0.02);
+    oscNodes[h].gain.gain.setTargetAtTime(partGain(h, scale), actx.currentTime, 0.02);
   }
 }
 
-document.getElementById('playBtn').addEventListener('click', e => {
-  if (playing) {
-    stopAudio();
-    e.target.textContent = 'play';
-    e.target.classList.remove('playing');
-  } else {
-    startAudio();
-    e.target.textContent = 'stop';
-    e.target.classList.add('playing');
-  }
+const playBtn = document.getElementById('playBtn');
+function setPlayUI() {
+  playBtn.textContent = playing ? 'stop' : 'play';
+  playBtn.classList.toggle('playing', playing);
+}
+playBtn.addEventListener('click', () => {
+  if (playing) stopAudio(); else startAudio();
+  setPlayUI();
 });
+// esc stops; a hidden tab stops too, and the button says so
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && playing) { stopAudio(); setPlayUI(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden && playing) { stopAudio(); setPlayUI(); } });
 
 document.getElementById('rootSlider').addEventListener('input', e => {
   const root = parseFloat(e.target.value);
