@@ -1144,7 +1144,10 @@ function parseKern(text) {
     for (let v = 0; v < Math.min(tokens.length, spineTime.length); v++) {
       const tok = tokens[v].trim();
       if (!tok || tok === '.') continue;
-      const dur = parseKernDuration(tok);
+      // a chord is several space-separated notes in one token ("2gg 2ee");
+      // every note sounds, and the spine advances by the first one's length
+      const subs = tok.split(' ').filter(Boolean);
+      const dur = parseKernDuration(subs[0]);
       if (dur === null) continue;
 
       if (spineSkip[v]) {
@@ -1152,20 +1155,34 @@ function parseKern(text) {
         continue;
       }
 
-      const midi = parseKernPitch(tok);
-      const tieEnd   = tok.includes(']');
-      const tieStart = tok.includes('[');
-
-      if (tieEnd && spineTie[v] !== null) {
-        events[spineTie[v]].dur += dur;
-        if (!tieStart) spineTie[v] = null;
-      } else if (midi !== null) {
-        const idx = events.length;
-        events.push({ t: spineTime[v], dur, midi });
-        spineTie[v] = tieStart ? idx : null;
-      } else {
-        spineTie[v] = null;
+      // open ties on this spine: midi → event index. Humdrum ties: [ start,
+      // _ middle, ] end. Accidentals and tie marks are read per note, so one
+      // note's sharp or tie no longer leaks onto its chord-mate.
+      const open = spineTie[v];
+      const next = new Map();
+      const notes = subs.map(sub => ({
+        d: parseKernDuration(sub) ?? dur,
+        midi: parseKernPitch(sub),
+        end: sub.includes(']') || sub.includes('_'),
+        start: sub.includes('[') || sub.includes('_'),
+      }));
+      // a tie-end mark on a pitch with no open tie is an encoding slip
+      // (WTC II/3 "8f##] 8e"): give it to the chord note that is tied
+      if (open && notes.some(n => n.end && n.midi !== null && !open.has(n.midi)))
+        for (const n of notes) if (n.midi !== null && open.has(n.midi)) n.end = true;
+      for (const n of notes) {
+        if (n.midi === null) continue;
+        if (n.end && open && open.has(n.midi)) {
+          const idx = open.get(n.midi);
+          events[idx].dur += n.d;
+          if (n.start) next.set(n.midi, idx);
+        } else {
+          const idx = events.length;
+          events.push({ t: spineTime[v], dur: n.d, midi: n.midi });
+          if (n.start) next.set(n.midi, idx);
+        }
       }
+      spineTie[v] = next.size ? next : null;
       spineTime[v] += dur;
     }
   }
