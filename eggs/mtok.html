@@ -271,25 +271,42 @@ const JI_KEYS = [
   {key:'bqs',     label:'B↑',      ratio:243/128,   type:'qt'},
 ];
 
-// An EDO has no white/black keys of its own, so borrow them: for each of the 12
-// chromatic degrees, the single nearest step of the EDO inherits that degree's
-// name and colour (nat = white, acc = black). Every other step is a microtone.
+// Spell every EDO step from the chain of fifths (the EDO's own fifth: 11 steps
+// of 19, 18 of 31). A sharp is 7 fifths up and a flat 7 down, so in 19 and 31
+// C♯ and D♭ land on different keys, which is the thing these tunings teach.
+// Each step takes its fewest-accidental names; a tie (19's E♯ = F♭) shows both.
+// Colour follows the spelling: natural = white, one accidental = black,
+// double accidental (31's in-between steps) = amber.
+function fifthsSpelling(n) {
+  const fifth = Math.round(n * Math.log2(3 / 2));
+  const LET = [['F',-1],['C',0],['G',1],['D',2],['A',3],['E',4],['B',5]];
+  const ACC = ['𝄫','♭','','♯','𝄪'];
+  const out = Array.from({length:n}, () => []);
+  for (const [L, k] of LET) for (let a = -2; a <= 2; a++) {
+    const step = ((((k + 7 * a) * fifth) % n) + n) % n;
+    out[step].push({name: L + ACC[a + 2], acc: Math.abs(a)});
+  }
+  return out.map(c => {
+    const best = Math.min(...c.map(x => x.acc));
+    return {names: c.filter(x => x.acc === best).map(x => x.name), acc: best};
+  });
+}
+
 // Keys are uniform width — OCT_W/n, edge to edge — so 19 and 31 lay out as
 // evenly as 12 does, and nothing gets overlaid on top of anything else.
+// 12-TET keeps its usual one-name-per-key spelling.
 function edoKeys(n) {
-  const anchors = new Map();          // step index → 12-TET pitch class
-  for (let pc = 0; pc < 12; pc++) {
-    const step = ((Math.round(pc * n / 12) % n) + n) % n;
-    if (!anchors.has(step)) anchors.set(step, pc);
-  }
   const w = OCT_W / n;
+  const sp = n === 12 ? null : fifthsSpelling(n);
   return Array.from({length:n}, (_,i) => {
-    const pc = anchors.has(i) ? anchors.get(i) : -1;
+    const names = sp ? sp[i].names : [_NOTE12m[i]];
+    const acc = sp ? sp[i].acc : (_WHITE12m[i] ? 0 : 1);
     return {
       key: `p${i}`,
-      label: pc < 0 ? '' : _NOTE12m[pc],
+      label: names[0] || '',
+      label2: names[1] || '',
       ratio: Math.pow(2, i/n),
-      type: pc < 0 ? 'qt' : (_WHITE12m[pc] ? 'nat' : 'acc'),
+      type: acc === 0 ? 'nat' : acc === 1 ? 'acc' : 'qt',
       step: i, w,
     };
   });
@@ -722,7 +739,7 @@ function buildKeyRects(logicalH) {
 
       rects.push({
         x, y: 0, w, h,
-        type: pk.type, label: pk.label, ratio: pk.ratio,
+        type: pk.type, label: pk.label, label2: pk.label2 || '', ratio: pk.ratio,
         freq, cents: pk.cents, oct,
         octStart: pk.origIdx === 0,
         active: false, modAmt: 0,
@@ -781,7 +798,7 @@ function drawKeyboard() {
 }
 
 function drawKey(r) {
-  const {x, y, w, h, type, active, modAmt, label, ratio, octStart, oct} = r;
+  const {x, y, w, h, type, active, modAmt, label, label2, ratio, octStart, oct} = r;
   const c = kbCtx, col = KC[type];
 
   // Body gradient
@@ -847,14 +864,25 @@ function drawKey(r) {
   const lblColor = active ? '#ffffff'
     : octStart ? '#c0c0e0'
     : type === 'nat' ? '#9898bc'
-    : type === 'acc' ? '#585870'
+    : type === 'acc' ? '#8888aa'
     : '#c09848';
   c.fillStyle = lblColor;
-  c.font = `500 ${type === 'nat' ? 9 : 7}px "JetBrains Mono",monospace`;
   c.textBaseline = 'top';
+  // Shrink a label that is wider than its key (31-EDO keys are 10.8 px and
+  // 𝄪/𝄫 fall back to a wide music font) instead of printing over the next key.
+  const fitText = (txt, ty) => {
+    let size = type === 'nat' ? 9 : 7;
+    c.font = `500 ${size}px "JetBrains Mono",monospace`;
+    while (size > 5 && c.measureText(txt).width > w - 2) {
+      size -= 0.5;
+      c.font = `500 ${size}px "JetBrains Mono",monospace`;
+    }
+    c.fillText(txt, x + w / 2, ty);
+  };
   const lblY = type === 'nat' ? (octStart ? 14 : 8)
              : type === 'acc' ? 6 : 9;
-  c.fillText(label, x + w / 2, y + lblY);
+  fitText(label, y + lblY);
+  if (label2) fitText(label2, y + lblY + (type === 'nat' ? 11 : 9));
 
   // Ratio (nat keys only, near bottom)
   if (type === 'nat' && currentTuning === 'ji') {
