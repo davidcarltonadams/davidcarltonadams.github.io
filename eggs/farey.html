@@ -172,7 +172,7 @@
   <div class="ctrl-group">
     <span class="ctrl-label">order n (denominators ≤ n)</span>
     <input type="range" id="nSlider" min="1" max="16" value="5" step="1">
-    <span class="ctrl-val" id="nVal">F₅ — <span id="nCount">0</span> fractions</span>
+    <span class="ctrl-val" id="nVal">F₅ · <span id="nCount">0</span> fractions</span>
   </div>
   <div class="ctrl-group">
     <span class="ctrl-label">root pitch</span>
@@ -741,7 +741,7 @@ function updateN() {
   hoveredJI = null;
   hoveredNeighbors = null;
   updateInfoLine();
-  document.getElementById('nVal').innerHTML = `F${subscript(n)} — <span id="nCount">${fracs.length}</span> fractions`;
+  document.getElementById('nVal').innerHTML = `F${subscript(n)} · <span id="nCount">${fracs.length}</span> fractions`;
   updateLegend();
   requestDraw();
 }
