@@ -173,6 +173,10 @@
       transition: color 0.12s;
     }
     .hdr-num.active { color: var(--accent); }
+    .hdr-one { font-size: 0.45rem; color: var(--dim); font-style: italic; letter-spacing: 0.04em; }
+    .cell:focus-visible, .col-header:focus-visible, .row-header:focus-visible {
+      outline: 1px solid var(--accent); outline-offset: 1px;
+    }
 
     /* Data cells */
     .cell {
@@ -502,6 +506,18 @@ function cellColors(nd) {
   };
 }
 
+// cells and headers are divs: give them a keyboard path (tab, then Enter/Space)
+function keyActivate(el, fn, label) {
+  el.tabIndex = 0;
+  el.setAttribute('role', 'button');
+  el.setAttribute('aria-label', label);
+  el.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (!e.repeat) fn();
+  });
+}
+
 function buildGrid() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
@@ -519,11 +535,14 @@ function buildGrid() {
     h.className = 'col-header';
     h.style.gridRow = '1';
     h.style.gridColumn = String(i + 2);
+    const uOne = reduceToOctave(ODDS[i], 1).join('/');   // the tonality's 1-identity
     h.innerHTML = `
       <span class="hdr-tag">U·ton.</span>
-      <span class="hdr-num" id="col-hdr-${i}">${ODDS[i]}</span>`;
-    h.title = `U-tonality on ${ODDS[i]}: the chord under identity ${ODDS[i]}`;
+      <span class="hdr-num" id="col-hdr-${i}">${ODDS[i]}</span>
+      <span class="hdr-one">${uOne}</span>`;
+    h.title = `U-tonality on ${ODDS[i]}: the chord under identity ${ODDS[i]} · its 1-identity is ${uOne}`;
     h.addEventListener('click', () => toggleUtonality(i));
+    keyActivate(h, () => toggleUtonality(i), `U-tonality on ${ODDS[i]}`);
     grid.appendChild(h);
   }
 
@@ -534,10 +553,13 @@ function buildGrid() {
     rh.className = 'row-header';
     rh.style.gridColumn = '1';
     rh.style.gridRow = String(j + 2);
+    const oOne = reduceToOctave(1, ODDS[j]).join('/');   // the tonality's 1-identity
     rh.innerHTML = `
       <span class="hdr-num" id="row-hdr-${j}">${ODDS[j]}</span>
-      <span class="hdr-tag">O·ton.</span>`;
-    rh.title = `O-tonality on ${ODDS[j]}: the chord over identity ${ODDS[j]}`;
+      <span class="hdr-tag">O·ton.</span>
+      <span class="hdr-one">${oOne}</span>`;
+    rh.title = `O-tonality on ${ODDS[j]}: the chord over identity ${ODDS[j]} · its 1-identity is ${oOne}`;
+    keyActivate(rh, () => toggleOtonality(j), `O-tonality on ${ODDS[j]}`);
     rh.addEventListener('click', () => toggleOtonality(j));
     grid.appendChild(rh);
 
@@ -560,6 +582,7 @@ function buildGrid() {
         ${nd.isDiag ? '' : `<span class="cell-dev" style="color:${devTextColor(nd.dev)}">${fmtDev(nd.dev)}</span>`}`;
 
       el.addEventListener('click',      () => toggleCell(nd));
+      keyActivate(el, () => { showInfo(nd); toggleCell(nd); }, `${nd.key}, ${NAMES[nd.key] || ''}`);
       el.addEventListener('mouseenter', () => showInfo(nd));
       el.addEventListener('mouseleave', clearInfo);
       el.addEventListener('touchstart', e => { e.preventDefault(); showInfo(nd); toggleCell(nd); }, { passive: false });
