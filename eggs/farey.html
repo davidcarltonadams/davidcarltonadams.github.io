@@ -279,6 +279,7 @@ let showNeighbors = true;
 let showJI = false;
 let showSpokes = false;
 let hoveredFrac = null;
+let hoveredJI = null;     // a JI marker under the pointer: { ji, pos }
 let hoveredNeighbors = null;
 
 // ── Sweep state
@@ -359,9 +360,11 @@ function draw() {
       const a = fracAngle(pos);
       const x = CX + (R - 13) * Math.cos(a);
       const y = CY + (R - 13) * Math.sin(a);
+      const hot = hoveredJI && hoveredJI.ji === ji;
+      const hs = hot ? 5.5 : 3.5;
       c.save();
       c.translate(x, y); c.rotate(a + Math.PI / 4);
-      c.beginPath(); c.rect(-3.5, -3.5, 7, 7);
+      c.beginPath(); c.rect(-hs, -hs, hs * 2, hs * 2);
       c.fillStyle = ji.color; c.fill();
       c.restore();
       const lp = ringPos(pos, R + 38);
@@ -401,8 +404,8 @@ function draw() {
     }
   }
 
-  // ── Hovered fraction and its two Farey neighbors
-  if (hoveredFrac && hoveredNeighbors) {
+  // ── Hovered fraction (or JI marker) and its two Farey neighbors
+  if ((hoveredFrac || hoveredJI) && hoveredNeighbors) {
     const a0 = fracAngle((hoveredNeighbors.prev || hoveredFrac).v);
     const a1 = fracAngle((hoveredNeighbors.next || hoveredFrac).v);
     c.beginPath();
@@ -502,6 +505,14 @@ function findFrac(mx, my) {
 
 function updateInfoLine() {
   const el = document.getElementById('infoLine');
+  if (!hoveredFrac && hoveredJI && hoveredNeighbors) {
+    const { ji, pos } = hoveredJI, { prev, next } = hoveredNeighbors;
+    const near = (pos - prev.v) <= (next.v - pos) ? prev : next;
+    const miss = (near.v - pos) * 1200;
+    el.innerHTML = `${ji.name} · ${(pos * 1200).toFixed(2)}¢ · ${pos.toFixed(5)} of a turn, irrational`
+      + `<span class="det">between ${prev.p}/${prev.q} and ${next.p}/${next.q} in F${subscript(n)} · nearest ${near.p}/${near.q} = step ${near.p} of ${near.q}-EDO, ${Math.abs(miss).toFixed(2)}¢ ${miss < 0 ? 'flat' : 'sharp'}</span>`;
+    return;
+  }
   if (!hoveredFrac) { el.textContent = 'hover or click a fraction'; return; }
   const f     = hoveredFrac;
   const cents = (f.v * 1200).toFixed(0);
@@ -525,9 +536,29 @@ function updateInfoLine() {
   el.innerHTML = line;
 }
 
+// JI markers sit just inside the ring at log2(ratio) of a turn: irrational,
+// so each one falls between two Farey neighbours
+function findJI(mx, my) {
+  if (!showJI) return null;
+  for (const ji of JI_INTERVALS) {
+    if (ji.ratio === 1 || ji.ratio === 2) continue;
+    const pos = Math.log2(ji.ratio);
+    const p = ringPos(pos, R - 13);
+    if ((mx - p.x) ** 2 + (my - p.y) ** 2 <= 81) return { ji, pos };
+  }
+  return null;
+}
+function jiNeighbors(pos) {
+  let prev = null, next = null;
+  for (const f of fracs) { if (f.v < pos) prev = f; else if (f.v > pos) { next = f; break; } }
+  return { prev, next };
+}
+
 function hoverAt(mx, my) {
   hoveredFrac = findFrac(mx, my);
-  hoveredNeighbors = hoveredFrac ? neighborsOf(hoveredFrac) : null;
+  hoveredJI = hoveredFrac ? null : findJI(mx, my);
+  hoveredNeighbors = hoveredFrac ? neighborsOf(hoveredFrac)
+                   : hoveredJI ? jiNeighbors(hoveredJI.pos) : null;
   updateInfoLine();
   requestDraw();
 }
@@ -537,8 +568,15 @@ canvas.addEventListener('mousemove', e => {
   hoverAt(e.clientX - rect.left, e.clientY - rect.top);
 });
 
+// A tap's compatibility mouse events can end in a stray mouseleave; on a
+// phone the tapped dot (or JI marker) should stay named until the next tap.
+let lastTouchAt = -1e9;
+canvas.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') lastTouchAt = performance.now(); });
+
 canvas.addEventListener('mouseleave', () => {
+  if (performance.now() - lastTouchAt < 800) return;
   hoveredFrac = null;
+  hoveredJI = null;
   hoveredNeighbors = null;
   updateInfoLine();
   requestDraw();
@@ -684,7 +722,9 @@ function stopSweep() {
 canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
   const f = findFrac(e.clientX - rect.left, e.clientY - rect.top);
-  if (f) playFrac(f);
+  if (f) { playFrac(f); return; }
+  const j = findJI(e.clientX - rect.left, e.clientY - rect.top);
+  if (j) playFrac({ v: j.pos });   // a JI marker plays the just interval itself
 });
 
 // ── n slider
@@ -698,6 +738,7 @@ function updateN() {
   fracs = fareySeq(n);
   // the hovered dot belongs to the old sequence — its neighbors no longer mean anything
   hoveredFrac = null;
+  hoveredJI = null;
   hoveredNeighbors = null;
   updateInfoLine();
   document.getElementById('nVal').innerHTML = `F${subscript(n)} — <span id="nCount">${fracs.length}</span> fractions`;
@@ -715,6 +756,7 @@ document.getElementById('btnNeighbors').addEventListener('click', e => {
 });
 document.getElementById('btnJI').addEventListener('click', e => {
   showJI = !showJI;
+  if (!showJI && hoveredJI) { hoveredJI = null; hoveredNeighbors = null; updateInfoLine(); }
   e.target.classList.toggle('on', showJI);
   requestDraw();
 });
