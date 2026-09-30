@@ -879,6 +879,10 @@ document.addEventListener('keydown', e => {
 
 function blankScope() {
   const cv = document.getElementById('scope');
+  // size the idle canvas the way drawScope does (60 px tall), so the box
+  // doesn't open at the 300×60 intrinsic ratio and snap on the first note
+  cv.width  = (cv.offsetWidth || 300) * (devicePixelRatio || 1);
+  cv.height = 60 * (devicePixelRatio || 1);
   const g  = cv.getContext('2d');
   g.fillStyle = '#0a0a0a';
   g.fillRect(0, 0, cv.width, cv.height);
