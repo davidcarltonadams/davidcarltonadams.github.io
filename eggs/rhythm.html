@@ -221,7 +221,11 @@ function ensureAudio() {
     const comp = actx.createDynamicsCompressor();
     master = actx.createGain();
     master.gain.value = 0.8;
-    master.connect(comp); comp.connect(actx.destination);
+    // the default compressor's makeup gain lifts even one click to 0.84 and
+    // a shared downbeat to 1.13; the trim after it lands them at 0.63 and 0.84
+    const trim = actx.createGain();
+    trim.gain.value = 0.75;
+    master.connect(comp); comp.connect(trim); trim.connect(actx.destination);
   }
   if (actx.state === 'suspended') actx.resume();
 }
