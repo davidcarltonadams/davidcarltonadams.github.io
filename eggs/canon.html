@@ -430,7 +430,7 @@ const INTERVALS = [
   {name:'P5',          cents:700},
   {name:'m6',          cents:800},
   {name:'M6',          cents:900},
-  {name:'7∂ (969¢)',   cents:1200*Math.log2(7/4)},
+  {name:'7/4',         cents:1200*Math.log2(7/4)},
   {name:'m7',          cents:1000},
   {name:'M7',          cents:1100},
   {name:'P8',          cents:1200},
@@ -487,6 +487,37 @@ function ac() {
 
 function rowFreq(r) { return C4*Math.pow(2,(TUNINGS[curTuning].rowCents(r)+viewOctave*1200)/1200); }
 
+// A canonic voice stays inside the tuning. In an EDO its transposition is
+// rounded to whole steps (a 12-TET "P5" is 11 steps = 694.7 cents in 19-EDO);
+// in an unequal tuning (DCA, well temperaments, custom sets) each note lands
+// on the tuning's nearest pitch. Transpositions are still stored in cents, so
+// old saves load and a tuning switch re-tunes the comes with the dux.
+// (It used to multiply by 2^(cents/1200) directly: 12-TET intervals in 19- and
+// 31-EDO landed 3 to 21 cents off the grid.)
+function tuningPCs(t) {
+  if(t._pcs) return t._pcs;
+  const out=[];
+  for(let i=0;i<(t.defRows||1)*2;i++){ const c=((t.rowCents(i)%1200)+1200)%1200; if(!out.some(x=>Math.abs(x-c)<0.01)) out.push(c); }
+  return (t._pcs=out.sort((a,b)=>a-b));
+}
+function snapCents(row, transCents) {
+  const t=TUNINGS[curTuning], base=t.rowCents(row);
+  if(!transCents) return base;
+  if(t.stepCents) return base+Math.round(transCents/t.stepCents)*t.stepCents;
+  const target=base+transCents, oct=Math.floor(target/1200);
+  let best=target, bd=Infinity;
+  for(const o of [oct-1,oct,oct+1]) for(const c of tuningPCs(t)) {
+    const v=c+o*1200, d=Math.abs(v-target);
+    if(d<bd){ bd=d; best=v; }
+  }
+  return best;
+}
+// the transposition a voice actually gets, for labels (EDOs only)
+function snappedTrans(transCents) {
+  const t=TUNINGS[curTuning];
+  return t.stepCents ? Math.round(transCents/t.stepCents)*t.stepCents : transCents;
+}
+
 // Every voice goes through one master gain so stop can silence the notes that
 // were already handed to the 150 ms scheduler lookahead.
 let masterGain=null;
@@ -497,7 +528,7 @@ function master() {
 }
 
 function playNote(row, transCents, when) {
-  const freq=rowFreq(row)*Math.pow(2,transCents/1200);
+  const freq=C4*Math.pow(2,(snapCents(row,transCents)+viewOctave*1200)/1200);
   if(freq<18||freq>20000) return;
   const c=ac();
   const out=master();
@@ -683,7 +714,7 @@ function drawRoll() {
 
   voices.forEach(v=>{
     if(v.muted) return;
-    const tRows=t.stepCents?v.transCents/t.stepCents:v.transCents/50;
+    const tRows=t.stepCents?Math.round(v.transCents/t.stepCents):v.transCents/50;
     for(let loop=0;loop<2;loop++) {
       for(let s=0;s<numSteps;s++) {
         const absStep=loop*numSteps+s+v.offset;
@@ -844,7 +875,7 @@ function drawNotation() {
       }
 
       pitchRows.forEach(p => {
-        const cents = TUNINGS[curTuning].rowCents(p) + v.transCents + viewOctave * 1200;
+        const cents = snapCents(p, v.transCents) + viewOctave * 1200;
         const {staffPos, accidental, deviation} = centsToNoteInfo(cents);
         const ny = staffPosToY(staffPos, staveTop);
 
@@ -891,6 +922,14 @@ function drawNotation() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // VOICES UI
 // ═══════════════════════════════════════════════════════════════════════════════
+// "→ 694.7¢" when the tuning rounds a typed transposition; empty when exact
+function effLabel(tc) {
+  const t=TUNINGS[curTuning];
+  if(!t.stepCents) return tc ? '→ nearest' : '';
+  const e=snappedTrans(tc);
+  return Math.abs(e-tc)>0.05 ? `→ ${e.toFixed(1)}¢` : '';
+}
+
 function buildVoicesUI() {
   const list=$('vlist');
   list.innerHTML='';
@@ -905,6 +944,7 @@ function buildVoicesUI() {
       <input class="vf" type="number" value="${v.offset}" min="0" max="${numSteps*4}" ${isOrig?'disabled':''} data-i="${i}" data-f="off">
       <span class="vfl" title="transposition in cents">¢</span>
       <input class="vf w" type="number" value="${Math.round(v.transCents)}" step="100" min="-2400" max="2400" ${isOrig?'disabled':''} data-i="${i}" data-f="cents">
+      <span class="vfl" id="veff${i}" title="the transposition this tuning can play">${isOrig?'':effLabel(v.transCents)}</span>
       ${!isOrig?`<button class="vmute" data-i="${i}">${v.muted?'unmute':'mute'}</button><button class="vdel" data-i="${i}">×</button>`:''}
     `;
     list.appendChild(row);
@@ -914,7 +954,7 @@ function buildVoicesUI() {
     inp.addEventListener('input',e=>{
       const i=+e.target.dataset.i, f=e.target.dataset.f;
       if(f==='off') voices[i].offset=Math.max(0,parseInt(e.target.value)||0);
-      if(f==='cents'){ const v=parseFloat(e.target.value); if(!isNaN(v)) voices[i].transCents=v; }
+      if(f==='cents'){ const v=parseFloat(e.target.value); if(!isNaN(v)) voices[i].transCents=v; const el=$('veff'+i); if(el) el.textContent=effLabel(voices[i].transCents); }
       markNotaDirty();
     });
   });
@@ -929,14 +969,24 @@ function buildVoicesUI() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // INTERVAL SELECTOR
 // ═══════════════════════════════════════════════════════════════════════════════
+// Labels say what the voice will really get in the current tuning:
+// "P5 · 11 steps (694.7¢)" in 19-EDO, "P5 (700¢)" in 12-TET.
 function buildIntervals() {
-  const sel=$('iv-sel');
+  const sel=$('iv-sel'), prev=sel.value;
+  const t=TUNINGS[curTuning];
   sel.innerHTML='';
   INTERVALS.forEach(iv=>{
     const opt=document.createElement('option');
     opt.value=iv.cents.toFixed(3);
-    opt.textContent=`${iv.name} (${Math.round(iv.cents)}¢)`;
-    if(iv.name==='P5') opt.selected=true;
+    if(t.stepCents && t.stepCents!==100) {
+      const k=Math.round(iv.cents/t.stepCents);
+      opt.textContent=`${iv.name} · ${k} step${Math.abs(k)===1?'':'s'} (${(k*t.stepCents).toFixed(1)}¢)`;
+    } else if(t.stepCents) {
+      opt.textContent=`${iv.name} (${Math.round(snappedTrans(iv.cents))}¢)`;
+    } else {
+      opt.textContent=`${iv.name} (≈${Math.round(iv.cents)}¢, nearest pitch)`;
+    }
+    if(prev ? opt.value===prev : iv.name==='P5') opt.selected=true;
     sel.appendChild(opt);
   });
 }
@@ -975,6 +1025,8 @@ function switchTuning(t, quiet) {
   resizeG();
   $('scale-sel').disabled=!TUNINGS[t].scaleFilter;
   if(!TUNINGS[t].scaleFilter) scale=SCALES.chromatic;
+  buildIntervals();
+  if(typeof buildVoicesUI==='function' && $('vlist')) buildVoicesUI();
   markNotaDirty();
 }
 
