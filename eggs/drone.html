@@ -315,10 +315,43 @@ const FADE = 0.015; // fade in/out seconds — eliminates clicks
 const BEAT_GAIN = 0.7;
 let ctx, masterGain, oscNodes = [], beatNode = null;
 
+// Headroom without a limiter (a compressor would flatten the very beats this
+// egg is about). The partials start together at sine phase 0, so they stay
+// phase-locked to the fundamental; the twin drifts through every phase. The
+// true peak of the active set is therefore the max over one period and all
+// twin phases, which a small grid finds. The master gain is capped so that
+// peak lands under 0.9: nothing changes until the volume would clip (the
+// fundamental + twin reach it above 52%), then the slider tops out there.
+const PEAK_CEILING = 0.88;   // 0.9 target, less the grid's sampling error
+let peakCache = { key: '', peak: 1 };
+function activePeak() {
+  const beat = state.beatCents > 0;
+  const parts = [...state.partials].sort((a, b) => a - b);
+  const key = (beat ? 'b' : '') + parts.join(',');
+  if (key === peakCache.key) return peakCache.peak;
+  let peak = 0;
+  const NX = 720, NP = beat ? 48 : 1;
+  for (let j = 0; j < NP; j++) {
+    const phi = (j / NP) * 2 * Math.PI;
+    for (let i = 0; i < NX; i++) {
+      const x = (i / NX) * 2 * Math.PI;
+      let v = Math.sin(x) + (beat ? BEAT_GAIN * Math.sin(x + phi) : 0);
+      for (const p of parts) v += (0.5 / p) * Math.sin(p * x);
+      peak = Math.max(peak, Math.abs(v));
+    }
+  }
+  peakCache = { key, peak };
+  return peak;
+}
+function masterLevel() { return Math.min(state.volume, PEAK_CEILING / activePeak()); }
+function applyMaster() {
+  if (masterGain) masterGain.gain.setTargetAtTime(masterLevel(), ctx.currentTime, 0.02);
+}
+
 function startAudio() {
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   masterGain = ctx.createGain();
-  masterGain.gain.value = state.volume;
+  masterGain.gain.value = masterLevel();
   masterGain.connect(ctx.destination);
 }
 
@@ -354,6 +387,7 @@ function startDrone() {
   for (const p of state.partials) {
     oscNodes.push(makeOsc(freq * p, 0.5 / p));
   }
+  applyMaster();
 }
 
 function stopDrone() {
@@ -376,6 +410,7 @@ function retuneBeat() {
   const now = ctx.currentTime;
   beatNode.osc.frequency.setTargetAtTime(beatFreq(), now, 0.02);
   beatNode.gain.gain.setTargetAtTime(state.beatCents > 0 ? BEAT_GAIN : 0, now, 0.02);
+  applyMaster();
 }
 
 function restartIfPlaying() {
@@ -513,7 +548,7 @@ beatSlider.addEventListener('input', () => {
 volSlider.addEventListener('input', () => {
   state.volume = parseFloat(volSlider.value);
   volVal.textContent = Math.round(state.volume * 100) + '%';
-  if (masterGain) masterGain.gain.setTargetAtTime(state.volume, ctx.currentTime, 0.05);
+  if (masterGain) masterGain.gain.setTargetAtTime(masterLevel(), ctx.currentTime, 0.05);
 });
 
 // Toggle
