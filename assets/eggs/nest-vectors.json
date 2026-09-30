@@ -226,7 +226,7 @@
       },
       "scored_date": "2026-08-17",
       "ghost": false,
-      "desc": "mic FFT with JI partial markers",
+      "desc": "mic spectrum and scrolling spectrogram · harmonic markers",
       "reconstructed": true
     },
     {
@@ -328,7 +328,7 @@
       },
       "scored_date": "2026-08-17",
       "ghost": false,
-      "desc": "combination tones · Tartini's difference tone, plus the sum",
+      "desc": "combination tones · Tartini's difference tone, the cubic tone and the sum",
       "reconstructed": true
     },
     {
