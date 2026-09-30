@@ -336,7 +336,8 @@ function draw() {
     c.lineTo(CX + r2 * Math.cos(a), CY + r2 * Math.sin(a));
     c.strokeStyle = 'rgba(255,255,255,0.18)';
     c.lineWidth = 0.8; c.stroke();
-    const lp = ringPos(k / 12, R + 16);
+    // k/12 labels sit inside the ring, clear of the fraction labels outside it
+    const lp = ringPos(k / 12, R - 26);
     c.fillStyle = 'rgba(255,255,255,0.22)';
     c.font = '8px SF Mono, Fira Code, monospace';
     c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -362,7 +363,7 @@ function draw() {
       c.beginPath(); c.rect(-3.5, -3.5, 7, 7);
       c.fillStyle = ji.color; c.fill();
       c.restore();
-      const lp = ringPos(pos, R + 28);
+      const lp = ringPos(pos, R + 38);
       c.fillStyle = ji.color;
       c.font = 'italic 8.5px Georgia, serif';
       c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -418,13 +419,14 @@ function draw() {
       c.fillStyle = 'rgba(212,192,112,0.90)';
       c.font = '9.5px Georgia, serif';
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText(`${nb.p}/${nb.q}`, lp.x, lp.y);
+      c.fillText(nb.v === 0 || nb.v === 1 ? '0/1 = 1/1' : `${nb.p}/${nb.q}`, lp.x, lp.y);
     }
   }
 
   // ── Fraction dots
   const BASE_R = 7;
   for (const f of fracs) {
+    if (f.v === 1) continue;     // 1/1 is the same point as 0/1: drawn and labelled once
     const pt = ringPos(f.v, R);
     const isHovered = hoveredFrac && hoveredFrac.p === f.p && hoveredFrac.q === f.q;
     const dotR = isHovered ? BASE_R + 4 : (f.q <= 2 ? BASE_R + 1 : BASE_R - 1);
@@ -450,7 +452,7 @@ function draw() {
       c.fillStyle = isHovered ? col.replace(/[\d.]+\)$/, '1)') : col.replace(/[\d.]+\)$/, '0.85)');
       c.font = `${isHovered ? 'bold ' : ''}${f.q <= 3 ? 11 : 9.5}px Georgia, serif`;
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText(`${f.p}/${f.q}`, lp.x, lp.y);
+      c.fillText(f.v === 0 ? '0/1 = 1/1' : `${f.p}/${f.q}`, lp.x, lp.y);
     }
   }
 
