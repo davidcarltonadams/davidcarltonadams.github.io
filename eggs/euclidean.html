@@ -67,7 +67,7 @@
     }
     .layer-row {
       display: grid;
-      grid-template-columns: 10px auto 1fr auto auto;
+      grid-template-columns: 10px auto 1fr auto auto auto;
       gap: 0.45rem 0.6rem;
       align-items: center;
       padding: 0.5rem 0.7rem;
@@ -113,6 +113,21 @@
     .btn-sm:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
     .btn-sm.on    { color: var(--text); border-color: rgba(255,255,255,0.4); }
     .btn-sm.muted { opacity: 0.28; }
+
+    .layer-row.sel { border-color: rgba(255,255,255,0.22); }
+    .rot-wrap { display: flex; gap: 0.15rem; }
+    .rot-btn { padding: 0.2rem 0.4rem; font-style: normal; }
+    .presets {
+      width: 100%; max-width: 500px;
+      display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; justify-content: center;
+    }
+    .presets .plbl { font-size: 0.52rem; font-style: italic; color: var(--dim); letter-spacing: 0.08em; }
+    .presets .plbl i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; vertical-align: middle; }
+    @media (max-width: 480px) {
+      /* phone: pitch and mute move to a second line, so the name has room */
+      .layer-row { grid-template-columns: 10px auto 1fr auto; }
+      .layer-row .pitch-sel { grid-column: 2 / 4; justify-self: start; }
+    }
 
     .transport {
       display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap;
@@ -177,6 +192,10 @@
 <canvas id="cv"></canvas>
 
 <div class="layers-wrap" id="layersWrap"></div>
+
+<div class="presets" id="presets">
+  <span class="plbl" id="presetLbl">fill layer</span>
+</div>
 
 <div class="transport">
   <div class="bpm-group">
@@ -274,14 +293,21 @@ const layers = [
   { n:4, k:12, pitchIdx:4, muted:false },
   { n:7, k:16, pitchIdx:5, muted:false },
 ];
-layers.forEach(L => { L.pattern = pattern(L.n, L.k); L.step = -1; });
+// rot = the visitor's own rotation on top of the traditional one, in steps,
+// positive = later (the pattern moves clockwise on the ring)
+function rotated(pat, r) {
+  const k = pat.length; r = ((r % k) + k) % k;
+  return r ? [...pat.slice(k - r), ...pat.slice(0, k - r)] : pat;
+}
+layers.forEach(L => { L.rot = 0; L.pattern = pattern(L.n, L.k); L.step = -1; });
+let selLayer = 0;   // the layer a preset fills
 
 let flashes     = layers.map(L => new Float32Array(L.k));
 let centerFlash = 0;
 
 function resetLayer(li) {
   const L = layers[li];
-  L.pattern = pattern(L.n, L.k);
+  L.pattern = rotated(pattern(L.n, L.k), L.rot);
   L.step = -1;
   flashes[li] = new Float32Array(L.k);
 }
@@ -510,6 +536,7 @@ function onNKChange(li) {
   n = Math.max(1, Math.min(k, n));
   layers[li].n = n;
   layers[li].k = k;
+  layers[li].rot = 0;
   document.getElementById(`n${li}`).value = n;
   document.getElementById(`k${li}`).value = k;
   resetLayer(li);
@@ -522,8 +549,10 @@ function refreshLayerUI(li) {
   const col       = `rgb(${R},${G},${B})`;
   const nm        = pname(L.n, L.k);
 
+  // a traditional name belongs to one rotation, so it shows only at rot 0
   const nameEl = document.getElementById(`pname${li}`);
-  if (nameEl) nameEl.textContent = nm ? `E(${L.n},${L.k}) · ${nm}` : `E(${L.n},${L.k})`;
+  if (nameEl) nameEl.textContent = L.rot ? `E(${L.n},${L.k}) · rotated ${L.rot}`
+                                         : nm ? `E(${L.n},${L.k}) · ${nm}` : `E(${L.n},${L.k})`;
 
   const dotsEl = document.getElementById(`pdots${li}`);
   if (dotsEl) dotsEl.innerHTML = L.pattern.map(v =>
@@ -581,7 +610,21 @@ function buildUI() {
       muteBtn.classList.toggle('muted', L.muted);
     };
 
-    row.append(sw, nkWrap, info, sel, muteBtn);
+    // rotate: the control a Euclidean sequencer user reaches for first
+    const rotWrap = document.createElement('div');
+    rotWrap.className = 'rot-wrap';
+    for (const [lbl, d, tip] of [['◂', -1, 'rotate earlier'], ['▸', 1, 'rotate later']]) {
+      const b = document.createElement('button');
+      b.className = 'btn-sm rot-btn';
+      b.textContent = lbl; b.title = tip; b.setAttribute('aria-label', tip);
+      b.onclick = () => rotateLayer(li, d);
+      rotWrap.appendChild(b);
+    }
+
+    row.append(sw, nkWrap, info, rotWrap, sel, muteBtn);
+    row.id = `row${li}`;
+    row.addEventListener('pointerdown', () => selectLayer(li));
+    row.addEventListener('focusin', () => selectLayer(li));
     wrap.appendChild(row);
     refreshLayerUI(li);
 
@@ -590,11 +633,50 @@ function buildUI() {
   });
 }
 
+function rotateLayer(li, d) {
+  const L = layers[li];
+  L.rot = (((L.rot + d) % L.k) + L.k) % L.k;
+  resetLayer(li);
+  refreshLayerUI(li);
+}
+
+function selectLayer(li) {
+  selLayer = li;
+  layers.forEach((_, j) => document.getElementById(`row${j}`)?.classList.toggle('sel', j === li));
+  const [R, G, B] = COLORS[li];
+  document.getElementById('presetLbl').innerHTML = `fill layer <i style="background:rgb(${R},${G},${B})"></i>`;
+}
+
+// Named rhythms, one tap each. They fill the selected layer; the traditional
+// rotation comes from ROT, so the name and the played pattern agree.
+const PRESETS = [
+  ['tresillo', 3, 8], ['cinquillo', 5, 8], ['bossa nova', 5, 16],
+  ['samba', 7, 16], ['aksak', 4, 9], ['ruchenitza', 3, 7],
+];
+function applyPreset(n, k) {
+  document.getElementById(`k${selLayer}`).value = k;
+  document.getElementById(`n${selLayer}`).value = n;
+  onNKChange(selLayer);
+}
+function buildPresets() {
+  const wrap = document.getElementById('presets');
+  for (const [name, n, k] of PRESETS) {
+    const b = document.createElement('button');
+    b.className = 'btn-sm';
+    b.textContent = name;
+    b.title = `E(${n},${k})`;
+    b.onclick = () => applyPreset(n, k);
+    wrap.appendChild(b);
+  }
+}
+
 function toggleExplain() {
   document.getElementById('explainBody').classList.toggle('open');
 }
 
 buildUI();
+buildPresets();
+selectLayer(0);
 
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
