@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="draw any musical interval as a lissajous figure, spin for a random one, keep a scale — simple integer ratios close into a stable shape, irrational ones never do">
+  <meta name="description" content="draw any musical interval as a lissajous figure, spin for a random one, keep a scale · simple integer ratios close into a stable shape, irrational ones never do">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
-  <title>Lissajous — David Carlton Adams</title>
+  <title>lissajous — David Carlton Adams</title>
   <link rel="stylesheet" href="../css/style.css">
   <style>
     body { background: #0c0c10; color: #c0c0cc; }
@@ -23,7 +23,7 @@
       font-size: 0.85rem;
       font-weight: 400;
       letter-spacing: 0.2em;
-      text-transform: uppercase;
+      text-transform: lowercase;
       color: #888;
       margin-bottom: 0.2rem;
     }
@@ -51,7 +51,6 @@
       display: block;
       background: #06060a;
       border-radius: 4px;
-      cursor: crosshair;
     }
 
     /* Controls */
@@ -100,7 +99,7 @@
       background: #151520;
     }
     .iv-btn .iv-name { display: block; font-size: 0.62rem; color: inherit; }
-    .iv-btn .iv-ratio { display: block; font-size: 0.52rem; color: #777; margin-top: 0.15rem; }
+    .iv-btn .iv-ratio { display: block; font-size: 0.52rem; color: #858585; margin-top: 0.15rem; }
     .iv-btn.active .iv-ratio { color: #999; }
 
     /* Custom ratio row */
@@ -152,7 +151,7 @@
 
     /* Kept scale tray */
     .kept-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-    .kept-empty { font-size: 0.58rem; color: #444; letter-spacing: 0.04em; font-style: italic; }
+    .kept-empty { font-size: 0.58rem; color: #808080; letter-spacing: 0.04em; font-style: italic; }
     .kept-chip {
       position: relative;
       background: #0f0f14;
@@ -171,7 +170,7 @@
     .kept-chip .x {
       position: absolute; top: 0; right: 0.15rem; bottom: 0;
       display: flex; align-items: center;
-      color: #555; font-size: 0.7rem; line-height: 1;
+      color: #8a8a8a; font-size: 0.7rem; line-height: 1;
     }
     .kept-chip:hover .x { color: #c0392b; }
 
@@ -194,13 +193,13 @@
     /* back link — parked below the fixed site nav so it clears the name link */
     .eggs-back {
       position: fixed; top: calc(var(--nav-h) + 0.6rem); left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: rgba(204,200,208,0.58); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 90; transition: color .15s;
     }
     .eggs-back:hover { color: #aaa; }
 
-    .hint { font-size: 0.6rem; color: #333; letter-spacing: 0.05em; margin-top: 1rem; text-align: center; }
+    .hint { font-size: 0.6rem; color: #808080; letter-spacing: 0.05em; margin-top: 1rem; text-align: center; }
   </style>
 </head>
 <body>
@@ -238,7 +237,7 @@
 <main>
 <div class="liss-wrap">
 
-  <h1 class="liss-title">Lissajous</h1>
+  <h1 class="liss-title">lissajous</h1>
   <p class="liss-sub">every musical ratio has a shape · select, spin, or dial in a ratio · keep the ones worth a scale</p>
 
   <div class="liss-main">
@@ -300,13 +299,16 @@
       <div class="ctrl-section">
         <div class="ctrl-label">kept scale <span id="kept-count"></span></div>
         <div class="kept-row" id="kept-row"></div>
-        <button class="btn-l" id="btn-copy-scale" style="margin-top: 0.5rem;" disabled>copy scale</button>
+        <div class="sound-row" style="margin-top: 0.5rem;">
+          <button class="btn-l" id="btn-play-kept" disabled>▶ play kept</button>
+          <button class="btn-l" id="btn-copy-scale" disabled>copy scale</button>
+        </div>
       </div>
 
     </div>
   </div>
 
-  <p class="hint">the figure closes when the ratio reduces to integers · irrational ratios never close · spin for a random interval, keep the ones worth a scale</p>
+  <p class="hint">the figure closes when the ratio reduces to integers · irrational ratios never close · spin for a random interval (spin also starts the tone), keep the ones worth a scale</p>
 
 </div>
 </main>
@@ -338,9 +340,9 @@ const INTERVALS = [
   { name: 'm6',        ratio: [8, 5],   tetName: 'm6',       tetCents: 800 },
   { name: 'M2',        ratio: [9, 8],   tetName: 'M2',       tetCents: 200 },
   { name: 'm7',        ratio: [9, 5],   tetName: 'm7',       tetCents: 1000 },
-  { name: '7H',         ratio: [7, 4],   tetName: 'm7',       tetCents: 1000 },
-  { name: '11H',        ratio: [11, 8],  tetName: 'TT',       tetCents: 600 },
-  { name: '13H',        ratio: [13, 8],  tetName: 'm6',       tetCents: 800 },
+  { name: 'h7',          ratio: [7, 4],   tetName: 'm7',       tetCents: 1000, tip: 'harmonic 7th: the 7th partial, 7:4' },
+  { name: 'h11',         ratio: [11, 8],  tetName: 'TT',       tetCents: 600,  tip: 'the 11th partial, 11:8' },
+  { name: 'h13',         ratio: [13, 8],  tetName: 'm6',       tetCents: 800,  tip: 'the 13th partial, 13:8' },
   { name: 'TT',        ratio: [45, 32], tetName: 'TT',       tetCents: 600 },
   { name: '3:1',       ratio: [3, 1],   tetName: 'P5+oct',   tetCents: 1900 },
   { name: 'φ ratio',   ratio: [(1 + Math.sqrt(5)) / 2, 1], label: 'φ:1', tetName: '—', tetCents: null },
@@ -404,7 +406,9 @@ function startSound() {
   oscA.start();
   oscB.start();
 
-  gainNode.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.05);
+  const now = ctx.currentTime;
+  gainNode.gain.setValueAtTime(0, now);                 // anchor: ramp from here, not from t=0
+  gainNode.gain.linearRampToValueAtTime(0.12, now + 0.05);
   sounding = true;
   document.getElementById('btn-sound').classList.add('active');
   document.getElementById('btn-sound').textContent = '♪ mute';
@@ -417,11 +421,18 @@ function killOscs() {
 }
 
 function stopSound() {
+  stopKept();
   sounding = false;
   document.getElementById('btn-sound').classList.remove('active');
   document.getElementById('btn-sound').textContent = '♪ tone';
   if (!gainNode) return;
-  gainNode.gain.linearRampToValueAtTime(0, actx.currentTime + 0.05);
+  // Anchor the fade at the current level. Without this the ramp ran from the
+  // last scheduled event (the fade-in, seconds ago), so the gain stepped
+  // almost straight to zero: an audible click on every mute.
+  const now = actx.currentTime;
+  gainNode.gain.cancelScheduledValues(now);
+  gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+  gainNode.gain.linearRampToValueAtTime(0, now + 0.05);
   if (stopTimer !== null) clearTimeout(stopTimer);
   stopTimer = setTimeout(() => { stopTimer = null; killOscs(); }, 100);
 }
@@ -437,22 +448,99 @@ function toggleSound() {
   if (sounding) stopSound(); else startSound();
 }
 
+// a tone never hangs in a hidden tab: fade it out and show it as off
+document.addEventListener('visibilitychange', () => { if (document.hidden && sounding) stopSound(); });
+
 // ─── CANVAS ───────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('liss-canvas');
 const ctx    = canvas.getContext('2d');
-const W = canvas.width, H = canvas.height;
-const CX = W / 2, CY = H / 2;
-const R = W * 0.43;
+let W = 380, H = 380, CX = 190, CY = 190, R = 380 * 0.43, DPR = 1;
 
-// Persistent trail layer
-let trailCanvas, trailCtx;
-function initTrail() {
-  trailCanvas = document.createElement('canvas');
-  trailCanvas.width = W;
-  trailCanvas.height = H;
-  trailCtx = trailCanvas.getContext('2d');
-  clearTrail();
+// The square fits the phone (1rem gutters each side, so 358 px at 390) and
+// is backed at device pixels, so it is sharp on a retina screen.
+function sizeCanvas() {
+  DPR = window.devicePixelRatio || 1;
+  // clientWidth, not innerWidth: on a phone innerWidth grows to fit any
+  // overflow, including the 380 px canvas itself before this first runs
+  W = H = Math.max(200, Math.min(380, document.documentElement.clientWidth - 32));
+  CX = W / 2; CY = H / 2; R = W * 0.43;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 }
+
+// an offscreen layer at the same backing size, drawn in CSS pixels
+function makeLayer() {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * DPR); c.height = Math.round(H * DPR);
+  const g = c.getContext('2d');
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  return [c, g];
+}
+
+// Persistent trail layer, plus the figure layer: the whole closed curve,
+// drawn once per ratio or phase and laid faintly over the trail, so the shape
+// a ratio makes is on screen at once rather than only the comet's last few
+// percent of it.
+let trailCanvas, trailCtx, figureCanvas, figureCtx;
+const FIGURE_ALPHA = 0.32;
+function initTrail() {
+  [trailCanvas, trailCtx] = makeLayer();
+  [figureCanvas, figureCtx] = makeLayer();
+  clearTrail();
+  drawFigure();
+}
+
+// A reduced integer a:b closes after t = 2π. Anything else never closes, so it
+// gets no base layer and its trail never fades: the path keeps filling in and
+// never retraces. That contrast is the point of the egg.
+function closes() { return Number.isInteger(ratioA) && Number.isInteger(ratioB); }
+
+function drawFigure() {
+  figureCtx.clearRect(0, 0, W, H);
+  if (!closes()) return;
+  const steps = Math.max(1200, 80 * (ratioA + ratioB));
+  figureCtx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const tt = (i / steps) * Math.PI * 2;
+    const x = CX + R * Math.sin(ratioA * tt + phase);
+    const y = CY + R * Math.sin(ratioB * tt);
+    if (i) figureCtx.lineTo(x, y); else figureCtx.moveTo(x, y);
+  }
+  figureCtx.strokeStyle = color;
+  figureCtx.lineWidth = 1;
+  figureCtx.stroke();
+}
+
+// Put trail + figure + dot on screen at time t. The animation calls it every
+// frame; a paused canvas calls it on any change, so it never shows a stale
+// ratio next to an info panel that has moved on.
+function compose() {
+  const x = CX + R * Math.sin(ratioA * t + phase);
+  const y = CY + R * Math.sin(ratioB * t);
+  ctx.drawImage(trailCanvas, 0, 0, W, H);
+  ctx.globalAlpha = FIGURE_ALPHA;
+  ctx.drawImage(figureCanvas, 0, 0, W, H);
+  ctx.globalAlpha = 1;
+
+  // Cursor dot
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = 0.9;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Axis guides (very subtle)
+  ctx.strokeStyle = '#0d0d14';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(CX, 0); ctx.lineTo(CX, H);
+  ctx.moveTo(0, CY); ctx.lineTo(W, CY);
+  ctx.stroke();
+}
+
+function redrawIfPaused() { if (!animating) compose(); }
 
 function clearTrail() {
   trailCtx.fillStyle = '#06060a';
@@ -472,11 +560,14 @@ let color = ratioColor(3, 2);
 function drawFrame() {
   if (!animating) return;
 
-  // Fade the trail layer
-  trailCtx.globalAlpha = trailAlpha;
-  trailCtx.fillStyle = '#06060a';
-  trailCtx.fillRect(0, 0, W, H);
-  trailCtx.globalAlpha = 1;
+  // Fade the trail layer (never at "infinite", never for a ratio that doesn't close)
+  const fade = closes() ? trailAlpha : 0;
+  if (fade > 0) {
+    trailCtx.globalAlpha = fade;
+    trailCtx.fillStyle = '#06060a';
+    trailCtx.fillRect(0, 0, W, H);
+    trailCtx.globalAlpha = 1;
+  }
 
   const x = CX + R * Math.sin(ratioA * t + phase);
   const y = CY + R * Math.sin(ratioB * t);
@@ -495,24 +586,7 @@ function drawFrame() {
   prevX = x;
   prevY = y;
 
-  // Compose: trail + cursor dot
-  ctx.drawImage(trailCanvas, 0, 0);
-
-  // Cursor dot
-  ctx.beginPath();
-  ctx.arc(x, y, 3, 0, Math.PI * 2);
-  ctx.fillStyle = '#fff';
-  ctx.globalAlpha = 0.9;
-  ctx.fill();
-  ctx.globalAlpha = 1;
-
-  // Axis guides (very subtle)
-  ctx.strokeStyle = '#0d0d14';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(CX, 0); ctx.lineTo(CX, H);
-  ctx.moveTo(0, CY); ctx.lineTo(W, CY);
-  ctx.stroke();
+  compose();
 
   t += speed * 0.003;
 }
@@ -543,6 +617,8 @@ function setRatio(a, b, fromInput) {
   color = ratioColor(ratioA, ratioB);
   prevX = prevY = null;
   if (!fromInput) { clearTrail(); t = 0; }
+  drawFigure();
+  redrawIfPaused();
   updateInfo();
   updateSoundFreqs();
   if (!fromInput) {
@@ -577,6 +653,7 @@ const INTERVAL_NAMES = {
   '9:8': 'major second', '16:9': 'minor seventh', '9:5': 'minor seventh (JI)',
   '7:4': 'harmonic seventh', '7:6': 'septimal minor third', '11:8': 'eleventh partial',
   '13:8': 'thirteenth partial', '15:8': 'major seventh (JI)', '16:15': 'diatonic semitone',
+  '45:32': 'augmented fourth (JI)', '7:5': 'septimal tritone', '5:2': 'major tenth',
 };
 
 function updateInfo() {
@@ -594,6 +671,10 @@ function updateInfo() {
   const nearest = TET_NAMES.find(t => t.cents === tetClass);
   const octSuffix = tetOct === 0 ? ''
     : (tetOct > 0 ? '+' : '−') + (Math.abs(tetOct) === 1 ? '' : Math.abs(tetOct)) + 'oct';
+  // an exact multiple of the octave reads as octaves, not "unison+2oct"
+  const tetLabel = tetClass === 0 && tetOct > 0
+    ? (tetOct === 1 ? 'octave' : `${tetOct} octaves`)
+    : nearest.name + octSuffix;
 
   const key = `${a}:${b}`;
   const intName = whole
@@ -603,7 +684,7 @@ function updateInfo() {
   document.getElementById('info-ratio').textContent = `${fmtPart(a)} : ${fmtPart(b)}`;
   document.getElementById('info-name').textContent = intName;
   document.getElementById('info-cents').textContent = `${cents.toFixed(2)}¢`;
-  document.getElementById('info-tet').textContent = `${nearestStep}¢ (${nearest.name}${octSuffix})`;
+  document.getElementById('info-tet').textContent = `${nearestStep}¢ (${tetLabel})`;
   const dev = cents - nearestStep;
   document.getElementById('info-dev').textContent = `${dev >= 0 ? '+' : ''}${dev.toFixed(2)}¢`;
   updateKeepButton();
@@ -659,7 +740,33 @@ function scaleAsText() {
     const cents = ratioToCents(k.a, k.b);
     return `${i + 1}.  ${k.label.padEnd(9)} ${cents.toFixed(1)}¢`;
   });
-  return `ratio roulette — kept scale\n${lines.join('\n')}`;
+  return `lissajous · kept scale\n${lines.join('\n')}`;
+}
+
+// Play the kept scale: each ratio in turn, lowest first, 400 ms apiece, over
+// the same 220 Hz reference (the figure follows along).
+let playTimer = null;
+function stopKept() {
+  if (playTimer !== null) { clearTimeout(playTimer); playTimer = null; }
+  const b = document.getElementById('btn-play-kept');
+  b.textContent = '▶ play kept';
+  b.classList.remove('active');
+}
+function playKept() {
+  if (playTimer !== null) { stopKept(); return; }
+  if (!kept.length) return;
+  const seq = kept.slice().sort((x, y) => ratioToCents(x.a, x.b) - ratioToCents(y.a, y.b));
+  const b = document.getElementById('btn-play-kept');
+  b.textContent = '■ stop';
+  b.classList.add('active');
+  let i = 0;
+  const step = () => {
+    if (i >= seq.length) { stopKept(); return; }
+    selectRatio(seq[i].a, seq[i].b);
+    i++;
+    playTimer = setTimeout(step, 400);
+  };
+  step();
 }
 
 function copyScale() {
@@ -683,6 +790,8 @@ function renderKept() {
   const copyBtn = document.getElementById('btn-copy-scale');
   countEl.textContent = kept.length ? `(${kept.length})` : '';
   copyBtn.disabled = !kept.length;
+  document.getElementById('btn-play-kept').disabled = !kept.length;
+  if (!kept.length) stopKept();
   row.innerHTML = '';
   if (!kept.length) {
     const span = document.createElement('span');
@@ -731,6 +840,7 @@ function buildIntervalButtons() {
     btn.dataset.a = iv.ratio[0];
     btn.dataset.b = iv.ratio[1];
     btn.innerHTML = `<span class="iv-name">${iv.name}</span><span class="iv-ratio">${iv.label || iv.ratio[0] + ':' + iv.ratio[1]}</span>`;
+    if (iv.tip) btn.title = iv.tip;
     if (i === 2) { btn.classList.add('active'); activeBtn = btn; } // P5 default
     btn.addEventListener('click', () => {
       if (activeBtn) activeBtn.classList.remove('active');
@@ -756,6 +866,7 @@ document.getElementById('phase-range').addEventListener('input', e => {
   phase = (v / 100) * Math.PI * 2;
   document.getElementById('phase-val').textContent = phaseLabel(v);
   clearTrail(); prevX = prevY = null;
+  drawFigure(); redrawIfPaused();
 });
 
 document.getElementById('speed-range').addEventListener('input', e => {
@@ -766,7 +877,8 @@ document.getElementById('speed-range').addEventListener('input', e => {
 
 document.getElementById('trail-range').addEventListener('input', e => {
   const v = parseInt(e.target.value);
-  trailAlpha = (100 - v) / 100 * 0.25 + 0.005;
+  // the far end really is infinite: no fade at all
+  trailAlpha = v >= 100 ? 0 : (100 - v) / 100 * 0.25 + 0.005;
   const labels = [[0,'instant'],[25,'short'],[50,'medium'],[75,'long'],[100,'infinite']];
   const label = labels.reduce((a,b) => Math.abs(b[0]-v) < Math.abs(a[0]-v) ? b : a)[1];
   document.getElementById('trail-val').textContent = label;
@@ -805,6 +917,7 @@ document.getElementById('btn-sound').addEventListener('click', toggleSound);
 document.getElementById('btn-spin').addEventListener('click', spinRatio);
 document.getElementById('btn-keep').addEventListener('click', toggleKeep);
 document.getElementById('btn-copy-scale').addEventListener('click', copyScale);
+document.getElementById('btn-play-kept').addEventListener('click', playKept);
 
 document.getElementById('btn-animate').addEventListener('click', () => {
   animating = !animating;
@@ -824,7 +937,17 @@ function loop() {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
+sizeCanvas();
 initTrail();
+// a rotation or window resize refits the square (a phone's URL bar collapsing
+// changes only the height, so width changes are the only ones that count)
+let lastW = document.documentElement.clientWidth;
+window.addEventListener('resize', () => {
+  if (document.documentElement.clientWidth === lastW) return;
+  lastW = document.documentElement.clientWidth;
+  sizeCanvas(); initTrail(); prevX = prevY = null;
+  redrawIfPaused();
+});
 buildIntervalButtons();
 updateInfo();
 renderKept();
