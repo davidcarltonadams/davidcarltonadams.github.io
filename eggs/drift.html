@@ -581,15 +581,41 @@ function cy(cents) {
   return CH - 1 - ((cents - CENTS_MIN) / (CENTS_MAX - CENTS_MIN)) * (CH - 2);
 }
 
+// The reference grid lives in the trail area and scrolls with it. It is
+// painted across the whole area once (load, resize), then only into the
+// freshly exposed right-hand column each frame. (It used to be repainted
+// across the whole area every frame at 2-9 % alpha and never cleared, so every
+// line piled up to near-solid white within a second and the octave > fifth >
+// other hierarchy vanished.)
+function gridStyle(r) {
+  const isOct = r.c % 1200 < 1;
+  const isFifth = Math.abs((r.c % 1200) - 702) < 1;
+  return isOct ? 'rgba(255,255,255,0.09)'
+       : isFifth ? 'rgba(255,255,255,0.045)'
+       : 'rgba(255,255,255,0.022)';
+}
+function drawGrid(x0, w) {
+  for (const r of REFS) {
+    gx.fillStyle = gridStyle(r);
+    gx.fillRect(x0, Math.round(cy(r.c)), w, 1);
+  }
+}
+
 function resizeCanvas() {
   const w = Math.min(cv.parentElement.clientWidth, 900);
-  if (cv.width !== w) { cv.width = w; cv.height = CH; }
+  if (cv.width !== w) {
+    cv.width = w; cv.height = CH;          // clears the canvas
+    gx.fillStyle = '#070709';
+    gx.fillRect(0, 0, w, CH);
+    drawGrid(LW, w - LW);
+  }
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
+// Label panel only (x < LW): it is repainted opaque every frame, so nothing
+// drawn here accumulates.
 function drawLabels() {
-  const W = cv.width;
   gx.fillStyle = '#070709';
   gx.fillRect(0, 0, LW, CH);
 
@@ -599,23 +625,14 @@ function drawLabels() {
   for (const r of REFS) {
     const y = Math.round(cy(r.c));
     const isOct = r.c % 1200 < 1;
-    const isFifth = Math.abs((r.c % 1200) - 702) < 1;
-
-    // Grid line across trail area
-    gx.fillStyle = isOct
-      ? 'rgba(255,255,255,0.09)'
-      : isFifth
-        ? 'rgba(255,255,255,0.045)'
-        : 'rgba(255,255,255,0.022)';
-    gx.fillRect(LW, y, W - LW, 1);
 
     // Label
     gx.fillStyle = isOct ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.20)';
-    gx.fillText(r.t, LW - 3, y + 3);
+    gx.fillText(r.t, LW - 5, y + 3);
 
-    // Tick mark
+    // Tick mark, at the panel's edge
     gx.fillStyle = isOct ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.10)';
-    gx.fillRect(LW, y, 3, 1);
+    gx.fillRect(LW - 3, y, 3, 1);
   }
 }
 
@@ -643,9 +660,10 @@ function drawVoiceDots(W) {
     const img = gx.getImageData(LW + 1, 0, W - LW - 1, CH);
     gx.putImageData(img, LW, 0);
 
-    // Fade + clear right column
+    // Fade + clear right column, then give it its slice of the grid
     gx.fillStyle = 'rgba(7,7,9,0.88)';
     gx.fillRect(W - 2, 0, 2, CH);
+    drawGrid(W - 2, 2);
 
     drawVoiceDots(W);
   }
