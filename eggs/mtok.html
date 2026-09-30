@@ -1028,7 +1028,7 @@ function onCanvasTouchMove(e) {
 }
 
 function onCanvasTouchEnd(e) {
-  e.preventDefault();
+  if (e.cancelable) e.preventDefault();   // touchcancel is not cancelable: calling it logs an intervention
   for (const t of e.changedTouches) {
     const voice = touchVoices.get(t.identifier);
     if (!voice) continue;
