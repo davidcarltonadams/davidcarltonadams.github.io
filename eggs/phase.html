@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="a two-voice just-intonation step sequencer where the second voice runs slightly fast — hear the pattern drift apart, throw off new rhythms, and re-align">
+  <meta name="description" content="a two-voice just-intonation step sequencer where the second voice runs slightly fast · hear the pattern drift apart, throw off new rhythms, and re-align">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -17,6 +17,7 @@
       --dim:    rgba(204,200,208,0.40);
       --dimmer: rgba(204,200,208,0.17);
       --border: rgba(255,255,255,0.07);
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
       --cyan:   #7ab8d4;
       --gold:   #d4c070;
     }
@@ -33,7 +34,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -46,7 +47,7 @@
     }
     .sub {
       font-size: 0.57rem; letter-spacing: 0.11em;
-      color: var(--dimmer); font-style: italic;
+      color: var(--dim); font-style: italic;
       margin-top: 0.42rem; line-height: 1.9;
       max-width: 560px; margin-left: auto; margin-right: auto;
     }
@@ -79,7 +80,7 @@
     .btn {
       font-family: Georgia, serif; font-size: 0.6rem;
       letter-spacing: 0.1em; text-transform: lowercase; font-style: italic;
-      color: var(--dim); background: none;
+      color: var(--control); background: none;
       border: 1px solid var(--border);
       padding: 0.4rem 0.8rem; cursor: pointer; white-space: nowrap;
       transition: color 0.13s, border-color 0.13s;
@@ -93,7 +94,7 @@
 
     select {
       font-family: Georgia, serif; font-size: 0.6rem; font-style: italic;
-      color: var(--dim); background: var(--bg2);
+      color: var(--control); background: var(--bg2);
       border: 1px solid var(--border);
       padding: 0.28rem 0.5rem; cursor: pointer; outline: none;
     }
@@ -113,7 +114,7 @@
 <div class="header">
   <h1 class="title">phase</h1>
   <p class="sub">
-    two voices, one pattern — the second drifts at a slightly different tempo.<br>
+    two voices, one pattern · the second drifts at a slightly different tempo.<br>
     as they pull apart and reconnect, new rhythms and melodies emerge from the gap.
   </p>
 </div>
