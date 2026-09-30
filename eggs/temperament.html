@@ -1148,7 +1148,11 @@ function parseKern(text) {
       for (let i = tokens.length - 1; i >= 1; i--) {
         if (tokens[i] === '*v' && tokens[i - 1] === '*v') {
           spineTime[i - 1] = Math.max(spineTime[i - 1], spineTime[i]);
-          if (spineTie[i] !== null && spineTie[i - 1] === null) spineTie[i - 1] = spineTie[i];
+          // a join keeps the open ties of both halves
+          if (spineTie[i] !== null) {
+            if (spineTie[i - 1] === null) spineTie[i - 1] = spineTie[i];
+            else for (const [m, idx] of spineTie[i]) if (!spineTie[i - 1].has(m)) spineTie[i - 1].set(m, idx);
+          }
           spineTime.splice(i, 1);
           spineTie.splice(i, 1);
           spineSkip.splice(i, 1);
@@ -1156,14 +1160,19 @@ function parseKern(text) {
         }
       }
 
+      // a split hands the open ties to both halves: a note held into the
+      // split may go on in either one (WTC II/3's bass G♯: "[1G#", *^, then
+      // "1G#_" in the new right half), and must not be struck again there
       for (let i = tokens.length - 1; i >= 0; i--) {
         if (tokens[i] === '*^') {
+          const ties = spineTie[i] ? new Map(spineTie[i]) : null;
           if (tokens[i + 1] === '') {
             spineTime[i + 1] = spineTime[i];
+            spineTie[i + 1] = ties;
             spineSkip[i + 1] = false;
           } else {
             spineTime.splice(i + 1, 0, spineTime[i]);
-            spineTie.splice(i + 1, 0, null);
+            spineTie.splice(i + 1, 0, ties);
             spineSkip.splice(i + 1, 0, false);
           }
         }
