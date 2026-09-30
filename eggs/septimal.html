@@ -17,6 +17,7 @@
       --text:   #d8d0c8;
       --dim:    rgba(216,208,200,0.4);
       --dimmer: rgba(216,208,200,0.18);
+      --control: rgba(216,208,200,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --accent: #8ab0c8;
       --acc-bg: rgba(138,176,200,0.18);
       --border: rgba(255,255,255,0.07);
@@ -35,7 +36,7 @@
     }
     .sub {
       font-size: 0.6rem; letter-spacing: 0.12em;
-      color: var(--dimmer); font-style: italic; margin-top: 0.3rem;
+      color: var(--dim); font-style: italic; margin-top: 0.3rem;
     }
 
     /* ── Controls ─────────────────────────────────────── */
@@ -48,7 +49,7 @@
     .btn-row { display: flex; gap: 0.22rem; }
     .tog {
       background: none; border: 1px solid var(--border); border-radius: 2px;
-      color: var(--dim); font-family: Georgia, serif; font-size: 0.63rem;
+      color: var(--control); font-family: Georgia, serif; font-size: 0.63rem;
       letter-spacing: 0.07em; padding: 0.28rem 0.6rem; cursor: pointer;
       transition: color 0.1s, border-color 0.1s, background 0.1s;
     }
@@ -63,7 +64,7 @@
     .fund-input:focus { outline: none; border-color: var(--accent); }
     .oct-btn {
       background: none; border: 1px solid var(--border); border-radius: 2px;
-      color: var(--dim); font-family: Georgia, serif; font-size: 0.6rem;
+      color: var(--control); font-family: Georgia, serif; font-size: 0.6rem;
       padding: 0.22rem 0.48rem; cursor: pointer;
       transition: color 0.1s, border-color 0.1s;
     }
@@ -90,6 +91,12 @@
     .lattice-wrap {
       width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
       display: flex; justify-content: center;
+      justify-content: safe center;   /* overflow spills right, where scroll reaches */
+    }
+    /* phone: fit-to-width made the ratios 3.8 px; render wider and scroll
+       sideways (opens centred on 1/1) */
+    @media (max-width: 600px) {
+      #lattice { min-width: 520px; }
     }
 
     /* ── Chord / info ─────────────────────────────────── */
@@ -99,7 +106,7 @@
     }
     .info-display {
       min-height: 1.3rem; font-size: 0.58rem; letter-spacing: 0.1em;
-      color: var(--dimmer); font-style: italic; text-align: center;
+      color: var(--dim); font-style: italic; text-align: center;
     }
 
     /* ── Legend ───────────────────────────────────────── */
@@ -118,7 +125,7 @@
     /* ── Back link ────────────────────────────────────── */
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -127,7 +134,7 @@
     /* ── Hint ─────────────────────────────────────────── */
     .hint {
       font-size: 0.54rem; letter-spacing: 0.12em;
-      color: var(--dimmer); font-style: italic; text-align: center;
+      color: var(--dim); font-style: italic; text-align: center;
     }
   </style>
 </head>
@@ -169,6 +176,9 @@
     <span class="tone-endpoint">bright</span>
   </div>
   <div class="ctrl-group">
+    <span class="ctrl-label">chord</span>
+    <button class="tog" id="preset-otonal" title="the harmonic seventh chord: 1/1 5/4 3/2 7/4">4:5:6:7</button>
+    <button class="tog" id="preset-utonal" title="its subharmonic mirror: 1/1 7/6 7/5 7/4">1/7:1/6:1/5:1/4</button>
     <button class="tog" id="clear-btn">clear</button>
   </div>
 </div>
@@ -272,7 +282,7 @@ const NAMES = {
   '10/9':  'minor whole tone',    '9/5':   'm7 (just)',
   '45/32': 'aug. fourth',         '64/45': 'dim. fifth',
   // 7-limit — named intervals
-  '7/4':   'natural m7 — "blue seventh"',
+  '7/4':   'natural m7 · "blue seventh"',
   '8/7':   'septimal M2',
   '7/6':   'septimal m3',
   '12/7':  'septimal M6',
@@ -280,9 +290,9 @@ const NAMES = {
   '10/7':  'septimal tritone (alt.)',
   '9/7':   'septimal M3',
   '14/9':  'septimal m6',
-  '21/16': 'septimal P4',
-  '32/21': 'septimal P5 (alt.)',
-  '63/32': 'septimal M7',
+  '21/16': 'narrow P4 (4/3 ÷ septimal comma)',
+  '32/21': 'wide P5 (3/2 × septimal comma)',
+  '63/32': 'narrow octave (2/1 ÷ septimal comma)',
   '35/32': 'septimal neutral second',
   '15/14': 'septimal diatonic semitone',
   '21/20': 'septimal chromatic semitone',
@@ -326,6 +336,9 @@ const COFF_Y = 30;
 
 const SVG_W  = 800;
 const SVG_H  = 460;
+// The nodes fill only x 108–692, y 100–360 of the 800×460 frame; the viewBox
+// is cropped to that field (plus a caption strip) so everything draws larger.
+const VB = { x: 96, y: 84, w: 608, h: 300 };
 const CX     = SVG_W / 2;   // 400
 const CY     = SVG_H / 2;   // 230
 
@@ -394,9 +407,10 @@ function nodeColors(nd) {
 
 function buildSVG() {
   const svg = document.getElementById('lattice');
-  svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
-  svg.setAttribute('width',  SVG_W);
-  svg.setAttribute('height', SVG_H);
+  const FS  = window.innerWidth <= 600 ? 1.15 : 1;   // larger text on a phone
+  svg.setAttribute('viewBox', `${VB.x} ${VB.y} ${VB.w} ${VB.h}`);
+  svg.setAttribute('width',  760);
+  svg.setAttribute('height', Math.round(760 * VB.h / VB.w));
   svg.style.cssText = 'display:block;max-width:100%;height:auto;';
   svg.innerHTML = '';
 
@@ -472,7 +486,7 @@ function buildSVG() {
       g.appendChild(circle);
 
       // Ratio text — adaptive font size for long ratios
-      const fs = nd.key.length >= 7 ? 8.5 : nd.key.length >= 5 ? 10 : 12;
+      const fs = (nd.key.length >= 7 ? 8.5 : nd.key.length >= 5 ? 10 : 12) * FS;
       const yOffset = (!nd.isRoot && nd.dev !== 0) ? -3 : 1;
       const rt = svgEl('text', {
         x: cx, y: cy + yOffset,
@@ -490,17 +504,18 @@ function buildSVG() {
         const dt = svgEl('text', {
           x: cx, y: cy + 12,
           'text-anchor': 'middle', 'dominant-baseline': 'middle',
-          'font-family': 'Georgia, serif', 'font-size': '7.5', 'font-style': 'italic',
+          'font-family': 'Georgia, serif', 'font-size': 7.5 * FS, 'font-style': 'italic',
           fill: devColor(nd.dev), 'pointer-events': 'none',
         });
         dt.textContent = fmtDev(nd.dev);
         g.appendChild(dt);
       }
 
-      g.addEventListener('click',      () => toggleNode(nd));
+      // No touchstart handler: a tap arrives as a click (and names the node),
+      // and a swipe that starts on a node scrolls instead of toggling it.
+      g.addEventListener('click',      () => { toggleNode(nd); showInfo(nd); });
       g.addEventListener('mouseenter', () => showInfo(nd));
       g.addEventListener('mouseleave', clearInfo);
-      g.addEventListener('touchstart', e => { e.preventDefault(); toggleNode(nd); }, { passive: false });
 
       layerG.appendChild(g);
     }
@@ -519,15 +534,15 @@ function buildSVG() {
     t.textContent = text; return t;
   };
 
-  svg.appendChild(makeLabel(
-    ox + 1.8 * STEP, oy + 14, 'middle',
-    'rgba(110,165,200,0.30)', '← P4  ·  P5 →'));
-  svg.appendChild(makeLabel(
-    ox + 0.65 * STEP, oy - 1.4 * STEP * SQ3_2 - 6, 'middle',
-    'rgba(100,185,135,0.30)', '↗  M3  (×5)'));
-  svg.appendChild(makeLabel(
-    ox + COFF_X * 2.2 + 8, oy + COFF_Y * 2.2 + 12, 'start',
-    'rgba(205,165,70,0.30)', '↘  7/4  (×7)'));
+  // captions in a strip under the nodes (inside the field they sat under
+  // 15/14, 9/8, 21/16 and 9/5)
+  const capY = VB.y + VB.h - 8;
+  svg.appendChild(makeLabel(ox - 1.6 * STEP, capY, 'middle',
+    'rgba(110,165,200,0.55)', '→  P5  (×3)'));
+  svg.appendChild(makeLabel(ox, capY, 'middle',
+    'rgba(100,185,135,0.55)', '↗  M3  (×5)'));
+  svg.appendChild(makeLabel(ox + 1.6 * STEP, capY, 'middle',
+    'rgba(205,165,70,0.55)', '↘  7/4  (×7)'));
 }
 
 // ═══════════════════════════════════════════════════════
@@ -582,6 +597,24 @@ function clearAll() {
 // ═══════════════════════════════════════════════════════
 
 let ac = null, masterGain, lpf, compressor, analyser, scopeBuf;
+// S3 · nothing hangs on a hidden tab: fade out and suspend while hidden, then
+// resume on return, so whatever is lit is what sounds.
+let hideGate = null;
+document.addEventListener('visibilitychange', () => {
+  if (!ac || !hideGate || ac.state === 'closed') return;
+  const t = ac.currentTime;
+  hideGate.gain.cancelScheduledValues(t);
+  if (document.hidden) {
+    hideGate.gain.setTargetAtTime(0, t, 0.015);
+    setTimeout(() => { if (document.hidden && ac.state === 'running') ac.suspend(); }, 150);
+  } else {
+    // reopen the gate whatever resume() does; if it is refused, show the
+    // stopped state instead of lit nodes that make no sound
+    hideGate.gain.setTargetAtTime(1, t, 0.03);
+    Promise.resolve().then(() => ac.resume()).catch(() => clearAll());
+  }
+});
+
 let rafId = null;
 const voices = {};
 let fundamental = 220, waveform = 'sine';
@@ -610,7 +643,9 @@ function initAudio() {
   masterGain.connect(lpf);
   lpf.connect(compressor);
   compressor.connect(analyser);
-  analyser.connect(ac.destination);
+  hideGate = ac.createGain();
+  analyser.connect(hideGate);
+  hideGate.connect(ac.destination);
 }
 
 function startVoice(key, freq) {
@@ -692,6 +727,26 @@ function shiftOctave(dir) {
 document.getElementById('oct-dn').addEventListener('click', () => shiftOctave(-1));
 document.getElementById('oct-up').addEventListener('click', () => shiftOctave(1));
 document.getElementById('clear-btn').addEventListener('click', clearAll);
+
+// One-tap 7-limit tetrads: the overtone chord 4:5:6:7 and its undertone
+// mirror 1/7:1/6:1/5:1/4 (= 1/1 7/6 7/5 7/4). Pressing again clears it.
+const PRESETS = {
+  otonal: ['1/1', '5/4', '3/2', '7/4'],
+  utonal: ['1/1', '7/6', '7/5', '7/4'],
+};
+function playPreset(name) {
+  const want = PRESETS[name];
+  const now = nodes.filter(n => n.active).map(n => n.key).sort().join();
+  const same = now === [...want].sort().join();
+  clearAll();
+  if (same) return;
+  for (const k of want) {
+    const nd = nodes.find(n => n.key === k);
+    if (nd && !nd.active) toggleNode(nd);
+  }
+}
+document.getElementById('preset-otonal').addEventListener('click', () => playPreset('otonal'));
+document.getElementById('preset-utonal').addEventListener('click', () => playPreset('utonal'));
 document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
 document.getElementById('lpf-knob').addEventListener('input', function () {
   if (lpf) lpf.frequency.setTargetAtTime(sliderToFreq(+this.value), ac.currentTime, 0.02);
@@ -703,6 +758,10 @@ document.getElementById('lpf-knob').addEventListener('input', function () {
 
 function blankScope() {
   const cv = document.getElementById('scope');
+  // size the idle canvas the way drawScope does (60 px tall), so the box
+  // doesn't open at the 300×60 intrinsic ratio and snap on the first note
+  cv.width  = (cv.offsetWidth || 300) * (devicePixelRatio || 1);
+  cv.height = 60 * (devicePixelRatio || 1);
   const g  = cv.getContext('2d');
   g.fillStyle = '#0a0a0a'; g.fillRect(0, 0, cv.width, cv.height);
 }
@@ -733,6 +792,11 @@ function drawScope() {
 // ═══════════════════════════════════════════════════════
 
 buildSVG();
+// on a phone the lattice is wider than the screen: open centred on 1/1
+(() => {
+  const w = document.querySelector('.lattice-wrap');
+  if (w.scrollWidth > w.clientWidth) w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2;
+})();
 blankScope();
 </script>
 </body>

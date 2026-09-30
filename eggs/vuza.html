@@ -19,6 +19,7 @@
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
       --red:    #d46a6a;
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
     }
     body {
       background: var(--bg);
@@ -33,7 +34,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -64,7 +65,7 @@
     .btn-sm {
       font-family: Georgia, serif;
       font-size: 0.52rem; letter-spacing: 0.1em; text-transform: lowercase;
-      font-style: italic; color: var(--dim);
+      font-style: italic; color: var(--control);
       background: none; border: 1px solid var(--border);
       padding: 0.28rem 0.55rem; cursor: pointer; white-space: nowrap;
       transition: color 0.13s, border-color 0.13s;
@@ -79,7 +80,7 @@
       display: flex; flex-direction: column; gap: 0.5rem;
     }
     .mk-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; justify-content: center; }
-    .mk-row label { font-size: 0.56rem; font-style: italic; color: var(--dim); display: flex; gap: 0.35rem; align-items: center; }
+    .mk-row label { font-size: 0.56rem; font-style: italic; color: var(--control); display: flex; gap: 0.35rem; align-items: center; }
     .mk-sel, .mk-inp {
       font-family: 'SF Mono','Fira Code',monospace; font-size: 0.6rem; color: var(--text);
       background: var(--bg2); border: 1px solid var(--border); padding: 0.16rem 0.3rem; outline: none;
@@ -119,6 +120,7 @@
       border: 1px solid transparent; opacity: 0.85; transition: opacity 0.13s, transform 0.13s;
     }
     .vchip.off { opacity: 0.18; }
+    .vchip.grab { border-color: var(--text); box-shadow: 0 0 0 2px rgba(204,200,208,0.35); }
     .vchip:hover { transform: scale(1.2); }
     .vlbl { font-size: 0.5rem; font-style: italic; color: var(--dimmer); letter-spacing: 0.1em; margin-right: 0.2rem; }
 
@@ -136,11 +138,11 @@
 
     .explain-wrap { width: 100%; max-width: 520px; }
     .explain-toggle {
-      font-size: 0.51rem; font-style: italic; color: var(--dimmer);
+      font-size: 0.51rem; font-style: italic; color: var(--control);
       letter-spacing: 0.1em; background: none; border: none;
       font-family: Georgia, serif; cursor: pointer; transition: color 0.13s;
     }
-    .explain-toggle:hover { color: var(--dim); }
+    .explain-toggle:hover { color: var(--text); }
     .explain-body {
       display: none; margin-top: 0.9rem;
       font-size: 0.63rem; line-height: 1.9; color: var(--dim);
@@ -187,7 +189,7 @@
     <button class="btn-sm" id="mkFind">find S</button>
     <button class="btn-sm" id="mkNext">another S</button>
   </div>
-  <div class="mk-note" id="mkNote">pick a period and a figure size and roll, or type your own R and the page searches for every S that tiles it</div>
+  <div class="mk-note" id="mkNote">pick a period and a figure size and roll, or type your own R and the page searches for the entry patterns S that tile it (up to 400)</div>
 </div>
 
 <div class="voices" id="voices"></div>
@@ -211,8 +213,8 @@
   <button class="explain-toggle" onclick="toggleExplain()">? what is this</button>
   <div class="explain-body" id="explainBody">
     <p>A <strong>rhythmic tiling canon</strong> of period n is an inner rhythm R (a set of onsets, counted in slots) and an outer rhythm S (the moments each copy of R enters) such that every translate R + s lands on fresh slots and together they cover all n exactly once. Written additively: R ⊕ S = Z<sub>n</sub>. Each ring here is one entry, the outer ring is the sum, and the sum is always a flat pulse when the tiling holds.</p>
-    <p>Most tilings are cheap: either R or S is <strong>periodic</strong>, a smaller pattern repeated on a sub-cycle (the 12 and 16 presets; the 24 to 60 ones have an S that only repeats every half or third cycle, which is as lopsided as it gets before 72). Dan Tudor Vuza asked in 1991 whether a canon could tile with <strong>neither</strong> side periodic. Hajós had shown in 1950 that for most periods the answer is no; the smallest period where it is possible is <strong>72</strong>, then 108, 120, 144, 168. The one loaded here comes from Vuza's own construction with n = 2·3·3·2·2.</p>
-    <p>Set hear to <strong>sum</strong> and the twelve voices collapse to one click on every slot, a metronome. Set it to <strong>parts</strong> and each voice gets its own pitch: the same slots, now heard as twelve staggered, irregular figures. Nothing changed in the timing. Drag any ring to rotate its entry and the tiling breaks: doubled slots flare red, holes go dark. Click a colored dot above to solo a voice.</p>
+    <p>Most tilings are cheap: either R or S is <strong>periodic</strong>, a smaller pattern repeated on a sub-cycle (the 12 and 16 presets; in the 24, 36 and 60 ones S repeats only every half cycle, and at 48 every quarter). Hajós guessed that one side must always repeat. For every period below 72 he was right, but not beyond: Sands worked out exactly which periods force a repeat, and the first that does not is <strong>72</strong>, then 108, 120, 144, 168. Dan Tudor Vuza, coming from the music side in the early 1990s, constructed canons where <strong>neither</strong> side repeats. The one loaded here comes from Vuza's own construction with n = 2·3·3·2·2.</p>
+    <p>Set hear to <strong>sum</strong> and the twelve voices collapse to one click on every slot, a metronome. Set it to <strong>parts</strong> and each voice gets its own pitch: the same slots, now heard as twelve staggered, irregular figures. Nothing changed in the timing. Drag any ring to rotate its entry and the tiling breaks: doubled slots flare red, holes go dark. Click a colored dot above to solo a voice; that also grabs its ring, so on a phone you can then drag anywhere on the circle.</p>
     <span class="math">R = {0, 8, 16} ⊕ {0, 18} = 2·(4·{0,1,2} ⊕ 9·{0,1})</span>
     <span class="math">S = {0, 1, 5, 6, 12, 25, 29, 36, 42, 48, 49, 53} · |R|·|S| = 6·12 = 72</span>
   </div>
@@ -264,9 +266,10 @@ function period(X, n) {
 // R = n3·(p1·n2·I_n1 ⊕ p2·n1·I_n2) = 2·(4·{0,1,2} ⊕ 9·{0,1}).
 // S is one of the 72 aperiodic complements of R found by exact cover.
 // Both verified aperiodic; see egg-test assertions in the build notes.
-// Below 72 one side is always periodic (Hajos), but it need not be a plain
-// grid: the middle presets have an S that only repeats every half or third
-// cycle, so the entries look lopsided inside each half. Found by the same
+// Below 72 one side is always periodic (Sands' classification of the periods
+// where Hajós's guess holds), but it need not be a plain grid: the middle
+// presets have an S that repeats only every half cycle (24, 36, 60) or every
+// quarter (48), so the entries look lopsided inside each repeat. Found by the same
 // exact-cover search that powers the random button, then hand-picked.
 const PRESETS = [
   { name: 'pairs · 12',      n: 12, R: [0,1],   S: [0,2,4,6,8,10] },
@@ -283,7 +286,9 @@ const VUZA_IDX = 7;
 // ─── Search: every S with R ⊕ S = Z_n ───────────────────────────────────────
 // Exact cover by backtracking: take the lowest uncovered slot t, some copy of
 // R must land there, so its entry is t - r for one of the r in R. Capped on
-// solutions and on steps so a hostile R cannot hang the page.
+// solutions and on steps so a hostile R cannot hang the page. The returned
+// array carries .exhausted = true when the step budget ran out: an empty
+// result is then "not found", never proof that no S exists.
 function complements(Rin, n, cap = 400, budget = 2e6) {
   const Rm = [...new Set(Rin.map(r => ((r % n) + n) % n))].sort((a, b) => a - b);
   if (!Rm.length || n % Rm.length) return [];
@@ -308,8 +313,22 @@ function complements(Rin, n, cap = 400, budget = 2e6) {
     }
   }
   rec();
+  out.exhausted = steps > budget;
+  if (!out.length && Rm.length === 2) {
+    // two-note figures have an exact answer, so skip the search's verdict:
+    // {r0, r1} tiles Z_n iff n / gcd(a, n) is even, a = r1 - r0. Build one S:
+    // walk each coset of a and enter on every other step.
+    const a = Rm[1] - Rm[0], g = gcdInt(a, n), m = n / g;
+    if (m % 2 === 0) {
+      const S2 = [];
+      for (let c = 0; c < g; c++) for (let j = 0; j < m / 2; j++) S2.push((c + 2 * j * a) % n);
+      out.push(S2.sort((x, y) => x - y));
+    }
+    out.exhausted = false;   // proven either way
+  }
   return out;
 }
+function gcdInt(a, b) { while (b) [a, b] = [b, a % b]; return a; }
 
 // rank complements: the least regular S first (largest period), ties by
 // how unevenly the entries are spaced
@@ -343,6 +362,8 @@ let presetIdx = 0;
 let n = 72, R = [], S = [];
 let offsets = [];        // per-voice rotation applied by dragging (slots)
 let solo = null;         // Set of voice indices, or null = all
+let grabbed = -1;        // ring picked by tapping its dot: a drag anywhere rotates it
+let dragRing = -1;       // ring being dragged right now (highlighted)
 let hear = 'parts';      // 'parts' | 'sum'
 let flashes = [];        // per-voice Float32Array(n)
 let sumFlash = null;     // Float32Array(n) on the composite ring
@@ -366,7 +387,7 @@ function loadCanon(nn, RR, SS, name, idx = -1) {
   n = nn; R = RR.slice(); S = SS.slice();
   const box = document.getElementById('mkR'); if (box) box.value = R.join(', ');
   offsets = S.map(() => 0);
-  solo = null;
+  solo = null; grabbed = -1;
   flashes = S.map(() => new Float32Array(n));
   sumFlash = new Float32Array(n);
   playStep = -1;
@@ -480,6 +501,13 @@ function doTick(t, when) {
 }
 
 function schedule() {
+  // stall resync: a blocked main thread (the random button can take 200 ms)
+  // would hand every missed tick to Web Audio in the past, fired as a clump.
+  // Jump ahead and count the skipped ticks, so every voice stays aligned.
+  if (nextT < ax.currentTime - 0.05) {
+    tick += Math.ceil((ax.currentTime + 0.02 - nextT) / slotSec());
+    nextT = ax.currentTime + 0.02;
+  }
   while (nextT < ax.currentTime + LOOKAHEAD) {
     doTick(tick, nextT);
     nextT += slotSec();
@@ -573,8 +601,9 @@ function draw() {
     const [cr, cg, cb] = voiceRGB(i, count);
     const on = audible(i);
     const alpha = on ? 1 : 0.22;
-    gx.strokeStyle = `rgba(${cr},${cg},${cb},${0.07 * alpha})`;
-    gx.lineWidth = 1;
+    const held = i === grabbed || i === dragRing;
+    gx.strokeStyle = `rgba(${cr},${cg},${cb},${(held ? 0.5 : 0.07) * alpha})`;
+    gx.lineWidth = held ? 2 : 1;
     gx.beginPath(); gx.arc(cx, cy, r, 0, Math.PI * 2); gx.stroke();
     for (const rr of R) {
       const s = (rr + Se[i]) % n;
@@ -674,8 +703,13 @@ cv.addEventListener('pointerdown', e => {
     const d = Math.abs(rad - ringRadius(i, count));
     if (d < bd) { bd = d; best = i; }
   }
+  // On a phone the rings sit ~7.6 px apart and a fingertip covers five, so a
+  // ring grabbed from its dot wins for touch, and for any press that misses
+  // every ring.
+  if (grabbed >= 0 && (e.pointerType !== 'mouse' || best < 0)) best = grabbed;
   if (best < 0) return;
   drag = { i: best, a0: angleOf(x, y), off0: offsets[best] };
+  dragRing = best;
   cv.classList.add('dragging');
   cv.setPointerCapture(e.pointerId);
 });
@@ -693,7 +727,7 @@ cv.addEventListener('pointermove', e => {
     buildPresetUI();
   }
 });
-function endDrag() { if (drag) { drag = null; cv.classList.remove('dragging'); } }
+function endDrag() { dragRing = -1; if (drag) { drag = null; cv.classList.remove('dragging'); } }
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
 
@@ -769,11 +803,17 @@ function makeFromR() {
   if (RR.length < 2) { setMakerNote('give R as a list of slots, like 0, 3, 7', true); return; }
   if (nn % RR.length) { setMakerNote(`|R| = ${RR.length} does not divide ${nn} · no tiling can exist`, true); return; }
   const C = complements(RR, nn, 400);
-  if (!C.length) { setMakerNote(`R = {${RR.join(', ')}} does not tile ${nn} · no S exists`, true); return; }
+  if (!C.length) {
+    setMakerNote(C.exhausted
+      ? `no S found for R = {${RR.join(', ')}} in ${nn} · the search stopped after 2 million steps, so this is not proven either way`
+      : `R = {${RR.join(', ')}} does not tile ${nn} · the search was exhaustive, no S exists`, true);
+    return;
+  }
   altS = rankComplements(C, nn); altIdx = 0;
   loadCanon(nn, RR, altS[0], `yours · ${nn}`);
   document.getElementById('mkR').value = RR.join(', ');
-  setMakerNote(`${C.length}${C.length >= 400 ? '+' : ''} complements · showing the least regular`);
+  const more = C.length >= 400 || C.exhausted ? '+' : '';
+  setMakerNote(`${C.length}${more} complement${C.length === 1 ? '' : 's'}${C.exhausted ? ' (search stopped early)' : ''} · showing the least regular`);
 }
 
 function nextS() {
@@ -800,10 +840,11 @@ function buildVoiceUI() {
   for (let i = 0; i < count; i++) {
     const [cr, cg, cb] = voiceRGB(i, count);
     const d = document.createElement('div');
-    d.className = 'vchip' + (audible(i) ? '' : ' off');
+    d.className = 'vchip' + (audible(i) ? '' : ' off') + (i === grabbed ? ' grab' : '');
     d.style.background = `rgb(${cr},${cg},${cb})`;
-    d.title = `voice ${i + 1} · enters at ${S[i]}`;
+    d.title = `voice ${i + 1} · enters at ${S[i]} · tap to solo and grab its ring`;
     d.onclick = () => {
+      grabbed = i;
       if (!solo) solo = new Set([i]);
       else if (solo.has(i)) { solo.delete(i); if (!solo.size) solo = null; }
       else solo.add(i);
@@ -815,7 +856,7 @@ function buildVoiceUI() {
   all.className = 'btn-sm';
   all.textContent = 'all';
   all.style.marginLeft = '0.3rem';
-  all.onclick = () => { solo = null; buildVoiceUI(); };
+  all.onclick = () => { solo = null; grabbed = -1; buildVoiceUI(); };
   wrap.appendChild(all);
 }
 

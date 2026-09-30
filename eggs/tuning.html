@@ -17,6 +17,7 @@
       --text:   #d8d0c8;
       --dim:    rgba(216,208,200,0.4);
       --dimmer: rgba(216,208,200,0.18);
+      --control: rgba(216,208,200,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --accent: #8ab0c8;
       --accent-bg: rgba(138,176,200,0.14);
       --border: rgba(255,255,255,0.07);
@@ -47,7 +48,7 @@
     .sub {
       font-size: 0.6rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.3rem;
     }
@@ -81,7 +82,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.63rem;
       letter-spacing: 0.07em;
@@ -91,6 +92,7 @@
     }
     .tog:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
     .tog.on { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+    .oct-btn.on { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
 
     .fund-input {
       background: var(--bg2);
@@ -111,7 +113,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.6rem;
       padding: 0.22rem 0.48rem;
@@ -122,7 +124,7 @@
     .oct-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
 
     /* ── Description bar ──────────────────────────────── */
-    #desc { font-size: 0.58rem; letter-spacing: 0.1em; color: var(--dimmer); font-style: italic; }
+    #desc { font-size: 0.58rem; letter-spacing: 0.1em; color: var(--dim); font-style: italic; }
 
     /* ── Keyboard ─────────────────────────────────────── */
     .kbd-wrap {
@@ -182,7 +184,7 @@
 
     .key-shortcut {
       font-size: 0.48rem;
-      color: var(--dimmer);
+      color: var(--dim);
       letter-spacing: 0.1em;
       font-style: italic;
     }
@@ -199,7 +201,7 @@
 
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -209,7 +211,7 @@
     .hint {
       font-size: 0.54rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
     }
@@ -225,7 +227,7 @@
 
 <div class="header">
   <h1 class="title">tuning systems</h1>
-  <p class="sub">click keys or use keyboard &mdash; hold multiple keys for polyphony</p>
+  <p class="sub">click keys or use keyboard · hold multiple keys for polyphony</p>
 </div>
 
 <!-- Controls -->
@@ -260,6 +262,7 @@
   </div>
 
   <div class="ctrl-group">
+    <button class="oct-btn" id="triad-btn" title="hold the major triad; it re-voices when you switch tuning">major triad</button>
     <button class="oct-btn" id="silence-btn">silence</button>
   </div>
 
@@ -328,7 +331,30 @@ function centsColor(c) {
 
 // ── Tuning system definitions ───────────────────────────────────────────
 
-const TET12_NAMES = ['A','A\u266f','B','C','C\u266f','D','D\u266f','E','F','F\u266f','G','G\u266f'];
+// 12-TET names follow the fundamental: step 0 is named for the nearest
+// 12-TET pitch to it (A at the default 110 Hz, C at 261.63)
+const C_NAMES = ['C','C\u266f','D','D\u266f','E','F','F\u266f','G','G\u266f','A','A\u266f','B'];
+function fundamentalPc() {
+  return ((Math.round(12 * Math.log2(fundamental / 440)) + 9) % 12 + 12) % 12;
+}
+
+// 19- and 31-TET spelled along the chain of fifths: the fifth is 11 of 19
+// (18 of 31) steps, so each chain position k (C = 0) lands on one step. The
+// spelling window is fixed on the chain, whatever the fundamental: 19 uses
+// k = −6…12 (C C♯ D♭ D D♯ E♭ E E♯ F F♯ G♭ G G♯ A♭ A A♯ B♭ B B♯), 31 uses
+// k = −15…15 (meantone spelling, doubles for the outer steps).
+const PC_TO_LOF = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6, 1: 7, 8: -4, 3: -3, 10: -2, 5: -1 };
+function lofName(k) {
+  const letter = 'FCGDAEB'[((k + 1) % 7 + 7) % 7];
+  const acc = Math.floor((k + 1) / 7);
+  return letter + (acc === 2 ? '\u{1D12A}' : acc === -2 ? '\u{1D12B}' : acc > 0 ? '\u266f'.repeat(acc) : '\u266d'.repeat(-acc));
+}
+function edoNames(edo, fifthSteps, kLo, kHi) {
+  const root = PC_TO_LOF[fundamentalPc()];
+  const names = new Array(edo);
+  for (let k = kLo; k <= kHi; k++) names[(((k - root) * fifthSteps) % edo + edo) % edo] = lofName(k);
+  return names;
+}
 
 // 5-limit chromatic just intonation (12 pitches, starting on A)
 const JI_RATIOS = [1, 16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2, 8/5, 5/3, 9/5, 15/8];
@@ -340,7 +366,7 @@ const TUNINGS = {
     desc:  '12 equal divisions of the octave \u00b7 100\u00a2 per step',
     steps: 12,
     freq:  (f, n) => f * Math.pow(2, n / 12),
-    name:  n => TET12_NAMES[n % 12],
+    name:  n => C_NAMES[(fundamentalPc() + n) % 12],
     cents: n => 0,
   },
   '19': {
@@ -348,7 +374,7 @@ const TUNINGS = {
     desc:  '19 equal divisions \u00b7 \u224863\u00a2 per step \u00b7 enharmonic equivalents are distinct pitches',
     steps: 19,
     freq:  (f, n) => f * Math.pow(2, n / 19),
-    name:  n => String(n % 19),
+    name:  n => edoNames(19, 11, -6, 12)[n % 19],
     cents: n => centsFromRatio(Math.pow(2, n / 19)),
   },
   '31': {
@@ -356,7 +382,7 @@ const TUNINGS = {
     desc:  '31 equal divisions \u00b7 \u224839\u00a2 per step \u00b7 close to quarter-comma meantone',
     steps: 31,
     freq:  (f, n) => f * Math.pow(2, n / 31),
-    name:  n => String(n % 31),
+    name:  n => edoNames(31, 18, -15, 15)[n % 31],
     cents: n => centsFromRatio(Math.pow(2, n / 31)),
   },
   'ji': {
@@ -379,6 +405,7 @@ const TUNINGS = {
 
 // ── State ────────────────────────────────────────────────────────────────
 let tuningKey  = '12';
+let triadOn    = false;   // the held major triad (see below)
 let fundamental = 110;
 let waveform   = 'sine';
 
@@ -467,6 +494,9 @@ function stopAll() {
   });
   heldKeys.clear();
   document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
+  triadOn = false;
+  const tb = document.getElementById('triad-btn');
+  if (tb) tb.classList.remove('on');
   checkScope();
 }
 
@@ -478,10 +508,24 @@ function buildKeyboard() {
   const t     = TUNINGS[tuningKey];
   kbd.innerHTML = '';
 
-  // Compute key width to fill the container when possible
+  // Compute key width to fill the container when possible. On a phone the
+  // keys wrap into balanced rows instead of scrolling: a swipe on a key plays
+  // it, so a keyboard wider than the screen left keys out of reach.
   const containerW = Math.min(window.innerWidth - 48, 980);
-  const gapTotal   = (t.steps - 1) * 3;
-  const keyW       = Math.max(36, Math.floor((containerW - gapTotal) / t.steps));
+  const phone      = window.innerWidth < 600;
+  const gap        = phone ? 2 : 3;
+  const longest    = Math.max(...Array.from({ length: t.steps }, (_, i) => t.name(i).length));
+  const minW       = phone ? (longest > 3 ? 34 : 26) : 36;
+  let perRow = t.steps, rows = 1;
+  if (phone) {
+    const fit = Math.max(1, Math.floor((containerW + gap) / (minW + gap)));
+    rows   = Math.ceil(t.steps / fit);
+    perRow = Math.ceil(t.steps / rows);
+  }
+  const keyW = Math.max(minW, Math.floor((containerW - (perRow - 1) * gap) / perRow));
+  kbd.style.gap      = gap + 'px';
+  kbd.style.flexWrap = phone ? 'wrap' : '';
+  kbd.style.width    = phone ? (perRow * keyW + (perRow - 1) * gap) + 'px' : '';
 
   for (let i = 0; i < t.steps; i++) {
     const kc = KEY_SEQ[i]  || '';
@@ -491,6 +535,7 @@ function buildKeyboard() {
     const el = document.createElement('div');
     el.className = 'key';
     el.style.width = keyW + 'px';
+    if (rows > 1) el.style.height = '84px';
     el.dataset.step    = i;
     el.dataset.keychar = kc;
     el.dataset.keycode = cd;
@@ -587,6 +632,9 @@ document.addEventListener('keyup', e => {
 
 // A window switch or app swipe swallows every keyup — drop the lot
 window.addEventListener('blur', stopAll);
+// a hidden tab (phone lock, background tab) need not blur: the latched triad
+// would keep sounding, so hide stops everything and the buttons show it
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopAll(); });
 
 // ── Tuning buttons ─────────────────────────────────────────────────────
 document.getElementById('tuning-btns').addEventListener('click', e => {
@@ -595,8 +643,10 @@ document.getElementById('tuning-btns').addEventListener('click', e => {
   document.querySelectorAll('#tuning-btns .tog').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   tuningKey = btn.dataset.t;
+  const keepTriad = triadOn;
   stopAll();          // the old pitches no longer exist in the new tuning
   buildKeyboard();
+  if (keepTriad) { triadOn = true; voiceTriad(); syncTriadBtn(); }   // the held triad re-voices in the new system
 });
 
 // ── Waveform buttons ──────────────────────────────────────────────────
@@ -613,7 +663,7 @@ document.getElementById('wave-btns').addEventListener('click', e => {
 const fundEl = document.getElementById('fund-input');
 fundEl.addEventListener('input', () => {
   const v = parseFloat(fundEl.value);
-  if (isFinite(v) && v > 10) { fundamental = v; stopAll(); }
+  if (isFinite(v) && v > 10) { fundamental = v; stopAll(); buildKeyboard(); }
 });
 
 function shiftOctave(dir) {
@@ -623,6 +673,33 @@ function shiftOctave(dir) {
 }
 
 document.getElementById('silence-btn').addEventListener('click', stopAll);
+
+// ── The same chord in each system ─────────────────────────────────────────
+// A held major triad that survives a tuning change, so the systems can be
+// A/B'd: 12-TET 0-4-7, 19-TET 0-6-11, 31-TET 0-10-18, just 1 5/4 3/2,
+// harmonic partials 4-5-6.
+const TRIAD_STEPS = { '12': [0, 4, 7], '19': [0, 6, 11], '31': [0, 10, 18], 'ji': [0, 4, 7], 'harm': [3, 4, 5] };
+function syncTriadBtn() {
+  document.getElementById('triad-btn').classList.toggle('on', triadOn);
+}
+function voiceTriad() {
+  TRIAD_STEPS[tuningKey].forEach((st, i) => {
+    pressKey(st, 't' + i);
+    const el = document.querySelector(`.key[data-step="${st}"]`);
+    if (el) el.classList.add('active');
+  });
+}
+document.getElementById('triad-btn').addEventListener('click', () => {
+  if (triadOn) {
+    triadOn = false;
+    [0, 1, 2].forEach(i => releaseKey('t' + i));
+    document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
+  } else {
+    triadOn = true;
+    voiceTriad();
+  }
+  syncTriadBtn();
+});
 
 document.getElementById('oct-dn').addEventListener('click', () => shiftOctave(-1));
 document.getElementById('oct-up').addEventListener('click', () => shiftOctave(1));
@@ -643,6 +720,10 @@ function checkScope() {
 
 function blankScope() {
   const cv = document.getElementById('scope');
+  // size the idle canvas the way drawScope does (60 px tall), so the box
+  // doesn't open at the 300×60 intrinsic ratio and snap on the first note
+  cv.width  = (cv.offsetWidth || 300) * (devicePixelRatio || 1);
+  cv.height = 60 * (devicePixelRatio || 1);
   const g  = cv.getContext('2d');
   g.fillStyle = '#0a0a0a';
   g.fillRect(0, 0, cv.width, cv.height);

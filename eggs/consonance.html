@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="a dissonance landscape across the octave — simple ratios sink into valleys, irrational intervals ride the hills, and every point is playable by drag">
+  <meta name="description" content="a dissonance landscape across the octave · simple ratios sink into valleys, intervals far from any simple ratio ride the hills, and every point is playable by drag">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -12,6 +12,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(204,200,208,0.58);
       --bg:      #060608;
       --bg2:     #0c0c10;
       --text:    #ccc8d0;
@@ -38,7 +40,7 @@
 
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -54,7 +56,7 @@
     .sub {
       font-size: 0.58rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.35rem;
       line-height: 1.8;
@@ -157,7 +159,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.65rem;
       letter-spacing: 0.08em;
@@ -204,7 +206,7 @@
 <div class="header">
   <h1 class="title">consonance landscape</h1>
   <p class="sub">
-    every interval has a geography &mdash; valleys are where simple ratios live<br>
+    every interval has a geography · valleys are where simple ratios live<br>
     click or drag to hear a pitch · the curve shows how far you are from purity
   </p>
 </div>
@@ -272,8 +274,8 @@
   </div>
   <div class="slider-row">
     depth
-    <input type="range" class="ctrl-range" id="depth-slider" min="4" max="200" value="100">
-    <span id="depth-val">100</span>
+    <input type="range" class="ctrl-range" id="depth-slider" min="4" max="240" value="120">
+    <span id="depth-val">120</span>
   </div>
   <div class="slider-row">
     clip
@@ -282,7 +284,7 @@
   </div>
 </div>
 
-<p class="hint">drag across the landscape · the valleys are where ears rest · esc mutes</p>
+<p class="hint">each ratio p/q digs a valley 1/(p·q) deep · blur = valley width in cents · depth = largest p·q included<br>drag across the landscape with the drone on · near a valley the two tones beat, in it they settle · esc mutes</p>
 
 <script>
 // ── JI ratio library ──────────────────────────────────────
@@ -379,7 +381,7 @@ function buildNearestTable(ratios, nSamples) {
 const N_FULL   = 1200; // curve resolution at rest
 const N_COARSE = 300;  // …and while a slider thumb is moving
 
-let ratios = buildRatios(100); // need height≥88 for 11:8 (11×8=88)
+let ratios = buildRatios(120); // 120 reaches 11:8 (88), 13:8 (104) and 15:8 (120)
 let sigma  = 9;
 let N      = N_FULL;
 let landscape, nearestTable;
@@ -405,9 +407,18 @@ const NOTE_BASE = { C:130.813, D:146.832, E:164.814, F:174.614, G:195.998, A:220
 let droneNote = 'A', droneOct = 3;
 function getDroneFreq() { return NOTE_BASE[droneNote] * Math.pow(2, droneOct - 3); }
 
+// Both voices use the house "strings" tone (eight harmonics). Two pure
+// sines have no partials to coincide, so a sine dyad sounds the same at
+// 5:4 as at 400¢ and the valleys can't be heard. With harmonics, a
+// near-miss beats where partials almost meet and the beating stops in
+// the valley. createPeriodicWave normalizes to a peak of 1, so levels
+// are unchanged: drone 0.18 + cursor 0.12 still peaks at 0.30.
+const TONE = [0, 1, 0.55, 0.38, 0.27, 0.2, 0.15, 0.11, 0.08];
+let toneWave = null;
 function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
+  toneWave = ac.createPeriodicWave(new Float32Array(TONE.length), new Float32Array(TONE));
 }
 
 function startDrone() {
@@ -415,7 +426,7 @@ function startDrone() {
   if (ac.state === 'suspended') ac.resume();
   droneOsc = ac.createOscillator();
   droneGain = ac.createGain();
-  droneOsc.type = 'sine';
+  droneOsc.setPeriodicWave(toneWave);
   droneOsc.frequency.value = getDroneFreq();
   droneGain.gain.setValueAtTime(0, ac.currentTime);
   droneGain.gain.setTargetAtTime(0.18, ac.currentTime, 0.05);
@@ -444,7 +455,7 @@ function setCursorPitch(cents) {
   if (!cursorOsc) {
     cursorOsc = ac.createOscillator();
     cursorGain = ac.createGain();
-    cursorOsc.type = 'sine';
+    cursorOsc.setPeriodicWave(toneWave);
     cursorOsc.frequency.value = freq;
     cursorGain.gain.setValueAtTime(0, ac.currentTime);
     cursorGain.gain.setTargetAtTime(0.12, ac.currentTime, 0.02);
@@ -465,6 +476,7 @@ function clearCursorPitch() {
 }
 
 function muteAll() {
+  dragging = false;   // the mouseup of a drag cut off by Esc or a hidden tab never comes
   clearCursorPitch();
   if (droneOn) { stopDrone(); droneOn = false; updateDroneBtn(); }
 }
@@ -543,7 +555,8 @@ function draw() {
 
       // Label
       g.font = `italic ${9}px Georgia, serif`;
-      g.textAlign = 'center';
+      // the end labels hug the edges instead of hanging off them ("A8ve")
+      g.textAlign = i === 0 ? 'left' : i === 12 ? 'right' : 'center';
       g.fillStyle = 'rgba(138,176,200,0.35)';
       g.fillText(tetLab[i], x, PLOT_BOTTOM + 16);
     }
@@ -582,6 +595,7 @@ function draw() {
     // Find local minima that sink at least a little below the ceiling
     const threshold = maxV - range * 0.04;
     const labeled = new Set();
+    const cands = [];
     for (let i = 4; i < N - 4; i++) {
       if (landscape[i] > threshold) continue;
       const isMin = landscape[i] <= landscape[i-3] &&
@@ -598,14 +612,20 @@ function draw() {
       if (labeled.has(key)) continue;
       labeled.add(key);
 
-      const x  = centsToX(ratio.cents);
-      const y  = valToY(landscape[i]);
-      const label = ratio.key;
-
-      g.font = `italic 9px Georgia, serif`;
-      g.textAlign = 'center';
-      g.fillStyle = 'rgba(160,200,136,0.80)';
-      g.fillText(label, x, Math.max(PLOT_TOP + 2, y - 6));
+      cands.push({ x: centsToX(ratio.cents), v: landscape[i], label: ratio.key });
+    }
+    // deepest valleys claim their space first; a shallower one whose label
+    // would touch an already placed one is left unlabeled
+    g.font = `italic 9px Georgia, serif`;
+    g.textAlign = 'center';
+    g.fillStyle = 'rgba(160,200,136,0.80)';
+    const placed = [];
+    for (const cnd of cands.sort((a, b) => a.v - b.v)) {
+      const m = g.measureText(cnd.label);
+      const half = ((m && m.width) || cnd.label.length * 5) / 2 + 3;
+      if (placed.some(p => Math.abs(p.x - cnd.x) < p.half + half)) continue;
+      placed.push({ x: cnd.x, half });
+      g.fillText(cnd.label, cnd.x, Math.max(PLOT_TOP + 2, valToY(cnd.v) - 6));
     }
   }
 
@@ -857,6 +877,8 @@ document.getElementById('contrast-slider').addEventListener('input', function() 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') muteAll();
 });
+// a hidden tab (or an alt-tab mid-drag) mutes rather than droning on
+document.addEventListener('visibilitychange', () => { if (document.hidden) muteAll(); });
 
 window.addEventListener('resize', draw);
 

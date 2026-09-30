@@ -11,6 +11,8 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(204,200,208,0.58);
       --bg:     #070709;
       --bg2:    #0d0d11;
       --text:   #ccc8d0;
@@ -35,7 +37,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -51,7 +53,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 520px;
@@ -90,10 +92,34 @@
       color: var(--dimmer);
       text-align: right;
     }
+    /* bipolar slider: a centre tick marks 0 and the gold fill grows from the
+       centre toward the value, so a row at 0.00 shows no fill at all
+       (accent-color filled from the left edge, so 0 looked half-on) */
     input[type=range].h-slider {
+      --lo: 50%; --hi: 50%;
       width: 100%;
-      accent-color: var(--gold);
+      height: 16px;
+      -webkit-appearance: none; appearance: none;
+      background:
+        linear-gradient(to right, transparent var(--lo), var(--gold) var(--lo),
+          var(--gold) var(--hi), transparent var(--hi)) no-repeat 0 50% / 100% 2px,
+        linear-gradient(rgba(204,200,208,0.45), rgba(204,200,208,0.45)) no-repeat
+          50% 50% / 1px 10px,
+        linear-gradient(rgba(255,255,255,0.12), rgba(255,255,255,0.12)) no-repeat
+          0 50% / 100% 2px;
+      cursor: pointer;
     }
+    input[type=range].h-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--gold); border: none;
+    }
+    input[type=range].h-slider::-moz-range-thumb {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--gold); border: none;
+    }
+    input[type=range].h-slider.zero::-webkit-slider-thumb { background: rgba(204,200,208,0.45); }
+    input[type=range].h-slider.zero::-moz-range-thumb { background: rgba(204,200,208,0.45); }
     .h-val {
       font-size: 0.55rem;
       font-family: 'SF Mono','Fira Code',monospace;
@@ -160,7 +186,7 @@
     }
     .preset-btn {
       background: transparent;
-      color: var(--dimmer);
+      color: var(--control);
       border: 1px solid var(--border);
       padding: 0.3rem 0.8rem;
       font-family: Georgia, serif;
@@ -170,7 +196,7 @@
       cursor: pointer;
       transition: color 0.13s, border-color 0.13s;
     }
-    .preset-btn:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    .preset-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
   </style>
 </head>
 <body>
@@ -217,13 +243,13 @@ const NAMES = [
   'octave',
   'major third · 5∶4',
   'fifth',
-  '7th harmonic · ♭7',
+  '7th harmonic · ↓♭7',
   'octave',
   'major second · 9∶8',
   'major third',
   '11th harmonic · ↑4',
   'fifth',
-  '13th harmonic · ↑6',
+  '13th harmonic · ↑♭6',
   '7th harmonic',
   'major seventh · 15∶8',
   'octave',
@@ -235,15 +261,23 @@ amps[0] = 1; // start with fundamental
 
 // ── Canvas setup
 const wvCanvas = document.getElementById('wvCanvas');
-const dpr = window.devicePixelRatio || 1;
-const CW = Math.min(window.innerWidth - 32, 600);
+// sized from the layout viewport and re-sized on resize/rotation (sizing once
+// from innerWidth left a landscape-width canvas overflowing a portrait phone)
+let dpr = window.devicePixelRatio || 1;
+let CW = 600;
 const CH = 130;
-wvCanvas.width  = CW * dpr;
-wvCanvas.height = CH * dpr;
-wvCanvas.style.width  = CW + 'px';
-wvCanvas.style.height = CH + 'px';
 const wc = wvCanvas.getContext('2d');
-wc.scale(dpr, dpr);
+function sizeWave() {
+  dpr = window.devicePixelRatio || 1;
+  CW = Math.min(document.documentElement.clientWidth - 32, 600);
+  wvCanvas.width  = CW * dpr;
+  wvCanvas.height = CH * dpr;
+  wvCanvas.style.width  = CW + 'px';
+  wvCanvas.style.height = CH + 'px';
+  wc.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeWave();
+window.addEventListener('resize', () => { sizeWave(); drawWaveform(); });
 
 // ── Draw waveform (mathematical, normalized)
 function drawWaveform() {
@@ -305,6 +339,18 @@ function drawWaveform() {
   wc.stroke();
 }
 
+// fill from the centre (0) to the value; the thumb is 12px wide, so the
+// thumb's centre travels between 6px and (width - 6px)
+function paintSlider(slider, v) {
+  const pos = `calc(6px + (100% - 12px) * ${(v + 1) / 2})`;
+  const mid = '50%';
+  if (slider.style.setProperty) {           // (absent in the headless test stub)
+    slider.style.setProperty('--lo', v < 0 ? pos : mid);
+    slider.style.setProperty('--hi', v < 0 ? mid : pos);
+  }
+  slider.classList.toggle('zero', Math.abs(v) < 0.005);
+}
+
 // ── Build harmonic rows
 const rowsEl = document.getElementById('harmonicRows');
 const sliders = [];
@@ -332,9 +378,12 @@ for (let h = 0; h < NUM_H; h++) {
   name.className = 'h-name';
   name.textContent = NAMES[h];
 
+  paintSlider(slider, amps[h]);
+
   slider.addEventListener('input', () => {
     amps[h] = parseFloat(slider.value);
     val.textContent = amps[h].toFixed(2);
+    paintSlider(slider, amps[h]);
     drawWaveform();
     syncOscillators();
   });
@@ -368,6 +417,7 @@ function applyPreset(name) {
     amps[h] = Math.max(-1, Math.min(1, preset[h] / peak));
     sliders[h].value = amps[h];
     valSpans[h].textContent = amps[h].toFixed(2);
+    paintSlider(sliders[h], amps[h]);
   }
   drawWaveform();
   syncOscillators();
@@ -379,6 +429,29 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 
 // ── Audio
 let actx = null, masterGain = null, oscNodes = [], playing = false;
+
+// Gain staging. All 16 oscillators start in sine phase and glide in
+// proportion, so the sound's peak is the drawn waveform's peak. Unscaled,
+// every slider at +1 peaked at 3.94 (hard clipping) while the canvas,
+// normalized, showed a clean shape. Scale the partials so the summed
+// peak never passes PEAK_ROOM: a lone sine keeps its level, a sawtooth
+// drops 1.4 dB, and at volume 1 the worst case is 0.6 * 1.5 = 0.9.
+const PART_GAIN = 0.6, PEAK_ROOM = 1.5;
+function wavePeak() {
+  const N = 2048;
+  let peak = 0;
+  for (let i = 0; i < N; i++) {
+    const t = i / N;
+    let v = 0;
+    for (let h = 0; h < NUM_H; h++) {
+      if (amps[h] !== 0) v += amps[h] * Math.sin(2 * Math.PI * (h + 1) * t);
+    }
+    peak = Math.max(peak, Math.abs(v));
+  }
+  return peak;
+}
+function partGain(h, scale) { return amps[h] * PART_GAIN * scale; }
+function waveScale() { return PEAK_ROOM / Math.max(PEAK_ROOM, wavePeak()); }
 
 function ensureAudio() {
   if (actx) return;
@@ -393,24 +466,41 @@ function startAudio() {
   stopAudio();
   if (actx.state === 'suspended') actx.resume();
   const root = parseFloat(document.getElementById('rootSlider').value);
+  const scale = waveScale();
+  // every partial starts on the same sample, 30 ms out: started "now", they
+  // could land in different render quanta, which shifts their phases and moves
+  // the peak off the one waveScale() measured (0.93 to 1.01 seen). Waiting also
+  // clears the old set's 12 ms fade, so a stop then play never stacks two sets
+  // (1.6 peak measured); the 20 ms ramp-in keeps the start click-free.
+  const t = actx.currentTime + 0.03;
   for (let h = 0; h < NUM_H; h++) {
     const osc  = actx.createOscillator();
     const gain = actx.createGain();
     osc.type = 'sine';
     osc.frequency.value = root * (h + 1);
-    gain.gain.value = amps[h] * 0.6;
+    gain.gain.value = 0;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(partGain(h, scale), t + 0.02);
     osc.connect(gain);
     gain.connect(masterGain);
-    osc.start();
+    osc.start(t);
     oscNodes.push({ osc, gain });
   }
   playing = true;
 }
 
+// fade each partial over 12 ms before stopping it (a bare stop clicked); a new
+// set (startAudio) starts after the fade is done
 function stopAudio() {
+  const t = actx ? actx.currentTime : 0;
   for (const { osc, gain } of oscNodes) {
-    try { osc.stop(); } catch(e) {}
-    osc.disconnect(); gain.disconnect();
+    try {
+      gain.gain.cancelScheduledValues(t);
+      gain.gain.setValueAtTime(gain.gain.value, t);
+      gain.gain.linearRampToValueAtTime(0, t + 0.012);
+      osc.stop(t + 0.08);
+    } catch(e) {}
+    osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch(e) {} };
   }
   oscNodes = [];
   playing = false;
@@ -418,23 +508,27 @@ function stopAudio() {
 
 function syncOscillators() {
   if (!playing || !actx) return;
+  // every partial moves with the same time constant, so mid-ramp the
+  // waveform is a blend of two shapes that both peak under PEAK_ROOM
+  const scale = waveScale();
   for (let h = 0; h < NUM_H; h++) {
     if (!oscNodes[h]) continue;
-    oscNodes[h].gain.gain.setTargetAtTime(amps[h] * 0.6, actx.currentTime, 0.02);
+    oscNodes[h].gain.gain.setTargetAtTime(partGain(h, scale), actx.currentTime, 0.02);
   }
 }
 
-document.getElementById('playBtn').addEventListener('click', e => {
-  if (playing) {
-    stopAudio();
-    e.target.textContent = 'play';
-    e.target.classList.remove('playing');
-  } else {
-    startAudio();
-    e.target.textContent = 'stop';
-    e.target.classList.add('playing');
-  }
+const playBtn = document.getElementById('playBtn');
+function setPlayUI() {
+  playBtn.textContent = playing ? 'stop' : 'play';
+  playBtn.classList.toggle('playing', playing);
+}
+playBtn.addEventListener('click', () => {
+  if (playing) stopAudio(); else startAudio();
+  setPlayUI();
 });
+// esc stops; a hidden tab stops too, and the button says so
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && playing) { stopAudio(); setPlayUI(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden && playing) { stopAudio(); setPlayUI(); } });
 
 document.getElementById('rootSlider').addEventListener('input', e => {
   const root = parseFloat(e.target.value);

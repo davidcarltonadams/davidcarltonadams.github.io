@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="layer euclidean rhythms and hear them interfere — bjorklund's algorithm spaces n pulses as evenly as possible across k steps">
+  <meta name="description" content="layer euclidean rhythms and hear them interfere · bjorklund's algorithm spaces n pulses as evenly as possible across k steps">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -21,6 +21,7 @@
       --blue:   #7ab8d4;
       --green:  #88c080;
       --rose:   #c088b8;
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
     }
     body {
       background: var(--bg);
@@ -35,7 +36,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -51,7 +52,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 500px;
@@ -67,7 +68,7 @@
     }
     .layer-row {
       display: grid;
-      grid-template-columns: 10px auto 1fr auto auto;
+      grid-template-columns: 10px auto 1fr auto auto auto;
       gap: 0.45rem 0.6rem;
       align-items: center;
       padding: 0.5rem 0.7rem;
@@ -87,7 +88,7 @@
 
     .layer-info { display: flex; flex-direction: column; gap: 0.22rem; min-width: 0; overflow: hidden; }
     .pname {
-      font-size: 0.51rem; font-style: italic; color: var(--dimmer);
+      font-size: 0.51rem; font-style: italic; color: var(--dim);
       letter-spacing: 0.09em; white-space: nowrap;
       overflow: hidden; text-overflow: ellipsis;
     }
@@ -98,14 +99,14 @@
 
     .pitch-sel {
       font-family: Georgia, serif; font-size: 0.54rem; font-style: italic;
-      color: var(--dim); background: var(--bg2);
+      color: var(--control); background: var(--bg2);
       border: 1px solid var(--border);
       padding: 0.15rem 0.28rem; cursor: pointer; outline: none;
     }
     .btn-sm {
       font-family: Georgia, serif;
       font-size: 0.52rem; letter-spacing: 0.1em; text-transform: lowercase;
-      font-style: italic; color: var(--dim);
+      font-style: italic; color: var(--control);
       background: none; border: 1px solid var(--border);
       padding: 0.28rem 0.55rem; cursor: pointer; white-space: nowrap;
       transition: color 0.13s, border-color 0.13s;
@@ -113,6 +114,21 @@
     .btn-sm:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
     .btn-sm.on    { color: var(--text); border-color: rgba(255,255,255,0.4); }
     .btn-sm.muted { opacity: 0.28; }
+
+    .layer-row.sel { border-color: rgba(255,255,255,0.22); }
+    .rot-wrap { display: flex; gap: 0.15rem; }
+    .rot-btn { padding: 0.2rem 0.4rem; font-style: normal; }
+    .presets {
+      width: 100%; max-width: 500px;
+      display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; justify-content: center;
+    }
+    .presets .plbl { font-size: 0.52rem; font-style: italic; color: var(--dim); letter-spacing: 0.08em; }
+    .presets .plbl i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; vertical-align: middle; }
+    @media (max-width: 480px) {
+      /* phone: pitch and mute move to a second line, so the name has room */
+      .layer-row { grid-template-columns: 10px auto 1fr auto; }
+      .layer-row .pitch-sel { grid-column: 2 / 4; justify-self: start; }
+    }
 
     .transport {
       display: flex; gap: 0.9rem; align-items: center; flex-wrap: wrap;
@@ -139,11 +155,11 @@
 
     .explain-wrap { width: 100%; max-width: 500px; }
     .explain-toggle {
-      font-size: 0.51rem; font-style: italic; color: var(--dimmer);
+      font-size: 0.51rem; font-style: italic; color: var(--control);
       letter-spacing: 0.1em; background: none; border: none;
       font-family: Georgia, serif; cursor: pointer; transition: color 0.13s;
     }
-    .explain-toggle:hover { color: var(--dim); }
+    .explain-toggle:hover { color: var(--text); }
     .explain-body {
       display: none; margin-top: 0.9rem;
       font-size: 0.63rem; line-height: 1.9; color: var(--dim);
@@ -169,7 +185,7 @@
 <div class="header">
   <h1 class="title">euclidean</h1>
   <p class="sub">
-    distribute n pulses as evenly as possible across k equal steps —<br>
+    distribute n pulses as evenly as possible across k equal steps ·<br>
     the same algorithm euclid used to find greatest common divisors
   </p>
 </div>
@@ -177,6 +193,10 @@
 <canvas id="cv"></canvas>
 
 <div class="layers-wrap" id="layersWrap"></div>
+
+<div class="presets" id="presets">
+  <span class="plbl" id="presetLbl">fill layer</span>
+</div>
 
 <div class="transport">
   <div class="bpm-group">
@@ -189,9 +209,9 @@
 <div class="explain-wrap">
   <button class="explain-toggle" onclick="toggleExplain()">? what is this</button>
   <div class="explain-body" id="explainBody">
-    <p>The <strong>Euclidean rhythm</strong> E(n,k) distributes n onsets as evenly as possible across k equal time slots. Bjorklund's construction for it is Euclid's greatest-common-divisor algorithm in disguise — Godfried Toussaint showed in 2005 that the patterns it produces are the ones world rhythm already uses. (Toussaint writes the pair the other way round, as E(k,n).)</p>
-    <p>These patterns appear independently wherever humans distribute rhythm evenly over a cycle. <strong>E(3,8)</strong> is the <em>tresillo</em> of Cuban and Brazilian music. <strong>E(5,8)</strong> is the <em>cinquillo</em>. <strong>E(3,7)</strong> is the Bulgarian <em>ruchenitza</em>. <strong>E(4,9)</strong> is the Turkish <em>aksak</em>. <strong>E(5,16)</strong> is the Brazilian <em>bossa nova</em>. Plenty of other pairs make good rhythms without carrying a name.</p>
-    <p>Stack multiple layers to create <strong>polyrhythmic interference patterns</strong>. Full coincidence — all layers landing on beat 1 simultaneously — recurs every LCM(k₁, k₂, …) steps. Try E(3,8) + E(5,8) + E(7,12) and listen for when the grid snaps back.</p>
+    <p>The <strong>Euclidean rhythm</strong> E(n,k) distributes n onsets as evenly as possible across k equal time slots. Bjorklund's construction for it is Euclid's greatest-common-divisor algorithm in disguise: Godfried Toussaint showed in 2005 that the patterns it produces are the ones world rhythm already uses. (Toussaint swaps the letters, E(k,n), but the onsets still come first: the tresillo is E(3,8) in both.)</p>
+    <p>These patterns appear independently wherever humans distribute rhythm evenly over a cycle. <strong>E(3,8)</strong> is the <em>tresillo</em> of Cuban and Brazilian music. <strong>E(5,8)</strong> is the <em>cinquillo</em>. <strong>E(3,7)</strong> is the Bulgarian <em>ruchenitza</em>. <strong>E(4,9)</strong> is the Turkish <em>aksak</em>. <strong>E(5,16)</strong> is the Brazilian <em>bossa nova</em>. Plenty of other pairs make good rhythms without carrying a name. The presets fill whichever layer you last touched, and ◂ ▸ rotate a layer's start.</p>
+    <p>Stack multiple layers to create <strong>polyrhythmic interference patterns</strong>. Full coincidence, all layers landing on beat 1 together, recurs every LCM(k₁, k₂, …) steps. Try E(3,8) + E(5,8) + E(7,12) and listen for when the grid snaps back.</p>
     <span class="math">E(3,8) = [●○○●○○●○]  tresillo · Cuba, Brazil, West Africa</span>
     <span class="math">E(5,8) = [●○●●○●●○]  cinquillo · Cuba</span>
     <span class="math">E(3,7) = [●○●○●○○]  ruchenitza · Bulgaria</span>
@@ -274,14 +294,21 @@ const layers = [
   { n:4, k:12, pitchIdx:4, muted:false },
   { n:7, k:16, pitchIdx:5, muted:false },
 ];
-layers.forEach(L => { L.pattern = pattern(L.n, L.k); L.step = -1; });
+// rot = the visitor's own rotation on top of the traditional one, in steps,
+// positive = later (the pattern moves clockwise on the ring)
+function rotated(pat, r) {
+  const k = pat.length; r = ((r % k) + k) % k;
+  return r ? [...pat.slice(k - r), ...pat.slice(0, k - r)] : pat;
+}
+layers.forEach(L => { L.rot = 0; L.pattern = pattern(L.n, L.k); L.step = -1; });
+let selLayer = 0;   // the layer a preset fills
 
 let flashes     = layers.map(L => new Float32Array(L.k));
 let centerFlash = 0;
 
 function resetLayer(li) {
   const L = layers[li];
-  L.pattern = pattern(L.n, L.k);
+  L.pattern = rotated(pattern(L.n, L.k), L.rot);
   L.step = -1;
   flashes[li] = new Float32Array(L.k);
 }
@@ -364,6 +391,13 @@ function doTick(tick, when) {
 }
 
 function schedule() {
+  // stall resync: a blocked main thread would hand every missed tick to Web
+  // Audio in the past, fired as one clump. Jump ahead and count the skipped
+  // ticks, so every layer stays aligned to the shared grid.
+  if (nextTickT < ax.currentTime - 0.05) {
+    globalTick += Math.ceil((ax.currentTime + 0.02 - nextTickT) / tickSec());
+    nextTickT = ax.currentTime + 0.02;
+  }
   while (nextTickT < ax.currentTime + LOOKAHEAD) {
     doTick(globalTick, nextTickT);
     nextTickT += tickSec();
@@ -503,6 +537,7 @@ function onNKChange(li) {
   n = Math.max(1, Math.min(k, n));
   layers[li].n = n;
   layers[li].k = k;
+  layers[li].rot = 0;
   document.getElementById(`n${li}`).value = n;
   document.getElementById(`k${li}`).value = k;
   resetLayer(li);
@@ -515,8 +550,10 @@ function refreshLayerUI(li) {
   const col       = `rgb(${R},${G},${B})`;
   const nm        = pname(L.n, L.k);
 
+  // a traditional name belongs to one rotation, so it shows only at rot 0
   const nameEl = document.getElementById(`pname${li}`);
-  if (nameEl) nameEl.textContent = nm ? `E(${L.n},${L.k}) · ${nm}` : `E(${L.n},${L.k})`;
+  if (nameEl) nameEl.textContent = L.rot ? `E(${L.n},${L.k}) · rotated ${L.rot}`
+                                         : nm ? `E(${L.n},${L.k}) · ${nm}` : `E(${L.n},${L.k})`;
 
   const dotsEl = document.getElementById(`pdots${li}`);
   if (dotsEl) dotsEl.innerHTML = L.pattern.map(v =>
@@ -574,7 +611,21 @@ function buildUI() {
       muteBtn.classList.toggle('muted', L.muted);
     };
 
-    row.append(sw, nkWrap, info, sel, muteBtn);
+    // rotate: the control a Euclidean sequencer user reaches for first
+    const rotWrap = document.createElement('div');
+    rotWrap.className = 'rot-wrap';
+    for (const [lbl, d, tip] of [['◂', -1, 'rotate earlier'], ['▸', 1, 'rotate later']]) {
+      const b = document.createElement('button');
+      b.className = 'btn-sm rot-btn';
+      b.textContent = lbl; b.title = tip; b.setAttribute('aria-label', tip);
+      b.onclick = () => rotateLayer(li, d);
+      rotWrap.appendChild(b);
+    }
+
+    row.append(sw, nkWrap, info, rotWrap, sel, muteBtn);
+    row.id = `row${li}`;
+    row.addEventListener('pointerdown', () => selectLayer(li));
+    row.addEventListener('focusin', () => selectLayer(li));
     wrap.appendChild(row);
     refreshLayerUI(li);
 
@@ -583,11 +634,50 @@ function buildUI() {
   });
 }
 
+function rotateLayer(li, d) {
+  const L = layers[li];
+  L.rot = (((L.rot + d) % L.k) + L.k) % L.k;
+  resetLayer(li);
+  refreshLayerUI(li);
+}
+
+function selectLayer(li) {
+  selLayer = li;
+  layers.forEach((_, j) => document.getElementById(`row${j}`)?.classList.toggle('sel', j === li));
+  const [R, G, B] = COLORS[li];
+  document.getElementById('presetLbl').innerHTML = `fill layer <i style="background:rgb(${R},${G},${B})"></i>`;
+}
+
+// Named rhythms, one tap each. They fill the selected layer; the traditional
+// rotation comes from ROT, so the name and the played pattern agree.
+const PRESETS = [
+  ['tresillo', 3, 8], ['cinquillo', 5, 8], ['bossa nova', 5, 16],
+  ['samba', 7, 16], ['aksak', 4, 9], ['ruchenitza', 3, 7],
+];
+function applyPreset(n, k) {
+  document.getElementById(`k${selLayer}`).value = k;
+  document.getElementById(`n${selLayer}`).value = n;
+  onNKChange(selLayer);
+}
+function buildPresets() {
+  const wrap = document.getElementById('presets');
+  for (const [name, n, k] of PRESETS) {
+    const b = document.createElement('button');
+    b.className = 'btn-sm';
+    b.textContent = name;
+    b.title = `E(${n},${k})`;
+    b.onclick = () => applyPreset(n, k);
+    wrap.appendChild(b);
+  }
+}
+
 function toggleExplain() {
   document.getElementById('explainBody').classList.toggle('open');
 }
 
 buildUI();
+buildPresets();
+selectLayer(0);
 
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;

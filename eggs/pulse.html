@@ -16,6 +16,7 @@
       --text:   #ccc8d0;
       --dim:    rgba(204,200,208,0.40);
       --dimmer: rgba(204,200,208,0.17);
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
     }
@@ -32,7 +33,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -48,7 +49,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 520px;
@@ -106,7 +107,7 @@
     }
     button {
       background: transparent;
-      color: var(--dimmer);
+      color: var(--control);
       border: 1px solid var(--border);
       padding: 0.32rem 0.85rem;
       font-family: Georgia, serif;
@@ -116,8 +117,12 @@
       cursor: pointer;
       transition: color 0.15s, border-color 0.15s;
     }
-    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
 
+    .corners {
+      font-size: 0.53rem; letter-spacing: 0.08em; line-height: 1.8;
+      color: var(--dim); font-style: italic; text-align: center; max-width: 520px;
+    }
     .axes {
       display: flex;
       gap: 2.5rem;
@@ -133,7 +138,7 @@
 
 <div class="header">
   <h1 class="title">pulse lattice</h1>
-  <p class="sub">pitch ratios are rhythm ratios. the fifth's node sounds a 3∶2 and pulses three times to the root's once — pitch folds the octaves away, rhythm keeps them. click any node to activate it. the lattice is the same object in both domains.</p>
+  <p class="sub">pitch ratios are rhythm ratios. the fifth's node sounds a 3∶2 and pulses three times to the root's once · pitch folds the octaves away, rhythm keeps them. click any node to activate it. the lattice is the same object in both domains.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -178,6 +183,7 @@
   <span>→ pulse × 3 &nbsp;(perfect fifth, 3∶2)</span>
   <span>↑ pulse × 5 &nbsp;(major third, 5∶4)</span>
 </div>
+<p class="corners">the corners leave the range of rhythm: at 60 bpm the top-right node pulses 45 times a second, too fast to count, so it is heard as a 45 Hz buzz · the bottom-left pulses once every 45 beats</p>
 
 <script>
 // ── Utilities
@@ -230,17 +236,22 @@ const c = canvas.getContext('2d');
 const NR = 27; // node radius
 let W, H, SX, SY, GX, GY; // GX/GY = left/top edge of the grid
 
+// The active-node glow reaches NR * 2.4 = 65 px, so the grid keeps that much
+// margin top and bottom (and at the sides when the canvas is wide enough);
+// the top row's glow used to be cut by the canvas edge.
+const GLOW = Math.ceil(NR * 2.4) + 2;
 function layout() {
   const dpr = window.devicePixelRatio || 1;
   W = Math.min(window.innerWidth - 32, 620);
-  H = 280;
+  H = 300;
   canvas.width  = W * dpr;
   canvas.height = H * dpr;
   canvas.style.width  = W + 'px';
   canvas.style.height = H + 'px';
   c.setTransform(dpr, 0, 0, dpr, 0, 0); // resetting width wipes the transform
-  SX = Math.floor((W - 2 * NR - 40) / (COLS - 1));
-  SY = Math.floor((H - 2 * NR - 40) / (ROWS - 1));
+  const mx = W >= 500 ? GLOW : NR + 20;   // a phone keeps its node spacing
+  SX = Math.floor((W - 2 * mx) / (COLS - 1));
+  SY = Math.floor((H - 2 * GLOW) / (ROWS - 1));
   GX = (W - SX * (COLS - 1)) / 2;
   GY = (H - SY * (ROWS - 1)) / 2;
 }

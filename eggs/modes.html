@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="play the modes two ways — one collection with a moving tonic, or one tonic with a changing collection — on a key-aware keyboard.">
+  <meta name="description" content="play the modes two ways · one collection with a moving tonic, or one tonic with a changing collection · on a key-aware keyboard.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -15,8 +15,10 @@
       --bg:      #070809;
       --bg2:     #0e0f12;
       --text:    #ccc8d0;
-      --dim:     rgba(204,200,208,0.38);
+      --dim:     rgba(204,200,208,0.40);
       --dimmer:  rgba(204,200,208,0.18);
+      /* anything clickable, and the lines that carry the explanation: 4.55:1 */
+      --control: rgba(204,200,208,0.58);
       --border:  rgba(255,255,255,0.07);
       --accent:  #a09acc;
     }
@@ -43,7 +45,7 @@
     .sub {
       font-size: 0.58rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.35rem;
     }
@@ -61,7 +63,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.65rem;
       letter-spacing: 0.09em;
@@ -84,7 +86,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dimmer);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.62rem;
       letter-spacing: 0.06em;
@@ -108,7 +110,7 @@
     .reading-note {
       font-size: 0.54rem;
       letter-spacing: 0.1em;
-      color: var(--dimmer);
+      color: var(--control);
       font-style: italic;
       text-align: center;
       max-width: 420px;
@@ -205,7 +207,7 @@
     .mode-desc {
       font-size: 0.6rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--control);
       font-style: italic;
       line-height: 1.7;
     }
@@ -218,23 +220,42 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* phone: fit all 14 white keys to the width. The keys take touchstart
+       with preventDefault (no double fire), so a min-width scroller could
+       never be swiped and its top third was out of reach. */
+    @media (max-width: 540px) {
+      .keyboard { min-width: 0; }
+      .key-label { font-size: 0.5rem; letter-spacing: 0; }
+      .degree-label { font-size: 0.44rem; }
+    }
+
     .hint {
       font-size: 0.54rem;
       letter-spacing: 0.12em;
-      color: rgba(204,200,208,0.38);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
+    }
+
+    /* tempo slider: a page-coloured thumb instead of the browser's blue */
+    #tempo-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+      background: var(--accent); cursor: pointer;
+    }
+    #tempo-slider::-moz-range-thumb {
+      width: 12px; height: 12px; border: 0; border-radius: 50%;
+      background: var(--accent); cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:#332;text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
+<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:var(--control);text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}</style>
 <a href="../eggs.html" class="eggs-back">← eggs</a>
 
 <div class="header">
   <h1 class="title">modes</h1>
-  <p class="sub">scales built on each degree — same notes, different gravity</p>
+  <p class="sub">scales built on each degree · same notes, different gravity</p>
 </div>
 
 <div class="scale-tabs" id="scale-tabs"></div>
@@ -254,8 +275,8 @@
 </div>
 
 <div class="mode-info" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;justify-content:center;margin-top:0.25rem">
-  <button id="auto-play-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--dim);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">▶ play scale</button>
-  <button id="silence-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--dim);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">◼ silence</button>
+  <button id="auto-play-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--control);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">▶ play scale</button>
+  <button id="silence-btn" style="background:none;border:1px solid var(--border);border-radius:2px;color:var(--control);font-family:Georgia,serif;font-size:0.68rem;letter-spacing:0.09em;padding:0.3rem 1rem;cursor:pointer;transition:color .12s,border-color .12s">◼ silence</button>
   <div style="display:flex;align-items:center;gap:0.5rem">
     <span style="font-size:0.58rem;color:var(--dimmer);font-style:italic;letter-spacing:0.08em">tempo</span>
     <input type="range" id="tempo-slider" min="40" max="220" value="90"
@@ -276,39 +297,39 @@ const SCALES = {
     label: 'major modes',
     intervals: [2,2,1,2,2,2,1],
     modes: [
-      { name: 'ionian',     start: 0, desc: 'the major scale — bright, stable, resolved' },
-      { name: 'dorian',     start: 1, desc: 'minor with a raised 6th — jazz and folk, soulful and slightly bright' },
-      { name: 'phrygian',   start: 2, desc: 'minor with a lowered 2nd — dark, Iberian, flamenco' },
-      { name: 'lydian',     start: 3, desc: 'major with a raised 4th — dreamy, floating, Debussy and film scores' },
-      { name: 'mixolydian', start: 4, desc: 'major with a lowered 7th — rock, blues, dominant seventh' },
-      { name: 'aeolian',    start: 5, desc: 'the natural minor — melancholic, unresolved, dark' },
-      { name: 'locrian',    start: 6, desc: 'diminished root, tritone fifth — unstable, rare in tonal practice' },
+      { name: 'ionian',     start: 0, desc: 'the major scale · bright, stable, resolved' },
+      { name: 'dorian',     start: 1, desc: 'minor with a raised 6th · jazz and folk, soulful and slightly bright' },
+      { name: 'phrygian',   start: 2, desc: 'minor with a lowered 2nd · dark, Iberian, flamenco' },
+      { name: 'lydian',     start: 3, desc: 'major with a raised 4th · dreamy, floating, Debussy and film scores' },
+      { name: 'mixolydian', start: 4, desc: 'major with a lowered 7th · rock, blues, dominant seventh' },
+      { name: 'aeolian',    start: 5, desc: 'the natural minor · melancholic, unresolved, dark' },
+      { name: 'locrian',    start: 6, desc: 'diminished tonic triad, tritone fifth · unstable, rare in tonal practice' },
     ],
   },
   melodicMinor: {
     label: 'melodic minor modes',
     intervals: [2,1,2,2,2,2,1],
     modes: [
-      { name: 'melodic minor',        start: 0, desc: 'minor with raised 6th and 7th — Bach, jazz, both minor and major simultaneously' },
-      { name: 'dorian ♭2',           start: 1, desc: 'phrygian with major 6th — used in fusion and jazz harmony' },
-      { name: 'lydian augmented',     start: 2, desc: 'lydian with raised 5th — ethereal, unmoored from gravity' },
-      { name: 'lydian dominant',      start: 3, desc: 'lydian with lowered 7th — tritone substitution territory, jazz IV chord' },
-      { name: 'mixolydian ♭6',       start: 4, desc: 'major with lowered 6th and 7th — Hindu scale, bittersweet' },
-      { name: 'locrian ♮2',          start: 5, desc: 'half-diminished, raised 2nd — the m7♭5 chord, jazz and post-bop' },
-      { name: 'altered (super-locrian)', start: 6, desc: 'all tensions lowered/raised — the dominant altered scale; maximum tension' },
+      { name: 'melodic minor',        start: 0, desc: 'minor with raised 6th and 7th · Bach, jazz, both minor and major simultaneously' },
+      { name: 'dorian ♭2',           start: 1, desc: 'phrygian with major 6th · used in fusion and jazz harmony' },
+      { name: 'lydian augmented',     start: 2, desc: 'lydian with raised 5th · ethereal, unmoored from gravity' },
+      { name: 'lydian dominant',      start: 3, desc: 'lydian with lowered 7th · tritone substitution territory, jazz IV chord' },
+      { name: 'mixolydian ♭6',       start: 4, desc: 'major with lowered 6th and 7th · Hindu scale, bittersweet' },
+      { name: 'locrian ♮2',          start: 5, desc: 'half-diminished, raised 2nd · the m7♭5 chord, jazz and post-bop' },
+      { name: 'altered (super-locrian)', start: 6, desc: 'all tensions lowered/raised · the dominant altered scale; maximum tension' },
     ],
   },
   harmonicMinor: {
     label: 'harmonic minor modes',
     intervals: [2,1,2,2,1,3,1],
     modes: [
-      { name: 'harmonic minor',          start: 0, desc: 'natural minor with raised 7th — classical cadential motion; augmented second is the signature' },
-      { name: 'locrian ♮6',             start: 1, desc: 'half-dim with raised 6th — unusual, minor i over diminished vii' },
-      { name: 'ionian ♯5',              start: 2, desc: 'major with raised 5th — augmented tonic, surreal brightness' },
-      { name: 'dorian ♯4',              start: 3, desc: 'dorian with raised 4th — Romanian scale, Bartók territory' },
-      { name: 'phrygian dominant',       start: 4, desc: 'phrygian with major 3rd — flamenco, Jewish traditional, Spanish cadence' },
-      { name: 'lydian ♯2',              start: 5, desc: 'lydian with raised 2nd — exotic, rare, colorful' },
-      { name: 'altered diminished (♭♭7)', start: 6, desc: 'super-locrian with ♭♭7 — outlines the full diminished-7th chord; tense, leading-tone saturated' },
+      { name: 'harmonic minor',          start: 0, desc: 'natural minor with raised 7th · classical cadential motion; augmented second is the signature' },
+      { name: 'locrian ♮6',             start: 1, desc: 'half-diminished tonic with a major 6th · the ii of harmonic minor' },
+      { name: 'ionian ♯5',              start: 2, desc: 'major with raised 5th · augmented tonic, surreal brightness' },
+      { name: 'dorian ♯4',              start: 3, desc: 'dorian with raised 4th · Romanian scale, Bartók territory' },
+      { name: 'phrygian dominant',       start: 4, desc: 'phrygian with major 3rd · flamenco, Jewish traditional, Spanish cadence' },
+      { name: 'lydian ♯2',              start: 5, desc: 'lydian with raised 2nd · exotic, rare, colorful' },
+      { name: 'altered diminished (♭♭7)', start: 6, desc: 'super-locrian with ♭♭7 · outlines the full diminished-7th chord; tense, leading-tone saturated' },
     ],
   },
   pentatonic: {
@@ -317,26 +338,26 @@ const SCALES = {
     modes: [
       // rotations of 2·2·3·2·3, in order. names checked against the interval
       // pattern each rotation actually produces, not against its neighbours.
-      { name: 'major pentatonic',  start: 0, desc: '2·2·3·2·3 — folk, blues, rock, gospel worldwide' },
-      { name: 'Egyptian',          start: 1, desc: '2·3·2·3·2 — sus pentatonic, suspended feel, no third' },
-      { name: 'blues minor',       start: 2, desc: '3·2·3·2·2 — man gong; the darkest rotation' },
-      { name: 'Yo (Japanese)',     start: 3, desc: '2·3·2·2·3 — ritsusen, the Japanese Yo scale; also called blues major' },
-      { name: 'minor pentatonic',  start: 4, desc: '3·2·2·3·2 — the blues scale foundation; rock guitar, riffs, calls' },
+      { name: 'major pentatonic',  start: 0, desc: '2·2·3·2·3 · folk, blues, rock, gospel worldwide' },
+      { name: 'Egyptian',          start: 1, desc: '2·3·2·3·2 · sus pentatonic, suspended feel, no third' },
+      { name: 'blues minor',       start: 2, desc: '3·2·3·2·2 · man gong; the darkest rotation' },
+      { name: 'Yo (Japanese)',     start: 3, desc: '2·3·2·2·3 · ritsusen, the Japanese Yo scale; also called blues major' },
+      { name: 'minor pentatonic',  start: 4, desc: '3·2·2·3·2 · the blues scale foundation; rock guitar, riffs, calls' },
     ],
   },
   wholetone: {
     label: 'whole tone',
     intervals: [2,2,2,2,2,2],
     modes: [
-      { name: 'whole tone', start: 0, desc: 'six equal steps — all augmented chords, ambiguous, Debussy, dreamlike — only two transpositions exist' },
+      { name: 'whole tone', start: 0, desc: 'six equal steps · all augmented chords, ambiguous, Debussy, dreamlike · only two transpositions exist' },
     ],
   },
   diminished: {
     label: 'diminished',
     intervals: [2,1,2,1,2,1,2,1],
     modes: [
-      { name: 'diminished (whole-half)', start: 0, desc: 'symmetric 8-note scale — whole-half pattern; over fully-diminished chords; jazz, jazz, jazz' },
-      { name: 'diminished (half-whole)', start: 1, desc: 'half-whole pattern — over dominant 7♭9 chords; the "dominant diminished"' },
+      { name: 'diminished (whole-half)', start: 0, desc: 'symmetric 8-note scale · whole-half pattern; over fully-diminished chords; jazz, jazz, jazz' },
+      { name: 'diminished (half-whole)', start: 1, desc: 'half-whole pattern · over dominant 7♭9 chords; the "dominant diminished"' },
     ],
   },
 };
@@ -389,6 +410,143 @@ function noteName(pc, flats) {
   if (flats === undefined) flats = useFlats();
   const p = ((pc % 12) + 12) % 12;
   return (flats ? FLAT_NAMES : SHARP_NAMES)[p];
+}
+
+// ── Letter spelling for seven-note collections ────────────
+// A seven-note scale uses each letter once: degree k of the scale takes the
+// letter k steps above the tonic's, and its accidental is whatever that letter
+// needs (so A harmonic minor ends G♯, never A♭). The 5-, 6- and 8-note
+// families are spelled by otherSpelling() below; the single-table fifths
+// heuristic above names the keys outside the scale.
+const LETTERS   = ['C','D','E','F','G','A','B'];
+const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
+const ACC_SIGN  = ['𝄫','♭','','♯','𝄪'];            // index = accidental + 2
+const MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11];         // degree numbers measure against major
+
+function accFor(pc, letter) {                        // semitones from the natural letter, −6..+5
+  let a = (((pc - LETTER_PC[letter]) % 12) + 12) % 12;
+  return a > 6 ? a - 12 : a;
+}
+
+// Spell pcs (tonic first) from tonic letter L. null if a degree would need
+// more than a double accidental.
+function spellFrom(pcs, L) {
+  const out = [];
+  for (let k = 0; k < pcs.length; k++) {
+    const li = (L + k) % 7, a = accFor(pcs[k], li);
+    if (a < -2 || a > 2) return null;
+    out.push({ pc: pcs[k], letter: li, acc: a, name: LETTERS[li] + ACC_SIGN[a + 2] });
+  }
+  return out;
+}
+
+// A root the button names with a plain letter keeps it: C altered diminished
+// is C D♭ E♭ F♭ G♭ A♭ B𝄫, never B♯ C♯ D♯ E F♯ G♯ A. Otherwise, of the tonic's
+// enharmonic names (at most one accidental), keep the spelling with the
+// fewest accidentals overall; a tie goes to the root button's name.
+function bestSpelling(pcs, chooserPc) {
+  const named = ROOT_NAMES[chooserPc];
+  if (named.length === 1) {
+    const sp = spellFrom(pcs, LETTERS.indexOf(named));
+    if (sp) return sp;
+  }
+  const prefer = named[0];
+  let best = null, bestCost = Infinity;
+  for (let L = 0; L < 7; L++) {
+    if (Math.abs(accFor(pcs[0], L)) > 1) continue;
+    const sp = spellFrom(pcs, L);
+    if (!sp) continue;
+    const cost = sp.reduce((sum, x) => sum + Math.abs(x.acc), 0) + (LETTERS[L] === prefer ? 0 : 0.5);
+    if (cost < bestCost) { bestCost = cost; best = sp; }
+  }
+  return best;
+}
+
+// The 5-, 6- and 8-note families have no one-letter-per-degree rule. Each
+// tone takes the name its usual degree implies (whole tone 1 2 3 ♯4 ♯5 ♭7,
+// whole-half 1 2 ♭3 4 ♭5 ♭6 6 7), with one accidental at most; a tone that
+// would need a double takes its other name. A black-key tonic takes whichever
+// of its two names spells the scale more plainly. degreeLabel() reads the
+// number back off each name, so name and label always agree.
+function otherSpelling() {
+  const flats = useFlats();
+  const tonic = currentTonic();
+  const pcs = getScaleNotes().slice(0, SCALES[currentScale].intervals.length);
+  const tableL = LETTERS.indexOf(noteName(tonic, flats)[0]);
+  const odd = new Set(['E♯', 'B♯', 'C♭', 'F♭']);
+  let best = null, bestCost = Infinity;
+  for (let tl = 0; tl < 7; tl++) {
+    const ta = accFor(tonic, tl);
+    if (Math.abs(ta) > 1 || (ta !== 0 && accFor(tonic, tableL) === 0)) continue;
+    let cost = tl === tableL ? 0 : 0.5;
+    const sp = pcs.map((pc, i) => {
+      const m = i === 0 ? [null, null, '1'] : /^(♭|♯)?(\d)/.exec(usualDegree(pc) || '');
+      let li = m ? (tl + +m[2] - 1) % 7 : -1;
+      if (li < 0 || Math.abs(accFor(pc, li)) > 1) {
+        cost += 2;
+        li = [0, 1, 2, 3, 4, 5, 6].filter(l => l !== tl && Math.abs(accFor(pc, l)) <= 1)
+          .sort((a, b) => Math.abs(accFor(pc, a)) - Math.abs(accFor(pc, b)))[0];
+      }
+      const a = accFor(pc, li), name = LETTERS[li] + ACC_SIGN[a + 2];
+      cost += Math.abs(a) + (odd.has(name) ? 1 : 0);
+      return { pc, letter: li, acc: a, name };
+    });
+    if (cost < bestCost) { bestCost = cost; best = sp; }
+  }
+  return best;
+}
+
+// The current scale, spelled: {pc, letter, acc, name} from the tonic up. In
+// the relative reading the parent collection is spelled once from its root and
+// every mode reuses those names, so the seven modes of one collection really
+// do share notes.
+function scaleSpelling() {
+  const sc = SCALES[currentScale];
+  const n = sc.intervals.length;
+  if (n !== 7) return otherSpelling();
+  const run = (start, root) => {
+    const pcs = []; let cum = 0;
+    for (let i = 0; i < 7; i++) { pcs.push((root + cum) % 12); cum += sc.intervals[(start + i) % 7]; }
+    return pcs;
+  };
+  const start = sc.modes[currentModeIdx].start;
+  if (reading === 'relative') {
+    const parent = bestSpelling(run(0, currentRoot % 12), currentRoot % 12);
+    return parent && parent.slice(start).concat(parent.slice(0, start));
+  }
+  return bestSpelling(run(start, currentRoot % 12), currentRoot % 12);
+}
+
+// Degree label with its quality, measured against the major scale on the
+// same tonic: dorian reads 1 2 ♭3 4 5 6 ♭7. The number is the letter distance
+// from the tonic's name to this note's name, so label and name agree.
+function degreeLabel(pc, sp) {
+  const tonic = currentTonic();
+  const semis = (((pc - tonic) % 12) + 12) % 12;
+  if (sp) {
+    const x = sp.find(y => y.pc === pc);
+    if (!x) return null;
+    const k = ((x.letter - sp[0].letter) % 7 + 7) % 7;
+    const d = semis - MAJOR_STEPS[k];
+    const dd = d > 6 ? d - 12 : d < -6 ? d + 12 : d;
+    return ACC_SIGN[dd + 2] + (k + 1);
+  }
+  return usualDegree(pc);
+}
+
+// The usual name of a degree in the 5-, 6- and 8-note families, read off the
+// semitones: whole tone reads ♯4 ♯5, half-whole ♯2 ♯4, the rest ♭3 ♭5 ♭6.
+function usualDegree(pc) {
+  const tonic = currentTonic();
+  const semis = (((pc - tonic) % 12) + 12) % 12;
+  const set = getScaleNotesSet();
+  if (!set.has(pc)) return null;
+  const has = x => set.has((tonic + x) % 12);
+  const augmented = has(6) && !has(5);               // whole tone, half-whole: ♯4 ♯5 read sharp
+  if (semis === 3 && has(4)) return '♯2';
+  if (semis === 6) return augmented ? '♯4' : '♭5';
+  if (semis === 8 && augmented && !has(7)) return '♯5';
+  return DEGREE_NAMES[semis];
 }
 
 // ── Tonic ─────────────────────────────────────────────────
@@ -513,22 +671,6 @@ function getScaleNotesSet() { return new Set(getScaleNotes()); }
 // Degree names for scale steps
 const DEGREE_NAMES = ['1','♭2','2','♭3','3','4','♯4/♭5','5','♭6','6','♭7','7'];
 
-function degreeInScale(semitone) {
-  const sc = SCALES[currentScale];
-  const mode = sc.modes[currentModeIdx];
-  const n = sc.intervals.length;
-  const tonic = currentTonic();
-  let cum = 0;
-  const steps = [];
-  for (let i = 0; i < n; i++) {
-    const idx = (mode.start + i) % n;
-    steps.push((cum + tonic) % 12);
-    cum += sc.intervals[idx];
-  }
-  const pos = steps.indexOf((semitone + 12) % 12);
-  return pos >= 0 ? (pos + 1) : null;
-}
-
 // ── Build UI ──────────────────────────────────────────────
 // (the scale-family tabs are built by buildModeInfo, which owns #scale-tabs)
 
@@ -579,25 +721,32 @@ function buildKeyboard() {
   const kb = document.getElementById('keyboard');
   kb.innerHTML = '';
 
-  // Two octaves: 14 white keys, black keys as absolute-positioned overlays
+  // Two octaves at true pitch, C4 to B5: C is always a white key, whatever the
+  // root. The scale is shown by highlighting its pitch classes, and every
+  // scale tone sits inside the range (tonic 0..11 plus an octave ≤ 23).
   const whiteKeys = [0,2,4,5,7,9,11,12,14,16,17,19,21,23]; // semitones above C4
   const whiteCount = whiteKeys.length;
   const keyW = 100 / whiteCount;
   const flats = useFlats(); // decided once per build so every label agrees
+  const sp = scaleSpelling();
+  const nameOf = semi => {
+    const pc = semi % 12, hit = sp && sp.find(x => x.pc === pc);
+    return hit ? hit.name : noteName(pc, flats);
+  };
 
   // White keys first
   whiteKeys.forEach((semi, wi) => {
     const div = document.createElement('div');
     div.className = 'key white';
-    div.dataset.semi = semi + currentRoot;
+    div.dataset.semi = semi;
     div.style.width = keyW + '%';
     div.style.left = (wi * keyW) + '%';
     div.style.position = 'absolute';
     div.style.height = '100%';
 
-    div.innerHTML = `<span class="key-label">${noteName(semi + currentRoot, flats)}</span>`;
-    div.addEventListener('mousedown', () => playNote(semi + currentRoot));
-    div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi + currentRoot); }, {passive: false});
+    div.innerHTML = `<span class="key-label">${nameOf(semi)}</span>`;
+    div.addEventListener('mousedown', () => playNote(semi));
+    div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi); }, {passive: false});
     kb.appendChild(div);
   });
 
@@ -608,13 +757,13 @@ function buildKeyboard() {
     const semi = parseInt(semiStr);
     const div = document.createElement('div');
     div.className = 'key black';
-    div.dataset.semi = semi + currentRoot;
+    div.dataset.semi = semi;
     const leftPct = (leftWi + 1) * keyW - keyW * 0.29;
     div.style.left = leftPct + '%';
     div.style.width = keyW * 0.58 + '%';
-    div.innerHTML = `<span class="key-label" style="margin-top:4px">${noteName(semi + currentRoot, flats)}</span>`;
-    div.addEventListener('mousedown', () => playNote(semi + currentRoot));
-    div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi + currentRoot); }, {passive: false});
+    div.innerHTML = `<span class="key-label" style="margin-top:4px">${nameOf(semi)}</span>`;
+    div.addEventListener('mousedown', () => playNote(semi));
+    div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi); }, {passive: false});
     kb.appendChild(div);
   }
 
@@ -624,6 +773,7 @@ function buildKeyboard() {
 function updateKeyVisuals() {
   const scaleSet = getScaleNotesSet();
   const rootPc = currentTonic();
+  const sp = scaleSpelling();
 
   document.querySelectorAll('.key').forEach(k => {
     const semi = parseInt(k.dataset.semi);
@@ -641,7 +791,7 @@ function updateKeyVisuals() {
     const existingDeg = k.querySelector('.degree-label');
     if (existingDeg) existingDeg.remove();
     if (inScale || isRoot) {
-      const deg = degreeInScale(pc);
+      const deg = degreeLabel(pc, sp);
       if (deg !== null) {
         const d = document.createElement('span');
         d.className = 'degree-label';
@@ -686,9 +836,12 @@ function buildModeInfo() {
     steps.push(c);
   }
   const flats = useFlats();
+  const sp = scaleSpelling();
+  const names = sp ? sp.map(x => x.name).concat(sp[0].name)
+                   : getScaleNotes().map(s => noteName(s, flats));
   document.getElementById('intervals-display').textContent =
     sc.intervals.slice(mode.start).concat(sc.intervals.slice(0, mode.start)).join(' · ') +
-    '  →  ' + getScaleNotes().map(s => noteName(s, flats)).join(' ');
+    '  →  ' + names.join(' ');
 
   // Add mode selector buttons below scale tabs
   if (sc.modes.length > 1) {

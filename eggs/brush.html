@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="paint a spectrum and hear it. 169 sines, 24 per octave, seven octaves from 55 Hz. a narrow stroke is a tone, a wide one is a noise band. play the painting from a MIDI keyboard, the computer keyboard, or the strip on screen.">
+  <meta name="description" content="paint a spectrum and hear it. 169 sines, 24 per octave, seven octaves from 55 Hz. a narrow stroke is a tone, a wide one is a cluster of steady sines. play the painting from a MIDI keyboard, the computer keyboard, or the strip on screen.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -11,6 +11,8 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(204,200,208,0.58);
       --bg:     #070709;
       --bg2:    #0d0d11;
       --text:   #ccc8d0;
@@ -34,7 +36,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -129,7 +131,7 @@
     }
     .preset-btn {
       background: transparent;
-      color: var(--dimmer);
+      color: var(--control);
       border: 1px solid var(--border);
       padding: 0.3rem 0.8rem;
       font-family: Georgia, serif;
@@ -139,7 +141,7 @@
       cursor: pointer;
       transition: color 0.13s, border-color 0.13s;
     }
-    .preset-btn:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    .preset-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
 
     /* on-screen keys: one octave, plus octave shift */
     .keys-wrap {
@@ -165,7 +167,7 @@
       background: rgba(255,255,255,0.02);
       font-family: 'SF Mono','Fira Code',monospace;
       font-size: 0.6rem;
-      color: var(--dim);
+      color: var(--control);
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -173,16 +175,16 @@
       cursor: pointer;
       transition: background 0.08s;
     }
-    .key.black { background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.14); color: rgba(204,200,208,0.5); height: 40px; align-self: start; }
+    .key.black { background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.14); color: var(--control); height: 40px; align-self: start; }
     .keys-meta { display: flex; gap: 1rem; align-items: center; }
     .btn.small { font-size: 0.56rem; padding: 0.3rem 0.8rem; }
     .key.down { background: rgba(212,192,112,0.28); color: var(--gold); }
     .oct-btn {
-      background: none; border: 1px solid var(--border); color: var(--dim);
+      background: none; border: 1px solid var(--border); color: var(--control);
       font-family: 'SF Mono','Fira Code',monospace; font-size: 0.6rem;
       width: 30px; height: 30px; cursor: pointer;
     }
-    .oct-btn:hover { border-color: rgba(255,255,255,0.18); }
+    .oct-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
     .midi-line {
       font-size: 0.55rem;
       letter-spacing: 0.08em;
@@ -193,7 +195,7 @@
       line-height: 1.8;
     }
     .midi-line button {
-      background: none; border: none; color: var(--dim); cursor: pointer;
+      background: none; border: none; color: var(--control); cursor: pointer;
       font: inherit; text-decoration: underline; text-underline-offset: 3px;
       padding: 0;
     }
@@ -214,7 +216,7 @@
 
 <div class="header">
   <h1 class="title">brush</h1>
-  <p class="sub">a spectrum is a picture. paint one. narrow strokes sing, wide strokes hiss, and the width of the brush is the whole difference between a note and a noise. then play the painting from a keyboard: every key slides the whole picture so the marked fundamental lands on that pitch.</p>
+  <p class="sub">a spectrum is a picture. paint one. narrow strokes sing, wide strokes swarm into a cluster, and the width of the brush is the whole difference between a note and a cluster. then play the painting from a keyboard: every key slides the whole picture so the marked fundamental lands on that pitch.</p>
 </div>
 
 <canvas id="paint"></canvas>
@@ -260,7 +262,7 @@
   the strip is the computer keyboard: press the letter on a key, or tap it · tab swaps layouts (cubase: white keys q to ], black on the number row · tracker: z-row and q-row, two octaves) · arrows: left and right shift the octave, up and down set velocity ·
   <button id="midiBtn">connect a midi keyboard</button>
 </p>
-<p class="hint" id="hint">the same brush width is 50¢ per sine everywhere, but 50¢ is 1.6 Hz at the bottom and 200 Hz at the top. so a wide stroke beats slowly in the bass and buzzes in the treble.</p>
+<p class="hint" id="hint">the same brush width is 50¢ per sine everywhere, but 50¢ is 1.6 Hz at the bottom and 200 Hz at the top. so a wide stroke beats slowly in the bass and buzzes in the treble. the grid is 24 sines per octave, so presets snap to it: the 7th harmonic falls between two sines, 19¢ flat and 31¢ sharp.</p>
 
 <script>
 // ── the grid ─────────────────────────────────────────────────
@@ -276,14 +278,23 @@ function midiFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
 
 // ── canvas ───────────────────────────────────────────────────
 const canvas = document.getElementById('paint');
-const dpr = window.devicePixelRatio || 1;
-const W = Math.min(window.innerWidth - 32, 640), H = 300;
+// sized from the layout viewport and re-sized on resize/rotation (sizing once
+// from innerWidth left a landscape-width canvas overflowing a portrait phone)
+let dpr = window.devicePixelRatio || 1;
+let W = 640;
+const H = 300;
 const AXIS = 22;                          // room for Hz labels at the bottom
 const PH = H - AXIS;                      // paint height
-canvas.width = W * dpr; canvas.height = H * dpr;
-canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
 const c = canvas.getContext('2d');
-c.scale(dpr, dpr);
+function sizeCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  W = Math.min(document.documentElement.clientWidth - 32, 640);
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+sizeCanvas();
+window.addEventListener('resize', () => { sizeCanvas(); draw(); });
 
 function binX(i) { return i / (NBINS - 1) * W; }
 function xBin(x) { return x / W * (NBINS - 1); }
@@ -305,8 +316,13 @@ function kernel(dBins, halfBins) {
 }
 
 // paint (or erase) at a fractional bin position with a target height 0..1
+// the kernel's half-width is at least one bin: at 0.5 a dab landing between
+// two bins reached neither (bins 9-12 all 0 at 10.5) and a snapped harmonic
+// kept only its one nearest bin at a fraction of its level (the 7th at 14%).
+// at one bin the raised cosine sums to 1 across the two neighbours, so
+// nothing painted can vanish; the full width at half height is still 50¢.
 function paintAt(binPos, height, erase) {
-  const half = Math.max(0.5, widthCents / CENTS_PER_BIN / 2);
+  const half = Math.max(1, widthCents / CENTS_PER_BIN / 2);
   const lo = Math.max(0, Math.floor(binPos - half));
   const hi = Math.min(NBINS - 1, Math.ceil(binPos + half));
   for (let j = lo; j <= hi; j++) {
@@ -349,6 +365,10 @@ function nearestHarmonic(freq, f0) {
 // by gain only. Voice 0 is the drone (ratio 1, the play button). Keyed
 // voices come and go with note on/off.
 let actx = null, master = null, limiter = null;
+// The limiter's automatic makeup gain lifts its output to about 1.0 for a
+// dense canvas, and a many-key onset overshoots before it reacts (1.30 peak
+// measured at full volume). The master trims that ceiling to 0.9 (S4).
+const OUT_TRIM = 0.68;
 const voices = new Map();                 // id -> voice
 let nextVoiceId = 1;
 let playing = false;
@@ -360,7 +380,7 @@ function ensureAudio() {
   limiter.threshold.value = -12; limiter.knee.value = 6;
   limiter.ratio.value = 12; limiter.attack.value = 0.003; limiter.release.value = 0.12;
   master = actx.createGain();
-  master.gain.value = parseFloat(document.getElementById('volSlider').value);
+  master.gain.value = parseFloat(document.getElementById('volSlider').value) * OUT_TRIM;
   limiter.connect(master); master.connect(actx.destination);
 }
 
@@ -435,11 +455,22 @@ function flushDirty() {
   draw(); updateReadout();
 }
 
+// A first visitor who presses play (or a key) before painting heard
+// nothing and got no word why. An empty canvas now loads the harmonic
+// preset first, and the readout says so.
+let bootNote = '';
+function fillIfEmpty() {
+  if (litCount() > 0) return;
+  preset('harmonic');
+  bootNote = 'the canvas was empty, so play loaded the harmonic preset · paint over it or clear';
+}
+
 // drone
 let drone = null;
 function startDrone() {
   ensureAudio();
   if (actx.state === 'suspended') actx.resume();
+  fillIfEmpty();
   if (drone && !drone.dead) return;
   drone = makeVoice(1, 1);
   playing = true;
@@ -461,6 +492,7 @@ function noteOn(note, vel) {
   ensureAudio();
   if (actx.state === 'suspended') actx.resume();
   if (held.has(note)) return;
+  fillIfEmpty();
   // steal the oldest if the polyphony is full: sines are not free
   if (held.size >= 6) { const [first] = held.keys(); noteOff(first); }
   const ratio = midiFreq(note) / f0Hz();
@@ -537,7 +569,7 @@ function draw() {
 
   // brush cursor
   if (hoverBin !== null) {
-    const half = widthCents / CENTS_PER_BIN / 2;
+    const half = Math.max(1, widthCents / CENTS_PER_BIN / 2);
     const x0 = binX(hoverBin - half), x1 = binX(hoverBin + half);
     c.fillStyle = erasing ? 'rgba(192,136,184,0.08)' : 'rgba(212,192,112,0.07)';
     c.fillRect(x0, 0, x1 - x0, PH);
@@ -559,9 +591,14 @@ function updateReadout() {
     const f = binFreq(hoverBin);
     const { n, cents } = nearestHarmonic(f, f0Hz());
     const sign = cents >= 0 ? '+' : '−';
-    parts.push(`<span class="g">${fmtHz(f)}</span> · harmonic ${n} ${sign}${Math.abs(cents).toFixed(0)}¢`);
+    // the grid only sounds at bin centres: name the nearest one too
+    const bf = binFreq(Math.round(hoverBin));
+    const bc = 1200 * Math.log2(bf / (n * f0Hz()));
+    const bs = bc >= 0 ? '+' : '−';
+    parts.push(`<span class="g">${fmtHz(f)}</span> · harmonic ${n} ${sign}${Math.abs(cents).toFixed(0)}¢ · nearest sine ${fmtHz(bf)} ${bs}${Math.abs(bc).toFixed(0)}¢`);
   }
   const lit = litCount();
+  if (bootNote) parts.push(bootNote);
   if (lit > 0) parts.push(`centroid ${fmtHz(centroid())} · ${lit} of ${NBINS} sines lit`);
   else parts.push('nothing painted yet');
   if (held.size > 0) parts.push(`${held.size} key${held.size > 1 ? 's' : ''} down`);
@@ -579,6 +616,7 @@ function pointerPos(e) {
 }
 canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
+  bootNote = '';
   canvas.setPointerCapture(e.pointerId);
   const p = pointerPos(e);
   painting = true; lastBin = p.bin; lastH = p.h; hoverBin = p.bin;
@@ -632,7 +670,7 @@ document.getElementById('f0Slider').addEventListener('input', e => {
   draw(); updateReadout();
 });
 document.getElementById('volSlider').addEventListener('input', e => {
-  if (master) master.gain.setTargetAtTime(parseFloat(e.target.value), actx.currentTime, 0.02);
+  if (master) master.gain.setTargetAtTime(parseFloat(e.target.value) * OUT_TRIM, actx.currentTime, 0.02);
 });
 
 // ── presets ──────────────────────────────────────────────────
@@ -653,7 +691,7 @@ function preset(name) {
   }
   markDirty(0, NBINS - 1);
 }
-document.querySelectorAll('.preset-btn').forEach(b => b.addEventListener('click', () => preset(b.dataset.preset)));
+document.querySelectorAll('.preset-btn').forEach(b => b.addEventListener('click', () => { bootNote = ''; preset(b.dataset.preset); }));
 
 // ── keyboards: two layouts, one strip ────────────────────────
 // tracker: z-row is one octave, q-row the octave above (two octaves).
