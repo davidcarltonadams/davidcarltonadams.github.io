@@ -367,8 +367,22 @@ function activePeak() {
   return peak;
 }
 function masterLevel() { return Math.min(state.volume, PEAK_CEILING / activePeak()); }
-function applyMaster() {
-  if (masterGain) masterGain.gain.setTargetAtTime(masterLevel(), ctx.currentTime, 0.02);
+
+// The cap holds in steady state; in a change the master leads. When the peak
+// grows (twin in, a partial added) the master drops first and the new sound
+// waits until it is down; when the peak shrinks the old sound leaves first and
+// the master rises after. (Master and twin used to ramp together at the same
+// time constant, and the product overshot: 1.03 as the beat left 0.) Returns
+// when incoming sound may start. All times are linear ramps from t0.
+const LEAD = 0.02;   // scheduling lookahead, so every node of a change starts on one sample
+function moveMaster(t0) {
+  const g = masterGain.gain, cur = g.value, target = masterLevel();
+  g.cancelScheduledValues(t0);
+  g.setValueAtTime(cur, t0);
+  if (target < cur) { g.linearRampToValueAtTime(target, t0 + FADE); return t0 + FADE; }
+  g.setValueAtTime(cur, t0 + FADE);
+  g.linearRampToValueAtTime(target, t0 + 2 * FADE);
+  return t0;
 }
 
 function startAudio() {
@@ -381,20 +395,25 @@ function startAudio() {
 function startDrone() {
   if (!ctx) startAudio();
   if (ctx.state === 'suspended') ctx.resume();
-  stopDrone();
+  const t0 = ctx.currentTime + LEAD;
+  stopDrone(t0);
+  const at = moveMaster(t0);
 
   const freq = rootFreq();
 
+  // every oscillator starts at \`at\`: started "now", they could land in
+  // different render quanta and lose the phase lock activePeak() assumes
   function makeOsc(f, gainVal) {
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
     osc.frequency.value = f;
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(gainVal, ctx.currentTime + FADE);
+    gain.gain.value = 0;
+    gain.gain.setValueAtTime(0, at);
+    gain.gain.linearRampToValueAtTime(gainVal, at + FADE);
     osc.connect(gain);
     gain.connect(masterGain);
-    osc.start();
+    osc.start(at);
     return { osc, gain };
   }
 
@@ -410,13 +429,13 @@ function startDrone() {
   for (const p of state.partials) {
     oscNodes.push(makeOsc(freq * p, 0.5 / p));
   }
-  applyMaster();
 }
 
-function stopDrone() {
-  const now = ctx ? ctx.currentTime : 0;
+function stopDrone(t0) {
+  const now = t0 ?? (ctx ? ctx.currentTime : 0);
   oscNodes.forEach(({ osc, gain }) => {
     try {
+      gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(gain.gain.value, now);
       gain.gain.linearRampToValueAtTime(0, now + FADE);
       osc.stop(now + FADE + 0.001);
@@ -432,8 +451,12 @@ function retuneBeat() {
   if (!ctx || !beatNode) return;
   const now = ctx.currentTime;
   beatNode.osc.frequency.setTargetAtTime(beatFreq(), now, 0.02);
-  beatNode.gain.gain.setTargetAtTime(state.beatCents > 0 ? BEAT_GAIN : 0, now, 0.02);
-  applyMaster();
+  const g = beatNode.gain.gain, cur = g.value, want = state.beatCents > 0 ? BEAT_GAIN : 0;
+  const at = moveMaster(now);   // the twin enters after the master drops, leaves before it rises
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(cur, now);
+  g.setValueAtTime(cur, at);
+  g.linearRampToValueAtTime(want, at + FADE);
 }
 
 function restartIfPlaying() {
@@ -577,7 +600,7 @@ beatSlider.addEventListener('input', () => {
 volSlider.addEventListener('input', () => {
   state.volume = parseFloat(volSlider.value);
   volVal.textContent = Math.round(state.volume * 100) + '%';
-  if (masterGain) masterGain.gain.setTargetAtTime(masterLevel(), ctx.currentTime, 0.05);
+  if (masterGain) moveMaster(ctx.currentTime);   // one scheduler for the master, so a change mid-transition is not lost
 });
 
 // Toggle
