@@ -299,7 +299,10 @@
       <div class="ctrl-section">
         <div class="ctrl-label">kept scale <span id="kept-count"></span></div>
         <div class="kept-row" id="kept-row"></div>
-        <button class="btn-l" id="btn-copy-scale" style="margin-top: 0.5rem;" disabled>copy scale</button>
+        <div class="sound-row" style="margin-top: 0.5rem;">
+          <button class="btn-l" id="btn-play-kept" disabled>▶ play kept</button>
+          <button class="btn-l" id="btn-copy-scale" disabled>copy scale</button>
+        </div>
       </div>
 
     </div>
@@ -418,6 +421,7 @@ function killOscs() {
 }
 
 function stopSound() {
+  stopKept();
   sounding = false;
   document.getElementById('btn-sound').classList.remove('active');
   document.getElementById('btn-sound').textContent = '♪ tone';
@@ -739,6 +743,32 @@ function scaleAsText() {
   return `lissajous · kept scale\n${lines.join('\n')}`;
 }
 
+// Play the kept scale: each ratio in turn, lowest first, 400 ms apiece, over
+// the same 220 Hz reference (the figure follows along).
+let playTimer = null;
+function stopKept() {
+  if (playTimer !== null) { clearTimeout(playTimer); playTimer = null; }
+  const b = document.getElementById('btn-play-kept');
+  b.textContent = '▶ play kept';
+  b.classList.remove('active');
+}
+function playKept() {
+  if (playTimer !== null) { stopKept(); return; }
+  if (!kept.length) return;
+  const seq = kept.slice().sort((x, y) => ratioToCents(x.a, x.b) - ratioToCents(y.a, y.b));
+  const b = document.getElementById('btn-play-kept');
+  b.textContent = '■ stop';
+  b.classList.add('active');
+  let i = 0;
+  const step = () => {
+    if (i >= seq.length) { stopKept(); return; }
+    selectRatio(seq[i].a, seq[i].b);
+    i++;
+    playTimer = setTimeout(step, 400);
+  };
+  step();
+}
+
 function copyScale() {
   const btn = document.getElementById('btn-copy-scale');
   if (!kept.length) return;
@@ -760,6 +790,8 @@ function renderKept() {
   const copyBtn = document.getElementById('btn-copy-scale');
   countEl.textContent = kept.length ? `(${kept.length})` : '';
   copyBtn.disabled = !kept.length;
+  document.getElementById('btn-play-kept').disabled = !kept.length;
+  if (!kept.length) stopKept();
   row.innerHTML = '';
   if (!kept.length) {
     const span = document.createElement('span');
@@ -885,6 +917,7 @@ document.getElementById('btn-sound').addEventListener('click', toggleSound);
 document.getElementById('btn-spin').addEventListener('click', spinRatio);
 document.getElementById('btn-keep').addEventListener('click', toggleKeep);
 document.getElementById('btn-copy-scale').addEventListener('click', copyScale);
+document.getElementById('btn-play-kept').addEventListener('click', playKept);
 
 document.getElementById('btn-animate').addEventListener('click', () => {
   animating = !animating;
