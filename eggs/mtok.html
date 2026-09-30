@@ -418,6 +418,11 @@ const PRESETS = {
 
 const voices     = new Map();  // pointerId → voice
 const touchVoices = new Map(); // touch.identifier → voice
+// Every voice that still owns running oscillators, releasing ones included.
+// The maps above hold one voice per pointer, and a mouse's pointerId is always
+// 1, so a re-press during a release tail replaces the map entry; this set is
+// what panic walks so nothing escapes it.
+const allVoices  = new Set();
 let pointerEventsWorking = false;
 
 // ═══════════════════════════════════════════════════════════
@@ -580,6 +585,7 @@ function makeVoice(freq, pointerId, lx0, ly0) {
     baseDrive: drive, baseLP: lpf.frequency.value, baseMakeup: makeupGain,
   };
   voices.set(pointerId, voice);
+  allVoices.add(voice);
 
   // iOS AudioContext unlock is async: resume() is called in ensureCtx() but the
   // context may still be suspended when oscillators start. The ADSR attack ramps
@@ -667,23 +673,37 @@ function stopAndDisconnectVoice(voice) {
   [voice.lfoG,voice.sawG,voice.triG,voice.sinG,voice.sqG,voice.mixG,
    voice.adsrG,voice.shaper,voice.shaperPost,voice.lpf,
    voice.hpf,voice.panner,voice.voiceAmp].forEach(n=>{try{n.disconnect();}catch(_){}});
-  voices.delete(voice.pointerId);
+  allVoices.delete(voice);
+  // Only drop the map entry if it is still THIS voice: a re-press on the same
+  // pointer during the release tail has already put a new voice there.
+  if (voices.get(voice.pointerId) === voice) voices.delete(voice.pointerId);
   updateVoiceCount();
 }
 
 function panicAll() {
-  // Nuclear silence: stop all oscillators, then sever masterGain from destination
-  // and recreate it — cuts any zombie connections that bypassed stopAndDisconnect
-  [...voices.values()].forEach(v => {
+  // Silence everything: fade the old master out over 40 ms (no click), stop
+  // every voice's oscillators at the end of that fade, then sever the old
+  // master and hang a fresh one on the bus for the next note. Walks allVoices,
+  // not the pointer map, so a voice orphaned by a re-press still stops.
+  const t = actx ? actx.currentTime : 0;
+  const end = t + 0.05;
+  allVoices.forEach(v => {
     v.released = true;
-    v.oscs.forEach(o => { try { o.stop(); } catch(_) {} });
-    try { v.lfoOsc.stop(); } catch(_) {}
+    v.oscs.forEach(o => { try { o.stop(end); } catch(_) {} });
+    try { v.lfoOsc.stop(end); } catch(_) {}
   });
-  voices.clear(); touchVoices.clear();
+  const dying = [...allVoices];
+  allVoices.clear(); voices.clear(); touchVoices.clear();
 
   if (actx && masterGain) {
-    masterGain.gain.setValueAtTime(0, actx.currentTime);
-    masterGain.disconnect();
+    const old = masterGain;
+    old.gain.cancelScheduledValues(t);
+    old.gain.setValueAtTime(old.gain.value, t);
+    old.gain.linearRampToValueAtTime(0, t + 0.04);
+    setTimeout(() => {
+      try { old.disconnect(); } catch(_) {}
+      dying.forEach(v => { try { v.voiceAmp.disconnect(); } catch(_) {} });
+    }, 120);
     masterGain = actx.createGain();
     masterGain.gain.value = params.vol;
     masterGain.connect(actx.destination);
@@ -1182,6 +1202,13 @@ function updateVoiceCount() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') panicAll(); });
+
+// Nothing hangs when the page loses the player: a held key whose pointerup
+// lands in another window or app would otherwise sound until panic.
+window.addEventListener('blur', () => { if (allVoices.size) panicAll(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && allVoices.size) panicAll();
+});
 
 // Global safety net: catch pointer-up that misses the canvas (finger slides off topbar etc.)
 function globalPointerUp(e) {
