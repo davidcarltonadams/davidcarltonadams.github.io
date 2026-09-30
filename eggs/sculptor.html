@@ -334,8 +334,10 @@ function drawWaveform() {
 function paintSlider(slider, v) {
   const pos = `calc(6px + (100% - 12px) * ${(v + 1) / 2})`;
   const mid = '50%';
-  slider.style.setProperty('--lo', v < 0 ? pos : mid);
-  slider.style.setProperty('--hi', v < 0 ? mid : pos);
+  if (slider.style.setProperty) {           // (absent in the headless test stub)
+    slider.style.setProperty('--lo', v < 0 ? pos : mid);
+    slider.style.setProperty('--hi', v < 0 ? mid : pos);
+  }
   slider.classList.toggle('zero', Math.abs(v) < 0.005);
 }
 
