@@ -556,6 +556,7 @@ function playNote(row, transCents, when) {
 // SCHEDULER
 // ═══════════════════════════════════════════════════════════════════════════════
 let schedT=null, curStep=0, nextT=0;
+let absStep=0;   // steps since play, never wrapped: each voice enters at its offset
 const NOTE_TAIL=0.45;   // longest note release + tail, in seconds
 function stepDur() { return 60/bpm/4; }
 function swingDur(step) {
@@ -574,7 +575,8 @@ function sched() {
   // steps, so every voice stays aligned to the shared step.
   const now=actx.currentTime;
   if(nextT<now-0.05) {
-    curStep+=Math.ceil((now+0.02-nextT)/stepDur());
+    const skipped=Math.ceil((now+0.02-nextT)/stepDur());
+    curStep+=skipped; absStep+=skipped;
     nextT=now+0.02;
     if(loop) curStep%=numSteps;
     else if(curStep>=onceTot){ stopPlay(); return; }
@@ -583,14 +585,17 @@ function sched() {
   while(nextT<actx.currentTime+0.15) {
     voices.forEach(v => {
       if(v.muted) return;
-      if(!loop && curStep < v.offset) return;
+      // a voice is silent until its entry, in loop mode too: the first pass
+      // plays the canon's staggered entries (loop used to start every comes
+      // mid-subject on beat 1)
+      if(absStep < v.offset) return;
       const pat=((curStep-v.offset)%numSteps+numSteps)%numSteps;
       for(let p=0;p<numRows;p++) {
         if(grid[p]&&grid[p][pat]) playNote(p,v.transCents,nextT);
       }
     });
     nextT+=swingDur(curStep);
-    curStep++;
+    curStep++; absStep++;
     if(loop) {
       if(curStep>=numSteps) curStep=0;
     } else {
@@ -610,7 +615,7 @@ function startPlay() {
   g.cancelScheduledValues(now);
   g.setValueAtTime(0,now);
   g.linearRampToValueAtTime(1,now+0.02);   // ramp back up after a stop, no click
-  nextT=now+0.05; curStep=0; playing=true;
+  nextT=now+0.05; curStep=0; absStep=0; playing=true;
   $('btn-play').classList.add('active');
   sched();
 }
