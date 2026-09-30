@@ -541,6 +541,7 @@ function next() {
 // ── Interactions ───────────────────────────────────────────────────────────
 document.addEventListener('click', e => {
   if (e.target === btn || e.target === copyEl) return;
+  if (e.target.closest && e.target.closest('a')) return;   // a link navigates; don't push a new score first
   // the score is selectable text now; don't wipe a selection someone is
   // in the middle of copying
   const sel = window.getSelection && window.getSelection();
