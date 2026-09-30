@@ -11,6 +11,8 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(204,200,208,0.58);
       --bg:     #070709;
       --bg2:    #0d0d11;
       --text:   #ccc8d0;
@@ -34,7 +36,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -129,7 +131,7 @@
     }
     .preset-btn {
       background: transparent;
-      color: var(--dimmer);
+      color: var(--control);
       border: 1px solid var(--border);
       padding: 0.3rem 0.8rem;
       font-family: Georgia, serif;
@@ -139,7 +141,7 @@
       cursor: pointer;
       transition: color 0.13s, border-color 0.13s;
     }
-    .preset-btn:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    .preset-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
 
     /* on-screen keys: one octave, plus octave shift */
     .keys-wrap {
@@ -165,7 +167,7 @@
       background: rgba(255,255,255,0.02);
       font-family: 'SF Mono','Fira Code',monospace;
       font-size: 0.6rem;
-      color: var(--dim);
+      color: var(--control);
       display: flex;
       align-items: flex-end;
       justify-content: center;
@@ -173,16 +175,16 @@
       cursor: pointer;
       transition: background 0.08s;
     }
-    .key.black { background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.14); color: rgba(204,200,208,0.5); height: 40px; align-self: start; }
+    .key.black { background: rgba(0,0,0,0.5); border-color: rgba(255,255,255,0.14); color: var(--control); height: 40px; align-self: start; }
     .keys-meta { display: flex; gap: 1rem; align-items: center; }
     .btn.small { font-size: 0.56rem; padding: 0.3rem 0.8rem; }
     .key.down { background: rgba(212,192,112,0.28); color: var(--gold); }
     .oct-btn {
-      background: none; border: 1px solid var(--border); color: var(--dim);
+      background: none; border: 1px solid var(--border); color: var(--control);
       font-family: 'SF Mono','Fira Code',monospace; font-size: 0.6rem;
       width: 30px; height: 30px; cursor: pointer;
     }
-    .oct-btn:hover { border-color: rgba(255,255,255,0.18); }
+    .oct-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
     .midi-line {
       font-size: 0.55rem;
       letter-spacing: 0.08em;
@@ -193,7 +195,7 @@
       line-height: 1.8;
     }
     .midi-line button {
-      background: none; border: none; color: var(--dim); cursor: pointer;
+      background: none; border: none; color: var(--control); cursor: pointer;
       font: inherit; text-decoration: underline; text-underline-offset: 3px;
       padding: 0;
     }
