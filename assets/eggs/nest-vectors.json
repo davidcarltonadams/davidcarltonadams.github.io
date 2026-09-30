@@ -117,14 +117,14 @@
         "rhythm": 0.25,
         "psychoacoustics": 0.25,
         "illusion": 0.25,
-        "process": 0.25,
+        "process": 0.35,
         "visible_math": 0.9,
-        "playable": 0.6,
+        "playable": 0.7,
         "score": 0.25
       },
-      "scored_date": "2026-08-17",
+      "scored_date": "2026-09-11",
       "ghost": false,
-      "desc": "every ratio has a shape",
+      "desc": "every ratio has a shape · spin one, keep a scale",
       "reconstructed": true
     },
     {
