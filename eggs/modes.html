@@ -391,6 +391,93 @@ function noteName(pc, flats) {
   return (flats ? FLAT_NAMES : SHARP_NAMES)[p];
 }
 
+// ── Letter spelling for seven-note collections ────────────
+// A seven-note scale uses each letter once: degree k of the scale takes the
+// letter k steps above the tonic's, and its accidental is whatever that letter
+// needs (so A harmonic minor ends G♯, never A♭). The single-table fifths
+// heuristic above only names the 5-, 6- and 8-note families and the keys
+// outside the scale.
+const LETTERS   = ['C','D','E','F','G','A','B'];
+const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
+const ACC_SIGN  = ['𝄫','♭','','♯','𝄪'];            // index = accidental + 2
+const MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11];         // degree numbers measure against major
+
+function accFor(pc, letter) {                        // semitones from the natural letter, −6..+5
+  let a = (((pc - LETTER_PC[letter]) % 12) + 12) % 12;
+  return a > 6 ? a - 12 : a;
+}
+
+// Spell pcs (tonic first) from tonic letter L. null if a degree would need
+// more than a double accidental.
+function spellFrom(pcs, L) {
+  const out = [];
+  for (let k = 0; k < pcs.length; k++) {
+    const li = (L + k) % 7, a = accFor(pcs[k], li);
+    if (a < -2 || a > 2) return null;
+    out.push({ pc: pcs[k], letter: li, acc: a, name: LETTERS[li] + ACC_SIGN[a + 2] });
+  }
+  return out;
+}
+
+// Of the tonic's enharmonic names (at most one accidental), keep the spelling
+// with the fewest accidentals overall; a tie goes to the root button's name.
+function bestSpelling(pcs, chooserPc) {
+  const prefer = ROOT_NAMES[chooserPc][0];
+  let best = null, bestCost = Infinity;
+  for (let L = 0; L < 7; L++) {
+    if (Math.abs(accFor(pcs[0], L)) > 1) continue;
+    const sp = spellFrom(pcs, L);
+    if (!sp) continue;
+    const cost = sp.reduce((sum, x) => sum + Math.abs(x.acc), 0) + (LETTERS[L] === prefer ? 0 : 0.5);
+    if (cost < bestCost) { bestCost = cost; best = sp; }
+  }
+  return best;
+}
+
+// The current scale, spelled: seven {pc, letter, acc, name} from the tonic up,
+// or null for the families that are not seven notes. In the relative reading
+// the parent collection is spelled once from its root and every mode reuses
+// those names, so the seven modes of one collection really do share notes.
+function scaleSpelling() {
+  const sc = SCALES[currentScale];
+  const n = sc.intervals.length;
+  if (n !== 7) return null;
+  const run = (start, root) => {
+    const pcs = []; let cum = 0;
+    for (let i = 0; i < 7; i++) { pcs.push((root + cum) % 12); cum += sc.intervals[(start + i) % 7]; }
+    return pcs;
+  };
+  const start = sc.modes[currentModeIdx].start;
+  if (reading === 'relative') {
+    const parent = bestSpelling(run(0, currentRoot % 12), currentRoot % 12);
+    return parent && parent.slice(start).concat(parent.slice(0, start));
+  }
+  return bestSpelling(run(start, currentRoot % 12), currentRoot % 12);
+}
+
+// Degree label with its quality, measured against the major scale on the
+// same tonic: dorian reads 1 2 ♭3 4 5 6 ♭7. Seven-note scales take the
+// number from the letter; the other families read it off the semitones.
+function degreeLabel(pc, sp) {
+  const tonic = currentTonic();
+  const semis = (((pc - tonic) % 12) + 12) % 12;
+  if (sp) {
+    const k = sp.findIndex(x => x.pc === pc);
+    if (k < 0) return null;
+    const d = semis - MAJOR_STEPS[k];
+    const dd = d > 6 ? d - 12 : d < -6 ? d + 12 : d;
+    return ACC_SIGN[dd + 2] + (k + 1);
+  }
+  const set = getScaleNotesSet();
+  if (!set.has(pc)) return null;
+  const has = x => set.has((tonic + x) % 12);
+  const augmented = has(6) && !has(5);               // whole tone, half-whole: ♯4 ♯5 read sharp
+  if (semis === 3 && has(4)) return '♯2';
+  if (semis === 6) return augmented ? '♯4' : '♭5';
+  if (semis === 8 && augmented && !has(7)) return '♯5';
+  return DEGREE_NAMES[semis];
+}
+
 // ── Tonic ─────────────────────────────────────────────────
 // How far the mode's tonic sits above the parent collection's root.
 function modeOffset() {
@@ -513,22 +600,6 @@ function getScaleNotesSet() { return new Set(getScaleNotes()); }
 // Degree names for scale steps
 const DEGREE_NAMES = ['1','♭2','2','♭3','3','4','♯4/♭5','5','♭6','6','♭7','7'];
 
-function degreeInScale(semitone) {
-  const sc = SCALES[currentScale];
-  const mode = sc.modes[currentModeIdx];
-  const n = sc.intervals.length;
-  const tonic = currentTonic();
-  let cum = 0;
-  const steps = [];
-  for (let i = 0; i < n; i++) {
-    const idx = (mode.start + i) % n;
-    steps.push((cum + tonic) % 12);
-    cum += sc.intervals[idx];
-  }
-  const pos = steps.indexOf((semitone + 12) % 12);
-  return pos >= 0 ? (pos + 1) : null;
-}
-
 // ── Build UI ──────────────────────────────────────────────
 // (the scale-family tabs are built by buildModeInfo, which owns #scale-tabs)
 
@@ -586,6 +657,11 @@ function buildKeyboard() {
   const whiteCount = whiteKeys.length;
   const keyW = 100 / whiteCount;
   const flats = useFlats(); // decided once per build so every label agrees
+  const sp = scaleSpelling();
+  const nameOf = semi => {
+    const pc = semi % 12, hit = sp && sp.find(x => x.pc === pc);
+    return hit ? hit.name : noteName(pc, flats);
+  };
 
   // White keys first
   whiteKeys.forEach((semi, wi) => {
@@ -597,7 +673,7 @@ function buildKeyboard() {
     div.style.position = 'absolute';
     div.style.height = '100%';
 
-    div.innerHTML = `<span class="key-label">${noteName(semi, flats)}</span>`;
+    div.innerHTML = `<span class="key-label">${nameOf(semi)}</span>`;
     div.addEventListener('mousedown', () => playNote(semi));
     div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi); }, {passive: false});
     kb.appendChild(div);
@@ -614,7 +690,7 @@ function buildKeyboard() {
     const leftPct = (leftWi + 1) * keyW - keyW * 0.29;
     div.style.left = leftPct + '%';
     div.style.width = keyW * 0.58 + '%';
-    div.innerHTML = `<span class="key-label" style="margin-top:4px">${noteName(semi, flats)}</span>`;
+    div.innerHTML = `<span class="key-label" style="margin-top:4px">${nameOf(semi)}</span>`;
     div.addEventListener('mousedown', () => playNote(semi));
     div.addEventListener('touchstart', e => { e.preventDefault(); playNote(semi); }, {passive: false});
     kb.appendChild(div);
@@ -626,6 +702,7 @@ function buildKeyboard() {
 function updateKeyVisuals() {
   const scaleSet = getScaleNotesSet();
   const rootPc = currentTonic();
+  const sp = scaleSpelling();
 
   document.querySelectorAll('.key').forEach(k => {
     const semi = parseInt(k.dataset.semi);
@@ -643,7 +720,7 @@ function updateKeyVisuals() {
     const existingDeg = k.querySelector('.degree-label');
     if (existingDeg) existingDeg.remove();
     if (inScale || isRoot) {
-      const deg = degreeInScale(pc);
+      const deg = degreeLabel(pc, sp);
       if (deg !== null) {
         const d = document.createElement('span');
         d.className = 'degree-label';
@@ -688,9 +765,12 @@ function buildModeInfo() {
     steps.push(c);
   }
   const flats = useFlats();
+  const sp = scaleSpelling();
+  const names = sp ? sp.map(x => x.name).concat(sp[0].name)
+                   : getScaleNotes().map(s => noteName(s, flats));
   document.getElementById('intervals-display').textContent =
     sc.intervals.slice(mode.start).concat(sc.intervals.slice(0, mode.start)).join(' · ') +
-    '  →  ' + getScaleNotes().map(s => noteName(s, flats)).join(' ');
+    '  →  ' + names.join(' ');
 
   // Add mode selector buttons below scale tabs
   if (sc.modes.length > 1) {
