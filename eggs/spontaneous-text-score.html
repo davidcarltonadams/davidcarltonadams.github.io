@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="click anywhere to draw a text score from a seeded grammar of verbs, objects and consequences — the seed lives in the url, so any score can be recovered exactly.">
+  <meta name="description" content="click anywhere to draw a text score from a seeded grammar of verbs, objects and consequences · the seed lives in the url, so any score can be recovered exactly.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
-  <title>a spontaneous text score</title>
+  <title>spontaneous-text-score — David Carlton Adams</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -38,6 +38,18 @@
       padding: 2rem;
       transition: opacity 0.5s ease;
     }
+
+    /* what this is, until the first advance */
+    .frame {
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+      font-style: italic;
+      color: rgba(212,204,196,0.5);
+      margin-bottom: 1.4rem;
+      transition: opacity 0.5s ease;
+    }
+    .frame.gone { opacity: 0; }
+    @media (max-width: 480px) { .frame { letter-spacing: 0.05em; } }
 
     .instruction {
       font-size: clamp(1.1rem, 3.5vw, 1.7rem);
@@ -95,6 +107,7 @@
 <a class="eggs-back" href="../eggs.html">← eggs</a>
 
 <div id="score-text" aria-live="polite">
+  <p class="frame" id="frame-el">a text score · perform it yourself · tap for another</p>
   <p class="instruction" id="instruction-el"></p>
 </div>
 
@@ -521,6 +534,7 @@ function show(seed, animate, push) {
 }
 
 function next() {
+  document.getElementById('frame-el').classList.add('gone');
   show(randomSeed(), true, true);
 }
 
