@@ -415,9 +415,9 @@ function noteName(pc, flats) {
 // ── Letter spelling for seven-note collections ────────────
 // A seven-note scale uses each letter once: degree k of the scale takes the
 // letter k steps above the tonic's, and its accidental is whatever that letter
-// needs (so A harmonic minor ends G♯, never A♭). The single-table fifths
-// heuristic above only names the 5-, 6- and 8-note families and the keys
-// outside the scale.
+// needs (so A harmonic minor ends G♯, never A♭). The 5-, 6- and 8-note
+// families are spelled by otherSpelling() below; the single-table fifths
+// heuristic above names the keys outside the scale.
 const LETTERS   = ['C','D','E','F','G','A','B'];
 const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
 const ACC_SIGN  = ['𝄫','♭','','♯','𝄪'];            // index = accidental + 2
@@ -462,14 +462,48 @@ function bestSpelling(pcs, chooserPc) {
   return best;
 }
 
-// The current scale, spelled: seven {pc, letter, acc, name} from the tonic up,
-// or null for the families that are not seven notes. In the relative reading
-// the parent collection is spelled once from its root and every mode reuses
-// those names, so the seven modes of one collection really do share notes.
+// The 5-, 6- and 8-note families have no one-letter-per-degree rule. Each
+// tone takes the name its usual degree implies (whole tone 1 2 3 ♯4 ♯5 ♭7,
+// whole-half 1 2 ♭3 4 ♭5 ♭6 6 7), with one accidental at most; a tone that
+// would need a double takes its other name. A black-key tonic takes whichever
+// of its two names spells the scale more plainly. degreeLabel() reads the
+// number back off each name, so name and label always agree.
+function otherSpelling() {
+  const flats = useFlats();
+  const tonic = currentTonic();
+  const pcs = getScaleNotes().slice(0, SCALES[currentScale].intervals.length);
+  const tableL = LETTERS.indexOf(noteName(tonic, flats)[0]);
+  const odd = new Set(['E♯', 'B♯', 'C♭', 'F♭']);
+  let best = null, bestCost = Infinity;
+  for (let tl = 0; tl < 7; tl++) {
+    const ta = accFor(tonic, tl);
+    if (Math.abs(ta) > 1 || (ta !== 0 && accFor(tonic, tableL) === 0)) continue;
+    let cost = tl === tableL ? 0 : 0.5;
+    const sp = pcs.map((pc, i) => {
+      const m = i === 0 ? [null, null, '1'] : /^(♭|♯)?(\d)/.exec(usualDegree(pc) || '');
+      let li = m ? (tl + +m[2] - 1) % 7 : -1;
+      if (li < 0 || Math.abs(accFor(pc, li)) > 1) {
+        cost += 2;
+        li = [0, 1, 2, 3, 4, 5, 6].filter(l => l !== tl && Math.abs(accFor(pc, l)) <= 1)
+          .sort((a, b) => Math.abs(accFor(pc, a)) - Math.abs(accFor(pc, b)))[0];
+      }
+      const a = accFor(pc, li), name = LETTERS[li] + ACC_SIGN[a + 2];
+      cost += Math.abs(a) + (odd.has(name) ? 1 : 0);
+      return { pc, letter: li, acc: a, name };
+    });
+    if (cost < bestCost) { bestCost = cost; best = sp; }
+  }
+  return best;
+}
+
+// The current scale, spelled: {pc, letter, acc, name} from the tonic up. In
+// the relative reading the parent collection is spelled once from its root and
+// every mode reuses those names, so the seven modes of one collection really
+// do share notes.
 function scaleSpelling() {
   const sc = SCALES[currentScale];
   const n = sc.intervals.length;
-  if (n !== 7) return null;
+  if (n !== 7) return otherSpelling();
   const run = (start, root) => {
     const pcs = []; let cum = 0;
     for (let i = 0; i < 7; i++) { pcs.push((root + cum) % 12); cum += sc.intervals[(start + i) % 7]; }
@@ -484,18 +518,27 @@ function scaleSpelling() {
 }
 
 // Degree label with its quality, measured against the major scale on the
-// same tonic: dorian reads 1 2 ♭3 4 5 6 ♭7. Seven-note scales take the
-// number from the letter; the other families read it off the semitones.
+// same tonic: dorian reads 1 2 ♭3 4 5 6 ♭7. The number is the letter distance
+// from the tonic's name to this note's name, so label and name agree.
 function degreeLabel(pc, sp) {
   const tonic = currentTonic();
   const semis = (((pc - tonic) % 12) + 12) % 12;
   if (sp) {
-    const k = sp.findIndex(x => x.pc === pc);
-    if (k < 0) return null;
+    const x = sp.find(y => y.pc === pc);
+    if (!x) return null;
+    const k = ((x.letter - sp[0].letter) % 7 + 7) % 7;
     const d = semis - MAJOR_STEPS[k];
     const dd = d > 6 ? d - 12 : d < -6 ? d + 12 : d;
     return ACC_SIGN[dd + 2] + (k + 1);
   }
+  return usualDegree(pc);
+}
+
+// The usual name of a degree in the 5-, 6- and 8-note families, read off the
+// semitones: whole tone reads ♯4 ♯5, half-whole ♯2 ♯4, the rest ♭3 ♭5 ♭6.
+function usualDegree(pc) {
+  const tonic = currentTonic();
+  const semis = (((pc - tonic) % 12) + 12) % 12;
   const set = getScaleNotesSet();
   if (!set.has(pc)) return null;
   const has = x => set.has((tonic + x) % 12);
