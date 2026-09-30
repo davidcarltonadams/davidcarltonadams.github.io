@@ -128,6 +128,11 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
+    /* phone: fit-to-width made the ratios 3.6 px; render wider and let the
+       wrapper scroll sideways (it opens centred on 1/1) */
+    @media (max-width: 600px) {
+      #lattice { min-width: 640px; }
+    }
 
     /* ── Chord / info displays ───────────────────────── */
     .chord-display {
@@ -286,7 +291,7 @@
   <canvas id="scope" height="60" aria-hidden="true"></canvas>
 </div>
 
-<p class="hint">click to toggle &nbsp;&middot;&nbsp; esc clears all &nbsp;&middot;&nbsp; hover to see interval name &amp; cents</p>
+<p class="hint">click to toggle &nbsp;&middot;&nbsp; esc clears all &nbsp;&middot;&nbsp; hover or tap to see interval name &amp; cents</p>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -442,6 +447,7 @@ function svgEl(tag, attrs) {
 
 function buildSVG() {
   const svg = document.getElementById('lattice');
+  const FS  = window.innerWidth <= 600 ? 1.3 : 1;   // larger text on a phone
   svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
   svg.setAttribute('width',  SVG_W);
   svg.setAttribute('height', SVG_H);
@@ -512,7 +518,7 @@ function buildSVG() {
     g.appendChild(circle);
 
     // Ratio text (centered in circle, upper half)
-    const fs = nd.key.length > 6 ? 8.5 : nd.key.length > 4 ? 10 : 12;
+    const fs = (nd.key.length > 6 ? 8.5 : nd.key.length > 4 ? 10 : 12) * FS;
     const rt = svgEl('text', {
       x: cx,
       y: cy + (nd.dev !== 0 ? -3 : 1),   // shift up if cents shown below
@@ -536,7 +542,7 @@ function buildSVG() {
         'text-anchor':      'middle',
         'dominant-baseline':'middle',
         'font-family':      'Georgia, serif',
-        'font-size':        7.5,
+        'font-size':        7.5 * FS,
         'font-style':       'italic',
         fill: devColor(nd.dev),
         'pointer-events':   'none',
@@ -546,11 +552,11 @@ function buildSVG() {
       g.appendChild(dt);
     }
 
-    // Events
-    g.addEventListener('click',       () => toggleNode(nd));
+    // Events. No touchstart handler: a tap arrives as a click (and names the
+    // node), and a swipe that starts on a node scrolls the lattice instead.
+    g.addEventListener('click',       () => { toggleNode(nd); showInfo(nd); });
     g.addEventListener('mouseenter',  () => showInfo(nd));
     g.addEventListener('mouseleave',  clearInfo);
-    g.addEventListener('touchstart',  e => { e.preventDefault(); toggleNode(nd); }, { passive: false });
 
     svg.appendChild(g);
     nd.groupEl = g;
@@ -784,7 +790,11 @@ fundEl.addEventListener('input', () => {
 });
 
 function shiftOctave(dir) {
-  fundamental = Math.round(fundamental * Math.pow(2, dir) * 100) / 100;
+  // clamp to the input's own range (10–4000 Hz), as diamond does
+  const lo = parseFloat(fundEl.min) || 10;
+  const hi = parseFloat(fundEl.max) || 4000;
+  const next = Math.round(fundamental * Math.pow(2, dir) * 100) / 100;
+  fundamental = Math.min(hi, Math.max(lo, next));
   fundEl.value = fundamental;
   if (!ac) return;
   const t = ac.currentTime;
@@ -845,6 +855,11 @@ function drawScope() {
 // ═══════════════════════════════════════════════════════
 
 buildSVG();
+// on a phone the lattice is wider than the screen: open centred on 1/1
+(() => {
+  const w = document.querySelector('.lattice-wrap');
+  if (w.scrollWidth > w.clientWidth) w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2;
+})();
 blankScope();
 </script>
 </body>
