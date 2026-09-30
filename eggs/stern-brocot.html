@@ -937,7 +937,7 @@ function drawCanvas() {
   // ══ Mini-tree ══════════════════════════════════════
 
   const MID    = W / 2;
-  const CY     = TREE_Y0 + 42;
+  const CY     = TREE_Y0 + 34;   // current-node label baseline CY+16 = 110, inside the 114 px canvas
   const CHY    = TREE_Y0 + 10;
   const SPREAD = Math.min(W * 0.28, 200);
   const LX = MID - SPREAD, RX = MID + SPREAD;
@@ -1081,9 +1081,20 @@ function buildExplanation() {
   if (COMMENTARY[key]) out += `<span class="musical-note">${COMMENTARY[key]}</span>`;
 
   if (depth >= 2) {
-    out += `<p>Your path from the root: <strong>${path.join(' → ')}</strong>. This sequence encodes the <em>continued fraction</em> of ${p}/${q}:</p>`;
+    // The shown path starts at 3/2. From the tree's true root 1/1 it is
+    // R (to 2/1), L (to 3/2), then the shown path; its run lengths are the
+    // continued-fraction terms, except the last term, which is one more.
+    const full = ['R', 'L', ...path];
+    const runs = [];
+    for (const d of full) {
+      if (runs.length && runs[runs.length - 1][0] === d) runs[runs.length - 1][1]++;
+      else runs.push([d, 1]);
+    }
+    const sup = n => String(n).split('').map(ch => '⁰¹²³⁴⁵⁶⁷⁸⁹'[ch]).join('');
+    const rle = runs.map(([d, n]) => d + sup(n)).join(' ');
+    out += `<p>Your path from 3/2: <strong>${path.join(' → ')}</strong>. Counted from the top of the whole tree, 1/1, it begins R (to 2/1), L (to 3/2), so the full path is <strong>${rle}</strong>. Its run lengths spell the <em>continued fraction</em> of ${p}/${q}:</p>`;
     out += `<span class="math">${p}/${q} = ${cfStr(cf)}</span>`;
-    out += `<p>Each run of consecutive L or R moves corresponds to one term in the continued fraction. The Stern-Brocot path and the continued fraction are two descriptions of the same underlying structure — the Euclidean algorithm applied to the ratio.</p>`;
+    out += `<p>Each term is one run length (${runs.map(r => r[1]).join(', ')}), except the last, which is one more than its run. The path and the continued fraction are two descriptions of the same structure · the Euclidean algorithm applied to the ratio.</p>`;
   }
 
   if (depth >= 5) {
@@ -1243,18 +1254,28 @@ function exportBag() {
 
 // ─── Keyboard ─────────────────────────────────────────────────────────────────
 
-const INTERACTIVE = ['SELECT', 'INPUT', 'TEXTAREA', 'BUTTON', 'A'];
+// Text fields keep every key. On a focused button or link only Space/Enter
+// belong to the control; arrows, Home, Backspace and C always drive the tree.
+const TEXTY = ['SELECT', 'INPUT', 'TEXTAREA'];
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { stopAll(); return; }   // panic, works anywhere
-  if (INTERACTIVE.includes(e.target.tagName) || e.target.isContentEditable) return;
+  if (TEXTY.includes(e.target.tagName) || e.target.isContentEditable) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;  // leave Cmd/Ctrl+C etc. alone
+  const onControl = e.target.tagName === 'BUTTON' || e.target.tagName === 'A';
   if (e.key === 'ArrowLeft')  { e.preventDefault(); goLeft(); }
   if (e.key === 'ArrowRight') { e.preventDefault(); goRight(); }
   if (e.key === 'ArrowUp' || e.key === 'Backspace') { e.preventDefault(); goBack(); }
   if (e.key === 'Home')       { e.preventDefault(); goRoot(); }
-  if (e.key === ' ')          { e.preventDefault(); onHear(); }
+  if (e.key === ' ' && !onControl) { e.preventDefault(); onHear(); }
   if (e.key === 'c' || e.key === 'C') { e.preventDefault(); collectCurrent(); }
+});
+
+// A mouse click leaves the button focused, which used to swallow the keyboard
+// map; drop focus after pointer clicks (keyboard activation keeps it).
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('button');
+  if (b && e.detail > 0) b.blur();
 });
 
 // Tab hidden: tear everything down rather than leave a drone running unseen.
