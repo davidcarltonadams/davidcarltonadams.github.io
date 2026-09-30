@@ -440,10 +440,17 @@ function spellFrom(pcs, L) {
   return out;
 }
 
-// Of the tonic's enharmonic names (at most one accidental), keep the spelling
-// with the fewest accidentals overall; a tie goes to the root button's name.
+// A root the button names with a plain letter keeps it: C altered diminished
+// is C D♭ E♭ F♭ G♭ A♭ B𝄫, never B♯ C♯ D♯ E F♯ G♯ A. Otherwise, of the tonic's
+// enharmonic names (at most one accidental), keep the spelling with the
+// fewest accidentals overall; a tie goes to the root button's name.
 function bestSpelling(pcs, chooserPc) {
-  const prefer = ROOT_NAMES[chooserPc][0];
+  const named = ROOT_NAMES[chooserPc];
+  if (named.length === 1) {
+    const sp = spellFrom(pcs, LETTERS.indexOf(named));
+    if (sp) return sp;
+  }
+  const prefer = named[0];
   let best = null, bestCost = Infinity;
   for (let L = 0; L < 7; L++) {
     if (Math.abs(accFor(pcs[0], L)) > 1) continue;
