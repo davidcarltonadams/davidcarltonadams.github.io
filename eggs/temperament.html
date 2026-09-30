@@ -959,6 +959,7 @@ function playNoteAt(midi, startTime, durationSec, vol = 0.14) {
   g.setTargetAtTime(0.0001, off, rel);
 
   v.freeAt = off + rel * 7;
+  v.startAt = t;
   v.midi = midi;
 }
 
@@ -1202,6 +1203,32 @@ function startPlayback() {
   schedLoop();
   document.getElementById('play-status').textContent = 'playing…';
   document.getElementById('btn-play').classList.add('on');
+}
+
+// Change tempo mid-piece without losing the place: keep the current beat,
+// re-anchor the clock to the new tempo, drop the notes the lookahead already
+// timed at the old tempo, and schedule on from where the music is.
+function retempo(bpm) {
+  if (!score || !ac) { playBPM = bpm; return; }
+  const now  = ac.currentTime;
+  const beat = Math.max(0, (now - playStartAC) * playBPM / 60);
+  playBPM = bpm;
+  playStartAC = now - beat * 60 / playBPM;
+  clearTimeout(schedTimer);
+  clearTimeout(endTimer);
+  schedTimer = endTimer = null;
+  playToken++;                         // pending highlight timers were timed at the old tempo
+  if (pool) for (const v of pool) {
+    if (v.startAt > now) {             // scheduled, not yet sounding: drop it
+      v.mute.gain.cancelScheduledValues(0);
+      v.mute.gain.setValueAtTime(0, now);
+      v.freeAt = now;
+      v.midi = -1;
+    }
+  }
+  const i = score.events.findIndex(e => e.t >= beat);
+  schedIdx = i < 0 ? score.events.length : i;
+  schedLoop();
 }
 
 function silencePool() {
@@ -1722,12 +1749,9 @@ document.getElementById('btn-play').addEventListener('click', () => {
 document.getElementById('btn-stop').addEventListener('click', stopPlayback);
 
 document.getElementById('tempo-slider').addEventListener('input', function() {
-  playBPM = parseInt(this.value);
-  document.getElementById('tempo-val').textContent = playBPM;
-  if (isPlaying) {
-    stopPlayback();
-    startPlayback();
-  }
+  const bpm = parseInt(this.value);
+  document.getElementById('tempo-val').textContent = bpm;
+  if (isPlaying) retempo(bpm); else playBPM = bpm;
 });
 
 document.addEventListener('keydown', e => {
