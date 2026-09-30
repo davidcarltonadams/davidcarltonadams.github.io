@@ -412,9 +412,9 @@ function addVoice(i, fund, lim) {
   osc.connect(g);
   g.connect(masterGain);
   osc.start();
-  const c = ratioCents(p, q);
+  const c = ratioCents(p, q), f = fund * p / q;
   const v = { osc, gain: g, p, q, fund, accent: ACCENTS[i % ACCENTS.length], timer: null,
-              glide: { c0: c, c1: c, t0: 0, t1: 0 } };
+              glide: { c0: c, c1: c, t0: 0, t1: 0, f0: f, f1: f } };
   voices.push(v);
   return v;
 }
@@ -445,6 +445,14 @@ function voiceCents(v, now) {
   if (now >= g.t1 || g.t1 <= g.t0) return g.c1;
   return g.c0 + (g.c1 - g.c0) * Math.max(0, (now - g.t0) / (g.t1 - g.t0));
 }
+// The frequency actually sounding now, from the same exponential ramp the
+// oscillator runs (Hz endpoints kept apart from the drawn cents, so a
+// fundamental change mid-glide cannot make the next ramp start elsewhere).
+function voiceHz(v, now) {
+  const g = v.glide;
+  if (now >= g.t1 || g.t1 <= g.t0) return g.f1;
+  return g.f0 * Math.pow(g.f1 / g.f0, Math.max(0, (now - g.t0) / (g.t1 - g.t0)));
+}
 
 function scheduleNext(v) {
   const ms = parseInt(document.getElementById('speedSlider').value) * 1000;
@@ -474,11 +482,11 @@ function moveVoice(v) {
   const glide = Math.min(speed * 0.38, 4.0);
   const freq = v.fund * next.p / next.q;
   const now = audioCtx.currentTime;
-  const c0 = voiceCents(v, now);
-  v.glide = { c0, c1: ratioCents(next.p, next.q), t0: now, t1: now + glide };
+  const c0 = voiceCents(v, now), f0 = voiceHz(v, now);
+  v.glide = { c0, c1: ratioCents(next.p, next.q), t0: now, t1: now + glide, f0, f1: freq };
 
   v.osc.frequency.cancelScheduledValues(now);
-  v.osc.frequency.setValueAtTime(v.fund * Math.pow(2, c0 / 1200), now);
+  v.osc.frequency.setValueAtTime(f0, now);
   v.osc.frequency.exponentialRampToValueAtTime(freq, now + glide);
 
   updateStatus();
@@ -541,9 +549,9 @@ document.getElementById('fundSelect').addEventListener('change', e => {
   const fund = parseFloat(e.target.value);
   const t = audioCtx.currentTime;
   voices.forEach(v => {
-    const c0 = voiceCents(v, t);
-    glideTo(v.osc.frequency, v.fund * Math.pow(2, c0 / 1200), fund * v.p / v.q, t);
-    v.glide = { c0, c1: ratioCents(v.p, v.q), t0: t, t1: t + FUND_GLIDE };
+    const c0 = voiceCents(v, t), f0 = voiceHz(v, t), f1 = fund * v.p / v.q;
+    glideTo(v.osc.frequency, f0, f1, t);
+    v.glide = { c0, c1: ratioCents(v.p, v.q), t0: t, t1: t + FUND_GLIDE, f0, f1 };
     v.fund = fund;
   });
   if (droneOsc) glideTo(droneOsc.frequency, droneOsc.frequency.value, fund, t);
