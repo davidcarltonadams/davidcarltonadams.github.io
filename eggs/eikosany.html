@@ -321,6 +321,21 @@ let positions = [];
 let chord = new Set(); // indices of active nodes
 let hoverIdx = -1;
 let ax = null;
+// S3 · nothing hangs on a hidden tab: fade out and suspend while hidden, then
+// resume on return, so whatever is lit is what sounds.
+let hideGate = null;
+document.addEventListener('visibilitychange', () => {
+  if (!ax || !hideGate || ax.state === 'closed') return;
+  const t = ax.currentTime;
+  hideGate.gain.cancelScheduledValues(t);
+  if (document.hidden) {
+    hideGate.gain.setTargetAtTime(0, t, 0.015);
+    setTimeout(() => { if (document.hidden && ax.state === 'running') ax.suspend(); }, 150);
+  } else {
+    ax.resume().then(() => hideGate.gain.setTargetAtTime(1, ax.currentTime, 0.03));
+  }
+});
+
 let masterGain = null;
 let nodeOscs = {}; // nodeIdx → { osc, gain }
 
@@ -514,7 +529,9 @@ function ensureCtx() {
     trim.gain.value = 0.63;
     masterGain.connect(lim);
     lim.connect(trim);
-    trim.connect(ax.destination);
+    hideGate = ax.createGain();
+    trim.connect(hideGate);
+    hideGate.connect(ax.destination);
   }
   if (ax.state === 'suspended') ax.resume();
 }
