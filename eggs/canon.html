@@ -635,10 +635,28 @@ function togglePlay(){ playing?stopPlay():startPlay(); }
 // ═══════════════════════════════════════════════════════════════════════════════
 // GRID CANVAS
 // ═══════════════════════════════════════════════════════════════════════════════
-const CW=24, CH=12;
+let CW=24, CH=12;
 const gc=$('grid'), gx=gc.getContext('2d');
 
-function resizeG() { gc.width=numSteps*CW; gc.height=numRows*CH; }
+// Cells shrink to fit the grid section (a phone showed 14 of 16 steps, and a
+// touch-drag on the grid can't scroll it), never below 16 px; on a touch
+// screen rows grow toward 18 px so a fingertip hits one row.
+function fitCells() {
+  const sec=gc.closest('.grid-sec'), axis=$('paxis');
+  const avail=(sec?sec.clientWidth:600)-(axis?axis.offsetWidth:24)-4;
+  // only in the one-column layout: in two columns the grid's own width sets
+  // its column, so measuring it would shrink the grid for nothing
+  const oneCol=window.matchMedia&&matchMedia('(max-width:720px)').matches;
+  CW=oneCol?Math.max(16,Math.min(24,Math.floor(avail/numSteps))):24;
+  const coarse=window.matchMedia&&matchMedia('(pointer: coarse)').matches;
+  CH=coarse?Math.max(12,Math.min(18,Math.floor(window.innerHeight*0.6/numRows))):12;
+}
+function resizeG() {
+  fitCells();
+  gc.width=numSteps*CW; gc.height=numRows*CH;
+  document.querySelectorAll('#paxis .plbl').forEach(d=>{ d.style.height=CH+'px'; });
+}
+window.addEventListener('resize',()=>{ const w=CW,h=CH; fitCells(); if(w!==CW||h!==CH) resizeG(); });
 
 function drawGrid() {
   const W=gc.width, H=gc.height;
