@@ -565,6 +565,18 @@ $('btnReverse').addEventListener('click', () => {
   updateReadout();
 });
 $('btnStop').addEventListener('click', stopAll);
+// a hidden tab stops rAF, and the sequencer and the master fade both live in
+// loop(), so the chord used to drone on. Pause instead: fade, suspend, and
+// show "play"; the drift position is kept for when the visitor comes back.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden || !running) return;
+  setRunning(false);
+  if (!actx) return;
+  const ctx = actx;
+  master.gain.cancelScheduledValues(ctx.currentTime);
+  master.gain.setTargetAtTime(0, ctx.currentTime, 0.015);
+  setTimeout(() => { if (ctx.state === 'running' && !running) ctx.suspend(); }, 150);
+});
 $('btnReset').addEventListener('click', reset);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') stopAll();
