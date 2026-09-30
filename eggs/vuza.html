@@ -120,6 +120,7 @@
       border: 1px solid transparent; opacity: 0.85; transition: opacity 0.13s, transform 0.13s;
     }
     .vchip.off { opacity: 0.18; }
+    .vchip.grab { border-color: var(--text); box-shadow: 0 0 0 2px rgba(204,200,208,0.35); }
     .vchip:hover { transform: scale(1.2); }
     .vlbl { font-size: 0.5rem; font-style: italic; color: var(--dimmer); letter-spacing: 0.1em; margin-right: 0.2rem; }
 
@@ -213,7 +214,7 @@
   <div class="explain-body" id="explainBody">
     <p>A <strong>rhythmic tiling canon</strong> of period n is an inner rhythm R (a set of onsets, counted in slots) and an outer rhythm S (the moments each copy of R enters) such that every translate R + s lands on fresh slots and together they cover all n exactly once. Written additively: R ⊕ S = Z<sub>n</sub>. Each ring here is one entry, the outer ring is the sum, and the sum is always a flat pulse when the tiling holds.</p>
     <p>Most tilings are cheap: either R or S is <strong>periodic</strong>, a smaller pattern repeated on a sub-cycle (the 12 and 16 presets; in the 24, 36 and 60 ones S repeats only every half cycle, and at 48 every quarter). Hajós guessed that one side must always repeat. For every period below 72 he was right, but not beyond: Sands worked out exactly which periods force a repeat, and the first that does not is <strong>72</strong>, then 108, 120, 144, 168. Dan Tudor Vuza, coming from the music side in the early 1990s, constructed canons where <strong>neither</strong> side repeats. The one loaded here comes from Vuza's own construction with n = 2·3·3·2·2.</p>
-    <p>Set hear to <strong>sum</strong> and the twelve voices collapse to one click on every slot, a metronome. Set it to <strong>parts</strong> and each voice gets its own pitch: the same slots, now heard as twelve staggered, irregular figures. Nothing changed in the timing. Drag any ring to rotate its entry and the tiling breaks: doubled slots flare red, holes go dark. Click a colored dot above to solo a voice.</p>
+    <p>Set hear to <strong>sum</strong> and the twelve voices collapse to one click on every slot, a metronome. Set it to <strong>parts</strong> and each voice gets its own pitch: the same slots, now heard as twelve staggered, irregular figures. Nothing changed in the timing. Drag any ring to rotate its entry and the tiling breaks: doubled slots flare red, holes go dark. Click a colored dot above to solo a voice; that also grabs its ring, so on a phone you can then drag anywhere on the circle.</p>
     <span class="math">R = {0, 8, 16} ⊕ {0, 18} = 2·(4·{0,1,2} ⊕ 9·{0,1})</span>
     <span class="math">S = {0, 1, 5, 6, 12, 25, 29, 36, 42, 48, 49, 53} · |R|·|S| = 6·12 = 72</span>
   </div>
@@ -361,6 +362,8 @@ let presetIdx = 0;
 let n = 72, R = [], S = [];
 let offsets = [];        // per-voice rotation applied by dragging (slots)
 let solo = null;         // Set of voice indices, or null = all
+let grabbed = -1;        // ring picked by tapping its dot: a drag anywhere rotates it
+let dragRing = -1;       // ring being dragged right now (highlighted)
 let hear = 'parts';      // 'parts' | 'sum'
 let flashes = [];        // per-voice Float32Array(n)
 let sumFlash = null;     // Float32Array(n) on the composite ring
@@ -384,7 +387,7 @@ function loadCanon(nn, RR, SS, name, idx = -1) {
   n = nn; R = RR.slice(); S = SS.slice();
   const box = document.getElementById('mkR'); if (box) box.value = R.join(', ');
   offsets = S.map(() => 0);
-  solo = null;
+  solo = null; grabbed = -1;
   flashes = S.map(() => new Float32Array(n));
   sumFlash = new Float32Array(n);
   playStep = -1;
@@ -598,8 +601,9 @@ function draw() {
     const [cr, cg, cb] = voiceRGB(i, count);
     const on = audible(i);
     const alpha = on ? 1 : 0.22;
-    gx.strokeStyle = `rgba(${cr},${cg},${cb},${0.07 * alpha})`;
-    gx.lineWidth = 1;
+    const held = i === grabbed || i === dragRing;
+    gx.strokeStyle = `rgba(${cr},${cg},${cb},${(held ? 0.5 : 0.07) * alpha})`;
+    gx.lineWidth = held ? 2 : 1;
     gx.beginPath(); gx.arc(cx, cy, r, 0, Math.PI * 2); gx.stroke();
     for (const rr of R) {
       const s = (rr + Se[i]) % n;
@@ -699,8 +703,13 @@ cv.addEventListener('pointerdown', e => {
     const d = Math.abs(rad - ringRadius(i, count));
     if (d < bd) { bd = d; best = i; }
   }
+  // On a phone the rings sit ~7.6 px apart and a fingertip covers five, so a
+  // ring grabbed from its dot wins for touch, and for any press that misses
+  // every ring.
+  if (grabbed >= 0 && (e.pointerType !== 'mouse' || best < 0)) best = grabbed;
   if (best < 0) return;
   drag = { i: best, a0: angleOf(x, y), off0: offsets[best] };
+  dragRing = best;
   cv.classList.add('dragging');
   cv.setPointerCapture(e.pointerId);
 });
@@ -718,7 +727,7 @@ cv.addEventListener('pointermove', e => {
     buildPresetUI();
   }
 });
-function endDrag() { if (drag) { drag = null; cv.classList.remove('dragging'); } }
+function endDrag() { dragRing = -1; if (drag) { drag = null; cv.classList.remove('dragging'); } }
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', endDrag);
 
@@ -831,10 +840,11 @@ function buildVoiceUI() {
   for (let i = 0; i < count; i++) {
     const [cr, cg, cb] = voiceRGB(i, count);
     const d = document.createElement('div');
-    d.className = 'vchip' + (audible(i) ? '' : ' off');
+    d.className = 'vchip' + (audible(i) ? '' : ' off') + (i === grabbed ? ' grab' : '');
     d.style.background = `rgb(${cr},${cg},${cb})`;
-    d.title = `voice ${i + 1} · enters at ${S[i]}`;
+    d.title = `voice ${i + 1} · enters at ${S[i]} · tap to solo and grab its ring`;
     d.onclick = () => {
+      grabbed = i;
       if (!solo) solo = new Set([i]);
       else if (solo.has(i)) { solo.delete(i); if (!solo.size) solo = null; }
       else solo.add(i);
@@ -846,7 +856,7 @@ function buildVoiceUI() {
   all.className = 'btn-sm';
   all.textContent = 'all';
   all.style.marginLeft = '0.3rem';
-  all.onclick = () => { solo = null; buildVoiceUI(); };
+  all.onclick = () => { solo = null; grabbed = -1; buildVoiceUI(); };
   wrap.appendChild(all);
 }
 
