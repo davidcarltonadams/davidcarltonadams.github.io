@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="draw any musical interval as a lissajous figure — simple integer ratios close into a stable shape, irrational ones never do">
+  <meta name="description" content="draw any musical interval as a lissajous figure, spin for a random one, keep a scale — simple integer ratios close into a stable shape, irrational ones never do">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -147,6 +147,33 @@
     }
     .btn-l:hover { color: #bbb; border-color: #333; }
     .btn-l.active { color: #2ecc71; border-color: #2ecc71; }
+    .btn-l.kept { color: #d4c070; border-color: #d4c070; }
+    .btn-l:disabled { opacity: 0.4; cursor: default; }
+
+    /* Kept scale tray */
+    .kept-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .kept-empty { font-size: 0.58rem; color: #444; letter-spacing: 0.04em; font-style: italic; }
+    .kept-chip {
+      position: relative;
+      background: #0f0f14;
+      border: 1px solid #262633;
+      border-radius: 3px;
+      color: #aaa;
+      font-family: inherit;
+      font-size: 0.6rem;
+      letter-spacing: 0.03em;
+      padding: 0.25rem 1.15rem 0.25rem 0.5rem;
+      cursor: pointer;
+      transition: border-color 0.1s, color 0.1s;
+    }
+    .kept-chip:hover { border-color: #555; color: #ddd; }
+    .kept-chip:focus-visible { outline: 1px solid #d4c070; outline-offset: 1px; }
+    .kept-chip .x {
+      position: absolute; top: 0; right: 0.15rem; bottom: 0;
+      display: flex; align-items: center;
+      color: #555; font-size: 0.7rem; line-height: 1;
+    }
+    .kept-chip:hover .x { color: #c0392b; }
 
     /* Info panel */
     .info-panel {
@@ -212,7 +239,7 @@
 <div class="liss-wrap">
 
   <h1 class="liss-title">Lissajous</h1>
-  <p class="liss-sub">every musical ratio has a shape · select an interval · or enter any ratio</p>
+  <p class="liss-sub">every musical ratio has a shape · select, spin, or dial in a ratio · keep the ones worth a scale</p>
 
   <div class="liss-main">
 
@@ -255,8 +282,10 @@
       <div class="ctrl-section">
         <div class="ctrl-label">sound</div>
         <div class="sound-row">
+          <button class="btn-l" id="btn-spin">⟲ spin</button>
           <button class="btn-l" id="btn-sound">♪ tone</button>
           <button class="btn-l" id="btn-animate">⏸ pause</button>
+          <button class="btn-l" id="btn-keep">+ keep</button>
         </div>
       </div>
 
@@ -268,10 +297,16 @@
         <div class="info-row"><span>deviation</span><span class="info-val" id="info-dev">+1.96¢</span></div>
       </div>
 
+      <div class="ctrl-section">
+        <div class="ctrl-label">kept scale <span id="kept-count"></span></div>
+        <div class="kept-row" id="kept-row"></div>
+        <button class="btn-l" id="btn-copy-scale" style="margin-top: 0.5rem;" disabled>copy scale</button>
+      </div>
+
     </div>
   </div>
 
-  <p class="hint">the figure closes when the ratio reduces to integers · irrational ratios never close</p>
+  <p class="hint">the figure closes when the ratio reduces to integers · irrational ratios never close · spin for a random interval, keep the ones worth a scale</p>
 
 </div>
 </main>
@@ -311,6 +346,11 @@ const INTERVALS = [
   { name: 'φ ratio',   ratio: [(1 + Math.sqrt(5)) / 2, 1], label: 'φ:1', tetName: '—', tetCents: null },
 ];
 
+// spin only draws integer ratios (a shape that actually closes) and skips
+// unison — nothing to hear or see there
+const SPINNABLE = INTERVALS.filter(iv =>
+  Number.isInteger(iv.ratio[0]) && Number.isInteger(iv.ratio[1]) && iv.name !== 'unison');
+
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let ratioA     = 3;
 let ratioB     = 2;
@@ -321,6 +361,19 @@ let animating  = true;
 let sounding   = false;
 let t          = 0;
 let activeBtn  = null;
+
+// ─── KEPT SCALE (localStorage, per-browser only) ──────────────────────────────
+const KEPT_KEY = 'lissajous-kept-v1';
+let kept = [];
+try {
+  const raw = localStorage.getItem(KEPT_KEY);
+  if (raw) kept = JSON.parse(raw).filter(k => Number.isFinite(k.a) && Number.isFinite(k.b));
+} catch (e) { kept = []; }
+
+function saveKept() {
+  try { localStorage.setItem(KEPT_KEY, JSON.stringify(kept)); }
+  catch (e) { /* private window / storage blocked — kept stays this-load-only */ }
+}
 
 // ─── AUDIO ────────────────────────────────────────────────────────────────────
 let actx = null, oscA = null, oscB = null, gainNode = null;
@@ -553,6 +606,120 @@ function updateInfo() {
   document.getElementById('info-tet').textContent = `${nearestStep}¢ (${nearest.name}${octSuffix})`;
   const dev = cents - nearestStep;
   document.getElementById('info-dev').textContent = `${dev >= 0 ? '+' : ''}${dev.toFixed(2)}¢`;
+  updateKeepButton();
+}
+
+// ─── SPIN + KEEP ──────────────────────────────────────────────────────────────
+function reducedRatio(a, b) {
+  if (Number.isInteger(a) && Number.isInteger(b)) { const g = gcd(a, b); return [a / g, b / g]; }
+  return [a, b];
+}
+
+function findGridBtn(a, b) {
+  return Array.from(document.querySelectorAll('.iv-btn'))
+    .find(el => parseFloat(el.dataset.a) === a && parseFloat(el.dataset.b) === b);
+}
+
+function selectRatio(a, b) {
+  if (activeBtn) { activeBtn.classList.remove('active'); activeBtn = null; }
+  const gridBtn = findGridBtn(a, b);
+  if (gridBtn) { gridBtn.classList.add('active'); activeBtn = gridBtn; }
+  setRatio(a, b);
+  if (!sounding) startSound();
+}
+
+function spinRatio() {
+  let pick;
+  do { pick = SPINNABLE[Math.floor(Math.random() * SPINNABLE.length)]; }
+  while (SPINNABLE.length > 1 && pick.ratio[0] === ratioA && pick.ratio[1] === ratioB);
+  selectRatio(pick.ratio[0], pick.ratio[1]);
+}
+
+function updateKeepButton() {
+  const btn = document.getElementById('btn-keep');
+  const [ra, rb] = reducedRatio(ratioA, ratioB);
+  const already = kept.some(k => k.a === ra && k.b === rb);
+  btn.classList.toggle('kept', already);
+  btn.textContent = already ? '✓ kept' : '+ keep';
+}
+
+function toggleKeep() {
+  const [ra, rb] = reducedRatio(ratioA, ratioB);
+  const idx = kept.findIndex(k => k.a === ra && k.b === rb);
+  if (idx >= 0) kept.splice(idx, 1);
+  else kept.push({ a: ra, b: rb, label: `${fmtPart(ra)}:${fmtPart(rb)}` });
+  saveKept();
+  renderKept();
+  updateKeepButton();
+}
+
+function scaleAsText() {
+  const sorted = kept.slice().sort((x, y) => ratioToCents(x.a, x.b) - ratioToCents(y.a, y.b));
+  const lines = sorted.map((k, i) => {
+    const cents = ratioToCents(k.a, k.b);
+    return `${i + 1}.  ${k.label.padEnd(9)} ${cents.toFixed(1)}¢`;
+  });
+  return `ratio roulette — kept scale\n${lines.join('\n')}`;
+}
+
+function copyScale() {
+  const btn = document.getElementById('btn-copy-scale');
+  if (!kept.length) return;
+  const text = scaleAsText();
+  const done = ok => {
+    btn.textContent = ok ? 'copied!' : 'copy failed';
+    setTimeout(() => { btn.textContent = 'copy scale'; }, 1500);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => done(true), () => done(false));
+  } else {
+    done(false);
+  }
+}
+
+function renderKept() {
+  const row = document.getElementById('kept-row');
+  const countEl = document.getElementById('kept-count');
+  const copyBtn = document.getElementById('btn-copy-scale');
+  countEl.textContent = kept.length ? `(${kept.length})` : '';
+  copyBtn.disabled = !kept.length;
+  row.innerHTML = '';
+  if (!kept.length) {
+    const span = document.createElement('span');
+    span.className = 'kept-empty';
+    span.textContent = 'spin or dial in a ratio, then keep the ones worth a scale';
+    row.appendChild(span);
+    return;
+  }
+  kept.forEach(k => {
+    const chip = document.createElement('div');
+    chip.className = 'kept-chip';
+    chip.setAttribute('role', 'button');
+    chip.tabIndex = 0;
+    chip.setAttribute('aria-label', `play ${k.label}`);
+
+    const label = document.createElement('span');
+    label.textContent = k.label;
+    const xBtn = document.createElement('span');
+    xBtn.className = 'x';
+    xBtn.textContent = '×';
+    xBtn.setAttribute('role', 'button');
+    xBtn.setAttribute('aria-label', `remove ${k.label}`);
+    xBtn.tabIndex = 0;
+    chip.appendChild(label);
+    chip.appendChild(xBtn);
+
+    const play = () => selectRatio(k.a, k.b);
+    const remove = () => {
+      kept = kept.filter(x => !(x.a === k.a && x.b === k.b));
+      saveKept(); renderKept(); updateKeepButton();
+    };
+    chip.addEventListener('click', play);
+    chip.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); play(); } });
+    xBtn.addEventListener('click', e => { e.stopPropagation(); remove(); });
+    xBtn.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); remove(); } });
+    row.appendChild(chip);
+  });
 }
 
 // ─── BUILD INTERVAL BUTTONS ───────────────────────────────────────────────────
@@ -635,6 +802,9 @@ function onRatioInput() {
 });
 
 document.getElementById('btn-sound').addEventListener('click', toggleSound);
+document.getElementById('btn-spin').addEventListener('click', spinRatio);
+document.getElementById('btn-keep').addEventListener('click', toggleKeep);
+document.getElementById('btn-copy-scale').addEventListener('click', copyScale);
 
 document.getElementById('btn-animate').addEventListener('click', () => {
   animating = !animating;
@@ -657,6 +827,7 @@ function loop() {
 initTrail();
 buildIntervalButtons();
 updateInfo();
+renderKept();
 document.getElementById('btn-animate').classList.add('active');
 document.getElementById('year').textContent = new Date().getFullYear();
 loop();
