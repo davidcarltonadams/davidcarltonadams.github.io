@@ -7,6 +7,17 @@ Commit hashes below were re-pointed 2026-09-30 to the rewritten history on main.
 
 ---
 
+## 2026-09-30 · audit + repair
+
+Night audit of all 41 eggs and the four hub pages, then repair lanes. (seat: finish this list)
+- tools.html · eikosany credited to Erv Wilson, partials has 24, drone's partials are 2 to 9 plus 11, 13, 16, 21, sound is not generative · tags and footer readable
+- eggs.html, tools.html, llms.txt · forty eggs · "nothing collected" now names clock's outside servers · farey, brush, mtok, vuza, comma, lissajous cards corrected · nest map no longer stretched
+- nest · septimal "oblique" and sumtones blurbs fixed in the vector store · rebake separates eggs with identical vectors, so phase, farey, rhythm and clutch can be clicked
+- Kirnberger III · one fifth (F♯–C♯) carries the schisma, here and in tunings.json
+- lanes A to D, site · (seat)
+
+---
+
 ## Canon Machine (canon.html)
 
 ### v2.3 — 2026-03-23 — commit 3a5ea7c
