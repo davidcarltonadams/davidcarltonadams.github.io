@@ -238,7 +238,7 @@
   </div>
 
   <div class="roll-sec">
-    <div class="roll-t">piano roll — all voices</div>
+    <div class="roll-t">piano roll · all voices</div>
     <canvas id="roll" height="160"></canvas>
   </div>
 
@@ -569,6 +569,17 @@ function sched() {
   if(!playing||!actx) return;
   const maxOff = voices.reduce((m,v)=>Math.max(m,v.offset),0);
   const onceTot = numSteps + maxOff;
+
+  // stall resync: a blocked main thread would hand every missed step to Web
+  // Audio in the past, fired as one clump. Jump ahead and count the skipped
+  // steps, so every voice stays aligned to the shared step.
+  const now=actx.currentTime;
+  if(nextT<now-0.05) {
+    curStep+=Math.ceil((now+0.02-nextT)/stepDur());
+    nextT=now+0.02;
+    if(loop) curStep%=numSteps;
+    else if(curStep>=onceTot){ stopPlay(); return; }
+  }
 
   while(nextT<actx.currentTime+0.15) {
     voices.forEach(v => {
