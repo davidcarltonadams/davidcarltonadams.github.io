@@ -142,6 +142,9 @@
       color: var(--dimmer);
       font-style: italic;
     }
+    /* a touch screen has no esc or space: say what works there */
+    .touch-only { display: none; }
+    @media (hover: none) { .kbd-only { display: none; } .touch-only { display: inline; } }
   </style>
 </head>
 <body>
@@ -177,7 +180,7 @@
   <button id="btnReverse">reverse</button>
 </div>
 
-<p class="hint">click the canvas or press space to play · esc stops · the circles are fixed tempo rulers · the players fall through them</p>
+<p class="hint"><span class="kbd-only">click the canvas or press space to play · esc stops</span><span class="touch-only">tap the canvas or play to start · pause silences it</span> · the circles are fixed tempo rulers · the players fall through them</p>
 
 <script>
 // ─────────────────────────────────────────────────────────────
