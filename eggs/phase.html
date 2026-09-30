@@ -165,6 +165,8 @@
          oninput="onSwing(this.value)">
   <span class="disp" id="swingD">straight</span>
 
+  <button class="btn sml" id="lockBtn" onclick="toggleLock()"
+          title="piano-phase style: b drifts until it is exactly one more step ahead, holds there for two passes of the pattern, then drifts on">lock steps</button>
   <button class="btn sml" id="syncBtn" onclick="togglePauseAtSync()"
           title="pause both voices when they re-align in unison">pause at sync</button>
 
@@ -226,6 +228,13 @@ let nextB_time = 0, nextB_step = 0;
 let schedTimer = null;
 let syncHoldTimer = null;
 const voiced = new Set();  // live osc+gain pairs, so stop-all can reach them
+
+// Lock mode (Reich's Piano Phase): b drifts until it is exactly lockLead
+// steps ahead of a, then runs at a's tempo for two passes of the pattern,
+// then drifts toward the next whole step. bDur remembers what each b step
+// really lasted, so the playhead walks back over held steps correctly.
+let lockOn = false, lockLead = 1, holdLeft = 0;
+const bDur = new Map();
 
 // Sync-pause state
 let pauseAtSync = false;
@@ -385,7 +394,7 @@ function draw() {
   if (playing && ax && !syncPaused) {
     const now = ax.currentTime;
     const pA = headPhase(nextA_step, nextA_time, stepDurA, now);
-    const pB = headPhase(nextB_step, nextB_time, stepDurB, now);
+    const pB = headPhase(nextB_step, nextB_time, stepDurBActual, now);
 
     // Sync detection: diff goes HIGH→LOW when B laps A
     const diff = (pB - pA + NUM_STEPS) % NUM_STEPS;
@@ -418,11 +427,21 @@ function headPhase(nextStep, nextTime, stepDur, now) {
   let step = nextStep, t = nextTime;
   while (t > now && step > 0) {
     step--;
-    t -= stepDur(step % NUM_STEPS);
+    t -= stepDur(step);
   }
   const s = step % NUM_STEPS;
-  const frac = Math.min(1, Math.max(0, (now - t) / stepDur(s)));
+  const frac = Math.min(1, Math.max(0, (now - t) / stepDur(step)));
   return (s + frac) % NUM_STEPS;
+}
+// b's actual step lengths (held steps ran at a's tempo)
+function stepDurBActual(step) { return bDur.has(step) ? bDur.get(step) : stepDurB(step); }
+
+// When a's step i starts, walking a's own grid from its next unscheduled step.
+function aTimeOfStep(i) {
+  let t = nextA_time, k = nextA_step;
+  while (k < i) { t += stepDurA(k); k++; }
+  while (k > i) { k--; t -= stepDurA(k); }
+  return t;
 }
 
 // How far b has pulled ahead, in a's steps. Over 16 steps the offset runs
@@ -431,7 +450,7 @@ let lastOffsetText = '';
 function showOffset(diff) {
   const d = Math.round(diff * 10) / 10;
   const txt = (d < 0.1 || d > NUM_STEPS - 0.1) ? 'in unison'
-            : `b is ${d.toFixed(1)} step${d === 1 ? '' : 's'} ahead`;
+            : `b is ${d.toFixed(1)} step${d === 1 ? '' : 's'} ahead` + (lockOn && holdLeft > 0 ? ' · held' : '');
   if (txt !== lastOffsetText) { document.getElementById('offsetD').textContent = txt; lastOffsetText = txt; }
 }
 
@@ -533,7 +552,22 @@ function schedulerTick() {
   // Voice B
   while (nextB_time < now + LOOKAHEAD) {
     const step = nextB_step % NUM_STEPS;
-    const dur  = stepDurB(step);
+    let dur = stepDurB(nextB_step);
+    if (lockOn) {
+      const tA = aTimeOfStep(nextB_step - lockLead);
+      if (holdLeft > 0) {                 // locked: ride a's grid exactly
+        nextB_time = tA;
+        dur = stepDurA(nextB_step - lockLead);
+        if (--holdLeft === 0) lockLead++;
+      } else if (nextB_time <= tA + 1e-4) {
+        // b has reached a whole step ahead: snap onto a's grid and hold
+        nextB_time = tA;
+        dur = stepDurA(nextB_step - lockLead);
+        holdLeft = 2 * NUM_STEPS - 1;
+      }
+    }
+    bDur.set(nextB_step, dur);
+    if (bDur.size > 256) bDur.delete(bDur.keys().next().value);
     const t    = nextB_time;
     for (let r = 0; r < NUM_ROWS; r++) {
       if (grid[r][step]) scheduleNote(r, t, dur, 'b');
@@ -606,6 +640,7 @@ function togglePlay() {
     startAcTime = ax.currentTime + 0.05;
     nextA_time = startAcTime; nextA_step = 0;
     nextB_time = startAcTime; nextB_step = 0;
+    lockLead = 1; holdLeft = 0; bDur.clear();
     schedulerTick();
     requestAnimationFrame(animate);
     btn.textContent = '■ stop';
@@ -640,6 +675,17 @@ function onSwing(v) {
     Math.abs(b - pct) < Math.abs(a - pct) ? b : a);
   document.getElementById('swingD').textContent =
     Math.abs(near - pct) <= 2 ? labels[near] : `${pct}%`;
+}
+
+function toggleLock() {
+  lockOn = !lockOn;
+  holdLeft = 0;
+  // aim for the next whole step beyond b's current lead
+  const lead = (nextB_step - nextA_step) + (nextA_time - nextB_time) / beat16A();
+  lockLead = Math.max(1, Math.floor(lead + 1e-6) + 1);
+  const btn = document.getElementById('lockBtn');
+  btn.classList.toggle('on', lockOn);
+  btn.textContent = lockOn ? 'lock steps ✓' : 'lock steps';
 }
 
 function togglePauseAtSync() {
