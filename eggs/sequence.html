@@ -445,10 +445,14 @@ function stopFundDrone(at, fade = 0.6) {
 function playNote(ev, startTime, dur) {
   const freq = fundHz * ev.p / ev.q;
   const vol  = (ev.vel || 0.8) * 0.25;
+  if (!Number.isFinite(freq) || freq <= 0) return;   // never let one note kill the scheduler
   const o = ax.createOscillator();
   const g = ax.createGain();
   o.type = 'sine';
   o.frequency.value = freq;
+  // a queued note must sit at 0 before its start: stop's hold-and-ramp would
+  // otherwise ramp from the default gain of 1 and blip (peak 0.48 measured)
+  g.gain.value = 0;
   g.gain.setValueAtTime(0, startTime);
   g.gain.linearRampToValueAtTime(vol, startTime + 0.025);
   g.gain.setValueAtTime(vol, startTime + dur * 0.82);
@@ -769,7 +773,7 @@ function loadJSON(data) {
     const j = JSON.parse(data);
     if (!j || typeof j !== 'object') throw new Error('not a sequence object');
     const raw = Array.isArray(j.events) ? j.events : [];
-    const kept = raw.filter(e => e && isPosInt(e.p) && isPosInt(e.q)).map(e => ({
+    const kept = raw.filter(e => e && isPosInt(e.p) && isPosInt(e.q) && e.p <= 1e6 && e.q <= 1e6).map(e => ({
       p:   e.p,
       q:   e.q,
       dur: cleanDur(e.dur),
@@ -806,8 +810,8 @@ function loadJSON(data) {
     updateInfoPanel(null);
     updatePlayBtn();
     if (skipped > 0) {
-      alert(`Skipped ${skipped} event${skipped === 1 ? '' : 's'} with a bad ratio — `
-          + 'p and q must both be positive whole numbers.');
+      alert(`Skipped ${skipped} event${skipped === 1 ? '' : 's'} with a bad ratio · `
+          + 'p and q must be whole numbers from 1 to 1,000,000.');
     }
   } catch(e) {
     alert('Could not parse JSON: ' + e.message);
