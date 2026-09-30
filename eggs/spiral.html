@@ -201,13 +201,36 @@ const NAMES_31 = Array.from({length:31}, (_,i) => {
 });
 
 // ── Audio ─────────────────────────────────────────────────
-let ac = null;
+let ac = null, master = null;
 const voices = {};
 const activeNodes = new Set();
+const liveOscs = new Set();   // every started oscillator, releasing ones included (panic reaches all)
 
 function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)();
+  // master 0.6 into a gentle limiter: 31 nodes at 0.12 each summed to 1.78 before
+  master = ac.createGain();
+  master.gain.value = 0.6;
+  const lim = ac.createDynamicsCompressor();
+  lim.threshold.value = -10; lim.knee.value = 6; lim.ratio.value = 8;
+  lim.attack.value = 0.004; lim.release.value = 0.15;
+  master.connect(lim);
+  lim.connect(ac.destination);
+}
+
+// release one voice; the delayed cleanup deletes only the voice it scheduled,
+// so a re-press inside the release window keeps its own new voice
+function releaseVoice(key, tc, ms) {
+  const v = voices[key];
+  if (!v) return;
+  v.gain.gain.cancelScheduledValues(ac.currentTime);
+  v.gain.gain.setTargetAtTime(0, ac.currentTime, tc);
+  setTimeout(() => {
+    try { v.osc.stop(); } catch (e) {}
+    liveOscs.delete(v.osc);
+    if (voices[key] === v) delete voices[key];
+  }, ms);
 }
 
 let ROOT_FREQ = 261.63; // C4
@@ -233,11 +256,7 @@ function toggleNote(stepIndex, tuningKey) {
   if (ac.state === 'suspended') ac.resume();
   const key = `${stepIndex}`;
   if (activeNodes.has(stepIndex)) {
-    const { osc, gain } = voices[key] || {};
-    if (osc) {
-      gain.gain.setTargetAtTime(0, ac.currentTime, 0.06);
-      setTimeout(() => { try { osc.stop(); } catch(e){} delete voices[key]; }, 400);
-    }
+    releaseVoice(key, 0.06, 400);
     activeNodes.delete(stepIndex);
   } else {
     const freq = pitchForStep(stepIndex, tuningKey);
@@ -248,8 +267,9 @@ function toggleNote(stepIndex, tuningKey) {
     gain.gain.setValueAtTime(0, ac.currentTime);
     gain.gain.setTargetAtTime(0.12, ac.currentTime, 0.02);
     osc.connect(gain);
-    gain.connect(ac.destination);
+    gain.connect(master);
     osc.start();
+    liveOscs.add(osc);
     voices[key] = { osc, gain };
     activeNodes.add(stepIndex);
   }
@@ -257,11 +277,12 @@ function toggleNote(stepIndex, tuningKey) {
 }
 
 function clearAll() {
-  for (const i of [...activeNodes]) {
-    const { osc, gain } = voices[String(i)] || {};
-    if (osc) {
-      gain.gain.setTargetAtTime(0, ac ? ac.currentTime : 0, 0.05);
-      setTimeout(() => { try { osc.stop(); } catch(e){} delete voices[String(i)]; }, 300);
+  if (ac) {
+    for (const key of Object.keys(voices)) releaseVoice(key, 0.05, 300);
+    // anything still sounding without a handle (should be none) is stopped too
+    const held = new Set(Object.values(voices).map(v => v.osc));
+    for (const osc of [...liveOscs]) {
+      if (!held.has(osc)) { try { osc.stop(ac.currentTime + 0.3); } catch (e) {} liveOscs.delete(osc); }
     }
   }
   activeNodes.clear();
