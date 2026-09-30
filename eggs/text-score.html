@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="thirty short text scores, drawn one at a time — prose instructions for listening, tuning and silence that you perform yourself.">
+  <meta name="description" content="thirty short text scores, drawn one at a time · prose instructions for listening, tuning and silence that you perform yourself.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
-  <title>a score</title>
+  <title>text-score — David Carlton Adams</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -46,6 +46,19 @@
       -webkit-user-select: text;
       cursor: text;
     }
+
+    /* what this is, until the first advance */
+    .frame {
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+      font-style: italic;
+      color: rgba(212,204,196,0.5);
+      margin-bottom: 1.4rem;
+      text-wrap: balance;
+      transition: opacity 0.5s ease;
+    }
+    .frame.gone { opacity: 0; }
+    @media (max-width: 480px) { .frame { letter-spacing: 0.05em; } }
 
     .instruction {
       font-size: clamp(1.1rem, 3.5vw, 1.7rem);
@@ -114,6 +127,7 @@
 <a class="eggs-back" href="../eggs.html">← eggs</a>
 
 <div id="score-text" aria-live="polite">
+  <p class="frame" id="frame-el">a text score · perform it yourself · tap for another</p>
   <p class="instruction" id="instruction-el"></p>
 </div>
 
@@ -147,7 +161,7 @@ function show(idx, animate, nav) {
   const s = SCORES[idx];
   const render = () => {
     instrEl.innerHTML = formatText(s.text);
-    metaEl.textContent = pad(s.id) + ' of ' + SCORES.length + ' — ' + s.category;
+    metaEl.textContent = pad(s.id) + ' of ' + SCORES.length + ' · ' + s.category;
     const url = '?n=' + pad(s.id);
     if (nav === 'push') {
       history.pushState({ depth: ++depth }, '', url);
@@ -175,6 +189,7 @@ function randomIndex(avoid) {
 }
 
 function loadRandom(nav) {
+  if (nav === 'push') document.getElementById('frame-el').classList.add('gone');
   current = randomIndex(current);
   show(current, true, nav);
   resetTimer();
