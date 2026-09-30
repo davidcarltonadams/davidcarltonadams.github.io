@@ -331,6 +331,21 @@ const AMP_BASE    = 0.38;
 const MASTER_GAIN = 0.45;
 
 let ac = null, analyser = null, scopeBuf = null;
+// S3 · nothing hangs on a hidden tab: fade out and suspend while hidden, then
+// resume on return, so whatever is lit is what sounds.
+let hideGate = null;
+document.addEventListener('visibilitychange', () => {
+  if (!ac || !hideGate || ac.state === 'closed') return;
+  const t = ac.currentTime;
+  hideGate.gain.cancelScheduledValues(t);
+  if (document.hidden) {
+    hideGate.gain.setTargetAtTime(0, t, 0.015);
+    setTimeout(() => { if (document.hidden && ac.state === 'running') ac.suspend(); }, 150);
+  } else {
+    ac.resume().then(() => hideGate.gain.setTargetAtTime(1, ac.currentTime, 0.03));
+  }
+});
+
 let master = null, comp = null;
 const voices = {};
 const activeSet = new Set();
@@ -352,7 +367,9 @@ function initAudio() {
   analyser.smoothingTimeConstant = 0.6;
   master.connect(comp);
   comp.connect(analyser);
-  analyser.connect(ac.destination);
+  hideGate = ac.createGain();
+  analyser.connect(hideGate);
+  hideGate.connect(ac.destination);
 }
 
 function getRoot() {

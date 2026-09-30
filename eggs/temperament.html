@@ -1039,6 +1039,19 @@ function stopAll() {
   clearHighlights();
 }
 
+// S3 · a hidden tab stops the sustained sounds (drone, held pitch-class
+// cells) and shows them stopped. The fugue is a sequencer and plays on:
+// the background policy for sequencers is David's call (G-3).
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  releaseAllCells();
+  if (droneOn) {
+    stopDrone();
+    droneOn = false;
+    document.getElementById('btn-drone').classList.remove('on');
+  }
+});
+
 // ── 4. KERN PARSER ────────────────────────────────────────────────────────────
 
 function parseKernDuration(token) {

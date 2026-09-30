@@ -205,6 +205,21 @@ const NAMES_31 = Array.from({length:31}, (_,i) => {
 
 // ── Audio ─────────────────────────────────────────────────
 let ac = null, master = null;
+// S3 · nothing hangs on a hidden tab: fade out and suspend while hidden, then
+// resume on return, so whatever is lit is what sounds.
+let hideGate = null;
+document.addEventListener('visibilitychange', () => {
+  if (!ac || !hideGate || ac.state === 'closed') return;
+  const t = ac.currentTime;
+  hideGate.gain.cancelScheduledValues(t);
+  if (document.hidden) {
+    hideGate.gain.setTargetAtTime(0, t, 0.015);
+    setTimeout(() => { if (document.hidden && ac.state === 'running') ac.suspend(); }, 150);
+  } else {
+    ac.resume().then(() => hideGate.gain.setTargetAtTime(1, ac.currentTime, 0.03));
+  }
+});
+
 const voices = {};
 const activeNodes = new Set();
 const liveOscs = new Set();   // every started oscillator, releasing ones included (panic reaches all)
@@ -219,7 +234,9 @@ function initAudio() {
   lim.threshold.value = -10; lim.knee.value = 6; lim.ratio.value = 8;
   lim.attack.value = 0.004; lim.release.value = 0.15;
   master.connect(lim);
-  lim.connect(ac.destination);
+  hideGate = ac.createGain();
+  lim.connect(hideGate);
+  hideGate.connect(ac.destination);
 }
 
 // release one voice; the delayed cleanup deletes only the voice it scheduled,
