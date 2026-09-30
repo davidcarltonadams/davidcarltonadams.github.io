@@ -94,14 +94,15 @@
       -webkit-appearance: none; width: 12px; height: 12px;
       border-radius: 50%; background: var(--ji); cursor: pointer;
     }
-    .landmarks { position: relative; height: 2.2rem; }
+    .landmarks { position: relative; height: 3.4rem; }
     .landmark {
       position: absolute; transform: translateX(-50%);
       display: flex; flex-direction: column; align-items: center; gap: 2px;
     }
     .landmark-tick { width: 1px; height: 5px; background: var(--dim); }
+    .landmark.low .landmark-label { margin-top: 1.45rem; }   /* 19-TET/⅓ comma and ¼ comma/31-TET sit 0.05–0.2¢ apart: stack them */
     .landmark-label {
-      font-size: 0.42rem; color: var(--dimmer); font-style: italic;
+      font-size: 0.42rem; color: var(--dim); font-style: italic;
       letter-spacing: 0.05em; white-space: nowrap; text-align: center; line-height: 1.2;
     }
 
@@ -523,8 +524,9 @@ const REGULAR = [
   { name: '12-TET',         fifth: 700.000 },
   { name: '⅙ comma',        fifth: 698.371 },
   { name: '¼ comma',        fifth: 696.578 },
-  { name: '31-TET',         fifth: 1200*18/31 },
-  { name: '19-TET',         fifth: 1200*11/19 },
+  // 12 keys can only hold 12 of 19 (or 31) notes: the closing fifth is left over
+  { name: '31-TET (12 of 31)', fifth: 1200*18/31 },
+  { name: '19-TET (12 of 19)', fifth: 1200*11/19 },
 ];
 
 const PC   = 23.460;   // Pythagorean comma
@@ -694,7 +696,7 @@ const TP = {
     bass:2, treble:-2
   },
   'cc-orig': {
-    label: 'cc orig',
+    label: 'plain saw',
     sine:0, sq:0, saw:1, tri:0,
     cutoff:2200, q:0.4,
     attack:0.005, decay:0.14, sustain:0.45, release:0.055,
@@ -702,7 +704,7 @@ const TP = {
     bass:0, treble:0
   },
   'cc-spec': {
-    label: 'cc spec',
+    label: 'cavern',
     sine:0.35, sq:0.05, saw:0.1, tri:0.5,
     cutoff:1100, q:1.4,
     attack:0.22, decay:2.5, sustain:0.82, release:0.45,
@@ -1469,7 +1471,7 @@ function setTemperament(pcCents, name, fifthVal, well) {
 
   if (!well) {
     document.getElementById('fifth-readout').textContent =
-      `${fifthVal.toFixed(2)}¢ — ${name}`;
+      `${fifthVal.toFixed(2)}¢ · ${name}`;
     document.getElementById('fifth-slider').value = fifthVal;
   } else {
     document.getElementById('fifth-readout').textContent = name;
@@ -1507,10 +1509,12 @@ function clearHighlights() {
 function buildLandmarks() {
   const wrap = document.getElementById('landmarks');
   const range = SLIDER_MAX - SLIDER_MIN;
-  LANDMARKS.forEach(lm => {
+  LANDMARKS.forEach((lm, i) => {
     const pct = (lm.fifth - SLIDER_MIN) / range * 100;
     const el = document.createElement('div');
-    el.className = 'landmark';
+    // a landmark within 0.5¢ of the one before drops a row so labels don't overprint
+    const crowded = i > 0 && lm.fifth - LANDMARKS[i - 1].fifth < 0.5;
+    el.className = 'landmark' + (crowded ? ' low' : '');
     el.style.left = `${pct}%`;
     el.innerHTML = `<div class="landmark-tick"></div><div class="landmark-label">${lm.label}<br>${lm.fifth.toFixed(2)}¢</div>`;
     wrap.appendChild(el);
@@ -1691,7 +1695,7 @@ function getFaveName(n) {
   if (!raw) return null;
   try {
     const d = JSON.parse(raw);
-    return d._preset || 'custom';
+    return (TP[d._preset] && TP[d._preset].label) || d._preset || 'custom';
   } catch(e) { return null; }
 }
 
