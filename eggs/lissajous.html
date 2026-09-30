@@ -404,7 +404,9 @@ function startSound() {
   oscA.start();
   oscB.start();
 
-  gainNode.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.05);
+  const now = ctx.currentTime;
+  gainNode.gain.setValueAtTime(0, now);                 // anchor: ramp from here, not from t=0
+  gainNode.gain.linearRampToValueAtTime(0.12, now + 0.05);
   sounding = true;
   document.getElementById('btn-sound').classList.add('active');
   document.getElementById('btn-sound').textContent = '♪ mute';
@@ -421,7 +423,13 @@ function stopSound() {
   document.getElementById('btn-sound').classList.remove('active');
   document.getElementById('btn-sound').textContent = '♪ tone';
   if (!gainNode) return;
-  gainNode.gain.linearRampToValueAtTime(0, actx.currentTime + 0.05);
+  // Anchor the fade at the current level. Without this the ramp ran from the
+  // last scheduled event (the fade-in, seconds ago), so the gain stepped
+  // almost straight to zero: an audible click on every mute.
+  const now = actx.currentTime;
+  gainNode.gain.cancelScheduledValues(now);
+  gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+  gainNode.gain.linearRampToValueAtTime(0, now + 0.05);
   if (stopTimer !== null) clearTimeout(stopTimer);
   stopTimer = setTimeout(() => { stopTimer = null; killOscs(); }, 100);
 }
@@ -436,6 +444,9 @@ function updateSoundFreqs() {
 function toggleSound() {
   if (sounding) stopSound(); else startSound();
 }
+
+// a tone never hangs in a hidden tab: fade it out and show it as off
+document.addEventListener('visibilitychange', () => { if (document.hidden && sounding) stopSound(); });
 
 // ─── CANVAS ───────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('liss-canvas');
