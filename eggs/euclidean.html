@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="layer euclidean rhythms and hear them interfere — bjorklund's algorithm spaces n pulses as evenly as possible across k steps">
+  <meta name="description" content="layer euclidean rhythms and hear them interfere · bjorklund's algorithm spaces n pulses as evenly as possible across k steps">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -21,6 +21,7 @@
       --blue:   #7ab8d4;
       --green:  #88c080;
       --rose:   #c088b8;
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
     }
     body {
       background: var(--bg);
@@ -35,7 +36,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -51,7 +52,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 500px;
@@ -87,7 +88,7 @@
 
     .layer-info { display: flex; flex-direction: column; gap: 0.22rem; min-width: 0; overflow: hidden; }
     .pname {
-      font-size: 0.51rem; font-style: italic; color: var(--dimmer);
+      font-size: 0.51rem; font-style: italic; color: var(--dim);
       letter-spacing: 0.09em; white-space: nowrap;
       overflow: hidden; text-overflow: ellipsis;
     }
@@ -98,14 +99,14 @@
 
     .pitch-sel {
       font-family: Georgia, serif; font-size: 0.54rem; font-style: italic;
-      color: var(--dim); background: var(--bg2);
+      color: var(--control); background: var(--bg2);
       border: 1px solid var(--border);
       padding: 0.15rem 0.28rem; cursor: pointer; outline: none;
     }
     .btn-sm {
       font-family: Georgia, serif;
       font-size: 0.52rem; letter-spacing: 0.1em; text-transform: lowercase;
-      font-style: italic; color: var(--dim);
+      font-style: italic; color: var(--control);
       background: none; border: 1px solid var(--border);
       padding: 0.28rem 0.55rem; cursor: pointer; white-space: nowrap;
       transition: color 0.13s, border-color 0.13s;
@@ -154,11 +155,11 @@
 
     .explain-wrap { width: 100%; max-width: 500px; }
     .explain-toggle {
-      font-size: 0.51rem; font-style: italic; color: var(--dimmer);
+      font-size: 0.51rem; font-style: italic; color: var(--control);
       letter-spacing: 0.1em; background: none; border: none;
       font-family: Georgia, serif; cursor: pointer; transition: color 0.13s;
     }
-    .explain-toggle:hover { color: var(--dim); }
+    .explain-toggle:hover { color: var(--text); }
     .explain-body {
       display: none; margin-top: 0.9rem;
       font-size: 0.63rem; line-height: 1.9; color: var(--dim);
@@ -184,7 +185,7 @@
 <div class="header">
   <h1 class="title">euclidean</h1>
   <p class="sub">
-    distribute n pulses as evenly as possible across k equal steps —<br>
+    distribute n pulses as evenly as possible across k equal steps ·<br>
     the same algorithm euclid used to find greatest common divisors
   </p>
 </div>
@@ -208,9 +209,9 @@
 <div class="explain-wrap">
   <button class="explain-toggle" onclick="toggleExplain()">? what is this</button>
   <div class="explain-body" id="explainBody">
-    <p>The <strong>Euclidean rhythm</strong> E(n,k) distributes n onsets as evenly as possible across k equal time slots. Bjorklund's construction for it is Euclid's greatest-common-divisor algorithm in disguise — Godfried Toussaint showed in 2005 that the patterns it produces are the ones world rhythm already uses. (Toussaint writes the pair the other way round, as E(k,n).)</p>
-    <p>These patterns appear independently wherever humans distribute rhythm evenly over a cycle. <strong>E(3,8)</strong> is the <em>tresillo</em> of Cuban and Brazilian music. <strong>E(5,8)</strong> is the <em>cinquillo</em>. <strong>E(3,7)</strong> is the Bulgarian <em>ruchenitza</em>. <strong>E(4,9)</strong> is the Turkish <em>aksak</em>. <strong>E(5,16)</strong> is the Brazilian <em>bossa nova</em>. Plenty of other pairs make good rhythms without carrying a name.</p>
-    <p>Stack multiple layers to create <strong>polyrhythmic interference patterns</strong>. Full coincidence — all layers landing on beat 1 simultaneously — recurs every LCM(k₁, k₂, …) steps. Try E(3,8) + E(5,8) + E(7,12) and listen for when the grid snaps back.</p>
+    <p>The <strong>Euclidean rhythm</strong> E(n,k) distributes n onsets as evenly as possible across k equal time slots. Bjorklund's construction for it is Euclid's greatest-common-divisor algorithm in disguise: Godfried Toussaint showed in 2005 that the patterns it produces are the ones world rhythm already uses. (Toussaint swaps the letters, E(k,n), but the onsets still come first: the tresillo is E(3,8) in both.)</p>
+    <p>These patterns appear independently wherever humans distribute rhythm evenly over a cycle. <strong>E(3,8)</strong> is the <em>tresillo</em> of Cuban and Brazilian music. <strong>E(5,8)</strong> is the <em>cinquillo</em>. <strong>E(3,7)</strong> is the Bulgarian <em>ruchenitza</em>. <strong>E(4,9)</strong> is the Turkish <em>aksak</em>. <strong>E(5,16)</strong> is the Brazilian <em>bossa nova</em>. Plenty of other pairs make good rhythms without carrying a name. The presets fill whichever layer you last touched, and ◂ ▸ rotate a layer's start.</p>
+    <p>Stack multiple layers to create <strong>polyrhythmic interference patterns</strong>. Full coincidence, all layers landing on beat 1 together, recurs every LCM(k₁, k₂, …) steps. Try E(3,8) + E(5,8) + E(7,12) and listen for when the grid snaps back.</p>
     <span class="math">E(3,8) = [●○○●○○●○]  tresillo · Cuba, Brazil, West Africa</span>
     <span class="math">E(5,8) = [●○●●○●●○]  cinquillo · Cuba</span>
     <span class="math">E(3,7) = [●○●○●○○]  ruchenitza · Bulgaria</span>
