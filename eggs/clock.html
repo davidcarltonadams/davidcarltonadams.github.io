@@ -266,15 +266,14 @@
     .copy-btn:hover { color: var(--dim); border-color: var(--dim); }
     .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
 
-    #qr-img {
+    #qr-canvas {
       margin-top: 1.2rem;
-      width: 160px;
-      height: 160px;
-      border: 1px solid var(--border);
+      max-width: 100%;
+      height: auto;
       background: #fff;
-      padding: 6px;
       border-radius: 2px;
       display: block;
+      image-rendering: pixelated;
     }
     .qr-note {
       font-size: 0.47rem;
@@ -603,7 +602,7 @@
     </div>
   </div>
 
-  <img id="qr-img" alt="QR code for performer URL" src="">
+  <canvas id="qr-canvas" role="img" aria-label="QR code for the performer link"></canvas>
   <p class="qr-note">performers scan to load score · share performer URL in chat as fallback</p>
 
   <a id="open-conductor-btn" href="#">open conductor view →</a>
@@ -646,6 +645,7 @@
 </div>
 
 <script src="../vendor/peerjs-1.5.4.min.js"></script>
+<script src="../vendor/qrcode-generator-1.4.4.js"></script>
 <script>
 // ── Utility ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -1173,18 +1173,43 @@ $('create-btn').addEventListener('click', async () => {
   $('performer-url-text').textContent   = perfURL;
   $('open-conductor-btn').href = condURL;
 
-  // QR codes cap out around 3KB of data — skip if URL is too large (e.g. base64 images)
-  if (perfURL.length < 2800) {
-    $('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=d4ccc4&bgcolor=060606&data=${encodeURIComponent(perfURL)}`;
-    $('qr-img').style.display = 'block';
-    document.querySelector('.qr-note').textContent = 'performers scan to load score · share performer URL in chat as fallback';
+  // QR codes cap out near 3 KB, so a link carrying image data may not fit
+  if (drawQR(perfURL)) {
+    $('qr-canvas').style.display = 'block';
+    document.querySelector('.qr-note').textContent = 'performers scan to load the score · drawn on this page, no qr service sees the link · the copied link works too';
   } else {
-    $('qr-img').style.display = 'none';
-    document.querySelector('.qr-note').textContent = 'URL too large for QR (contains image data) — share performer URL directly';
+    $('qr-canvas').style.display = 'none';
+    document.querySelector('.qr-note').textContent = 'link too long for a qr code (it carries image data) · share the performer link directly';
   }
 
   showView('session-view');
 });
+
+// ── QR code ────────────────────────────────────────────────────────────────
+// Drawn locally with vendor/qrcode-generator-1.4.4.js (MIT, pinned). It used to
+// be an <img> from api.qrserver.com whose request carried the whole performer
+// URL: every section, image and password hash. Dark modules on white with a
+// 4-module quiet zone, the polarity every scanner reads.
+function drawQR(text) {
+  let qr = null;
+  for (const ec of ['M', 'L']) {               // M if it fits, else L
+    try { const q = qrcode(0, ec); q.addData(text); q.make(); qr = q; break; }
+    catch (e) { /* too long at this level */ }
+  }
+  if (!qr) return false;
+  const n = qr.getModuleCount(), quiet = 4, cells = n + 2 * quiet;
+  const px = Math.max(2, Math.ceil(600 / cells));  // backing pixels per module
+  const cv = $('qr-canvas');
+  cv.width = cv.height = cells * px;
+  cv.style.width = Math.min(440, Math.max(180, cells * 3)) + 'px';
+  const g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+  g.fillStyle = '#000';
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++)
+      if (qr.isDark(r, c)) g.fillRect((c + quiet) * px, (r + quiet) * px, px, px);
+  return true;
+}
 
 // ── Conductor view ─────────────────────────────────────────────────────────
 function buildTimeline() {
