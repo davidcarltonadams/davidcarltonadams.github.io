@@ -91,6 +91,12 @@
     .lattice-wrap {
       width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
       display: flex; justify-content: center;
+      justify-content: safe center;   /* overflow spills right, where scroll reaches */
+    }
+    /* phone: fit-to-width made the ratios 3.8 px; render wider and scroll
+       sideways (opens centred on 1/1) */
+    @media (max-width: 600px) {
+      #lattice { min-width: 520px; }
     }
 
     /* ── Chord / info ─────────────────────────────────── */
@@ -330,6 +336,9 @@ const COFF_Y = 30;
 
 const SVG_W  = 800;
 const SVG_H  = 460;
+// The nodes fill only x 108–692, y 100–360 of the 800×460 frame; the viewBox
+// is cropped to that field (plus a caption strip) so everything draws larger.
+const VB = { x: 96, y: 84, w: 608, h: 300 };
 const CX     = SVG_W / 2;   // 400
 const CY     = SVG_H / 2;   // 230
 
@@ -398,9 +407,10 @@ function nodeColors(nd) {
 
 function buildSVG() {
   const svg = document.getElementById('lattice');
-  svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
-  svg.setAttribute('width',  SVG_W);
-  svg.setAttribute('height', SVG_H);
+  const FS  = window.innerWidth <= 600 ? 1.15 : 1;   // larger text on a phone
+  svg.setAttribute('viewBox', `${VB.x} ${VB.y} ${VB.w} ${VB.h}`);
+  svg.setAttribute('width',  760);
+  svg.setAttribute('height', Math.round(760 * VB.h / VB.w));
   svg.style.cssText = 'display:block;max-width:100%;height:auto;';
   svg.innerHTML = '';
 
@@ -476,7 +486,7 @@ function buildSVG() {
       g.appendChild(circle);
 
       // Ratio text — adaptive font size for long ratios
-      const fs = nd.key.length >= 7 ? 8.5 : nd.key.length >= 5 ? 10 : 12;
+      const fs = (nd.key.length >= 7 ? 8.5 : nd.key.length >= 5 ? 10 : 12) * FS;
       const yOffset = (!nd.isRoot && nd.dev !== 0) ? -3 : 1;
       const rt = svgEl('text', {
         x: cx, y: cy + yOffset,
@@ -494,17 +504,18 @@ function buildSVG() {
         const dt = svgEl('text', {
           x: cx, y: cy + 12,
           'text-anchor': 'middle', 'dominant-baseline': 'middle',
-          'font-family': 'Georgia, serif', 'font-size': '7.5', 'font-style': 'italic',
+          'font-family': 'Georgia, serif', 'font-size': 7.5 * FS, 'font-style': 'italic',
           fill: devColor(nd.dev), 'pointer-events': 'none',
         });
         dt.textContent = fmtDev(nd.dev);
         g.appendChild(dt);
       }
 
-      g.addEventListener('click',      () => toggleNode(nd));
+      // No touchstart handler: a tap arrives as a click (and names the node),
+      // and a swipe that starts on a node scrolls instead of toggling it.
+      g.addEventListener('click',      () => { toggleNode(nd); showInfo(nd); });
       g.addEventListener('mouseenter', () => showInfo(nd));
       g.addEventListener('mouseleave', clearInfo);
-      g.addEventListener('touchstart', e => { e.preventDefault(); toggleNode(nd); }, { passive: false });
 
       layerG.appendChild(g);
     }
@@ -523,15 +534,15 @@ function buildSVG() {
     t.textContent = text; return t;
   };
 
-  svg.appendChild(makeLabel(
-    ox + 1.8 * STEP, oy + 14, 'middle',
-    'rgba(110,165,200,0.30)', '← P4  ·  P5 →'));
-  svg.appendChild(makeLabel(
-    ox + 0.65 * STEP, oy - 1.4 * STEP * SQ3_2 - 6, 'middle',
-    'rgba(100,185,135,0.30)', '↗  M3  (×5)'));
-  svg.appendChild(makeLabel(
-    ox + COFF_X * 2.2 + 8, oy + COFF_Y * 2.2 + 12, 'start',
-    'rgba(205,165,70,0.30)', '↘  7/4  (×7)'));
+  // captions in a strip under the nodes (inside the field they sat under
+  // 15/14, 9/8, 21/16 and 9/5)
+  const capY = VB.y + VB.h - 8;
+  svg.appendChild(makeLabel(ox - 1.6 * STEP, capY, 'middle',
+    'rgba(110,165,200,0.55)', '→  P5  (×3)'));
+  svg.appendChild(makeLabel(ox, capY, 'middle',
+    'rgba(100,185,135,0.55)', '↗  M3  (×5)'));
+  svg.appendChild(makeLabel(ox + 1.6 * STEP, capY, 'middle',
+    'rgba(205,165,70,0.55)', '↘  7/4  (×7)'));
 }
 
 // ═══════════════════════════════════════════════════════
@@ -774,6 +785,11 @@ function drawScope() {
 // ═══════════════════════════════════════════════════════
 
 buildSVG();
+// on a phone the lattice is wider than the screen: open centred on 1/1
+(() => {
+  const w = document.querySelector('.lattice-wrap');
+  if (w.scrollWidth > w.clientWidth) w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2;
+})();
 blankScope();
 </script>
 </body>
