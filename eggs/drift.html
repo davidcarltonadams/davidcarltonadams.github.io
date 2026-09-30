@@ -561,9 +561,30 @@ function glideTo(param, from, target, t) {
 
 // ─── Status display ───────────────────────────────────────────────────────────
 
+// The sounding chord as whole numbers: the voices (and the 1/1 drone when it
+// is on) over a common denominator, reduced, low to high. e.g. 4:5:6:7.
+function chordString(withDrone) {
+  const rs = voices.map(v => [v.p, v.q]);
+  if (withDrone) rs.push([1, 1]);
+  if (!rs.length) return '';
+  const lcm = rs.reduce((m, [, q]) => m / gcd(m, q) * q, 1);
+  let ns = rs.map(([p, q]) => p * lcm / q);
+  const g = ns.reduce((a, b) => gcd(a, b));
+  ns = [...new Set(ns.map(n => n / g))].sort((a, b) => a - b);
+  return ns.join(':');
+}
+
 function updateStatus() {
   const el = document.getElementById('voiceStatus');
   const chips = [];
+  const withDrone = playing && document.getElementById('droneCheck').checked;
+  if (playing && voices.length) {
+    const ch = chordString(withDrone);
+    chips.push(`<div class="v-chip">
+      <span class="v-ratio">${ch.length > 28 ? ch.slice(0, 27) + '…' : ch}</span>
+      <span class="v-detail">the chord in whole numbers${withDrone ? ', drone included' : ''}</span>
+    </div>`);
+  }
 
   if (playing && document.getElementById('droneCheck').checked) {
     chips.push(`<div class="v-chip v-drone">
@@ -579,7 +600,7 @@ function updateStatus() {
     // the prime-limit colour, so the chip says both who and what.
     chips.push(`<div class="v-chip" style="border-color:${v.accent.hex}44">
       <span class="v-ratio" style="color:${v.accent.hex}">${v.p}/${v.q}</span>
-      <span class="v-detail">${cents.toFixed(1)}¢ · <span style="color:${limitColor(lim)}">${lim}-limit</span></span>
+      <span class="v-detail">${cents.toFixed(1)}¢ · <span style="color:${limitColor(lim)}">${lim}-limit</span> · th ${tenneyHeight(v.p, v.q).toFixed(1)}</span>
     </div>`);
   });
 
