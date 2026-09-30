@@ -247,13 +247,13 @@
 <div class="tone-controls">
   <div class="tone-row">
     <span class="tone-label a">tone A</span>
-    <input type="range" id="slider-a" class="tone-slider a" min="100" max="1200" step="0.5" value="264">
+    <input type="range" id="slider-a" class="tone-slider a" min="100" max="1200" step="0.01" value="264">
     <span class="tone-val" id="val-a">264.0 Hz</span>
     <span class="tone-note" id="note-a"></span>
   </div>
   <div class="tone-row">
     <span class="tone-label b">tone B</span>
-    <input type="range" id="slider-b" class="tone-slider b" min="100" max="1200" step="0.5" value="330">
+    <input type="range" id="slider-b" class="tone-slider b" min="100" max="1200" step="0.01" value="330">
     <span class="tone-val" id="val-b">330.0 Hz</span>
     <span class="tone-note" id="note-b"></span>
   </div>
@@ -315,11 +315,7 @@ function toggleVoice(id, freq, col) {
   if (ac.state === 'suspended') ac.resume();
 
   if (playing.has(id)) {
-    if (voices[id]) {
-      voices[id].gain.gain.setTargetAtTime(0, ac.currentTime, 0.05);
-      const osc = voices[id].osc;
-      setTimeout(() => { try { osc.stop(); } catch(e){} delete voices[id]; }, 400);
-    }
+    releaseVoice(id, 400);
     playing.delete(id);
   } else {
     if (freq <= 0) return;
@@ -343,13 +339,19 @@ function updateFreq(id, freq) {
   if (voices[id]) voices[id].osc.frequency.setTargetAtTime(freq, ac.currentTime, 0.02);
 }
 
+// fade a voice out and forget it at once: a re-press inside the fade
+// builds a fresh voice, and the timer only ever stops the osc it captured
+function releaseVoice(id, ms) {
+  const v = voices[id];
+  if (!v) return;
+  delete voices[id];
+  v.gain.gain.setTargetAtTime(0, ac ? ac.currentTime : 0, 0.05);
+  setTimeout(() => { try { v.osc.stop(); } catch(e){} }, ms);
+}
+
 function clearAll() {
   for (const id of [...playing]) {
-    if (voices[id]) {
-      voices[id].gain.gain.setTargetAtTime(0, ac ? ac.currentTime : 0, 0.05);
-      const osc = voices[id].osc;
-      setTimeout(() => { try { osc.stop(); } catch(e){} delete voices[id]; }, 300);
-    }
+    releaseVoice(id, 300);
     playing.delete(id);
   }
   renderResults();
@@ -522,6 +524,7 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 });
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearAll(); });
 window.addEventListener('resize', drawSpectrum);
 
 // ── Init ──────────────────────────────────────────────────
