@@ -1078,6 +1078,13 @@ function buildIntervals() {
     if(prev ? opt.value===prev : iv.name==='P5') opt.selected=true;
     sel.appendChild(opt);
   });
+  // the kept choice was dropped (7/4 leaving for 12-TET): take the nearest interval
+  // still offered (7/4 → m7), never the browser's fallback to the first option
+  if(prev && sel.value!==prev) {
+    let best=null;
+    for(const o of sel.options) if(!best || Math.abs(+o.value-+prev)<Math.abs(+best.value-+prev)) best=o;
+    if(best) sel.value=best.value;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
