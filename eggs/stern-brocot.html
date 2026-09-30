@@ -262,6 +262,9 @@
     }
     .bag-chip:hover { border-color: rgba(212,192,112,0.55); }
     .bag-chip.dragging { opacity: 0.28; }
+    .bag-export-note { font-size: 0.56rem; letter-spacing: 0.08em; font-style: italic; color: var(--dim); margin: 0.2rem 0 0.4rem; }
+    .bag-export-note a { color: var(--control); }
+    .bag-export-note a:hover { color: var(--text); }
     .bag-chip.playing  { border-color: rgba(212,192,112,0.85); background: rgba(212,192,112,0.12); }
     .bag-chip.drag-over { border-color: rgba(212,192,112,1); background: rgba(212,192,112,0.06); }
     .chip-ratio { font-size: 0.72rem; color: var(--gold); }
@@ -368,6 +371,7 @@
     <button class="btn-sm" onclick="clearBag()">✕ clear</button>
     <button class="btn-sm" onclick="exportBag()">↓ export json</button>
   </div>
+  <div class="bag-export-note">export → load it in <a href="sequence.html">sequence</a> to loop and edit it</div>
   <div class="bag-tray" id="bagTray">
     <span class="bag-empty">press <kbd>C</kbd> or + collect to add the current ratio · or hover the number line and press <kbd>C</kbd></span>
   </div>
