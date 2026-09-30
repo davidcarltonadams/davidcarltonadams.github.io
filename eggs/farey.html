@@ -16,6 +16,7 @@
       --text:   #ccc8d0;
       --dim:    rgba(204,200,208,0.40);
       --dimmer: rgba(204,200,208,0.17);
+      --control: rgba(204,200,208,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
       --blue:   #7ab8d4;
@@ -36,7 +37,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -52,7 +53,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 540px;
@@ -78,7 +79,7 @@
     .ctrl-label {
       font-size: 0.56rem;
       letter-spacing: 0.11em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
     }
     .ctrl-val {
@@ -104,7 +105,7 @@
     }
     button {
       background: transparent;
-      color: var(--dimmer);
+      color: var(--control);
       border: 1px solid var(--border);
       padding: 0.3rem 0.8rem;
       font-family: Georgia, serif;
@@ -114,13 +115,13 @@
       cursor: pointer;
       transition: color 0.13s, border-color 0.13s;
     }
-    button:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    button:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
     button.on { color: var(--gold); border-color: rgba(212,192,112,0.5); }
 
     .info-line {
       font-size: 0.55rem;
       letter-spacing: 0.1em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
       min-height: 2.9em;
@@ -160,7 +161,7 @@
 
 <div class="header">
   <h1 class="title">farey clock</h1>
-  <p class="sub">every fraction p∕q sits at exactly (p∕q × 360°) around the circle — radian space made visible. the farey sequence of order n contains every reduced fraction between 0 and 1 with denominator ≤ n. adjacent fractions have a beautiful property: if p∕q and r∕s are neighbors, then |ps − rq| = 1. hover a dot to light up its two neighbors and see that determinant worked out. click to hear the position as a pitch.</p>
+  <p class="sub">every fraction p∕q sits p∕q of a turn around the circle (p∕q × 360°). the farey sequence of order n contains every reduced fraction between 0 and 1 with denominator ≤ n. if p∕q and r∕s are neighbors, then |ps − rq| = 1, every time. hover a dot to light up its two neighbors and see that determinant worked out. click to hear the position as a pitch: p∕q of an octave above the root, step p of q-EDO, so 2∕3 sounds 800¢, not a fifth.</p>
 </div>
 
 <canvas id="cv"></canvas>
@@ -171,7 +172,7 @@
   <div class="ctrl-group">
     <span class="ctrl-label">order n (denominators ≤ n)</span>
     <input type="range" id="nSlider" min="1" max="16" value="5" step="1">
-    <span class="ctrl-val" id="nVal">F₅ — <span id="nCount">0</span> fractions</span>
+    <span class="ctrl-val" id="nVal">F₅ · <span id="nCount">0</span> fractions</span>
   </div>
   <div class="ctrl-group">
     <span class="ctrl-label">root pitch</span>
@@ -278,6 +279,7 @@ let showNeighbors = true;
 let showJI = false;
 let showSpokes = false;
 let hoveredFrac = null;
+let hoveredJI = null;     // a JI marker under the pointer: { ji, pos }
 let hoveredNeighbors = null;
 
 // ── Sweep state
@@ -336,7 +338,8 @@ function draw() {
     c.lineTo(CX + r2 * Math.cos(a), CY + r2 * Math.sin(a));
     c.strokeStyle = 'rgba(255,255,255,0.18)';
     c.lineWidth = 0.8; c.stroke();
-    const lp = ringPos(k / 12, R + 16);
+    // k/12 labels sit inside the ring, clear of the fraction labels outside it
+    const lp = ringPos(k / 12, R - 26);
     c.fillStyle = 'rgba(255,255,255,0.22)';
     c.font = '8px SF Mono, Fira Code, monospace';
     c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -357,12 +360,14 @@ function draw() {
       const a = fracAngle(pos);
       const x = CX + (R - 13) * Math.cos(a);
       const y = CY + (R - 13) * Math.sin(a);
+      const hot = hoveredJI && hoveredJI.ji === ji;
+      const hs = hot ? 5.5 : 3.5;
       c.save();
       c.translate(x, y); c.rotate(a + Math.PI / 4);
-      c.beginPath(); c.rect(-3.5, -3.5, 7, 7);
+      c.beginPath(); c.rect(-hs, -hs, hs * 2, hs * 2);
       c.fillStyle = ji.color; c.fill();
       c.restore();
-      const lp = ringPos(pos, R + 28);
+      const lp = ringPos(pos, R + 38);
       c.fillStyle = ji.color;
       c.font = 'italic 8.5px Georgia, serif';
       c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -399,8 +404,8 @@ function draw() {
     }
   }
 
-  // ── Hovered fraction and its two Farey neighbors
-  if (hoveredFrac && hoveredNeighbors) {
+  // ── Hovered fraction (or JI marker) and its two Farey neighbors
+  if ((hoveredFrac || hoveredJI) && hoveredNeighbors) {
     const a0 = fracAngle((hoveredNeighbors.prev || hoveredFrac).v);
     const a1 = fracAngle((hoveredNeighbors.next || hoveredFrac).v);
     c.beginPath();
@@ -418,13 +423,14 @@ function draw() {
       c.fillStyle = 'rgba(212,192,112,0.90)';
       c.font = '9.5px Georgia, serif';
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText(`${nb.p}/${nb.q}`, lp.x, lp.y);
+      c.fillText(nb.v === 0 || nb.v === 1 ? '0/1 = 1/1' : `${nb.p}/${nb.q}`, lp.x, lp.y);
     }
   }
 
   // ── Fraction dots
   const BASE_R = 7;
   for (const f of fracs) {
+    if (f.v === 1) continue;     // 1/1 is the same point as 0/1: drawn and labelled once
     const pt = ringPos(f.v, R);
     const isHovered = hoveredFrac && hoveredFrac.p === f.p && hoveredFrac.q === f.q;
     const dotR = isHovered ? BASE_R + 4 : (f.q <= 2 ? BASE_R + 1 : BASE_R - 1);
@@ -450,7 +456,7 @@ function draw() {
       c.fillStyle = isHovered ? col.replace(/[\d.]+\)$/, '1)') : col.replace(/[\d.]+\)$/, '0.85)');
       c.font = `${isHovered ? 'bold ' : ''}${f.q <= 3 ? 11 : 9.5}px Georgia, serif`;
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText(`${f.p}/${f.q}`, lp.x, lp.y);
+      c.fillText(f.v === 0 ? '0/1 = 1/1' : `${f.p}/${f.q}`, lp.x, lp.y);
     }
   }
 
@@ -499,6 +505,14 @@ function findFrac(mx, my) {
 
 function updateInfoLine() {
   const el = document.getElementById('infoLine');
+  if (!hoveredFrac && hoveredJI && hoveredNeighbors) {
+    const { ji, pos } = hoveredJI, { prev, next } = hoveredNeighbors;
+    const near = (pos - prev.v) <= (next.v - pos) ? prev : next;
+    const miss = (near.v - pos) * 1200;
+    el.innerHTML = `${ji.name} · ${(pos * 1200).toFixed(2)}¢ · ${pos.toFixed(5)} of a turn, irrational`
+      + `<span class="det">between ${prev.p}/${prev.q} and ${next.p}/${next.q} in F${subscript(n)} · nearest ${near.p}/${near.q} = step ${near.p} of ${near.q}-EDO, ${Math.abs(miss).toFixed(2)}¢ ${miss < 0 ? 'flat' : 'sharp'}</span>`;
+    return;
+  }
   if (!hoveredFrac) { el.textContent = 'hover or click a fraction'; return; }
   const f     = hoveredFrac;
   const cents = (f.v * 1200).toFixed(0);
@@ -522,9 +536,29 @@ function updateInfoLine() {
   el.innerHTML = line;
 }
 
+// JI markers sit just inside the ring at log2(ratio) of a turn: irrational,
+// so each one falls between two Farey neighbours
+function findJI(mx, my) {
+  if (!showJI) return null;
+  for (const ji of JI_INTERVALS) {
+    if (ji.ratio === 1 || ji.ratio === 2) continue;
+    const pos = Math.log2(ji.ratio);
+    const p = ringPos(pos, R - 13);
+    if ((mx - p.x) ** 2 + (my - p.y) ** 2 <= 81) return { ji, pos };
+  }
+  return null;
+}
+function jiNeighbors(pos) {
+  let prev = null, next = null;
+  for (const f of fracs) { if (f.v < pos) prev = f; else if (f.v > pos) { next = f; break; } }
+  return { prev, next };
+}
+
 function hoverAt(mx, my) {
   hoveredFrac = findFrac(mx, my);
-  hoveredNeighbors = hoveredFrac ? neighborsOf(hoveredFrac) : null;
+  hoveredJI = hoveredFrac ? null : findJI(mx, my);
+  hoveredNeighbors = hoveredFrac ? neighborsOf(hoveredFrac)
+                   : hoveredJI ? jiNeighbors(hoveredJI.pos) : null;
   updateInfoLine();
   requestDraw();
 }
@@ -534,8 +568,15 @@ canvas.addEventListener('mousemove', e => {
   hoverAt(e.clientX - rect.left, e.clientY - rect.top);
 });
 
+// A tap's compatibility mouse events can end in a stray mouseleave; on a
+// phone the tapped dot (or JI marker) should stay named until the next tap.
+let lastTouchAt = -1e9;
+canvas.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') lastTouchAt = performance.now(); });
+
 canvas.addEventListener('mouseleave', () => {
+  if (performance.now() - lastTouchAt < 800) return;
   hoveredFrac = null;
+  hoveredJI = null;
   hoveredNeighbors = null;
   updateInfoLine();
   requestDraw();
@@ -681,7 +722,9 @@ function stopSweep() {
 canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
   const f = findFrac(e.clientX - rect.left, e.clientY - rect.top);
-  if (f) playFrac(f);
+  if (f) { playFrac(f); return; }
+  const j = findJI(e.clientX - rect.left, e.clientY - rect.top);
+  if (j) playFrac({ v: j.pos });   // a JI marker plays the just interval itself
 });
 
 // ── n slider
@@ -695,9 +738,10 @@ function updateN() {
   fracs = fareySeq(n);
   // the hovered dot belongs to the old sequence — its neighbors no longer mean anything
   hoveredFrac = null;
+  hoveredJI = null;
   hoveredNeighbors = null;
   updateInfoLine();
-  document.getElementById('nVal').innerHTML = `F${subscript(n)} — <span id="nCount">${fracs.length}</span> fractions`;
+  document.getElementById('nVal').innerHTML = `F${subscript(n)} · <span id="nCount">${fracs.length}</span> fractions`;
   updateLegend();
   requestDraw();
 }
@@ -712,6 +756,7 @@ document.getElementById('btnNeighbors').addEventListener('click', e => {
 });
 document.getElementById('btnJI').addEventListener('click', e => {
   showJI = !showJI;
+  if (!showJI && hoveredJI) { hoveredJI = null; hoveredNeighbors = null; updateInfoLine(); }
   e.target.classList.toggle('on', showJI);
   requestDraw();
 });

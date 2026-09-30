@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="a playable 5-limit just-intonation lattice — click nodes to stack pure ratios and see how far each one sits from its nearest 12-tet neighbour.">
+  <meta name="description" content="a playable 5-limit just-intonation lattice: click nodes to stack pure ratios and see how far each one sits from its nearest 12-tet neighbor.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -17,6 +17,7 @@
       --text:     #d8d0c8;
       --dim:      rgba(216,208,200,0.4);
       --dimmer:   rgba(216,208,200,0.18);
+      --control: rgba(216,208,200,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --accent:   #8ab0c8;
       --acc-bg:   rgba(138,176,200,0.18);
       --border:   rgba(255,255,255,0.07);
@@ -47,7 +48,7 @@
     .sub {
       font-size: 0.6rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.3rem;
     }
@@ -81,7 +82,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.63rem;
       letter-spacing: 0.07em;
@@ -111,7 +112,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.6rem;
       padding: 0.22rem 0.48rem;
@@ -128,6 +129,12 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
+    /* phone: fit-to-width made the ratios 3.6 px; render wider and let the
+       wrapper scroll sideways (it opens centred on 1/1) */
+    @media (max-width: 600px) {
+      #lattice { min-width: 640px; }
+    }
+    #lattice circle.twin { stroke: #d4c070; stroke-width: 1.6; stroke-dasharray: 4 3; }
 
     /* ── Chord / info displays ───────────────────────── */
     .chord-display {
@@ -143,7 +150,7 @@
       min-height: 1.3rem;
       font-size: 0.58rem;
       letter-spacing: 0.1em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
     }
@@ -202,7 +209,7 @@
     /* ── Back link ───────────────────────────────────── */
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -212,7 +219,7 @@
     .hint {
       font-size: 0.54rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       text-align: center;
     }
@@ -280,13 +287,14 @@
     </svg>
     major thirds
   </span>
+  <span class="legend-item">↓ ↑ = a syntonic comma (81/80, 21.5¢) below / above the Pythagorean note</span>
 </div>
 
 <div class="scope-wrap">
   <canvas id="scope" height="60" aria-hidden="true"></canvas>
 </div>
 
-<p class="hint">click to toggle &nbsp;&middot;&nbsp; esc clears all &nbsp;&middot;&nbsp; hover to see interval name &amp; cents</p>
+<p class="hint">click to toggle &nbsp;&middot;&nbsp; esc clears all &nbsp;&middot;&nbsp; hover or tap to see interval name &amp; cents</p>
 
 <script>
 // ═══════════════════════════════════════════════════════
@@ -437,11 +445,40 @@ function svgEl(tag, attrs) {
 }
 
 // ═══════════════════════════════════════════════════════
+// Note names (Pythagorean letter + syntonic-comma arrows)
+// ═══════════════════════════════════════════════════════
+// Named from the root's nearest 12-TET pitch (A at the default 220 Hz). The
+// letter is the one p + 4q fifths up the chain from the root; each factor of
+// 5 moves the note a syntonic comma off that Pythagorean spelling (↓ per 5
+// above, ↑ per 5 below), so 5/4 over A is C♯↓ and 10/9 is B↓ beside 9/8's B.
+const PC_TO_LOF = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6, 1: 7, 8: -4, 3: -3, 10: -2, 5: -1 };
+function rootLof() {
+  const pc = ((Math.round(12 * Math.log2(fundamental / 440)) + 9) % 12 + 12) % 12;
+  return PC_TO_LOF[pc];
+}
+function lofName(k) {
+  const letter = 'FCGDAEB'[((k + 1) % 7 + 7) % 7];
+  const acc = Math.floor((k + 1) / 7);
+  return letter + (acc === 2 ? '𝄪' : acc > 0 ? '♯'.repeat(acc) : '♭'.repeat(-acc));
+}
+function noteName(nd) {
+  return lofName(rootLof() + nd.p + 4 * nd.q) + (nd.q > 0 ? '↓'.repeat(nd.q) : '↑'.repeat(-nd.q));
+}
+// the same letter one syntonic comma away: (p ± 4, q ∓ 1)
+function commaTwins(nd) {
+  return [nodeMap[`${nd.p + 4},${nd.q - 1}`], nodeMap[`${nd.p - 4},${nd.q + 1}`]].filter(Boolean);
+}
+function renameNodes() {
+  for (const nd of nodes) if (nd.nameEl) nd.nameEl.textContent = noteName(nd);
+}
+
+// ═══════════════════════════════════════════════════════
 // Build SVG
 // ═══════════════════════════════════════════════════════
 
 function buildSVG() {
   const svg = document.getElementById('lattice');
+  const FS  = window.innerWidth <= 600 ? 1.3 : 1;   // larger text on a phone
   svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
   svg.setAttribute('width',  SVG_W);
   svg.setAttribute('height', SVG_H);
@@ -512,7 +549,7 @@ function buildSVG() {
     g.appendChild(circle);
 
     // Ratio text (centered in circle, upper half)
-    const fs = nd.key.length > 6 ? 8.5 : nd.key.length > 4 ? 10 : 12;
+    const fs = (nd.key.length > 6 ? 8.5 : nd.key.length > 4 ? 10 : 12) * FS;
     const rt = svgEl('text', {
       x: cx,
       y: cy + (nd.dev !== 0 ? -3 : 1),   // shift up if cents shown below
@@ -528,6 +565,21 @@ function buildSVG() {
     nd.ratioTextEl = rt;
     g.appendChild(rt);
 
+    // Note name (inside circle, top)
+    const ne = svgEl('text', {
+      x: cx,
+      y: cy - 15,
+      'text-anchor':      'middle',
+      'dominant-baseline':'middle',
+      'font-family':      'Georgia, serif',
+      'font-size':        7.5 * FS,
+      fill: 'rgba(216,208,200,0.55)',
+      'pointer-events':   'none',
+    });
+    ne.textContent = noteName(nd);
+    nd.nameEl = ne;
+    g.appendChild(ne);
+
     // Cents deviation (inside circle, lower; skip if 0)
     if (nd.dev !== 0) {
       const dt = svgEl('text', {
@@ -536,7 +588,7 @@ function buildSVG() {
         'text-anchor':      'middle',
         'dominant-baseline':'middle',
         'font-family':      'Georgia, serif',
-        'font-size':        7.5,
+        'font-size':        7.5 * FS,
         'font-style':       'italic',
         fill: devColor(nd.dev),
         'pointer-events':   'none',
@@ -546,11 +598,11 @@ function buildSVG() {
       g.appendChild(dt);
     }
 
-    // Events
-    g.addEventListener('click',       () => toggleNode(nd));
+    // Events. No touchstart handler: a tap arrives as a click (and names the
+    // node), and a swipe that starts on a node scrolls the lattice instead.
+    g.addEventListener('click',       () => { toggleNode(nd); showInfo(nd); });
     g.addEventListener('mouseenter',  () => showInfo(nd));
     g.addEventListener('mouseleave',  clearInfo);
-    g.addEventListener('touchstart',  e => { e.preventDefault(); toggleNode(nd); }, { passive: false });
 
     svg.appendChild(g);
     nd.groupEl = g;
@@ -601,6 +653,21 @@ function devColor(d) {
 // ═══════════════════════════════════════════════════════
 
 let ac = null, masterGain, lpf, compressor, analyser, scopeBuf;
+// S3 · nothing hangs on a hidden tab: fade out and suspend while hidden, then
+// resume on return, so whatever is lit is what sounds.
+let hideGate = null;
+document.addEventListener('visibilitychange', () => {
+  if (!ac || !hideGate || ac.state === 'closed') return;
+  const t = ac.currentTime;
+  hideGate.gain.cancelScheduledValues(t);
+  if (document.hidden) {
+    hideGate.gain.setTargetAtTime(0, t, 0.015);
+    setTimeout(() => { if (document.hidden && ac.state === 'running') ac.suspend(); }, 150);
+  } else {
+    ac.resume().then(() => hideGate.gain.setTargetAtTime(1, ac.currentTime, 0.03));
+  }
+});
+
 let rafId = null;
 const voices  = {};     // ratio-key → { osc, gain }
 let fundamental = 220;
@@ -632,7 +699,9 @@ function initAudio() {
   masterGain.connect(lpf);
   lpf.connect(compressor);
   compressor.connect(analyser);
-  analyser.connect(ac.destination);
+  hideGate = ac.createGain();
+  analyser.connect(hideGate);
+  hideGate.connect(ac.destination);
 }
 
 function startVoice(key, freq) {
@@ -726,11 +795,22 @@ function showInfo(nd) {
   const devStr = nd.dev !== 0
     ? ' · ' + fmtDev(nd.dev) + ' from the nearest 12-TET pitch'
     : ' · lands exactly on 12-TET';
+  clearTwins();
+  const twins = commaTwins(nd);
+  twins.forEach(t => t.circleEl.classList.add('twin'));
+  const twinStr = twins.length
+    ? ' · comma twin ' + twins.map(t => `${t.key} (${noteName(t)})`).join(', ') + ', 81/80 = 21.5¢ apart'
+    : '';
   document.getElementById('info-display').textContent =
-    nd.name + '  ·  ' + cStr + devStr;
+    nd.name + '  ·  ' + noteName(nd) + '  ·  ' + cStr + devStr + twinStr;
+}
+
+function clearTwins() {
+  document.querySelectorAll('#lattice circle.twin').forEach(c => c.classList.remove('twin'));
 }
 
 function clearInfo() {
+  clearTwins();
   document.getElementById('info-display').textContent = '';
 }
 
@@ -758,6 +838,7 @@ fundEl.addEventListener('input', () => {
   const v = parseFloat(fundEl.value);
   if (!isFinite(v) || v < 10) return;
   fundamental = v;
+  renameNodes();
   if (!ac) return;
   const t = ac.currentTime;
   for (const nd of nodes) {
@@ -767,7 +848,11 @@ fundEl.addEventListener('input', () => {
 });
 
 function shiftOctave(dir) {
-  fundamental = Math.round(fundamental * Math.pow(2, dir) * 100) / 100;
+  // clamp to the input's own range (10–4000 Hz), as diamond does
+  const lo = parseFloat(fundEl.min) || 10;
+  const hi = parseFloat(fundEl.max) || 4000;
+  const next = Math.round(fundamental * Math.pow(2, dir) * 100) / 100;
+  fundamental = Math.min(hi, Math.max(lo, next));
   fundEl.value = fundamental;
   if (!ac) return;
   const t = ac.currentTime;
@@ -794,6 +879,10 @@ document.addEventListener('keydown', e => {
 
 function blankScope() {
   const cv = document.getElementById('scope');
+  // size the idle canvas the way drawScope does (60 px tall), so the box
+  // doesn't open at the 300×60 intrinsic ratio and snap on the first note
+  cv.width  = (cv.offsetWidth || 300) * (devicePixelRatio || 1);
+  cv.height = 60 * (devicePixelRatio || 1);
   const g  = cv.getContext('2d');
   g.fillStyle = '#0a0a0a';
   g.fillRect(0, 0, cv.width, cv.height);
@@ -828,6 +917,11 @@ function drawScope() {
 // ═══════════════════════════════════════════════════════
 
 buildSVG();
+// on a phone the lattice is wider than the screen: open centred on 1/1
+(() => {
+  const w = document.querySelector('.lattice-wrap');
+  if (w.scrollWidth > w.clientWidth) w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2;
+})();
 blankScope();
 </script>
 </body>
