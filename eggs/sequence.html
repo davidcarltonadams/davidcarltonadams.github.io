@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="a just-intonation step sequencer where duration comes from harmonic complexity — hear tenney height turn ratios into rhythm.">
+  <meta name="description" content="a just-intonation step sequencer where duration comes from harmonic complexity · hear tenney height turn ratios into rhythm.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -18,6 +18,7 @@
       --dimmer: rgba(204,200,208,0.17);
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
       --blue:   #7ab8d4;
       --green:  #88c080;
     }
@@ -34,7 +35,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -47,7 +48,7 @@
     }
     .sub {
       font-size: 0.57rem; letter-spacing: 0.11em;
-      color: var(--dimmer); font-style: italic;
+      color: var(--dim); font-style: italic;
       margin-top: 0.42rem; line-height: 1.9;
       max-width: 560px; margin-left: auto; margin-right: auto;
     }
@@ -61,13 +62,13 @@
       cursor: pointer;
       transition: border-color 0.15s, background 0.15s;
       font-size: 0.62rem; font-style: italic;
-      color: var(--dimmer);
+      color: var(--control);
       letter-spacing: 0.08em;
     }
     .drop-zone:hover, .drop-zone.dragover {
       border-color: rgba(212,192,112,0.6);
       background: rgba(212,192,112,0.04);
-      color: var(--dim);
+      color: var(--text);
     }
     #fileIn { display: none; }
 
@@ -120,7 +121,7 @@
     .btn-sm {
       font-family: Georgia, serif; font-size: 0.58rem;
       letter-spacing: 0.1em; text-transform: lowercase; font-style: italic;
-      color: var(--dim); background: none;
+      color: var(--control); background: none;
       border: 1px solid var(--border);
       padding: 0.4rem 0.75rem; cursor: pointer; white-space: nowrap;
       transition: color 0.13s, border-color 0.13s;
@@ -135,7 +136,7 @@
     .btn-play:hover { border-color: rgba(212,192,112,0.7); }
     select, .seq-input {
       font-family: Georgia, serif; font-size: 0.6rem; font-style: italic;
-      color: var(--dim); background: var(--bg2);
+      color: var(--control); background: var(--bg2);
       border: 1px solid var(--border);
       padding: 0.28rem 0.5rem; cursor: pointer; outline: none;
     }
@@ -143,7 +144,7 @@
 
     .path-lbl {
       font-size: 0.51rem; letter-spacing: 0.13em;
-      font-style: italic; color: var(--dimmer);
+      font-style: italic; color: var(--dim);
     }
     .kbd-hint {
       font-size: 0.5rem; font-style: italic; letter-spacing: 0.09em;
@@ -208,7 +209,7 @@
 
 <!-- Load zone: click for a file picker (works on a phone), or drop a file on it -->
 <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileIn').click()">
-  load a <strong style="color:var(--dim)">grab-bag json</strong> · drop it here or tap to browse ·
+  load a <strong style="color:var(--text)">grab-bag json</strong> · drop it here or tap to browse ·
   make one in <a href="stern-brocot.html" onclick="event.stopPropagation()" style="color:var(--gold)">stern-brocot</a>
 </div>
 <input type="file" id="fileIn" accept=".json">
@@ -271,7 +272,7 @@
     <button class="btn-sm" onclick="addEvent()">+ add step</button>
     <button class="btn-sm" onclick="exportMidi()">↓ midi float json</button>
     <button class="btn-sm" onclick="loadNew()">↺ load new</button>
-    <button class="btn-sm" onclick="sendToCanon()" title="open sequence in Canon Loop Machine" style="margin-left:auto;border-color:rgba(74,158,255,0.3);color:rgba(74,158,255,0.7)">→ canon</button>
+    <button class="btn-sm" onclick="sendToCanon()" title="open sequence in Canon Loop Machine" style="margin-left:auto;border-color:rgba(74,158,255,0.3);color:rgba(74,158,255,0.9)">→ canon</button>
   </div>
 
 </div>
@@ -747,7 +748,7 @@ function exportMidi() {
   const url  = URL.createObjectURL(blob);
   Object.assign(document.createElement('a'),
     { href: url, download: `seq-midi-${Date.now()}.json` }).click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);   // Safari cancels an instant revoke
 }
 
 // ─── Drag & drop / file input ─────────────────────────────────────────────────
