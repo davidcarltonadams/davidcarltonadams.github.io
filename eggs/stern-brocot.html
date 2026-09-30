@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="walk the stern-brocot tree through the octave by mediants — each step is the simplest ratio between the current bounds, and you can hear it.">
+  <meta name="description" content="walk the stern-brocot tree through the octave by mediants: each step is the simplest ratio between the current bounds, and you can hear it.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -16,6 +16,7 @@
       --text:   #ccc8d0;
       --dim:    rgba(204,200,208,0.40);
       --dimmer: rgba(204,200,208,0.17);
+      --control: rgba(204,200,208,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
       --blue:   #7ab8d4;
@@ -34,7 +35,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -50,7 +51,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.11em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       line-height: 1.9;
@@ -123,7 +124,7 @@
       letter-spacing: 0.1em;
       text-transform: lowercase;
       font-style: italic;
-      color: var(--dim);
+      color: var(--control);
       background: none;
       border: 1px solid var(--border);
       padding: 0.4rem 0.75rem;
@@ -141,7 +142,7 @@
       display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem;
       min-height: 1.8rem;
     }
-    .path-lbl { font-size: 0.51rem; letter-spacing: 0.13em; font-style: italic; color: var(--dimmer); }
+    .path-lbl { font-size: 0.51rem; letter-spacing: 0.13em; font-style: italic; color: var(--dim); }
     .path-badge {
       font-size: 0.51rem; letter-spacing: 0.09em;
       padding: 0.1rem 0.35rem;
@@ -149,14 +150,14 @@
     }
     .path-badge.L { color: var(--blue);  border-color: rgba(122,184,212,0.32); }
     .path-badge.R { color: var(--green); border-color: rgba(136,192,128,0.32); }
-    .path-node { font-size: 0.5rem; color: rgba(204,200,208,0.55); }
+    .path-node { font-size: 0.5rem; color: var(--control); }
     .path-sep  { font-size: 0.48rem; color: var(--dimmer); }
 
     /* Clickable path nodes */
     button.path-node {
       background: none; border: none; cursor: pointer;
       font-family: Georgia, serif; font-size: 0.5rem;
-      padding: 0; color: rgba(204,200,208,0.55);
+      padding: 0; color: var(--control);
       font-style: italic;
       transition: color 0.12s;
       text-decoration: underline;
@@ -178,13 +179,13 @@
 
     select {
       font-family: Georgia, serif; font-size: 0.6rem; font-style: italic;
-      color: var(--dim); background: var(--bg2);
+      color: var(--control); background: var(--bg2);
       border: 1px solid var(--border);
       padding: 0.28rem 0.5rem; cursor: pointer; outline: none;
     }
     .kbd-hint {
       font-size: 0.5rem; font-style: italic; letter-spacing: 0.09em;
-      color: var(--dimmer); margin-left: auto;
+      color: var(--dim); margin-left: auto;
     }
     kbd {
       font-family: 'SF Mono','Fira Code',monospace; font-style: normal;
@@ -234,10 +235,10 @@
     }
     .bag-title {
       font-size: 0.51rem; letter-spacing: 0.13em;
-      font-style: italic; color: var(--dimmer);
+      font-style: italic; color: var(--dim);
     }
     .bag-count {
-      font-size: 0.48rem; color: var(--dimmer);
+      font-size: 0.48rem; color: var(--dim);
       font-family: 'SF Mono','Fira Code',monospace;
     }
     .bag-tray {
@@ -248,7 +249,7 @@
       align-items: center;
     }
     .bag-empty {
-      font-size: 0.52rem; font-style: italic; color: var(--dimmer);
+      font-size: 0.52rem; font-style: italic; color: var(--dim);
     }
     .bag-chip {
       display: flex; align-items: center; gap: 0.28rem;
@@ -261,6 +262,10 @@
     }
     .bag-chip:hover { border-color: rgba(212,192,112,0.55); }
     .bag-chip.dragging { opacity: 0.28; }
+    .bag-export-note { font-size: 0.56rem; letter-spacing: 0.08em; font-style: italic; color: var(--dim); margin: 0.2rem 0 0.4rem; }
+    .bag-export-note a { color: var(--control); }
+    .bag-export-note a:hover { color: var(--text); }
+    .bag-chip.playing  { border-color: rgba(212,192,112,0.85); background: rgba(212,192,112,0.12); }
     .bag-chip.drag-over { border-color: rgba(212,192,112,1); background: rgba(212,192,112,0.06); }
     .chip-ratio { font-size: 0.72rem; color: var(--gold); }
     .chip-dur {
@@ -272,7 +277,7 @@
     }
     .chip-dur:hover { color: var(--text); border-color: rgba(204,200,208,0.4); }
     .chip-remove {
-      font-size: 0.55rem; color: var(--dimmer);
+      font-size: 0.55rem; color: var(--control);
       cursor: pointer; font-style: normal; line-height: 1;
       transition: color 0.1s;
     }
@@ -292,7 +297,7 @@
 <div class="header">
   <h1 class="title">stern-brocot</h1>
   <p class="sub">
-    every rational between the unison and the octave lives in this tree exactly once — simpler ratios closer to the root.<br>
+    every rational between the unison and the octave lives in this tree exactly once · simpler ratios closer to the root.<br>
     navigate by finding the simplest fraction between any two bounds. ← → to move, ↑ to backtrack.
   </p>
 </div>
@@ -355,17 +360,20 @@
   <div class="bag-header">
     <span class="bag-title">grab bag</span>
     <span class="bag-count" id="bagCount">0 ratios</span>
+    <button class="btn-sm" id="collectBtn" onclick="collectCurrent()" title="add the current ratio to the grab bag (C)">+ collect</button>
     <button class="btn-sm" id="dwellBtn"   onclick="setDurMode('dwell')"   title="complex ratios linger">dwell</button>
     <button class="btn-sm" id="resolveBtn" onclick="setDurMode('resolve')" title="consonances linger">resolve</button>
     <span class="path-lbl" style="font-style:normal">bpm:</span>
     <input class="bag-input" id="bpmIn" type="number" value="120" min="20" max="400">
     <span class="path-lbl" style="font-style:normal">swing:</span>
     <input class="bag-input" id="swingIn" type="number" value="0.50" min="0.50" max="0.75" step="0.01" style="width:2.8rem">
+    <button class="btn-sm" id="playBagBtn" onclick="togglePlayBag()">▶ play bag</button>
     <button class="btn-sm" onclick="clearBag()">✕ clear</button>
-    <button class="btn-sm on" onclick="exportBag()">↓ export json</button>
+    <button class="btn-sm" onclick="exportBag()">↓ export json</button>
   </div>
+  <div class="bag-export-note">export → load it in <a href="sequence.html">sequence</a> to loop and edit it</div>
   <div class="bag-tray" id="bagTray">
-    <span class="bag-empty">press <kbd>C</kbd> to collect the current ratio — or hover the number line and press <kbd>C</kbd></span>
+    <span class="bag-empty">press <kbd>C</kbd> or + collect to add the current ratio · or hover the number line and press <kbd>C</kbd></span>
   </div>
 </div>
 
@@ -414,16 +422,16 @@ const NAMES = {
 };
 
 const COMMENTARY = {
-  '3/2': 'The perfect fifth: first non-octave overtone, root of the circle of fifths, and the starting point of this tree. It is not arbitrary that the tree begins here — it is mathematically unavoidable.',
-  '4/3': 'The perfect fourth — the octave-complement of the fifth. 3/2 × 4/3 = 2/1 exactly. Every perfect fifth implies a perfect fourth hiding in its shadow.',
-  '5/4': 'The just major third: 386¢, a full 14 cents narrower than equal temperament\'s 400¢. Pure major thirds beat slowly in ET precisely because the 5th partial of the lower note clashes with the 4th partial of the upper.',
+  '3/2': 'The perfect fifth: first non-octave overtone, root of the circle of fifths, and the starting point of this tree. It is not arbitrary that the tree begins here; it is mathematically unavoidable.',
+  '4/3': 'The perfect fourth, the octave-complement of the fifth. 3/2 × 4/3 = 2/1 exactly. Every perfect fifth implies a perfect fourth hiding in its shadow.',
+  '5/4': 'The just major third: 386¢, a full 14 cents narrower than equal temperament\'s 400¢. ET\'s 400¢ third beats about 10 times a second at middle C: the lower note\'s 5th partial and the upper note\'s 4th partial nearly coincide. At 5/4 they coincide exactly and the beating stops.',
   '6/5': 'The just minor third: 316¢. Simpler than the Pythagorean minor third (32/27 = 294¢). The ratio 6:5 arises naturally in the overtone series between the 5th and 6th partials.',
-  '7/4': 'The harmonic seventh — the 7th overtone. 969¢, a full 31 cents flat of equal temperament\'s minor seventh. Blues singers, brass players, and barbershop quartets naturally land here.',
+  '7/4': 'The harmonic seventh, the 7th harmonic. 969¢, a full 31 cents flat of equal temperament\'s minor seventh. Blues singers, brass players, and barbershop quartets naturally land here.',
   '7/6': 'The septimal minor third: 267¢. 49¢ narrower than the just minor third (6/5 = 316¢). A characteristic interval of 7-limit harmony.',
-  '5/3': 'The just major sixth: 884¢, sixteen cents narrow of equal temperament. Consonant and clear — its simplicity (5 and 3) places it early in the tree.',
-  '8/5': 'The just minor sixth: 814¢ — the octave-complement of the major third. 5/4 × 8/5 = 2/1.',
-  '9/8': 'The major whole tone — two perfect fifths minus an octave. 3/2 × 3/2 / 2 = 9/8. The backbone of Pythagorean melody.',
-  '11/8': 'The 11th harmonic — an interval Western theory has no name for. Approximately a tritone, but 49 cents flat of equal temperament. Central to spectral music and 11-limit JI.',
+  '5/3': 'The just major sixth: 884¢, sixteen cents narrow of equal temperament. Consonant and clear: its simplicity (5 and 3) places it early in the tree.',
+  '8/5': 'The just minor sixth: 814¢, the octave-complement of the major third. 5/4 × 8/5 = 2/1.',
+  '9/8': 'The major whole tone: two perfect fifths minus an octave. 3/2 × 3/2 / 2 = 9/8. The backbone of Pythagorean melody.',
+  '11/8': 'The 11th harmonic, an interval Western theory has no name for. Approximately a tritone, but 49 cents flat of equal temperament. Central to spectral music and 11-limit JI.',
   '16/9': 'The Pythagorean minor seventh: two perfect fourths stacked. 4/3 × 4/3 = 16/9.',
   '15/8': 'The just major seventh: the leading tone in a JI major scale, one just diatonic semitone (16/15) below the octave.',
 };
@@ -598,6 +606,7 @@ function stopPulses() {
 // Panic: kill every sounding path — drone, hover audition, scheduled pulses.
 function stopAll() {
   stopPulses();
+  if (typeof stopBag === 'function') stopBag();
   stopAudition();
   stopDrone();
   hoverAuditKey = null;
@@ -720,6 +729,7 @@ function onFundChange() {
 const cv   = document.getElementById('cv');
 const gx   = cv.getContext('2d');
 const CH   = 114;
+let   LW   = 0;          // logical canvas width in CSS px
 const LINE_H = 56;
 const TREE_Y0 = 60;
 
@@ -728,12 +738,19 @@ const AXIS_REFS = [
 ];
 
 function cx(cents) {
-  return 6 + (cents / 1200) * (cv.width - 12);
+  return 6 + (cents / 1200) * (LW - 12);
 }
 
 function resizeCv() {
   const w = Math.min(cv.parentElement.clientWidth, 860);
-  if (cv.width !== w) { cv.width = w; cv.height = CH; }
+  // draw at device-pixel ratio (the 5.5–7 px labels were blurry on phones);
+  // every coordinate below stays in CSS px: LW × CH
+  const dpr = window.devicePixelRatio || 1;
+  if (LW !== w || cv.width !== Math.round(w * dpr)) {
+    LW = w;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(CH * dpr);
+    gx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 }
 resizeCv();
 window.addEventListener('resize', () => { resizeCv(); drawCanvas(); });
@@ -768,7 +785,7 @@ function animTick(now) {
 
     if (hoverX >= 0) {
       const dx = Math.abs(cx(r.cents) - hoverX);
-      const win = cv.width * 0.075;
+      const win = LW * 0.075;
       if (dx < win) {
         const proximity = 1 - dx / win;
         const simplicity = Math.max(0, 1 - (r.th - 2) / 7);
@@ -808,7 +825,7 @@ function animTick(now) {
 // ─── Canvas drawing ───────────────────────────────────────────────────────────
 
 function drawCanvas() {
-  const W = cv.width;
+  const W = LW;
   gx.clearRect(0, 0, W, CH);
   gx.fillStyle = '#070709';
   gx.fillRect(0, 0, W, CH);
@@ -937,7 +954,7 @@ function drawCanvas() {
   // ══ Mini-tree ══════════════════════════════════════
 
   const MID    = W / 2;
-  const CY     = TREE_Y0 + 42;
+  const CY     = TREE_Y0 + 34;   // current-node label baseline CY+16 = 110, inside the 114 px canvas
   const CHY    = TREE_Y0 + 10;
   const SPREAD = Math.min(W * 0.28, 200);
   const LX = MID - SPREAD, RX = MID + SPREAD;
@@ -1064,10 +1081,10 @@ function buildExplanation() {
   let out = '';
 
   if (depth === 0) {
-    out += `<p>The <strong>Stern-Brocot tree</strong> contains every positive rational number exactly once, arranged so that <em>simpler</em> ratios — those with smaller numerators and denominators — appear closer to the root.</p>`;
+    out += `<p>The <strong>Stern-Brocot tree</strong> contains every positive rational number exactly once, arranged so that <em>simpler</em> ratios (those with smaller numerators and denominators) appear closer to the root.</p>`;
     out += `<p>We explore the <strong>octave</strong>: all intervals between 1/1 (unison) and 2/1 (octave). The root of this subtree is found by taking the <em>mediant</em> of the two bounds:</p>`;
-    out += `<span class="math">(1 + 2) / (1 + 1) = 3/2 — the perfect fifth</span>`;
-    out += `<p>The <strong>mediant</strong> of two fractions a/b and c/d is (a+c)/(b+d). A theorem guarantees that the mediant of two adjacent fractions (|ad−bc| = 1 — as every pair of bounds in this tree is) is always the fraction with the <em>smallest denominator</em> strictly between them — not an approximation, but a mathematical fact.</p>`;
+    out += `<span class="math">(1 + 2) / (1 + 1) = 3/2 · the perfect fifth</span>`;
+    out += `<p>The <strong>mediant</strong> of two fractions a/b and c/d is (a+c)/(b+d). A theorem guarantees that the mediant of two adjacent fractions (|ad−bc| = 1, as every pair of bounds in this tree is) is always the fraction with the <em>smallest denominator</em> strictly between them: not an approximation, but a mathematical fact.</p>`;
     out += `<p>Navigate <strong>left</strong> to find the simplest fraction between 1/1 and 3/2 (→ 4/3).<br>Navigate <strong>right</strong> to find the simplest fraction between 3/2 and 2/1 (→ 5/3).</p>`;
     return out;
   }
@@ -1081,13 +1098,24 @@ function buildExplanation() {
   if (COMMENTARY[key]) out += `<span class="musical-note">${COMMENTARY[key]}</span>`;
 
   if (depth >= 2) {
-    out += `<p>Your path from the root: <strong>${path.join(' → ')}</strong>. This sequence encodes the <em>continued fraction</em> of ${p}/${q}:</p>`;
+    // The shown path starts at 3/2. From the tree's true root 1/1 it is
+    // R (to 2/1), L (to 3/2), then the shown path; its run lengths are the
+    // continued-fraction terms, except the last term, which is one more.
+    const full = ['R', 'L', ...path];
+    const runs = [];
+    for (const d of full) {
+      if (runs.length && runs[runs.length - 1][0] === d) runs[runs.length - 1][1]++;
+      else runs.push([d, 1]);
+    }
+    const sup = n => String(n).split('').map(ch => '⁰¹²³⁴⁵⁶⁷⁸⁹'[ch]).join('');
+    const rle = runs.map(([d, n]) => d + sup(n)).join(' ');
+    out += `<p>Your path from 3/2: <strong>${path.join(' → ')}</strong>. Counted from the top of the whole tree, 1/1, it begins R (to 2/1), L (to 3/2), so the full path is <strong>${rle}</strong>. Its run lengths spell the <em>continued fraction</em> of ${p}/${q}:</p>`;
     out += `<span class="math">${p}/${q} = ${cfStr(cf)}</span>`;
-    out += `<p>Each run of consecutive L or R moves corresponds to one term in the continued fraction. The Stern-Brocot path and the continued fraction are two descriptions of the same underlying structure — the Euclidean algorithm applied to the ratio.</p>`;
+    out += `<p>Each term is one run length (${runs.map(r => r[1]).join(', ')}), except the last, which is one more than its run. The path and the continued fraction are two descriptions of the same structure · the Euclidean algorithm applied to the ratio.</p>`;
   }
 
   if (depth >= 5) {
-    out += `<p>At depth ${depth}, you are deep in the tree. The search region has narrowed to ${(ratioCents(rp,rq) - ratioCents(lp,lq)).toFixed(1)} cents wide. The ratios here are genuinely complex — but each one is still the <em>simplest possible</em> fraction in the remaining space. The tree is infinite; there is always another fraction between any two.</p>`;
+    out += `<p>At depth ${depth}, you are deep in the tree. The search region has narrowed to ${(ratioCents(rp,rq) - ratioCents(lp,lq)).toFixed(1)} cents wide. The ratios here are genuinely complex, but each one is still the <em>simplest possible</em> fraction in the remaining space. The tree is infinite; there is always another fraction between any two.</p>`;
   }
 
   return out;
@@ -1165,14 +1193,89 @@ function setDurMode(m) {
   renderBag();
 }
 
-function clearBag() { bag = []; renderBag(); }
+function clearBag() {
+  if (bagPlaying) { stopPulses(); stopBag(); }
+  bag = []; renderBag();
+}
+
+// ─── Play the bag ─────────────────────────────────────────────────────────────
+// Each step is a dyad, fundamental + ratio, like "hear". Durations read the way
+// sequence.html reads the export: "a/b" is a/b of a whole note (4 beats), a
+// bare number (dwell/resolve) is beats; swing stretches the first of each pair.
+// Every tone joins pulseNodes, so Esc, stop and a hidden tab silence it.
+
+let bagToken = 0, bagPlaying = false, bagEndTimer = null;
+
+function bagStepSec(item, beatSec) {
+  const s = String(item.dur);
+  let beats;
+  if (s.includes('/')) { const [n, d] = s.split('/').map(Number); beats = n / d * 4; }
+  else beats = parseFloat(s);
+  const sec = beats * beatSec;
+  return Number.isFinite(sec) && sec > 0.05 ? sec : 0.05;
+}
+
+function stepTone(freq, start, dur, vol) {
+  const o = ax.createOscillator(), g = ax.createGain();
+  const atk = Math.min(0.02, dur / 4), rel = Math.min(0.08, dur / 3);
+  o.type = 'sine'; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, start);
+  g.gain.linearRampToValueAtTime(vol, start + atk);
+  g.gain.setValueAtTime(vol, start + dur - rel);
+  g.gain.linearRampToValueAtTime(0, start + dur);
+  o.connect(g); g.connect(ax.destination);
+  o.start(start); o.stop(start + dur + 0.01);
+  const node = { o, g };
+  pulseNodes.push(node);
+  o.onended = () => {
+    try { g.disconnect(); } catch (err) {}
+    const i = pulseNodes.indexOf(node);
+    if (i >= 0) pulseNodes.splice(i, 1);
+  };
+}
+
+function stopBag() {
+  bagToken++;
+  bagPlaying = false;
+  clearTimeout(bagEndTimer);
+  document.querySelectorAll('.bag-chip.playing').forEach(c => c.classList.remove('playing'));
+  const b = document.getElementById('playBagBtn');
+  if (b) b.textContent = '▶ play bag';
+}
+
+function togglePlayBag() {
+  if (bagPlaying) { stopPulses(); stopBag(); return; }
+  if (!bag.length) return;
+  ensureAx();
+  stopBag();
+  bagPlaying = true;
+  const tok = bagToken;
+  document.getElementById('playBagBtn').textContent = '■ stop bag';
+  const f = fundHz();
+  const beatSec = 60 / (parseFloat(document.getElementById('bpmIn').value) || 120);
+  const swing = Math.min(0.75, Math.max(0.5, parseFloat(document.getElementById('swingIn').value) || 0.5));
+  let t = ax.currentTime + 0.08;
+  bag.forEach((item, i) => {
+    let d = bagStepSec(item, beatSec);
+    if (swing !== 0.5) d *= (i % 2 === 0 ? swing * 2 : 2 - swing * 2);
+    stepTone(f, t, d, 0.2);
+    stepTone(f * item.p / item.q, t, d, 0.2);
+    setTimeout(() => {
+      if (tok !== bagToken) return;
+      document.querySelectorAll('.bag-chip.playing').forEach(c => c.classList.remove('playing'));
+      document.getElementById(`chip-${i}`)?.classList.add('playing');
+    }, Math.max(0, (t - ax.currentTime) * 1000));
+    t += d;
+  });
+  bagEndTimer = setTimeout(() => { if (tok === bagToken) stopBag(); }, (t - ax.currentTime) * 1000 + 60);
+}
 
 function renderBag() {
   document.getElementById('bagCount').textContent =
     `${bag.length} ratio${bag.length !== 1 ? 's' : ''}`;
   const tray = document.getElementById('bagTray');
   if (bag.length === 0) {
-    tray.innerHTML = `<span class="bag-empty">press <kbd>C</kbd> to collect the current ratio — or hover the number line and press <kbd>C</kbd></span>`;
+    tray.innerHTML = `<span class="bag-empty">press <kbd>C</kbd> or + collect to add the current ratio · or hover the number line and press <kbd>C</kbd></span>`;
     return;
   }
   tray.innerHTML = bag.map((item, i) => `
@@ -1181,7 +1284,7 @@ function renderBag() {
       ondrop="bagDrop(event,${i})" ondragend="bagDragEnd()">
       <span class="chip-ratio">${item.p}/${item.q}</span>
       <span class="chip-dur" onclick="cycleDur(${i})"
-        title="${durMode !== 'manual' ? durMode + ' — click disabled' : 'click to cycle duration'}">${item.dur}</span>
+        title="${durMode !== 'manual' ? durMode + ' · click disabled' : 'click to cycle duration'}">${item.dur}</span>
       <span class="chip-remove" onclick="removeFromBag(${i})">×</span>
     </div>`).join('');
 }
@@ -1243,18 +1346,28 @@ function exportBag() {
 
 // ─── Keyboard ─────────────────────────────────────────────────────────────────
 
-const INTERACTIVE = ['SELECT', 'INPUT', 'TEXTAREA', 'BUTTON', 'A'];
+// Text fields keep every key. On a focused button or link only Space/Enter
+// belong to the control; arrows, Home, Backspace and C always drive the tree.
+const TEXTY = ['SELECT', 'INPUT', 'TEXTAREA'];
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { stopAll(); return; }   // panic, works anywhere
-  if (INTERACTIVE.includes(e.target.tagName) || e.target.isContentEditable) return;
+  if (TEXTY.includes(e.target.tagName) || e.target.isContentEditable) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;  // leave Cmd/Ctrl+C etc. alone
+  const onControl = e.target.tagName === 'BUTTON' || e.target.tagName === 'A';
   if (e.key === 'ArrowLeft')  { e.preventDefault(); goLeft(); }
   if (e.key === 'ArrowRight') { e.preventDefault(); goRight(); }
   if (e.key === 'ArrowUp' || e.key === 'Backspace') { e.preventDefault(); goBack(); }
   if (e.key === 'Home')       { e.preventDefault(); goRoot(); }
-  if (e.key === ' ')          { e.preventDefault(); onHear(); }
+  if (e.key === ' ' && !onControl) { e.preventDefault(); onHear(); }
   if (e.key === 'c' || e.key === 'C') { e.preventDefault(); collectCurrent(); }
+});
+
+// A mouse click leaves the button focused, which used to swallow the keyboard
+// map; drop focus after pointer clicks (keyboard activation keeps it).
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('button');
+  if (b && e.detail > 0) b.blur();
 });
 
 // Tab hidden: tear everything down rather than leave a drone running unseen.
@@ -1277,13 +1390,19 @@ document.addEventListener('visibilitychange', () => {
   btnR.addEventListener('mouseenter', () => { ensureAx(); startAudition(rChild()); });
   btnR.addEventListener('mouseleave', stopAudition);
 
+  // Touch also fires compatibility mouse events after the tap; the hover
+  // glow and its click-to-jump are mouse-only, so ignore those echoes.
+  let lastTouchAt = -1e9;
+  const touchEcho = () => performance.now() - lastTouchAt < 800;
+
   // Number line hover
   cv.addEventListener('mousemove', e => {
+    if (touchEcho()) return;
     tryEnsureAx();
     const rect = cv.getBoundingClientRect();
-    const my = (e.clientY - rect.top) * (cv.height / rect.height);
+    const my = (e.clientY - rect.top) * (CH / rect.height);
     if (my < LINE_H) {
-      hoverX = (e.clientX - rect.left) * (cv.width / rect.width);
+      hoverX = (e.clientX - rect.left) * (LW / rect.width);
       cv.style.cursor = 'crosshair';
     } else {
       hoverX = -1;
@@ -1297,9 +1416,36 @@ document.addEventListener('visibilitychange', () => {
     stopAudition();
   });
 
+  // Tap on the number line (touch/pen): there is no hover glow to build up, so
+  // jump to the simplest catalogued ratio under the finger. A drag scrolls.
+  let tapStart = null;
+  cv.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse') return;
+    lastTouchAt = performance.now();
+    tapStart = { x: e.clientX, y: e.clientY };
+  });
+  cv.addEventListener('pointerup', e => {
+    if (e.pointerType === 'mouse' || !tapStart) return;
+    const moved = Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y);
+    tapStart = null;
+    if (moved > 10) return;
+    const rect = cv.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (LW / rect.width);
+    const y = (e.clientY - rect.top) * (CH / rect.height);
+    if (y >= LINE_H) return;
+    const reach = 14 * (LW / rect.width);
+    let best = null;
+    for (const r of HOVER_RATIOS) {           // sorted simplest first
+      const dx = Math.abs(cx(r.cents) - x);
+      if (dx <= reach && (!best || dx < best.dx - 4)) best = { r, dx };
+    }
+    if (best) { hoverX = -1; hoverAuditKey = null; jumpToRatio(best.r.p, best.r.q); }
+  });
+  cv.addEventListener('pointercancel', () => { tapStart = null; });
+
   // Click on number line: jump to brightest hover ratio
   cv.addEventListener('click', e => {
-    if (hoverX < 0) return;
+    if (touchEcho() || hoverX < 0) return;
     let best = null, bestG = 0.25;
     for (const r of HOVER_RATIOS) {
       const g = hoverGlows[`${r.p}/${r.q}`] || 0;

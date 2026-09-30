@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="play erv wilson's combination product sets — hexany, dekany, eikosany — as graphs, and hear how tones built from shared odd generators lock together.">
+  <meta name="description" content="play erv wilson's combination product sets (hexany, dekany, eikosany) as graphs, and hear how tones built from shared odd generators lock together.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -16,6 +16,7 @@
       --text:   #ccc8d0;
       --dim:    rgba(204,200,208,0.40);
       --dimmer: rgba(204,200,208,0.17);
+      --control: rgba(204,200,208,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
     }
@@ -32,7 +33,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -45,7 +46,7 @@
     }
     .sub {
       font-size: 0.57rem; letter-spacing: 0.11em;
-      color: var(--dimmer); font-style: italic;
+      color: var(--dim); font-style: italic;
       margin-top: 0.42rem; line-height: 1.9;
       max-width: 600px; margin-left: auto; margin-right: auto;
     }
@@ -56,7 +57,7 @@
     .tab {
       font-family: Georgia, serif; font-size: 0.62rem;
       letter-spacing: 0.12em; text-transform: lowercase; font-style: italic;
-      color: var(--dim); background: none;
+      color: var(--control); background: none;
       border: none; border-right: 1px solid var(--border);
       padding: 0.5rem 1.4rem; cursor: pointer;
       transition: color 0.13s, background 0.13s;
@@ -74,12 +75,12 @@
     }
     .lbl {
       font-size: 0.51rem; letter-spacing: 0.13em;
-      font-style: italic; color: var(--dimmer);
+      font-style: italic; color: var(--dim);
     }
     .btn {
       font-family: Georgia, serif; font-size: 0.6rem;
       letter-spacing: 0.1em; text-transform: lowercase; font-style: italic;
-      color: var(--dim); background: none;
+      color: var(--control); background: none;
       border: 1px solid var(--border);
       padding: 0.38rem 0.8rem; cursor: pointer;
       transition: color 0.13s, border-color 0.13s;
@@ -87,7 +88,7 @@
     .btn:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
     select {
       font-family: Georgia, serif; font-size: 0.6rem; font-style: italic;
-      color: var(--dim); background: var(--bg2);
+      color: var(--control); background: var(--bg2);
       border: 1px solid var(--border);
       padding: 0.28rem 0.5rem; cursor: pointer; outline: none;
     }
@@ -98,7 +99,7 @@
       min-height: 3.5rem; align-items: flex-start;
     }
     .info-block { display: flex; flex-direction: column; gap: 0.18rem; }
-    .info-label { font-size: 0.46rem; letter-spacing: 0.14em; font-style: italic; color: var(--dimmer); }
+    .info-label { font-size: 0.46rem; letter-spacing: 0.14em; font-style: italic; color: var(--dim); }
     .info-val   { font-size: 1.3rem; color: var(--gold); font-weight: normal; letter-spacing: 0.02em; }
     .info-sub   { font-size: 0.5rem; font-style: italic; color: var(--dim); }
 
@@ -111,7 +112,21 @@
       border: 1px solid rgba(212,192,112,0.3);
       padding: 0.2rem 0.55rem; letter-spacing: 0.06em;
     }
-    .chord-lbl { font-size: 0.48rem; letter-spacing: 0.12em; font-style: italic; color: var(--dimmer); }
+    .chord-lbl { font-size: 0.48rem; letter-spacing: 0.12em; font-style: italic; color: var(--dim); }
+    /* the CPS's own chords, one button each */
+    .cps-chords { width: 100%; max-width: 700px; display: flex; flex-direction: column; gap: 0.35rem; }
+    .cps-row { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+    .cps-row .chord-lbl { min-width: 5.5rem; }
+    .cps-btn {
+      background: none; border: 1px solid var(--border); border-radius: 2px;
+      color: var(--control); font-family: 'SF Mono','Fira Code',monospace; font-size: 0.5rem;
+      padding: 0.18rem 0.4rem; cursor: pointer; letter-spacing: 0.02em;
+    }
+    .cps-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+    .cps-btn.on { color: var(--gold); border-color: rgba(212,192,112,0.6); }
+    /* volume slider: the inline -webkit-appearance:none left the browser's blue thumb */
+    #volR::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: var(--control); cursor: pointer; }
+    #volR::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--control); border: none; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -121,7 +136,7 @@
 <div class="header">
   <h1 class="title">eikosany</h1>
   <p class="sub">
-    Erv Wilson's combination product sets — each tone is the product of a subset of odd generators.<br>
+    Erv Wilson's combination product sets · each tone is the product of a subset of odd generators.<br>
     hexany: the six pairs from 1·3·5·7, an octahedron. dekany: the ten pairs from 1·3·5·7·9.<br>
     eikosany: the twenty triples from 1·3·5·7·9·11.<br>
     connected nodes share all but one generator · click to build chords.
@@ -168,10 +183,12 @@
   </div>
 </div>
 
+<div class="cps-chords" id="cpsChords"></div>
+
 <div class="ctrl-row">
   <span class="chord-lbl">chord:</span>
   <div class="chord-strip" id="chordStrip">
-    <span style="font-size:0.5rem;font-style:italic;color:var(--dimmer)">click nodes to add pitches</span>
+    <span style="font-size:0.5rem;font-style:italic;color:var(--dim)">click nodes to add pitches</span>
   </div>
 </div>
 
@@ -308,7 +325,7 @@ function hexanyLayout(nodes, cx, cy, r) {
 
 const LIMIT_COLOR = {
   1: '#aaaaaa', 3: '#7ab8d4', 5: '#88c080',
-  7: '#d4c070', 9: '#d4c070', 11: '#c880d8', 13: '#d88080',
+  7: '#d4c070', 11: '#c880d8', 13: '#d88080',   // primeLimit never returns 9
 };
 function limitColor(lim) { return LIMIT_COLOR[lim] || '#aaaaaa'; }
 
@@ -321,6 +338,21 @@ let positions = [];
 let chord = new Set(); // indices of active nodes
 let hoverIdx = -1;
 let ax = null;
+// S3 · nothing hangs on a hidden tab: fade out and suspend while hidden, then
+// resume on return, so whatever is lit is what sounds.
+let hideGate = null;
+document.addEventListener('visibilitychange', () => {
+  if (!ax || !hideGate || ax.state === 'closed') return;
+  const t = ax.currentTime;
+  hideGate.gain.cancelScheduledValues(t);
+  if (document.hidden) {
+    hideGate.gain.setTargetAtTime(0, t, 0.015);
+    setTimeout(() => { if (document.hidden && ax.state === 'running') ax.suspend(); }, 150);
+  } else {
+    ax.resume().then(() => hideGate.gain.setTargetAtTime(1, ax.currentTime, 0.03));
+  }
+});
+
 let masterGain = null;
 let nodeOscs = {}; // nodeIdx → { osc, gain }
 
@@ -328,18 +360,26 @@ let nodeOscs = {}; // nodeIdx → { osc, gain }
 
 const cv  = document.getElementById('cv');
 const gx  = cv.getContext('2d');
-const NODE_R = 14;
+let NODE_R = 14;
+let LW = 0, LH = 0;        // logical (CSS px) canvas size; the backing store is × dpr
+let narrow = false;        // phone: square canvas, smaller nodes, no under-node cents
 
 function resize() {
   const w = Math.min(cv.parentElement.clientWidth, 700);
-  cv.width = w;
-  cv.height = Math.round(w * 0.72);
+  narrow = w < 500;
+  NODE_R = narrow ? 11 : 14;
+  const dpr = window.devicePixelRatio || 1;
+  LW = w;
+  LH = narrow ? w : Math.round(w * 0.72);
+  cv.width  = Math.round(LW * dpr);
+  cv.height = Math.round(LH * dpr);
+  gx.setTransform(dpr, 0, 0, dpr, 0, 0);
   rebuildLayout();
 }
 
 function rebuildLayout() {
-  const cx = cv.width / 2;
-  const cy = cv.height / 2;
+  const cx = LW / 2;
+  const cy = LH / 2;
   const r  = Math.min(cx, cy) * 0.72;
   positions = currentSet === 'hexany'
     ? hexanyLayout(nodes, cx, cy, r)
@@ -348,7 +388,7 @@ function rebuildLayout() {
 }
 
 function draw() {
-  const W = cv.width, H = cv.height;
+  const W = LW, H = LH;
   gx.fillStyle = '#070709';
   gx.fillRect(0, 0, W, H);
 
@@ -402,13 +442,14 @@ function draw() {
     gx.stroke();
 
     // Ratio label
-    gx.font = `${active ? 'bold ' : ''}9px "SF Mono","Fira Code",monospace`;
+    gx.font = `${active ? 'bold ' : ''}${narrow ? 8 : 9}px "SF Mono","Fira Code",monospace`;
     gx.textAlign = 'center';
     gx.textBaseline = 'middle';
     gx.fillStyle = active ? col : (hovered ? 'rgba(204,200,208,0.8)' : 'rgba(204,200,208,0.45)');
     gx.fillText(`${nd.p}/${nd.q}`, pos.x, pos.y - 1);
 
-    // Cents label below node
+    // Cents label below node (dropped on a phone: the info panel shows cents)
+    if (narrow) continue;
     gx.font = '7px "SF Mono","Fira Code",monospace';
     gx.fillStyle = active ? col + 'cc' : 'rgba(204,200,208,0.2)';
     gx.fillText(`${nd.cents.toFixed(0)}¢`, pos.x, pos.y + NODE_R + 8);
@@ -430,8 +471,8 @@ function nodeAt(mx, my) {
 function canvasXY(e) {
   const rect = cv.getBoundingClientRect();
   return {
-    x: (e.clientX - rect.left) * (cv.width / rect.width),
-    y: (e.clientY - rect.top)  * (cv.height / rect.height),
+    x: (e.clientX - rect.left) * (LW / rect.width),
+    y: (e.clientY - rect.top)  * (LH / rect.height),
   };
 }
 
@@ -463,6 +504,7 @@ cv.addEventListener('click', e => {
     chord.add(idx);
     playNode(idx);
   }
+  unmarkCpsChord();
   updateChordStrip();
   draw();
 });
@@ -486,7 +528,7 @@ function clearInfoPanel() {
 function updateChordStrip() {
   const strip = document.getElementById('chordStrip');
   if (chord.size === 0) {
-    strip.innerHTML = '<span style="font-size:0.5rem;font-style:italic;color:var(--dimmer)">click nodes to add pitches</span>';
+    strip.innerHTML = '<span style="font-size:0.5rem;font-style:italic;color:var(--dim)">click nodes to add pitches</span>';
     return;
   }
   const chips = [...chord]
@@ -504,7 +546,19 @@ function ensureCtx() {
     ax = new (window.AudioContext || window.webkitAudioContext)();
     masterGain = ax.createGain();
     masterGain.gain.value = getVolume();
-    masterGain.connect(ax.destination);
+    // gentle limiter: a full eikosany (20 sines at 0.22) summed past 1.0 before
+    const lim = ax.createDynamicsCompressor();
+    lim.threshold.value = -10; lim.knee.value = 6; lim.ratio.value = 8;
+    lim.attack.value = 0.004; lim.release.value = 0.15;
+    // the compressor adds ~1.6× makeup gain; the trim puts a single node back
+    // at its old level (0.15) and holds the worst case under 0.9
+    const trim = ax.createGain();
+    trim.gain.value = 0.63;
+    masterGain.connect(lim);
+    lim.connect(trim);
+    hideGate = ax.createGain();
+    trim.connect(hideGate);
+    hideGate.connect(ax.destination);
   }
   if (ax.state === 'suspended') ax.resume();
 }
@@ -553,6 +607,8 @@ function stopNode(idx) {
 function clearChord() {
   [...chord].forEach(i => stopNode(i));
   chord.clear();
+  cpsChordKey = null;
+  document.querySelectorAll('.cps-btn.on').forEach(b => b.classList.remove('on'));
   updateChordStrip();
   draw();
 }
@@ -567,6 +623,54 @@ function onFundChange() {
 
 // ─── Set switching ────────────────────────────────────────────────────────────
 
+// ─── The set's own chords ─────────────────────────────────────────────────────
+// Harmonic (otonal): fix k−1 generators and add each remaining one in turn.
+// Subharmonic (utonal): take k+1 generators and all their k-subsets.
+// hexany 4 + 4 triads · dekany 5 tetrads + 10 triads · eikosany 15 + 15 tetrads.
+let cpsChordKey = null;
+
+function cpsChords(setKey) {
+  const { generators, k } = SETS[setKey];
+  const idxOf = gens => nodes.findIndex(n => n.gens.length === gens.length && gens.every(g => n.gens.includes(g)));
+  const oto = combinations(generators, k - 1).map(fixed => ({
+    kind: 'o', label: (fixed.length ? fixed.join('·') : '1') + ' ×',
+    title: `harmonic: ${fixed.join('·')} times each of ${generators.filter(g => !fixed.includes(g)).join(', ')}`,
+    idx: generators.filter(g => !fixed.includes(g)).map(g => idxOf([...fixed, g])),
+  }));
+  const uto = combinations(generators, k + 1).map(T => ({
+    kind: 'u', label: '÷ ' + T.join('·'),
+    title: `subharmonic: every ${k} of ${T.join(', ')}`,
+    idx: combinations(T, k).map(idxOf),
+  }));
+  return { oto, uto };
+}
+
+function renderCpsChords() {
+  const wrap = document.getElementById('cpsChords');
+  const { oto, uto } = cpsChords(currentSet);
+  const row = (label, list) => `<div class="cps-row"><span class="chord-lbl">${label}</span>` +
+    list.map(c => `<button class="cps-btn" data-key="${c.kind}:${c.idx.join(',')}" title="${c.title}">${c.label}</button>`).join('') + '</div>';
+  wrap.innerHTML = row(`harmonic · ${oto.length}`, oto) + row(`subharmonic · ${uto.length}`, uto);
+  wrap.querySelectorAll('.cps-btn').forEach(b => b.addEventListener('click', () => playCpsChord(b.dataset.key)));
+}
+
+function unmarkCpsChord() {
+  cpsChordKey = null;
+  document.querySelectorAll('.cps-btn.on').forEach(b => b.classList.remove('on'));
+}
+
+function playCpsChord(key) {
+  const again = key === cpsChordKey;
+  clearChord();
+  if (again) return;
+  const idx = key.split(':')[1].split(',').map(Number);
+  for (const i of idx) { chord.add(i); playNode(i); }
+  cpsChordKey = key;
+  document.querySelectorAll('.cps-btn').forEach(b => b.classList.toggle('on', b.dataset.key === key));
+  updateChordStrip();
+  draw();
+}
+
 function selectSet(key) {
   clearChord();
   currentSet = key;
@@ -579,20 +683,22 @@ function selectSet(key) {
   rebuildLayout();
   clearInfoPanel();
   updateChordStrip();
+  renderCpsChords();
 }
 
 // ─── Touch / pointer ──────────────────────────────────────────────────────────
 
 cv.addEventListener('touchstart', e => {
-  e.preventDefault();
   const touch = e.touches[0];
   const rect = cv.getBoundingClientRect();
-  const x = (touch.clientX - rect.left) * (cv.width / rect.width);
-  const y = (touch.clientY - rect.top)  * (cv.height / rect.height);
+  const x = (touch.clientX - rect.left) * (LW / rect.width);
+  const y = (touch.clientY - rect.top)  * (LH / rect.height);
   const idx = nodeAt(x, y);
-  if (idx < 0) return;
+  if (idx < 0) return;       // off a node: let the page scroll
+  e.preventDefault();
   if (chord.has(idx)) { chord.delete(idx); stopNode(idx); }
   else { chord.add(idx); playNode(idx); }
+  unmarkCpsChord();
   // no hover on touch, so the tap doubles as the inspect gesture
   hoverIdx = idx;
   updateInfoPanel(nodes[idx]);

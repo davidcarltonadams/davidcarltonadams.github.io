@@ -17,6 +17,7 @@
       --text:   #d8d0c8;
       --dim:    rgba(216,208,200,0.4);
       --dimmer: rgba(216,208,200,0.18);
+      --control: rgba(216,208,200,0.58);   /* ≥4.5:1 on --bg: anything clickable */
       --accent: #8ab0c8;
       --acc-bg: rgba(138,176,200,0.18);
       --border: rgba(255,255,255,0.07);
@@ -61,7 +62,7 @@
     .sub {
       font-size: 0.6rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.3rem;
     }
@@ -82,7 +83,7 @@
     .btn-row { display: flex; gap: 0.22rem; }
     .tog {
       background: none; border: 1px solid var(--border);
-      border-radius: 2px; color: var(--dim);
+      border-radius: 2px; color: var(--control);
       font-family: Georgia, serif; font-size: 0.63rem;
       letter-spacing: 0.07em; padding: 0.28rem 0.6rem;
       cursor: pointer;
@@ -101,7 +102,7 @@
     .fund-input:focus { outline: none; border-color: var(--accent); }
     .oct-btn {
       background: none; border: 1px solid var(--border);
-      border-radius: 2px; color: var(--dim);
+      border-radius: 2px; color: var(--control);
       font-family: Georgia, serif; font-size: 0.6rem;
       padding: 0.22rem 0.48rem; cursor: pointer;
       transition: color 0.1s, border-color 0.1s;
@@ -115,6 +116,7 @@
       -webkit-overflow-scrolling: touch;
       display: flex;
       justify-content: center;
+      justify-content: safe center;   /* overflow spills right, where scroll reaches */
     }
 
     /* CSS grid: 1 header col + 7 data cols; 1 header row + 7 data rows */
@@ -163,14 +165,18 @@
 
     .hdr-tag {
       font-size: 0.38rem; letter-spacing: 0.12em;
-      color: var(--dimmer); font-style: italic;
+      color: var(--dim); font-style: italic;
     }
     .hdr-num {
-      font-size: 0.75rem; color: var(--dim);
+      font-size: 0.75rem; color: var(--control);
       font-style: italic; letter-spacing: 0.04em;
       transition: color 0.12s;
     }
     .hdr-num.active { color: var(--accent); }
+    .hdr-one { font-size: 0.45rem; color: var(--dim); font-style: italic; letter-spacing: 0.04em; }
+    .cell:focus-visible, .col-header:focus-visible, .row-header:focus-visible {
+      outline: 1px solid var(--accent); outline-offset: 1px;
+    }
 
     /* Data cells */
     .cell {
@@ -186,7 +192,8 @@
     }
 
     /* Diagonal cells (i === j, always 1/1) */
-    .cell.diagonal { opacity: 0.55; cursor: default; }
+    .cell.diagonal { opacity: 0.55; }
+    .cell.diagonal.on { opacity: 1; }
 
     .cell-ratio {
       font-size: 0.72rem; font-style: italic;
@@ -214,7 +221,7 @@
     .info-display {
       min-height: 1.3rem;
       font-size: 0.58rem; letter-spacing: 0.1em;
-      color: var(--dimmer); font-style: italic; text-align: center;
+      color: var(--dim); font-style: italic; text-align: center;
     }
 
     /* ── Legend ──────────────────────────────────────── */
@@ -267,7 +274,7 @@
     /* ── Back link ───────────────────────────────────── */
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -276,7 +283,20 @@
     /* ── Hint ────────────────────────────────────────── */
     .hint {
       font-size: 0.54rem; letter-spacing: 0.12em;
-      color: var(--dimmer); font-style: italic; text-align: center;
+      color: var(--dim); font-style: italic; text-align: center;
+    }
+
+    /* phone: all 8 columns fit in the viewport, so every O-tonality row header
+       and the U-tonality-on-1 column can be reached without scrolling */
+    @media (max-width: 640px) {
+      .diamond-grid {
+        width: 100%;
+        grid-template-columns: 34px repeat(7, minmax(38px, 1fr));
+        grid-template-rows: auto repeat(7, 52px);
+        gap: 2px;
+      }
+      .row-header { padding-right: 0.25rem; }
+      .cell-ratio.long { font-size: 0.54rem; }
     }
   </style>
 </head>
@@ -456,8 +476,10 @@ for (let j = 0; j < 7; j++) {
     const cents = ratioToCents(num, den);
     const dev   = deviationFromET(cents);
     const key   = `${num}/${den}`;
-    const vkey  = `${j},${i}`;   // voice key: the CELL, not the ratio — a diamond
-                                 // repeats ratios (4/3 is both 1/3 and 3/9)
+    // voice key: the CELL, not the ratio (a diamond repeats ratios: 4/3 is
+    // both 1/3 and 3/9), except the diagonal: 1/1 is one pitch, one voice,
+    // shared by all 14 tonalities
+    const vkey  = i === j ? '1/1' : `${j},${i}`;
     const hp    = cellHighestPrime(ODDS[i], ODDS[j]);
     cells[j][i] = {
       num, den, key, vkey, cents, dev, hp,
@@ -475,13 +497,25 @@ for (let j = 0; j < 7; j++) {
 // ═══════════════════════════════════════════════════════
 
 function cellColors(nd) {
-  const p = PRIME_VAR[nd.hp];
+  const p = nd.isDiag ? '1' : PRIME_VAR[nd.hp];   // every diagonal cell is the same 1/1: unison colour
   return {
     bg:  `var(--c${p}-bg)`,
     br:  `var(--c${p}-br)`,
     abg: `var(--c${p}-act)`,
     abr: `var(--c${p}-abr)`,
   };
+}
+
+// cells and headers are divs: give them a keyboard path (tab, then Enter/Space)
+function keyActivate(el, fn, label) {
+  el.tabIndex = 0;
+  el.setAttribute('role', 'button');
+  el.setAttribute('aria-label', label);
+  el.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (!e.repeat) fn();
+  });
 }
 
 function buildGrid() {
@@ -501,11 +535,14 @@ function buildGrid() {
     h.className = 'col-header';
     h.style.gridRow = '1';
     h.style.gridColumn = String(i + 2);
+    const uOne = reduceToOctave(ODDS[i], 1).join('/');   // the tonality's 1-identity
     h.innerHTML = `
       <span class="hdr-tag">U·ton.</span>
-      <span class="hdr-num" id="col-hdr-${i}">${ODDS[i]}</span>`;
-    h.title = `U-tonality on ${ODDS[i]}: the chord under identity ${ODDS[i]}`;
+      <span class="hdr-num" id="col-hdr-${i}">${ODDS[i]}</span>
+      <span class="hdr-one">${uOne}</span>`;
+    h.title = `U-tonality on ${ODDS[i]}: the chord under identity ${ODDS[i]} · its 1-identity is ${uOne}`;
     h.addEventListener('click', () => toggleUtonality(i));
+    keyActivate(h, () => toggleUtonality(i), `U-tonality on ${ODDS[i]}`);
     grid.appendChild(h);
   }
 
@@ -516,10 +553,13 @@ function buildGrid() {
     rh.className = 'row-header';
     rh.style.gridColumn = '1';
     rh.style.gridRow = String(j + 2);
+    const oOne = reduceToOctave(1, ODDS[j]).join('/');   // the tonality's 1-identity
     rh.innerHTML = `
       <span class="hdr-num" id="row-hdr-${j}">${ODDS[j]}</span>
-      <span class="hdr-tag">O·ton.</span>`;
-    rh.title = `O-tonality on ${ODDS[j]}: the chord over identity ${ODDS[j]}`;
+      <span class="hdr-tag">O·ton.</span>
+      <span class="hdr-one">${oOne}</span>`;
+    rh.title = `O-tonality on ${ODDS[j]}: the chord over identity ${ODDS[j]} · its 1-identity is ${oOne}`;
+    keyActivate(rh, () => toggleOtonality(j), `O-tonality on ${ODDS[j]}`);
     rh.addEventListener('click', () => toggleOtonality(j));
     grid.appendChild(rh);
 
@@ -541,12 +581,11 @@ function buildGrid() {
         <span class="cell-ratio${long ? ' long' : ''}">${nd.key}</span>
         ${nd.isDiag ? '' : `<span class="cell-dev" style="color:${devTextColor(nd.dev)}">${fmtDev(nd.dev)}</span>`}`;
 
-      if (!nd.isDiag) {
-        el.addEventListener('click',      () => toggleCell(nd));
-        el.addEventListener('mouseenter', () => showInfo(nd));
-        el.addEventListener('mouseleave', clearInfo);
-        el.addEventListener('touchstart', e => { e.preventDefault(); showInfo(nd); toggleCell(nd); }, { passive: false });
-      }
+      el.addEventListener('click',      () => toggleCell(nd));
+      keyActivate(el, () => { showInfo(nd); toggleCell(nd); }, `${nd.key}, ${NAMES[nd.key] || ''}`);
+      el.addEventListener('mouseenter', () => showInfo(nd));
+      el.addEventListener('mouseleave', clearInfo);
+      el.addEventListener('touchstart', e => { e.preventDefault(); showInfo(nd); toggleCell(nd); }, { passive: false });
 
       nd.el = el;
       nd._colors = c;
@@ -561,13 +600,9 @@ function buildGrid() {
 
 // U-tonality: all cells in column i (same rawNum)
 function toggleUtonality(i) {
-  const col     = cells.map(row => row[i]).filter(nd => !nd.isDiag);
+  const col     = cells.map(row => row[i]);          // all 7 identities, 1/1 included
   const allOn   = col.every(nd => nd.active);
-  col.forEach(nd => {
-    if (allOn) { if (nd.active) { nd.active = false; if (ac) stopVoice(nd.vkey); } }
-    else        { if (!nd.active) { nd.active = true; startVoice(nd.vkey, fundamental * nd.num / nd.den); } }
-    updateVisual(nd);
-  });
+  col.forEach(nd => setCell(nd, !allOn));
   updateRowColHighlight();
   updateHeaders();
   updateChord();
@@ -575,13 +610,9 @@ function toggleUtonality(i) {
 
 // O-tonality: all cells in row j (same rawDen)
 function toggleOtonality(j) {
-  const row   = cells[j].filter(nd => !nd.isDiag);
+  const row   = cells[j];                            // all 7 identities, 1/1 included
   const allOn = row.every(nd => nd.active);
-  row.forEach(nd => {
-    if (allOn) { if (nd.active) { nd.active = false; if (ac) stopVoice(nd.vkey); } }
-    else        { if (!nd.active) { nd.active = true; startVoice(nd.vkey, fundamental * nd.num / nd.den); } }
-    updateVisual(nd);
-  });
+  row.forEach(nd => setCell(nd, !allOn));
   updateRowColHighlight();
   updateHeaders();
   updateChord();
@@ -591,11 +622,18 @@ function toggleOtonality(j) {
 // Cell interaction
 // ═══════════════════════════════════════════════════════
 
+// Turn one cell on or off. The seven 1/1 cells are one voice, so they
+// switch (and light) together.
+function setCell(nd, on) {
+  const group = nd.isDiag ? cells.map((row, k) => row[k]) : [nd];
+  if (nd.active === on) return;
+  group.forEach(g => { g.active = on; updateVisual(g); });
+  if (on) startVoice(nd.vkey, fundamental * nd.num / nd.den);
+  else if (ac) stopVoice(nd.vkey);
+}
+
 function toggleCell(nd) {
-  nd.active = !nd.active;
-  if (nd.active) startVoice(nd.vkey, fundamental * nd.num / nd.den);
-  else if (ac)   stopVoice(nd.vkey);
-  updateVisual(nd);
+  setCell(nd, !nd.active);
   updateRowColHighlight();
   updateHeaders();
   updateChord();
@@ -613,6 +651,7 @@ function updateVisual(nd) {
     nd.el.style.borderColor = c.br;
     nd.el.style.color = 'rgba(216,208,200,0.65)';
   }
+  nd.el.classList.toggle('on', nd.active);
 }
 
 function updateRowColHighlight() {
@@ -623,7 +662,8 @@ function updateRowColHighlight() {
   // For each active cell, highlight its row and column
   for (let j = 0; j < 7; j++) {
     for (let i = 0; i < 7; i++) {
-      if (!cells[j][i].active) continue;
+      // 1/1 belongs to every tonality, so it lights no particular row or column
+      if (!cells[j][i].active || cells[j][i].isDiag) continue;
       // Highlight other cells in same column (U-tonality)
       for (let jj = 0; jj < 7; jj++) {
         if (jj !== j && cells[jj][i].el) cells[jj][i].el.classList.add('col-lit');
@@ -638,12 +678,12 @@ function updateRowColHighlight() {
 
 function updateHeaders() {
   for (let i = 0; i < 7; i++) {
-    const anyColActive = cells.some(row => row[i].active);
+    const anyColActive = cells.some(row => row[i].active && !row[i].isDiag);
     const hdr = document.getElementById(`col-hdr-${i}`);
     if (hdr) hdr.classList.toggle('active', anyColActive);
   }
   for (let j = 0; j < 7; j++) {
-    const anyRowActive = cells[j].some(nd => nd.active);
+    const anyRowActive = cells[j].some(nd => nd.active && !nd.isDiag);
     const hdr = document.getElementById(`row-hdr-${j}`);
     if (hdr) hdr.classList.toggle('active', anyRowActive);
   }
@@ -655,8 +695,9 @@ function showInfo(nd) {
   const devStr = nd.dev !== 0 ? `${fmtDev(nd.dev)} from 12-TET` : '0¢ deviation (12-TET coincidence)';
   const oStr  = `O-ton. on ${nd.rawDen}`;
   const uStr  = `U-ton. on ${nd.rawNum}`;
-  document.getElementById('info-display').textContent =
-    `${nd.key}  ·  ${name}  ·  ${cStr}  ·  ${devStr}  ·  ${oStr} × ${uStr}`;
+  document.getElementById('info-display').textContent = nd.isDiag
+    ? `1/1  ·  unison  ·  the root  ·  one voice, in every O- and U-tonality`
+    : `${nd.key}  ·  ${name}  ·  ${cStr}  ·  ${devStr}  ·  ${oStr} × ${uStr}`;
 }
 
 function clearInfo() {
@@ -664,7 +705,8 @@ function clearInfo() {
 }
 
 function updateChord() {
-  const flat  = cells.flat().filter(nd => nd.active);
+  const seen  = new Set();   // the seven 1/1 cells are one pitch: list it once
+  const flat  = cells.flat().filter(nd => nd.active && !seen.has(nd.vkey) && seen.add(nd.vkey));
   const el    = document.getElementById('chord-display');
   el.textContent = flat.length === 0 ? '—' : flat.map(nd => nd.key).join('   ');
 }
@@ -684,6 +726,21 @@ function clearAll() {
 // ═══════════════════════════════════════════════════════
 
 let ac = null, masterGain, lpf, compressor, analyser, scopeBuf;
+// S3 · nothing hangs on a hidden tab: fade out and suspend while hidden, then
+// resume on return, so whatever is lit is what sounds.
+let hideGate = null;
+document.addEventListener('visibilitychange', () => {
+  if (!ac || !hideGate || ac.state === 'closed') return;
+  const t = ac.currentTime;
+  hideGate.gain.cancelScheduledValues(t);
+  if (document.hidden) {
+    hideGate.gain.setTargetAtTime(0, t, 0.015);
+    setTimeout(() => { if (document.hidden && ac.state === 'running') ac.suspend(); }, 150);
+  } else {
+    ac.resume().then(() => hideGate.gain.setTargetAtTime(1, ac.currentTime, 0.03));
+  }
+});
+
 let rafId = null;
 const voices = {};
 let fundamental = 220;
@@ -715,11 +772,28 @@ function initAudio() {
   masterGain.connect(lpf);
   lpf.connect(compressor);
   compressor.connect(analyser);
-  analyser.connect(ac.destination);
+  hideGate = ac.createGain();
+  analyser.connect(hideGate);
+  hideGate.connect(ac.destination);
 }
 
 function startVoice(key, freq) {
-  if (voices[key]) return;
+  const held = voices[key];
+  if (held) {
+    // Still sounding. Inside its 420 ms release window, cancel the pending
+    // teardown and fade back up on the same oscillator; otherwise a fast
+    // re-click leaves the cell lit but silent (same fix as lattice/septimal).
+    if (held.releaseId === null) return;
+    clearTimeout(held.releaseId);
+    held.releaseId = null;
+    const t = ac.currentTime;
+    held.osc.frequency.setValueAtTime(freq, t);
+    held.gain.gain.cancelScheduledValues(t);
+    held.gain.gain.setValueAtTime(held.gain.gain.value, t);
+    held.gain.gain.setTargetAtTime(0.09, t, 0.015);
+    if (!rafId) drawScope();
+    return;
+  }
   initAudio();
   if (ac.state === 'suspended') ac.resume();
   const osc  = ac.createOscillator();
@@ -729,15 +803,16 @@ function startVoice(key, freq) {
   gain.gain.setValueAtTime(0, ac.currentTime);
   gain.gain.setTargetAtTime(0.09, ac.currentTime, 0.015);
   osc.connect(gain); gain.connect(masterGain); osc.start();
-  voices[key] = { osc, gain };
+  voices[key] = { osc, gain, releaseId: null };
   if (!rafId) drawScope();
 }
 
 function stopVoice(key) {
-  if (!voices[key]) return;
-  const { osc, gain } = voices[key];
+  const v = voices[key];
+  if (!v || v.releaseId !== null) return;   // already releasing
+  const { osc, gain } = v;
   gain.gain.setTargetAtTime(0, ac.currentTime, 0.06);
-  setTimeout(() => {
+  v.releaseId = setTimeout(() => {
     try { osc.stop(); } catch (_) {}
     delete voices[key];
     if (Object.keys(voices).length === 0 && rafId) {
@@ -800,6 +875,10 @@ document.getElementById('lpf-knob').addEventListener('input', function () {
 
 function blankScope() {
   const cv = document.getElementById('scope');
+  // size the idle canvas the way drawScope does (60 px tall), so the box
+  // doesn't open at the 300×60 intrinsic ratio and snap on the first note
+  cv.width  = (cv.offsetWidth || 300) * (devicePixelRatio || 1);
+  cv.height = 60 * (devicePixelRatio || 1);
   const g  = cv.getContext('2d');
   g.fillStyle = '#0a0a0a';
   g.fillRect(0, 0, cv.width, cv.height);
