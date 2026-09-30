@@ -447,12 +447,12 @@ function ensureCtx() {
     actx = new (window.AudioContext || window.webkitAudioContext)();
     // Safety limiter on the bus: a 6-finger chord on Buzz, or one voice at
     // full drive with XY overdrive, used to peak far over 0 dBFS. Threshold
-    // -6 dB, ratio 20, 3 ms attack; the trim after it cancels the
+    // -6 dB, ratio 20, 1 ms attack; the trim after it cancels the
     // compressor's automatic makeup gain, so single notes and light chords
     // come out at the level they always had.
     const lim = actx.createDynamicsCompressor();
     lim.threshold.value = -6; lim.knee.value = 0; lim.ratio.value = 20;
-    lim.attack.value = 0.003; lim.release.value = 0.25;
+    lim.attack.value = 0.001; lim.release.value = 0.25;
     const trim = actx.createGain();
     trim.gain.value = LIMIT_TRIM;
     lim.connect(trim); trim.connect(actx.destination);
