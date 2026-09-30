@@ -113,6 +113,15 @@
       font-family: 'SF Mono','Fira Code',monospace;
     }
 
+    .ev.sel { outline: 1px solid rgba(204,200,208,0.5); outline-offset: -1px; }
+    .step-edit {
+      display: none; gap: 0.6rem; align-items: center; flex-wrap: wrap;
+      border: 1px solid var(--border); padding: 0.55rem 0.7rem;
+    }
+    .step-edit.open { display: flex; }
+    .step-edit .num { width: 3.4rem; }
+    .step-edit .note { font-size: 0.5rem; font-style: italic; color: var(--dim); }
+
     /* Controls */
     .ctrl-row {
       width: 100%; max-width: 860px;
@@ -202,7 +211,7 @@
 <div class="header">
   <h1 class="title">sequence</h1>
   <p class="sub">
-    ji sequencer · it opens on a just major scale · load a grab bag from stern-brocot to play your own.<br>
+    ji sequencer · it opens on a just major scale · tap a step to change it, or load a grab bag from stern-brocot.<br>
     rational durations · tenney time · midi float export.
   </p>
 </div>
@@ -241,6 +250,18 @@
 
   <div class="event-strip" id="eventStrip"></div>
 
+  <!-- tap a step to edit it -->
+  <div class="step-edit" id="stepEdit">
+    <span class="path-lbl" id="seLbl">step</span>
+    <input class="seq-input num" id="seP" type="number" min="1" max="9999" step="1" aria-label="numerator">
+    <span class="path-lbl">/</span>
+    <input class="seq-input num" id="seQ" type="number" min="1" max="9999" step="1" aria-label="denominator">
+    <select id="seDur" aria-label="duration"></select>
+    <span class="note" id="seNote"></span>
+    <button class="btn-sm" onclick="deleteStep()">× delete</button>
+    <button class="btn-sm" onclick="closeEditor()">done</button>
+  </div>
+
   <div class="ctrl-row">
     <button class="btn-sm btn-play" id="playBtn" onclick="togglePlay()">▶ play</button>
     <button class="btn-sm" onclick="stopSeq()">■ stop</button>
@@ -272,7 +293,7 @@
     <button class="btn-sm" onclick="addEvent()">+ add step</button>
     <button class="btn-sm" onclick="exportMidi()">↓ midi float json</button>
     <button class="btn-sm" onclick="loadNew()">↺ load new</button>
-    <button class="btn-sm" onclick="sendToCanon()" title="open sequence in Canon Loop Machine" style="margin-left:auto;border-color:rgba(74,158,255,0.3);color:rgba(74,158,255,0.9)">→ canon</button>
+    <button class="btn-sm" onclick="sendToCanon()" title="open this sequence in canon (it arrives in 31-EDO)" style="margin-left:auto;border-color:rgba(74,158,255,0.3);color:rgba(74,158,255,0.9)">→ canon</button>
   </div>
 
 </div>
@@ -503,6 +524,7 @@ function scheduleAhead() {
 }
 
 function togglePlay() {
+  if (!playing && seq.length === 0) return;
   ensureAx();
   if (playing) {
     playing = false;
@@ -556,6 +578,7 @@ function setDurMode(m) {
   document.getElementById('resolveBtn').classList.toggle('on', durMode === 'resolve');
   seq.forEach(ev => { ev.dur = calcDur(ev.p, ev.q); });
   renderStrip();
+  if (editIdx >= 0) openEditor(editIdx);
 }
 
 // show the fundamental actually in use: select the matching option, or add one
@@ -643,12 +666,88 @@ function renderStrip() {
 function jumpTo(i) {
   curIdx = i;
   if (!playing) highlightStep(i);
+  openEditor(i);
 }
 
+// A new step copies the one being edited (or 3/2), then opens for editing,
+// so a sequence can be built by hand. (Steps used to be add-only, always 3/2.)
 function addEvent() {
-  seq.push({ p: 3, q: 2, dur: calcDur(3, 2), vel: 0.8 });
+  const src = seq[editIdx] || { p: 3, q: 2 };
+  seq.push({ p: src.p, q: src.q, dur: calcDur(src.p, src.q), vel: 0.8 });
   renderStrip();
+  openEditor(seq.length - 1);
 }
+
+// ─── Step editor ─────────────────────────────────────────────────────────────
+
+const DUR_CYCLE = ['1/16','1/8','1/6','1/4','1/3','3/8','1/2','3/4','1/1'];   // as stern-brocot
+let editIdx = -1;
+
+function openEditor(i) {
+  if (!seq[i]) return closeEditor();
+  editIdx = i;
+  const ev = seq[i];
+  document.getElementById('seLbl').textContent = `step ${i + 1}`;
+  document.getElementById('seP').value = ev.p;
+  document.getElementById('seQ').value = ev.q;
+  const sel = document.getElementById('seDur');
+  sel.replaceChildren();
+  const opts = DUR_CYCLE.includes(ev.dur) ? DUR_CYCLE : [String(ev.dur), ...DUR_CYCLE];
+  for (const d of opts) {
+    const o = document.createElement('option');
+    o.value = d; o.textContent = d;
+    sel.appendChild(o);
+  }
+  sel.value = String(ev.dur);
+  const auto = durMode !== 'manual';
+  sel.disabled = auto;
+  document.getElementById('seNote').textContent = auto ? `${durMode}: duration follows tenney height` : '';
+  document.getElementById('stepEdit').classList.add('open');
+  markSelected();
+  const chip = document.getElementById(`ev-${i}`);
+  if (chip && chip.scrollIntoView) chip.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+function closeEditor() {
+  editIdx = -1;
+  document.getElementById('stepEdit').classList.remove('open');
+  markSelected();
+}
+
+function markSelected() {
+  document.querySelectorAll('.ev').forEach((el, j) => el.classList.toggle('sel', j === editIdx));
+}
+
+function editStep() {
+  const ev = seq[editIdx];
+  if (!ev) return;
+  const p = parseInt(document.getElementById('seP').value, 10);
+  const q = parseInt(document.getElementById('seQ').value, 10);
+  if (isPosInt(p) && isPosInt(q) && p <= 9999 && q <= 9999) {
+    const g = (function gcd(a, b) { return b ? gcd(b, a % b) : a; })(p, q);
+    ev.p = p / g; ev.q = q / g;
+  }
+  // (the inputs keep what was typed: rewriting them mid-edit would reduce
+  // 12/3 before the 3 became an 8; the chip shows lowest terms)
+  ev.dur = durMode === 'manual' ? document.getElementById('seDur').value : calcDur(ev.p, ev.q);
+  renderStrip();
+  markSelected();
+  if (!playing) updateInfoPanel(ev, editIdx);
+}
+
+function deleteStep() {
+  if (editIdx < 0) return;
+  seq.splice(editIdx, 1);
+  if (curIdx > editIdx) curIdx--;
+  if (curIdx >= seq.length) curIdx = 0;
+  const next = Math.min(editIdx, seq.length - 1);
+  renderStrip();
+  if (seq.length === 0) { stopSeq(); closeEditor(); return; }
+  openEditor(next);
+}
+
+for (const id of ['seP', 'seQ']) document.getElementById(id).addEventListener('change', editStep);
+document.getElementById('seDur').addEventListener('change', editStep);
 
 // ─── JSON load ────────────────────────────────────────────────────────────────
 
@@ -702,6 +801,7 @@ function loadJSON(data) {
     document.getElementById('infoFund').textContent = `${fundHz} Hz`;
 
     curIdx = 0; playing = false;
+    closeEditor();
     renderStrip();
     updateInfoPanel(null);
     updatePlayBtn();
