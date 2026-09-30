@@ -592,13 +592,22 @@ function animProgress() {
 }
 
 function renderStrip() {
+  // built with textContent: fields come from a loaded file, never markup
   const strip = document.getElementById('eventStrip');
-  strip.innerHTML = seq.map((ev, i) => `
-    <div class="ev" id="ev-${i}" onclick="jumpTo(${i})">
-      <span class="ev-ratio">${ev.p}/${ev.q}</span>
-      <span class="ev-cents">${ratioCents(ev.p,ev.q).toFixed(0)}¢</span>
-      <span class="ev-dur">${ev.dur}</span>
-    </div>`).join('');
+  strip.replaceChildren();
+  seq.forEach((ev, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'ev'; chip.id = `ev-${i}`;
+    chip.addEventListener('click', () => jumpTo(i));
+    for (const [cls, txt] of [['ev-ratio', `${ev.p}/${ev.q}`],
+                              ['ev-cents', `${ratioCents(ev.p, ev.q).toFixed(0)}¢`],
+                              ['ev-dur', String(ev.dur)]]) {
+      const sp = document.createElement('span');
+      sp.className = cls; sp.textContent = txt;
+      chip.appendChild(sp);
+    }
+    strip.appendChild(chip);
+  });
 }
 
 function jumpTo(i) {
@@ -613,30 +622,47 @@ function addEvent() {
 
 // ─── JSON load ────────────────────────────────────────────────────────────────
 
+// A loaded file is untrusted: a dur is a number or a "p/q" / decimal string,
+// numeric fields are clamped to finite ranges, anything else falls back.
+const DUR_RE = /^\d+(\.\d+)?(\/\d+)?$/;
+function cleanDur(d) {
+  if (typeof d === 'number' && Number.isFinite(d) && d > 0) return String(d);
+  if (typeof d === 'string' && DUR_RE.test(d.trim())) return d.trim();
+  return '1/4';
+}
+function clampNum(v, lo, hi, dflt) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
+}
+
 function loadJSON(data) {
   try {
     const j = JSON.parse(data);
+    if (!j || typeof j !== 'object') throw new Error('not a sequence object');
     const raw = Array.isArray(j.events) ? j.events : [];
-    seq = raw.filter(e => e && isPosInt(e.p) && isPosInt(e.q)).map(e => ({
+    const kept = raw.filter(e => e && isPosInt(e.p) && isPosInt(e.q)).map(e => ({
       p:   e.p,
       q:   e.q,
-      dur: e.dur || '1/4',
-      vel: e.vel || 0.8,
+      dur: cleanDur(e.dur),
+      vel: clampNum(e.vel, 0, 1, 0.8) || 0.8,
     }));
+    if (kept.length === 0) throw new Error('no playable events (each needs whole-number p and q)');
+    stopSeq();
+    seq = kept;
     const skipped = raw.length - seq.length;
-    if (j.fundamental_hz) {
-      fundHz = j.fundamental_hz;
-      // Sync selector to nearest option or leave as-is
+    if (j.fundamental_hz != null) {
+      fundHz = clampNum(j.fundamental_hz, 20, 2000, fundHz);
     }
-    if (j.tempo_bpm) {
-      bpm = j.tempo_bpm;
+    if (j.tempo_bpm != null) {
+      bpm = clampNum(j.tempo_bpm, 20, 400, bpm);
       document.getElementById('bpmIn').value = bpm;
     }
-    if (j.swing !== undefined) {
-      swing = j.swing;
+    if (j.swing != null) {
+      swing = clampNum(j.swing, 0.5, 0.75, 0.5);
       document.getElementById('swingIn').value = swing.toFixed(2);
     }
-    durMode = j.dur_mode || (j.tenney_time ? 'dwell' : 'manual');
+    durMode = ['dwell', 'resolve', 'manual'].includes(j.dur_mode) ? j.dur_mode
+            : (j.tenney_time ? 'dwell' : 'manual');
     document.getElementById('dwellBtn')  .classList.toggle('on', durMode === 'dwell');
     document.getElementById('resolveBtn').classList.toggle('on', durMode === 'resolve');
     document.getElementById('infoFund').textContent = `${fundHz} Hz`;
@@ -673,8 +699,8 @@ function exportMidi() {
   const out = {
     pitch_format: 'midi_float',
     fundamental_hz: fundHz,
-    tempo_bpm: parseFloat(document.getElementById('bpmIn').value) || bpm,
-    swing: parseFloat(document.getElementById('swingIn').value) || swing,
+    tempo_bpm: bpm,
+    swing,
     events: seq.map(ev => ({
       ratio:      `${ev.p}/${ev.q}`,
       midi_float: parseFloat((69 + ratioCents(ev.p, ev.q) / 100
@@ -709,11 +735,13 @@ document.getElementById('fileIn').addEventListener('change', e => {
 });
 
 // BPM / swing live update
+// clamped: a swing over 0.75 made the off-beat multiplier 2 - 2*swing go to
+// zero or below, and a pass that sums to <= 0 s hangs the scheduler loop
 document.getElementById('bpmIn').addEventListener('input', e => {
-  bpm = parseFloat(e.target.value) || 120;
+  bpm = clampNum(parseFloat(e.target.value), 20, 400, 120);
 });
 document.getElementById('swingIn').addEventListener('input', e => {
-  swing = parseFloat(e.target.value) || 0.5;
+  swing = clampNum(parseFloat(e.target.value), 0.5, 0.75, 0.5);
 });
 
 // ─── Send to Canon ────────────────────────────────────────────────────────────
@@ -724,7 +752,7 @@ function sendToCanon() {
     v: 1,
     events: seq.map(ev => ({ p: ev.p, q: ev.q, dur: ev.dur })),
     fundamental_hz: fundHz,
-    bpm: parseFloat(document.getElementById('bpmIn').value) || bpm,
+    bpm,
   };
   localStorage.setItem('seq-to-canon', JSON.stringify(data));
   window.open('canon.html?from=seq', '_blank');
