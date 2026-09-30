@@ -232,6 +232,9 @@
 // ═══════════════════════════════════════════════════════════
 
 const ROOT_C3 = 130.81;
+// 1 / the DynamicsCompressor's automatic makeup gain at threshold -6, ratio 20
+// ((1 / 0.5187) ** 0.6 = 1.483), so the limiter only ever turns things down.
+const LIMIT_TRIM = 0.674;
 
 const NAT_W = 48, ACC_W = 28, QT_W = 18;
 const OCT_W = NAT_W * 7;  // 336px per octave
@@ -398,7 +401,7 @@ function reloadTunings() {
 // STATE
 // ═══════════════════════════════════════════════════════════
 
-let actx = null, masterGain = null;
+let actx = null, masterGain = null, bus = null;
 let currentTuning = 'ji', octaveShift = 0;
 const activeXYModes = new Set(['filter']); // multi-select; at least one always active
 
@@ -442,9 +445,21 @@ function updateCtxDisplay() {
 function ensureCtx() {
   if (!actx) {
     actx = new (window.AudioContext || window.webkitAudioContext)();
+    // Safety limiter on the bus: a 6-finger chord on Buzz, or one voice at
+    // full drive with XY overdrive, used to peak far over 0 dBFS. Threshold
+    // -6 dB, ratio 20, 3 ms attack; the trim after it cancels the
+    // compressor's automatic makeup gain, so single notes and light chords
+    // come out at the level they always had.
+    const lim = actx.createDynamicsCompressor();
+    lim.threshold.value = -6; lim.knee.value = 0; lim.ratio.value = 20;
+    lim.attack.value = 0.003; lim.release.value = 0.25;
+    const trim = actx.createGain();
+    trim.gain.value = LIMIT_TRIM;
+    lim.connect(trim); trim.connect(actx.destination);
+    bus = lim;                             // masterGain → bus (limiter) → trim → out
     masterGain = actx.createGain();
     masterGain.gain.value = params.vol;
-    masterGain.connect(actx.destination);
+    masterGain.connect(bus);
     actx.onstatechange = updateCtxDisplay;
   }
   updateCtxDisplay();
@@ -706,7 +721,7 @@ function panicAll() {
     }, 120);
     masterGain = actx.createGain();
     masterGain.gain.value = params.vol;
-    masterGain.connect(actx.destination);
+    masterGain.connect(bus);
   }
 
   keyRects.forEach(r => { r.active = false; r.modAmt = 0; });
