@@ -177,7 +177,7 @@
         <span class="tool-name">drone</span>
         <div class="tool-body">
           <p class="tool-headline">Drone Machine</p>
-          <p class="tool-desc">Pure tone drone with just intonation tuning, variable beating, and harmonic partial toggles. Choose a root from C through B, select an octave, dial in a beat rate. Add upper partials (2nd through 9th, plus the 11th, 13th, 16th and 21st) to build a harmonic field. Useful for ear training, tuning, and meditative listening.</p>
+          <p class="tool-desc">A pure-tone drone in just intonation on C, so A4 sits at 436.05 Hz, 15.6¢ below A440. Choose a note from C through B and an octave from 1 to 5, then detune a twin oscillator by up to 8¢ to hear beats at the difference frequency. Add upper partials (2nd through 9th, plus the 11th, 13th, 16th and 21st) to build a harmonic field. Useful for ear training, tuning, and meditative listening.</p>
           <div class="tool-tags">
             <span class="tag">tuning</span>
             <span class="tag">just intonation</span>
@@ -193,7 +193,7 @@
         <span class="tool-name">spectrogram</span>
         <div class="tool-body">
           <p class="tool-headline">Real-Time Spectrum Analyzer</p>
-          <p class="tool-desc">Microphone input, FFT analysis on a log-frequency scale with overlaid just intonation partial markers. Choose a root pitch; markers show where partials 1–16 fall relative to your signal. Useful for microtonal ear training, tuning investigations, and understanding what your instrument is actually doing. Listens only — no audio output.</p>
+          <p class="tool-desc">Microphone input drawn two ways: a live spectrum on a log-frequency scale, and a spectrogram that scrolls through the last 8 seconds. Choose a root and dashed markers show where its harmonics fall, up to the 16th; the loudest peak is named as a partial with its distance in cents. Useful for microtonal ear training, tuning investigations, and understanding what your instrument is actually doing. Listens only, no audio output.</p>
           <div class="tool-tags">
             <span class="tag">analysis</span>
             <span class="tag">microtonality</span>
@@ -225,7 +225,7 @@
         <span class="tool-name">undertone</span>
         <div class="tool-body">
           <p class="tool-headline">Subharmonic Series</p>
-          <p class="tool-desc">The mirror image of the harmonic series — where overtones produce major-flavored sonorities, undertones produce minor. Explore the subharmonic stack and hear why the minor triad has historically puzzled theorists seeking a "natural" basis in acoustics.</p>
+          <p class="tool-desc">The mirror image of the harmonic series: each row sounds the root divided by n. Overtones stack a major triad and undertones a minor one, and two buttons play 4:5:6 above the root against 1/4:1/5:1/6 below it. Unlike overtones, undertones are not in the root's own sound, which is why the minor triad has long puzzled theorists looking for a "natural" basis in acoustics.</p>
           <div class="tool-tags">
             <span class="tag">just intonation</span>
             <span class="tag">microtonality</span>
@@ -240,7 +240,7 @@
         <span class="tool-name">soundfield</span>
         <div class="tool-body">
           <p class="tool-headline">Sound Field</p>
-          <p class="tool-desc">An interactive sound environment — move through it. Position and motion map to brightness, resonance, and level.</p>
+          <p class="tool-desc">Press and drag a 55 Hz sawtooth through a resonant lowpass filter. Left to right sweeps the cutoff from 45 Hz to 18 kHz; higher up is louder and more resonant. Release to silence.</p>
           <div class="tool-tags">
             <span class="tag">filter</span>
             <span class="tag">interactive</span>
@@ -255,7 +255,7 @@
         <span class="tool-name">eikosany</span>
         <div class="tool-body">
           <p class="tool-headline">Wilson Combination Product Sets</p>
-          <p class="tool-desc">Erv Wilson's hexany, dekany, and eikosany: pitch sets in which every tone is the product of two or three odd generators drawn from 1·3·5·7·9·11. Click to build chords inside these structures.</p>
+          <p class="tool-desc">Erv Wilson's hexany, dekany, and eikosany: pitch sets in which every tone is the product of two or three odd generators drawn from 1·3·5·7·9·11. Click to build chords inside these structures, or play a row of the set's own harmonic and subharmonic chords (the eikosany has 15 of each).</p>
           <div class="tool-tags">
             <span class="tag">just intonation</span>
             <span class="tag">microtonality</span>
@@ -271,7 +271,7 @@
         <span class="tool-name">phase</span>
         <div class="tool-body">
           <p class="tool-headline">Phase Machine</p>
-          <p class="tool-desc">Two voices, one pattern. Voice B drifts at a slightly different tempo — new rhythms and melodies emerge from the collision. A minimal compositional engine inspired by Steve Reich's phasing works.</p>
+          <p class="tool-desc">Two voices, one pattern, A panned left and B right. Voice B drifts at a slightly different tempo, and new rhythms and melodies emerge from the collision; lock steps holds each new alignment for two passes, as in Piano Phase. A minimal compositional engine inspired by Steve Reich's phasing works.</p>
           <div class="tool-tags">
             <span class="tag">rhythm</span>
             <span class="tag">minimalism</span>
@@ -286,7 +286,7 @@
         <span class="tool-name">euclidean</span>
         <div class="tool-body">
           <p class="tool-headline">Euclidean Rhythm Generator</p>
-          <p class="tool-desc">Four layered rhythmic rings. E(n,k) distributes n pulses across k steps as evenly as possible — the same algorithm as computing the GCD. Generates tresillo, cinquillo, aksak, and samba automatically. A mathematical view of global rhythmic traditions.</p>
+          <p class="tool-desc">Four layered rhythmic rings. E(n,k) distributes n pulses across k steps as evenly as possible, by the same algorithm that computes the GCD. One tap fills a layer with tresillo, cinquillo, bossa nova, samba, aksak or ruchenitza, and each layer rotates. A mathematical view of global rhythmic traditions.</p>
           <div class="tool-tags">
             <span class="tag">rhythm</span>
             <span class="tag">polyrhythm</span>
@@ -301,7 +301,7 @@
         <span class="tool-name">lissajous</span>
         <div class="tool-body">
           <p class="tool-headline">Interval Figures</p>
-          <p class="tool-desc">Every musical interval has a shape. Lissajous figures trace the relationship between two frequencies — a unison makes a diagonal or an ellipse, an octave a figure-eight, a fifth a woven knot; detune slightly and the figure never closes. Tune the ratio and watch the figure resolve or dissolve.</p>
+          <p class="tool-desc">Every musical interval has a shape. Two sine tones at a ratio trace one curve, and the phase slider bends it: a unison runs from a diagonal line to a circle, an octave from a figure-eight to a parabola, a fifth weaves a knot. Whole-number ratios close into a stable figure; φ:1 never closes. Spin for a random ratio, keep the ones worth a scale, and play them back in order.</p>
           <div class="tool-tags">
             <span class="tag">visualization</span>
             <span class="tag">just intonation</span>
@@ -314,7 +314,7 @@
   </ul>
 
   <p class="tools-footer">
-    these are the nine sturdiest. the full clutch — forty instruments, toys, and stranger things — lives at <a href="eggs.html" style="color:inherit">eggs.html</a>.<br>
+    these are the nine sturdiest. the full clutch of forty instruments, toys, and stranger things lives at <a href="eggs.html" style="color:inherit">eggs.html</a>.<br>
     these nine run in the browser. no installation, no account, no data collected.
   </p>
 
