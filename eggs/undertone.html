@@ -121,6 +121,8 @@
       transition: color 0.15s, border-color 0.15s;
     }
     .clear-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .clear-btn.on { color: var(--on); border-color: var(--on); }
+    .mirror-row { margin-top: -0.6rem; }
 
     .partials {
       width: 100%;
@@ -271,6 +273,12 @@
   <button class="clear-btn" id="clear-btn">clear all</button>
 </div>
 
+<div class="control mirror-row">
+  <label>mirror</label>
+  <button class="clear-btn" id="mirror-over" title="root · 5/4 · 3/2 above the root: the overtone major triad">4:5:6 overtones</button>
+  <button class="clear-btn" id="mirror-under" title="rows 1/4 · 1/5 · 1/6 below the root: the undertone minor triad">1/4:1/5:1/6 undertones</button>
+</div>
+
 <div class="partials-header" aria-hidden="true">
   <span style="text-align:right">1/n</span>
   <span></span>
@@ -419,6 +427,52 @@ function togglePartial(n) {
 
 function clearAll() {
   for (const n of [...activeSet]) togglePartial(n);
+  stopOvertones();
+}
+
+// ── The mirror the sub promises: 4:5:6 stacked up from the root (a major
+// triad) against 1/4:1/5:1/6 hung down from it (a minor triad). Each button
+// clears the other side, so the two can be A/B'd; a second press clears.
+const MIRROR = [4, 5, 6];
+let overVoices = [];
+
+function stopOvertones() {
+  if (!ac || !overVoices.length) return;
+  const t = ac.currentTime;
+  for (const { osc, gain } of overVoices) {
+    gain.gain.setTargetAtTime(0, t, 0.04);
+    setTimeout(() => { try { osc.stop(); } catch (e) {} try { gain.disconnect(); } catch (e) {} }, 300);
+  }
+  overVoices = [];
+  document.getElementById('mirror-over').classList.remove('on');
+  if (activeSet.size === 0) stopScope();
+}
+
+function playOvertones() {
+  const wasOn = overVoices.length > 0;
+  clearAll();
+  if (wasOn) return;
+  initAudio();
+  if (ac.state === 'suspended') ac.resume();
+  const root = getRoot();
+  const amp = AMP_BASE / Math.pow(4, 0.6);   // the same level as row 1/4
+  for (const m of MIRROR) {
+    const osc = ac.createOscillator(), gain = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = root * m / 4;
+    gain.gain.setValueAtTime(0, ac.currentTime);
+    gain.gain.setTargetAtTime(amp, ac.currentTime, 0.025);
+    osc.connect(gain); gain.connect(master); osc.start();
+    overVoices.push({ osc, gain, m });
+  }
+  document.getElementById('mirror-over').classList.add('on');
+  if (!rafId) drawScope();
+}
+
+function playUndertones() {
+  const same = activeSet.size === MIRROR.length && MIRROR.every(n => activeSet.has(n));
+  clearAll();
+  if (!same) MIRROR.forEach(n => togglePartial(n));
 }
 
 function updateRoot(newRoot) {
@@ -427,6 +481,7 @@ function updateRoot(newRoot) {
   for (const n of activeSet) {
     if (voices[n]) voices[n].osc.frequency.setTargetAtTime(newRoot / n, t, 0.02);
   }
+  for (const v of overVoices) v.osc.frequency.setTargetAtTime(newRoot * v.m / 4, t, 0.02);
 }
 
 // ── Scope ─────────────────────────────────────────────────
@@ -537,6 +592,8 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
 
 document.getElementById('clear-btn').addEventListener('click', clearAll);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') clearAll(); });
+document.getElementById('mirror-over').addEventListener('click', playOvertones);
+document.getElementById('mirror-under').addEventListener('click', playUndertones);
 
 // ── Init ──────────────────────────────────────────────────
 function init() {
