@@ -364,6 +364,13 @@ function doTick(tick, when) {
 }
 
 function schedule() {
+  // stall resync: a blocked main thread would hand every missed tick to Web
+  // Audio in the past, fired as one clump. Jump ahead and count the skipped
+  // ticks, so every layer stays aligned to the shared grid.
+  if (nextTickT < ax.currentTime - 0.05) {
+    globalTick += Math.ceil((ax.currentTime + 0.02 - nextTickT) / tickSec());
+    nextTickT = ax.currentTime + 0.02;
+  }
   while (nextTickT < ax.currentTime + LOOKAHEAD) {
     doTick(globalTick, nextTickT);
     nextTickT += tickSec();
