@@ -29,7 +29,7 @@
     /* ── Back to the nest ───────────────────────────────────── */
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: rgba(204,200,208,0.58); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -80,7 +80,7 @@
       position: fixed;
       bottom: 1.6rem;
       font-size: 1rem;
-      color: rgba(212,204,196,0.38);
+      color: rgba(212,204,196,0.58);
       background: none;
       border: none;
       cursor: pointer;
@@ -100,10 +100,10 @@
       letter-spacing: 0.2em;
     }
 
-    #prev-btn:hover, #random-btn:hover, #auto-btn:hover { color: rgba(212,204,196,0.65); }
+    #prev-btn:hover, #random-btn:hover, #auto-btn:hover { color: rgba(212,204,196,0.85); }
 
     #prev-btn[disabled] { opacity: 0.3; cursor: default; }
-    #auto-btn[aria-pressed="true"] { color: rgba(212,204,196,0.72); }
+    #auto-btn[aria-pressed="true"] { color: rgba(212,204,196,0.8); }
 
     /* ── Fade state ─────────────────────────────────────────── */
     .fade-out { opacity: 0; }
