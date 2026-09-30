@@ -467,28 +467,37 @@ function startAudio() {
   if (actx.state === 'suspended') actx.resume();
   const root = parseFloat(document.getElementById('rootSlider').value);
   const scale = waveScale();
+  // every partial starts on the same sample, 30 ms out: started "now", they
+  // could land in different render quanta, which shifts their phases and moves
+  // the peak off the one waveScale() measured (0.93 to 1.01 seen). Waiting also
+  // clears the old set's 12 ms fade, so a stop then play never stacks two sets
+  // (1.6 peak measured); the 20 ms ramp-in keeps the start click-free.
+  const t = actx.currentTime + 0.03;
   for (let h = 0; h < NUM_H; h++) {
     const osc  = actx.createOscillator();
     const gain = actx.createGain();
     osc.type = 'sine';
     osc.frequency.value = root * (h + 1);
-    gain.gain.value = partGain(h, scale);
+    gain.gain.value = 0;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(partGain(h, scale), t + 0.02);
     osc.connect(gain);
     gain.connect(masterGain);
-    osc.start();
+    osc.start(t);
     oscNodes.push({ osc, gain });
   }
   playing = true;
 }
 
-// fade each partial over ~10 ms before stopping it (a bare stop clicked)
+// fade each partial over 12 ms before stopping it (a bare stop clicked); a new
+// set (startAudio) starts after the fade is done
 function stopAudio() {
   const t = actx ? actx.currentTime : 0;
   for (const { osc, gain } of oscNodes) {
     try {
       gain.gain.cancelScheduledValues(t);
       gain.gain.setValueAtTime(gain.gain.value, t);
-      gain.gain.setTargetAtTime(0, t, 0.01);
+      gain.gain.linearRampToValueAtTime(0, t + 0.012);
       osc.stop(t + 0.08);
     } catch(e) {}
     osc.onended = () => { try { osc.disconnect(); gain.disconnect(); } catch(e) {} };
