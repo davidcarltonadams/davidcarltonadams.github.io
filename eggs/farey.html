@@ -589,6 +589,7 @@ let master = null, comp = null;
 // Sweep voices are capped — Fₙ at n=16 is 81 fractions and the tails overlap,
 // so an uncapped sweep piles up oscillators until the graph clips or stalls.
 const MAX_SWEEP_VOICES = 12;
+const MAX_CLICK_VOICES = 4;   // a clicked tone is louder (0.5) and rings 2 s
 let sweepVoices = [];
 
 function ensureAudio() {
@@ -603,7 +604,12 @@ function ensureAudio() {
   master = actx.createGain();
   master.gain.value = 0.55;
   master.connect(comp);
-  comp.connect(actx.destination);
+  // the compressor's makeup gain puts a dense cluster near 0.9 (a sweep plus
+  // fast clicks); a small trim after it keeps the worst case under (S4)
+  const trim = actx.createGain();
+  trim.gain.value = 0.94;
+  comp.connect(trim);
+  trim.connect(actx.destination);
 }
 
 function resumeAudio() {
@@ -612,14 +618,14 @@ function resumeAudio() {
 }
 
 // free finished voices, then steal the oldest until there is room for one more
-function makeRoomForVoice() {
+function makeRoomForVoice(max = MAX_SWEEP_VOICES) {
   const t = actx.currentTime;
   sweepVoices = sweepVoices.filter(v => {
     if (v.until > t) return true;
     try { v.osc.disconnect(); v.env.disconnect(); } catch (e) {}
     return false;
   });
-  while (sweepVoices.length >= MAX_SWEEP_VOICES) {
+  while (sweepVoices.length >= max) {
     const v = sweepVoices.shift();
     try {
       v.env.gain.cancelScheduledValues(t);
@@ -642,8 +648,11 @@ function killSweepVoices() {
   sweepVoices = [];
 }
 
+// a clicked dot (or JI marker) shares the sweep's voice cap: 40 fast clicks
+// used to stack 40 two-second tones (1.22 peak)
 function playFrac(f) {
   resumeAudio();
+  makeRoomForVoice(MAX_CLICK_VOICES);
   const root = parseFloat(document.getElementById('rootSel').value);
   const freq  = root * Math.pow(2, f.v);
   const osc   = actx.createOscillator();
@@ -657,6 +666,7 @@ function playFrac(f) {
   env.gain.setTargetAtTime(0.5, t, 0.01);
   env.gain.setTargetAtTime(0, t + 0.6, 0.15);
   osc.stop(t + 2);
+  sweepVoices.push({ osc, env, until: t + 2 });
 }
 
 function playFracSweep(f) {
