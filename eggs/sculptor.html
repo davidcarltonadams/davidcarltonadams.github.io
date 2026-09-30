@@ -11,6 +11,8 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(204,200,208,0.58);
       --bg:     #070709;
       --bg2:    #0d0d11;
       --text:   #ccc8d0;
@@ -35,7 +37,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -51,7 +53,7 @@
     .sub {
       font-size: 0.57rem;
       letter-spacing: 0.09em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.42rem;
       max-width: 520px;
@@ -184,7 +186,7 @@
     }
     .preset-btn {
       background: transparent;
-      color: var(--dimmer);
+      color: var(--control);
       border: 1px solid var(--border);
       padding: 0.3rem 0.8rem;
       font-family: Georgia, serif;
@@ -194,7 +196,7 @@
       cursor: pointer;
       transition: color 0.13s, border-color 0.13s;
     }
-    .preset-btn:hover { color: var(--dim); border-color: rgba(255,255,255,0.18); }
+    .preset-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
   </style>
 </head>
 <body>

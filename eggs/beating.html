@@ -12,6 +12,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(204,202,212,0.58);
       --bg:     #06070a;
       --bg2:    #0d0e14;
       --text:   #cccad4;
@@ -126,7 +128,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.62rem;
       letter-spacing: 0.07em;
@@ -216,7 +218,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.72rem;
       letter-spacing: 0.1em;
@@ -239,7 +241,7 @@
 </head>
 <body>
 
-<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:#332;text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}.eggs-back:focus-visible{color:#aaa;outline:1px solid #aaa;outline-offset:3px}</style>
+<style>.eggs-back{position:fixed;top:.7rem;left:1rem;font-size:.58rem;color:var(--control);text-decoration:none;letter-spacing:.08em;font-family:'SF Mono','Fira Code',monospace;z-index:100;transition:color .15s}.eggs-back:hover{color:#aaa}.eggs-back:focus-visible{color:#aaa;outline:1px solid #aaa;outline-offset:3px}</style>
 <a href="../eggs.html" class="eggs-back">← eggs</a>
 
 <div class="header">

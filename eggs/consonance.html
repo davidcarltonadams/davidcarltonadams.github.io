@@ -12,6 +12,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
+      /* S1: anything clickable reads at >= 4.5:1 on the page ground; --dim / --dimmer stay decorative */
+      --control: rgba(204,200,208,0.58);
       --bg:      #060608;
       --bg2:     #0c0c10;
       --text:    #ccc8d0;
@@ -38,7 +40,7 @@
 
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -54,7 +56,7 @@
     .sub {
       font-size: 0.58rem;
       letter-spacing: 0.12em;
-      color: var(--dimmer);
+      color: var(--dim);
       font-style: italic;
       margin-top: 0.35rem;
       line-height: 1.8;
@@ -157,7 +159,7 @@
       background: none;
       border: 1px solid var(--border);
       border-radius: 2px;
-      color: var(--dim);
+      color: var(--control);
       font-family: Georgia, serif;
       font-size: 0.65rem;
       letter-spacing: 0.08em;
