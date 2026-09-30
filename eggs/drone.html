@@ -43,6 +43,22 @@
       padding: 2rem 1.5rem 3rem;
     }
 
+    /* ── Title + epigraph ───────────────────────────────────── */
+    .header { text-align: center; max-width: 30rem; }
+    .title {
+      font-size: 0.95rem; font-weight: normal;
+      letter-spacing: 0.24em; text-transform: lowercase; color: var(--text);
+    }
+    .sub {
+      font-size: 0.6rem; letter-spacing: 0.08em; line-height: 1.7;
+      color: var(--dim); font-style: italic; margin-top: 0.4rem;
+    }
+    #ji-line {
+      font-size: 0.6rem; letter-spacing: 0.12em;
+      color: var(--dim); margin-top: 0.3rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
     /* ── Pitch display ──────────────────────────────────────── */
     #freq-display {
       text-align: center;
@@ -220,9 +236,15 @@
 
 <a class="eggs-back" href="../eggs.html">← eggs</a>
 
+<div class="header">
+  <h1 class="title">drone</h1>
+  <p class="sub">just intonation on C · C4 = 261.63 Hz, so A4 sounds at 436.05 Hz, 15.6¢ below A440 · beating detunes a twin up to 8¢</p>
+</div>
+
 <div id="freq-display">
   <div id="note-name">A</div>
   <div id="freq-hz">220.00 Hz · A3</div>
+  <div id="ji-line">5/3 above C · 884.4¢ · −15.6¢ from 12-tet</div>
 </div>
 
 <canvas id="beat-canvas" width="720" height="80"></canvas>
@@ -266,13 +288,13 @@
 <script>
 // ── Pitch data ─────────────────────────────────────────────────────────────
 const NOTES = [
-  { name: 'C',  ratio: 1/1 },
-  { name: 'D',  ratio: 9/8 },
-  { name: 'E',  ratio: 5/4 },
-  { name: 'F',  ratio: 4/3 },
-  { name: 'G',  ratio: 3/2 },
-  { name: 'A',  ratio: 5/3 },
-  { name: 'B',  ratio: 15/8 },
+  { name: 'C',  ratio: 1/1,   frac: '1/1',  et: 0 },
+  { name: 'D',  ratio: 9/8,   frac: '9/8',  et: 200 },
+  { name: 'E',  ratio: 5/4,   frac: '5/4',  et: 400 },
+  { name: 'F',  ratio: 4/3,   frac: '4/3',  et: 500 },
+  { name: 'G',  ratio: 3/2,   frac: '3/2',  et: 700 },
+  { name: 'A',  ratio: 5/3,   frac: '5/3',  et: 900 },
+  { name: 'B',  ratio: 15/8,  frac: '15/8', et: 1100 },
 ];
 // JI ratios relative to C4 = 261.63 Hz
 const C4 = 261.63;
@@ -467,6 +489,7 @@ animFrame = requestAnimationFrame(drawBeat);
 // ── UI ─────────────────────────────────────────────────────────────────────
 const noteNameEl  = document.getElementById('note-name');
 const freqHzEl    = document.getElementById('freq-hz');
+const jiLineEl    = document.getElementById('ji-line');
 const pitchWheel  = document.getElementById('pitch-wheel');
 const octaveSlider = document.getElementById('octave-slider');
 const octaveVal    = document.getElementById('octave-val');
@@ -482,6 +505,11 @@ function updateDisplay() {
   const nl = noteLabel();
   noteNameEl.textContent = NOTES[state.noteIdx].name;
   freqHzEl.textContent   = f.toFixed(2) + ' Hz · ' + nl;
+  // the ratio above C, and how far that sits from the 12-tet note of that name
+  const n = NOTES[state.noteIdx];
+  const cents = 1200 * Math.log2(n.ratio), dev = cents - n.et;
+  jiLineEl.textContent = n.frac + ' above C · ' + cents.toFixed(1) + '¢ · '
+    + (dev < 0 ? '−' : '+') + Math.abs(dev).toFixed(1) + '¢ from 12-tet';
 
   // pitch buttons
   pitchWheel.querySelectorAll('.note-btn').forEach((b, i) => {
@@ -501,7 +529,7 @@ NOTES.forEach((n, i) => {
   const btn = document.createElement('button');
   btn.className = 'note-btn' + (i === state.noteIdx ? ' selected' : '');
   btn.textContent = n.name;
-  btn.title = n.name + ' (' + n.ratio.toFixed(4) + ')';
+  btn.title = n.name + ' (' + n.frac + ' above C)';
   btn.addEventListener('click', () => {
     state.noteIdx = i;
     restartIfPlaying();
