@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="walk the stern-brocot tree through the octave by mediants — each step is the simplest ratio between the current bounds, and you can hear it.">
+  <meta name="description" content="walk the stern-brocot tree through the octave by mediants: each step is the simplest ratio between the current bounds, and you can hear it.">
   <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
@@ -297,7 +297,7 @@
 <div class="header">
   <h1 class="title">stern-brocot</h1>
   <p class="sub">
-    every rational between the unison and the octave lives in this tree exactly once — simpler ratios closer to the root.<br>
+    every rational between the unison and the octave lives in this tree exactly once · simpler ratios closer to the root.<br>
     navigate by finding the simplest fraction between any two bounds. ← → to move, ↑ to backtrack.
   </p>
 </div>
@@ -422,16 +422,16 @@ const NAMES = {
 };
 
 const COMMENTARY = {
-  '3/2': 'The perfect fifth: first non-octave overtone, root of the circle of fifths, and the starting point of this tree. It is not arbitrary that the tree begins here — it is mathematically unavoidable.',
-  '4/3': 'The perfect fourth — the octave-complement of the fifth. 3/2 × 4/3 = 2/1 exactly. Every perfect fifth implies a perfect fourth hiding in its shadow.',
+  '3/2': 'The perfect fifth: first non-octave overtone, root of the circle of fifths, and the starting point of this tree. It is not arbitrary that the tree begins here; it is mathematically unavoidable.',
+  '4/3': 'The perfect fourth, the octave-complement of the fifth. 3/2 × 4/3 = 2/1 exactly. Every perfect fifth implies a perfect fourth hiding in its shadow.',
   '5/4': 'The just major third: 386¢, a full 14 cents narrower than equal temperament\'s 400¢. ET\'s 400¢ third beats about 10 times a second at middle C: the lower note\'s 5th partial and the upper note\'s 4th partial nearly coincide. At 5/4 they coincide exactly and the beating stops.',
   '6/5': 'The just minor third: 316¢. Simpler than the Pythagorean minor third (32/27 = 294¢). The ratio 6:5 arises naturally in the overtone series between the 5th and 6th partials.',
-  '7/4': 'The harmonic seventh — the 7th overtone. 969¢, a full 31 cents flat of equal temperament\'s minor seventh. Blues singers, brass players, and barbershop quartets naturally land here.',
+  '7/4': 'The harmonic seventh, the 7th harmonic. 969¢, a full 31 cents flat of equal temperament\'s minor seventh. Blues singers, brass players, and barbershop quartets naturally land here.',
   '7/6': 'The septimal minor third: 267¢. 49¢ narrower than the just minor third (6/5 = 316¢). A characteristic interval of 7-limit harmony.',
-  '5/3': 'The just major sixth: 884¢, sixteen cents narrow of equal temperament. Consonant and clear — its simplicity (5 and 3) places it early in the tree.',
-  '8/5': 'The just minor sixth: 814¢ — the octave-complement of the major third. 5/4 × 8/5 = 2/1.',
-  '9/8': 'The major whole tone — two perfect fifths minus an octave. 3/2 × 3/2 / 2 = 9/8. The backbone of Pythagorean melody.',
-  '11/8': 'The 11th harmonic — an interval Western theory has no name for. Approximately a tritone, but 49 cents flat of equal temperament. Central to spectral music and 11-limit JI.',
+  '5/3': 'The just major sixth: 884¢, sixteen cents narrow of equal temperament. Consonant and clear: its simplicity (5 and 3) places it early in the tree.',
+  '8/5': 'The just minor sixth: 814¢, the octave-complement of the major third. 5/4 × 8/5 = 2/1.',
+  '9/8': 'The major whole tone: two perfect fifths minus an octave. 3/2 × 3/2 / 2 = 9/8. The backbone of Pythagorean melody.',
+  '11/8': 'The 11th harmonic, an interval Western theory has no name for. Approximately a tritone, but 49 cents flat of equal temperament. Central to spectral music and 11-limit JI.',
   '16/9': 'The Pythagorean minor seventh: two perfect fourths stacked. 4/3 × 4/3 = 16/9.',
   '15/8': 'The just major seventh: the leading tone in a JI major scale, one just diatonic semitone (16/15) below the octave.',
 };
@@ -1073,10 +1073,10 @@ function buildExplanation() {
   let out = '';
 
   if (depth === 0) {
-    out += `<p>The <strong>Stern-Brocot tree</strong> contains every positive rational number exactly once, arranged so that <em>simpler</em> ratios — those with smaller numerators and denominators — appear closer to the root.</p>`;
+    out += `<p>The <strong>Stern-Brocot tree</strong> contains every positive rational number exactly once, arranged so that <em>simpler</em> ratios (those with smaller numerators and denominators) appear closer to the root.</p>`;
     out += `<p>We explore the <strong>octave</strong>: all intervals between 1/1 (unison) and 2/1 (octave). The root of this subtree is found by taking the <em>mediant</em> of the two bounds:</p>`;
-    out += `<span class="math">(1 + 2) / (1 + 1) = 3/2 — the perfect fifth</span>`;
-    out += `<p>The <strong>mediant</strong> of two fractions a/b and c/d is (a+c)/(b+d). A theorem guarantees that the mediant of two adjacent fractions (|ad−bc| = 1 — as every pair of bounds in this tree is) is always the fraction with the <em>smallest denominator</em> strictly between them — not an approximation, but a mathematical fact.</p>`;
+    out += `<span class="math">(1 + 2) / (1 + 1) = 3/2 · the perfect fifth</span>`;
+    out += `<p>The <strong>mediant</strong> of two fractions a/b and c/d is (a+c)/(b+d). A theorem guarantees that the mediant of two adjacent fractions (|ad−bc| = 1, as every pair of bounds in this tree is) is always the fraction with the <em>smallest denominator</em> strictly between them: not an approximation, but a mathematical fact.</p>`;
     out += `<p>Navigate <strong>left</strong> to find the simplest fraction between 1/1 and 3/2 (→ 4/3).<br>Navigate <strong>right</strong> to find the simplest fraction between 3/2 and 2/1 (→ 5/3).</p>`;
     return out;
   }
@@ -1107,7 +1107,7 @@ function buildExplanation() {
   }
 
   if (depth >= 5) {
-    out += `<p>At depth ${depth}, you are deep in the tree. The search region has narrowed to ${(ratioCents(rp,rq) - ratioCents(lp,lq)).toFixed(1)} cents wide. The ratios here are genuinely complex — but each one is still the <em>simplest possible</em> fraction in the remaining space. The tree is infinite; there is always another fraction between any two.</p>`;
+    out += `<p>At depth ${depth}, you are deep in the tree. The search region has narrowed to ${(ratioCents(rp,rq) - ratioCents(lp,lq)).toFixed(1)} cents wide. The ratios here are genuinely complex, but each one is still the <em>simplest possible</em> fraction in the remaining space. The tree is infinite; there is always another fraction between any two.</p>`;
   }
 
   return out;
@@ -1276,7 +1276,7 @@ function renderBag() {
       ondrop="bagDrop(event,${i})" ondragend="bagDragEnd()">
       <span class="chip-ratio">${item.p}/${item.q}</span>
       <span class="chip-dur" onclick="cycleDur(${i})"
-        title="${durMode !== 'manual' ? durMode + ' — click disabled' : 'click to cycle duration'}">${item.dur}</span>
+        title="${durMode !== 'manual' ? durMode + ' · click disabled' : 'click to cycle duration'}">${item.dur}</span>
       <span class="chip-remove" onclick="removeFromBag(${i})">×</span>
     </div>`).join('');
 }
