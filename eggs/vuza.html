@@ -19,6 +19,7 @@
       --border: rgba(255,255,255,0.07);
       --gold:   #d4c070;
       --red:    #d46a6a;
+      --control: rgba(204,200,208,0.58);   /* anything clickable: 4.55:1 on --bg */
     }
     body {
       background: var(--bg);
@@ -33,7 +34,7 @@
     }
     .eggs-back {
       position: fixed; top: .7rem; left: 1rem;
-      font-size: .58rem; color: #332; text-decoration: none;
+      font-size: .58rem; color: var(--control); text-decoration: none;
       letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
       z-index: 100; transition: color .15s;
     }
@@ -64,7 +65,7 @@
     .btn-sm {
       font-family: Georgia, serif;
       font-size: 0.52rem; letter-spacing: 0.1em; text-transform: lowercase;
-      font-style: italic; color: var(--dim);
+      font-style: italic; color: var(--control);
       background: none; border: 1px solid var(--border);
       padding: 0.28rem 0.55rem; cursor: pointer; white-space: nowrap;
       transition: color 0.13s, border-color 0.13s;
@@ -79,7 +80,7 @@
       display: flex; flex-direction: column; gap: 0.5rem;
     }
     .mk-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; justify-content: center; }
-    .mk-row label { font-size: 0.56rem; font-style: italic; color: var(--dim); display: flex; gap: 0.35rem; align-items: center; }
+    .mk-row label { font-size: 0.56rem; font-style: italic; color: var(--control); display: flex; gap: 0.35rem; align-items: center; }
     .mk-sel, .mk-inp {
       font-family: 'SF Mono','Fira Code',monospace; font-size: 0.6rem; color: var(--text);
       background: var(--bg2); border: 1px solid var(--border); padding: 0.16rem 0.3rem; outline: none;
@@ -136,11 +137,11 @@
 
     .explain-wrap { width: 100%; max-width: 520px; }
     .explain-toggle {
-      font-size: 0.51rem; font-style: italic; color: var(--dimmer);
+      font-size: 0.51rem; font-style: italic; color: var(--control);
       letter-spacing: 0.1em; background: none; border: none;
       font-family: Georgia, serif; cursor: pointer; transition: color 0.13s;
     }
-    .explain-toggle:hover { color: var(--dim); }
+    .explain-toggle:hover { color: var(--text); }
     .explain-body {
       display: none; margin-top: 0.9rem;
       font-size: 0.63rem; line-height: 1.9; color: var(--dim);
@@ -803,7 +804,7 @@ function makeFromR() {
   loadCanon(nn, RR, altS[0], `yours · ${nn}`);
   document.getElementById('mkR').value = RR.join(', ');
   const more = C.length >= 400 || C.exhausted ? '+' : '';
-  setMakerNote(`${C.length}${more} complements${C.exhausted ? ' (search stopped early)' : ''} · showing the least regular`);
+  setMakerNote(`${C.length}${more} complement${C.length === 1 ? '' : 's'}${C.exhausted ? ' (search stopped early)' : ''} · showing the least regular`);
 }
 
 function nextS() {
