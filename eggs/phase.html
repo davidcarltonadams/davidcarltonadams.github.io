@@ -176,6 +176,7 @@
       <div class="swatch" style="background:#d4c070"></div>
       <span id="legB">voice b · +3.0%</span>
     </div>
+    <span class="disp" id="offsetD" aria-live="off">a left · b right</span>
   </div>
 </div>
 
@@ -216,6 +217,7 @@ let playing = false;
 let startAcTime = 0;
 let ax = null;
 let master = null;      // every voice lands here → limiter → out
+let panA = null, panB = null;   // a left, b right, so the ear can tell who is who
 
 // Scheduler state
 let nextA_time = 0, nextA_step = 0;
@@ -390,6 +392,7 @@ function draw() {
       syncDetected = false;
     }
     lastDiff = diff;
+    showOffset(diff);
 
     drawHead(pA, 'rgba(122,184,212,0.5)', 'rgba(122,184,212,0.08)');
     drawHead(pB, 'rgba(212,192,112,0.5)', 'rgba(212,192,112,0.08)');
@@ -413,6 +416,16 @@ function headPhase(nextStep, nextTime, stepDur, now) {
   const s = step % NUM_STEPS;
   const frac = Math.min(1, Math.max(0, (now - t) / stepDur(s)));
   return (s + frac) % NUM_STEPS;
+}
+
+// How far b has pulled ahead, in a's steps. Over 16 steps the offset runs
+// 0 → 16, at which point b has lapped a and they are back in unison.
+let lastOffsetText = '';
+function showOffset(diff) {
+  const d = Math.round(diff * 10) / 10;
+  const txt = (d < 0.1 || d > NUM_STEPS - 0.1) ? 'in unison'
+            : `b is ${d.toFixed(1)} step${d === 1 ? '' : 's'} ahead`;
+  if (txt !== lastOffsetText) { document.getElementById('offsetD').textContent = txt; lastOffsetText = txt; }
 }
 
 function drawHead(phase, lineColor, glowColor) {
@@ -453,11 +466,17 @@ function ensureCtx() {
     limiter.release.value   = 0.12;
     master.connect(limiter);
     limiter.connect(ax.destination);
+    // Two identical sines at identical pitches are indistinguishable in mono;
+    // spread them so a listener can follow each voice as they separate.
+    panA = ax.createStereoPanner ? ax.createStereoPanner() : ax.createGain();
+    panB = ax.createStereoPanner ? ax.createStereoPanner() : ax.createGain();
+    if (panA.pan) { panA.pan.value = -0.6; panB.pan.value = 0.6; }
+    panA.connect(master); panB.connect(master);
   }
   if (ax.state === 'suspended') ax.resume();
 }
 
-function scheduleNote(row, when, noteDur) {
+function scheduleNote(row, when, noteDur, voice) {
   const [p, q] = pitchSet.ratios[row] || [1, 1];
   const fund = parseFloat(document.getElementById('fundSel').value);
   const freq = fund * p / q;
@@ -470,7 +489,7 @@ function scheduleNote(row, when, noteDur) {
   g.gain.linearRampToValueAtTime(0.16, when + 0.01);
   g.gain.setValueAtTime(0.16, when + dur * 0.75);
   g.gain.linearRampToValueAtTime(0, when + dur);
-  o.connect(g); g.connect(master);
+  o.connect(g); g.connect(voice === 'b' ? panB : panA);
   o.start(when); o.stop(when + dur + 0.01);
   const node = { o, g };
   voiced.add(node);
@@ -498,7 +517,7 @@ function schedulerTick() {
     const dur  = stepDurA(step);
     const t    = nextA_time;
     for (let r = 0; r < NUM_ROWS; r++) {
-      if (grid[r][step]) scheduleNote(r, t, dur);
+      if (grid[r][step]) scheduleNote(r, t, dur, 'a');
     }
     nextA_step++;
     nextA_time += dur;
@@ -510,7 +529,7 @@ function schedulerTick() {
     const dur  = stepDurB(step);
     const t    = nextB_time;
     for (let r = 0; r < NUM_ROWS; r++) {
-      if (grid[r][step]) scheduleNote(r, t, dur);
+      if (grid[r][step]) scheduleNote(r, t, dur, 'b');
     }
     nextB_step++;
     nextB_time += dur;
@@ -562,6 +581,8 @@ function stopAll() {
   }
   voiced.clear();
   flashAlpha = 0;
+  lastOffsetText = '';
+  document.getElementById('offsetD').textContent = 'a left · b right';
   const btn = document.getElementById('playBtn');
   btn.textContent = '▶ play';
   btn.classList.remove('on');
