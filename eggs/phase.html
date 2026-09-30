@@ -140,7 +140,7 @@
     <option value="ji-major">JI major</option>
     <option value="harmonics">harmonics 8–15</option>
     <option value="pentatonic">JI pentatonic</option>
-    <option value="7-limit">7-limit · lower half</option>
+    <option value="7-limit">7-limit · up to 3/2</option>
   </select>
 
   <select id="fundSel">
@@ -199,7 +199,7 @@ const PITCH_SETS = {
     ratios: [[1,1],[9,8],[5,4],[3,2],[5,3],[2,1],[9,4],[5,2]],
   },
   '7-limit': {
-    label: '7-limit · lower half',
+    label: '7-limit · up to 3/2',
     ratios: [[1,1],[8,7],[7,6],[6,5],[5,4],[4,3],[7,5],[3,2],[8,5],[5,3],[7,4],[2,1]].slice(0,8),
   },
 };
@@ -255,13 +255,18 @@ function stepDurB(step) {
 
 // ─── Grid ops ─────────────────────────────────────────────────────────────────
 
+// Resizing keeps every cell that still fits; if nothing is left, seed.
+// (It used to replace the grid with an empty one, with no undo.)
 function setSteps(n) {
+  const old = grid;
   NUM_STEPS = n;
-  grid = Array.from({length: NUM_ROWS}, () => new Array(n).fill(false));
+  grid = Array.from({length: NUM_ROWS}, (_, r) =>
+    Array.from({length: n}, (_, c) => !!(old[r] && old[r][c])));
   ['s8','s12','s16'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('on', el.id === 's' + n);
   });
+  if (!grid.some(row => row.some(Boolean))) seedGrid();
   resize();
 }
 
@@ -321,7 +326,8 @@ function draw() {
   for (let row = 0; row < NUM_ROWS; row++) {
     const y = (NUM_ROWS - 1 - row) * CELL_H;
     const [p, q] = ps[row] || [1, 1];
-    const isRoot = row === 0 || row === NUM_ROWS - 1;
+    // an octave line only where the row really is a power of two over 1/1
+    const isRoot = Number.isInteger(Math.log2(p / q));
 
     // Row divider
     gx.fillStyle = isRoot ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.04)';
@@ -618,10 +624,8 @@ function onDrift(v) {
   const s = '+';
   document.getElementById('driftD').textContent = `${s}${parseFloat(v).toFixed(1)}%`;
   document.getElementById('legB').textContent = `voice b · ${s}${parseFloat(v).toFixed(1)}%`;
-  if (playing && !syncPaused) {
-    nextB_time = ax.currentTime + 0.05;
-    nextB_step = nextA_step;
-  }
+  // b keeps its position; the new rate applies from its next unscheduled step
+  // (snapping b back onto a used to wipe the offset being listened to)
 }
 
 function onSwing(v) {
