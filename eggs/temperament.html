@@ -118,8 +118,9 @@
       align-items: center; justify-content: center;
       width: 100%; max-width: 780px;
     }
-    .note-row { display: flex; gap: 0.2rem; align-items: center; }
+    .note-row { display: flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; justify-content: center; }
     .note-row .ctrl-btn { padding: 0.2rem 0.4rem; min-width: 1.4rem; }
+    @media (max-width: 480px) { .note-row .ctrl-btn { padding: 0.2rem 0.22rem; min-width: 1.3rem; } }
     .note-row span { font-size: 0.52rem; color: var(--dimmer); font-style: italic; margin-right: 0.2rem; }
     #root-hz { font-size: 0.52rem; color: var(--ji); letter-spacing: 0.04em; font-style: italic; }
 
@@ -283,11 +284,16 @@
   <div class="note-row">
     <span>root</span>
     <button class="ctrl-btn note-btn on" data-note="C">C</button>
+    <button class="ctrl-btn note-btn" data-note="C♯">C♯</button>
     <button class="ctrl-btn note-btn" data-note="D">D</button>
+    <button class="ctrl-btn note-btn" data-note="E♭">E♭</button>
     <button class="ctrl-btn note-btn" data-note="E">E</button>
     <button class="ctrl-btn note-btn" data-note="F">F</button>
+    <button class="ctrl-btn note-btn" data-note="F♯">F♯</button>
     <button class="ctrl-btn note-btn" data-note="G">G</button>
+    <button class="ctrl-btn note-btn" data-note="A♭">A♭</button>
     <button class="ctrl-btn note-btn" data-note="A">A</button>
+    <button class="ctrl-btn note-btn" data-note="B♭">B♭</button>
     <button class="ctrl-btn note-btn" data-note="B">B</button>
   </div>
   <div class="note-row">
@@ -320,7 +326,7 @@
   </div>
 </div>
 
-<p class="hint">C major sounds pure · C♯ major sounds tense · each key has its own character · that was the point</p>
+<p class="hint" id="key-hint"></p>
 
 <!-- ── Timbre section ── -->
 <div class="timbre-section" id="timbre-section">
@@ -716,7 +722,7 @@ let dryGain = null, preDelayNode = null, convolver = null, wetLowCut = null, wet
 let droneOsc = null, droneGain = null;
 let droneOn = false;
 
-const NOTE_MIDI = { C:60, D:62, E:64, F:65, G:67, A:69, B:71 };
+const NOTE_MIDI = { 'C':60, 'C♯':61, 'D':62, 'E♭':63, 'E':64, 'F':65, 'F♯':66, 'G':67, 'A♭':68, 'A':69, 'B♭':70, 'B':71 };
 let droneNote = 'C', droneOct = 3;
 function getDroneMidi() { return NOTE_MIDI[droneNote] + (droneOct - 4) * 12; }
 
@@ -1518,6 +1524,23 @@ function updateRootDisplay() {
   const freq = midiToFreq(midi);
   document.getElementById('root-hz').textContent =
     `${droneNote}${droneOct} · ${freq.toFixed(1)} Hz`;
+  updateKeyHint();
+}
+
+// Key character lives in the thirds: read them off the current temperament
+// instead of promising it. Pure 5/4 = 386.3¢.
+function updateKeyHint() {
+  const pc = currentPcCents;
+  const m3 = Array.from({ length: 12 }, (_, i) => ((pc[(i + 4) % 12] - pc[i]) % 1200 + 1200) % 1200);
+  const lo = Math.min(...m3), hi = Math.max(...m3);
+  const r = NOTE_MIDI[droneNote] % 12;
+  const el = document.getElementById('key-hint');
+  if (hi - lo < 0.05) {
+    el.textContent = `every major third ${lo.toFixed(1)}¢ · pure 5/4 is 386.3¢ · all 12 keys alike`;
+  } else {
+    const at = v => PC_NAMES.filter((_, i) => Math.abs(m3[i] - v) < 0.05).join(' ');
+    el.textContent = `major third on ${PC_NAMES[r]} ${m3[r].toFixed(1)}¢ · narrowest ${lo.toFixed(1)}¢ (${at(lo)}) · widest ${hi.toFixed(1)}¢ (${at(hi)}) · pure 5/4 is 386.3¢`;
+  }
 }
 
 // ── 7. TIMBRE UI ──────────────────────────────────────────────────────────────
