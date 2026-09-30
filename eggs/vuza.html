@@ -497,6 +497,13 @@ function doTick(t, when) {
 }
 
 function schedule() {
+  // stall resync: a blocked main thread (the random button can take 200 ms)
+  // would hand every missed tick to Web Audio in the past, fired as a clump.
+  // Jump ahead and count the skipped ticks, so every voice stays aligned.
+  if (nextT < ax.currentTime - 0.05) {
+    tick += Math.ceil((ax.currentTime + 0.02 - nextT) / slotSec());
+    nextT = ax.currentTime + 0.02;
+  }
   while (nextT < ax.currentTime + LOOKAHEAD) {
     doTick(tick, nextT);
     nextT += slotSec();
