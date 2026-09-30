@@ -366,6 +366,9 @@ footer .social-links { margin-top: 1.1rem; }
   .bio-block-figure img {
     aspect-ratio: 4/3;
   }
+  /* flip blocks put the photo first in the DOM; on one column that stacked two
+     photos in a row, twice. Text first here keeps text, photo, text, photo. */
+  .bio-block--flip .bio-block-figure { order: 2; }
 }
 /* ───────────────────────────────────────────────────────────── */
 
@@ -1118,6 +1121,9 @@ footer .social-links { margin-top: 1.1rem; }
   border-top: 1px solid var(--border);
   padding: 3rem 0 2.5rem;
 }
+/* the sections sit inside <main> now; keep the spacing they had outside it */
+main > .container + .performances { margin-top: 5rem; }
+main:has(> .performances) { padding-bottom: 0; }
 
 .section-title {
   font-family: 'Cormorant Garamond', serif;
@@ -1149,8 +1155,9 @@ footer .social-links { margin-top: 1.1rem; }
 .perf-date {
   font-size: 0.72rem;
   color: var(--text-3);
-  white-space: nowrap;
-  min-width: 6.5rem;
+  width: 6.5rem;
+  flex-shrink: 0;
+  white-space: normal;
   font-style: italic;
   font-variant-numeric: tabular-nums;
 }
@@ -1187,7 +1194,7 @@ footer .social-links { margin-top: 1.1rem; }
 
 @media (max-width: 560px) {
   .perf-row { flex-direction: column; gap: 0.2rem; }
-  .perf-date { min-width: unset; }
+  .perf-date { width: auto; }
 }
 
 /* ── Easter eggs — invisible links ──────────────────────────── */
