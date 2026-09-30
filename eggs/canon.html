@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="draw a subject on a microtonal grid and stack canonic voices at any delay and interval — imitation is one melody read at several distances at once.">
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16.png">
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
+<title>Canon Loop Machine — David Carlton Adams</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  :root {
+    --bg: #08080c; --s1: #0e0e14; --s2: #12121a; --s3: #181822;
+    --brd: #22222e; --brd2: #2e2e3c;
+    --tx: #dcdcf0; --txd: #a0a0c4; --txdd: #8888aa; --txddd: #666680;
+    --acc: #4a9eff; --accd: #2a5e9f;
+    --grn: #2ecc71; --red: #e74c3c; --org: #f39c12; --purp: #9b59b6;
+    --mono: 'JetBrains Mono', 'SF Mono', monospace;
+    --sans: 'DM Sans', system-ui, sans-serif;
+  }
+
+  body { background:var(--bg); color:var(--tx); font-family:var(--mono); overflow-x:hidden; }
+
+  .app { max-width:1120px; margin:0 auto; padding:1.5rem 1rem 4rem; }
+
+  h1 { font-family:var(--sans); font-size:1.05rem; font-weight:500; letter-spacing:0.15em; text-transform:uppercase; color:var(--txd); }
+  .sub { font-size:0.6rem; color:var(--txdd); letter-spacing:0.06em; margin:0.1rem 0 1.25rem; }
+
+  .main { display:grid; grid-template-columns:auto 1fr; gap:1.25rem; }
+  @media(max-width:720px){ .main{grid-template-columns:1fr;} }
+
+  /* ── Grid ──────────────── */
+  .grid-sec { overflow-x:auto; }
+  .grid-lbl { font-size:0.55rem; color:var(--txdd); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.7rem; }
+  .grid-wrap { display:flex; }
+  .paxis { display:flex; flex-direction:column; margin-right:3px; user-select:none; }
+  .plbl { font-size:6px; color:var(--txddd); display:flex; align-items:center; justify-content:flex-end; padding-right:2px; white-space:nowrap; }
+  .plbl.hi { color:var(--txd); }
+  .plbl.root { color:var(--acc); font-weight:500; }
+  canvas#grid { display:block; cursor:crosshair; border-radius:2px; }
+
+  /* ── Controls ──────────── */
+  .ctrls { display:flex; flex-direction:column; gap:0.85rem; min-width:230px; }
+  .cg { background:var(--s1); border:1px solid var(--brd); border-radius:4px; padding:0.55rem 0.65rem; }
+  .cg-t { font-size:0.52rem; color:var(--txdd); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.4rem; padding-bottom:0.2rem; border-bottom:1px solid var(--brd); }
+
+  .r { display:flex; align-items:center; gap:0.45rem; margin-bottom:0.35rem; flex-wrap:wrap; }
+  .l { font-size:0.58rem; color:var(--txdd); letter-spacing:0.04em; min-width:2.5em; }
+
+  .btn { background:var(--s2); border:1px solid var(--brd2); border-radius:3px; color:var(--txd); font-family:var(--mono); font-size:0.63rem; letter-spacing:0.04em; padding:0.22rem 0.5rem; cursor:pointer; transition:all 0.1s; }
+  .btn:hover { color:var(--tx); border-color:#383848; }
+  .btn.active { color:var(--grn); border-color:var(--grn); }
+  .btn.sm { font-size:0.55rem; padding:0.12rem 0.3rem; }
+  .btn.danger:hover { color:var(--red); border-color:var(--red); }
+
+  select, input[type="number"] { background:var(--s2); border:1px solid var(--brd2); border-radius:2px; color:var(--txd); font-family:var(--mono); font-size:0.63rem; padding:0.12rem 0.25rem; outline:none; }
+  select:focus, input:focus { border-color:var(--accd); }
+  input[type="number"] { width:5ch; text-align:center; -moz-appearance:textfield; }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+
+  input[type="range"] { -webkit-appearance:none; height:2px; background:var(--brd2); outline:none; flex:1; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:10px; height:10px; border-radius:50%; background:var(--txdd); cursor:pointer; }
+
+  /* ── Voices ────────────── */
+  .vlist { display:flex; flex-direction:column; gap:0.3rem; }
+  .vrow { display:flex; align-items:center; gap:0.3rem; background:var(--bg); border:1px solid var(--brd); border-radius:3px; padding:0.25rem 0.4rem; }
+  .vrow.muted { opacity:0.3; }
+  .vpip { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .vf { width:4ch; background:none; border:none; border-bottom:1px solid var(--brd2); color:var(--txd); font-family:var(--mono); font-size:0.68rem; text-align:center; outline:none; padding:0; cursor:text; }
+  .vf:not(:disabled):hover { border-bottom-color:var(--txdd); }
+  .vf:focus { border-bottom-color:var(--accd); }
+  .vf:disabled { border-bottom-color:transparent; color:var(--txddd); cursor:default; }
+  .vf.w { width:6ch; }
+  .vrow.source { opacity:0.5; }
+  .vrow.source .vpip { display:none; }
+  .vfl { font-size:0.5rem; color:var(--txdd); }
+  .vdel { margin-left:auto; background:none; border:none; color:var(--txddd); font-size:0.68rem; cursor:pointer; padding:0 0.1rem; }
+  .vdel:hover { color:var(--red); }
+  .vmute { background:none; border:none; color:var(--txdd); font-size:0.5rem; cursor:pointer; letter-spacing:0.03em; }
+  .vmute:hover { color:var(--org); }
+
+  .add-v { font-family:var(--mono); font-size:0.58rem; color:var(--txdd); border:1px dashed var(--brd2); border-radius:3px; background:none; padding:0.22rem; cursor:pointer; margin-top:0.25rem; width:100%; }
+  .add-v:hover { color:var(--txd); border-color:#383848; }
+
+  /* ── Notation ──────────── */
+  .nota-sec { margin-top:1.15rem; background:var(--s1); border:1px solid var(--brd); border-radius:4px; padding:0.5rem; }
+  .nota-t { font-size:0.52rem; color:var(--txdd); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.35rem; }
+  /* #nota is a div; SVG rendered inline by drawNotation() */
+
+  /* ── Roll ──────────────── */
+  .roll-sec { margin-top:0.85rem; }
+  .roll-t { font-size:0.52rem; color:var(--txdd); letter-spacing:0.12em; text-transform:uppercase; margin-bottom:0.25rem; }
+  canvas#roll { display:block; width:100%; border:1px solid var(--brd); border-radius:2px; }
+
+  .hint { font-size:0.52rem; color:var(--txddd); text-align:center; margin-top:0.65rem; letter-spacing:0.03em; }
+
+  /* ── SVG notation ── */
+  #nota { display:block; width:100%; min-height:80px; overflow:hidden; }
+  .nota-line{stroke:#3a3a54;stroke-width:1}
+  .nota-stem{stroke:#5a5a80;stroke-width:1.2}
+  .nota-acc{fill:#8888aa;font-family:serif;font-size:11px}
+  .nota-dev{font-family:'JetBrains Mono',monospace;font-size:7px}
+  .nota-rest{fill:#444460;font-family:serif;font-size:18px}
+  .nota-clef{fill:#6868a0;font-family:serif;font-size:48px}
+  .nota-lbl{font-family:'JetBrains Mono',monospace;font-size:8px}
+
+  /* ── Back link ─────────── */
+  .eggs-back {
+    position: fixed; top: .7rem; left: 1rem;
+    font-size: .58rem; color: #332; text-decoration: none;
+    letter-spacing: .08em; font-family: 'SF Mono','Fira Code',monospace;
+    z-index: 100; transition: color .15s;
+  }
+  .eggs-back:hover { color: #aaa; }
+</style>
+</head>
+<body>
+<a class="eggs-back" href="../eggs.html">← eggs</a>
+<div class="app">
+  <h1>Canon Loop Machine</h1>
+  <div class="sub">draw a subject · rests are empty columns · stack pitches for double stops · add voices at any distance and interval · space = play/stop</div>
+
+  <div class="main">
+    <div class="grid-sec">
+      <div class="grid-lbl">
+        <span>subject</span>
+        <button class="btn sm danger" id="btn-clear">clear</button>
+        <button class="btn sm" id="btn-seed">seed</button>
+        <button class="btn sm" id="btn-save" title="save grid + settings to browser storage">save</button>
+        <button class="btn sm" id="btn-load" title="load from browser storage">load</button>
+      </div>
+      <div class="grid-wrap">
+        <div class="paxis" id="paxis"></div>
+        <canvas id="grid"></canvas>
+      </div>
+    </div>
+
+    <div class="ctrls">
+      <div class="cg">
+        <div class="cg-t">playback</div>
+        <div class="r">
+          <button class="btn" id="btn-play">▶ play</button>
+          <button class="btn" id="btn-stop">■ stop</button>
+          <button class="btn sm active" id="btn-loop" title="loop / one-pass">↺ loop</button>
+        </div>
+        <div class="r">
+          <span class="l">bpm</span>
+          <input type="number" id="bpm-n" value="120" min="20" max="400">
+          <input type="range" id="bpm-r" min="20" max="400" value="120">
+        </div>
+        <div class="r">
+          <span class="l" title="sequence length in 16th notes">len</span>
+          <button class="btn sm" id="st-dn">−</button>
+          <span id="st-v" style="font-size:0.78rem;color:var(--txd);min-width:2ch;text-align:center">16</span>
+          <button class="btn sm" id="st-up">+</button>
+          <span style="font-size:0.5rem;color:var(--txdd)">16ths</span>
+        </div>
+        <div class="r">
+          <span class="l" title="swing feel">swing</span>
+          <input type="range" id="swing-r" min="0" max="100" value="0" style="flex:1">
+          <span id="swing-v" style="font-size:0.58rem;color:var(--txd);min-width:5ch;text-align:right">even</span>
+        </div>
+        <div class="r" style="margin-top:-0.25rem;margin-bottom:0.1rem">
+          <span class="l"></span>
+          <div style="flex:1;display:flex;justify-content:space-between;font-size:0.42rem;color:var(--txddd);pointer-events:none">
+            <span>even</span><span>7-let</span><span>5-let</span><span>triplet</span><span>dotted</span><span>2×dot</span>
+          </div>
+        </div>
+        <div class="r">
+          <span class="l" title="oscillator waveform">tone</span>
+          <select id="osc-sel">
+            <option value="triangle">triangle</option>
+            <option value="sine">sine</option>
+            <option value="sawtooth">sawtooth</option>
+            <option value="square">square</option>
+            <option value="pluck">pluck</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cg">
+        <div class="cg-t">tuning</div>
+        <div class="r">
+          <select id="tuning-sel">
+            <option value="12">12-TET</option>
+            <option value="19">19-EDO</option>
+            <option value="24">24-EDO (quarter-tone)</option>
+            <option value="31">31-EDO</option>
+            <option value="dca">DCA scale</option>
+          </select>
+          <button class="btn sm" id="btn-reload-tuning" title="reload tunings.json">↺</button>
+        </div>
+        <div class="r">
+          <span class="l" title="Scale filter — 12-TET only">scale</span>
+          <select id="scale-sel">
+            <option value="chromatic">chromatic</option>
+            <option value="major">major</option>
+            <option value="minor">minor</option>
+            <option value="pentatonic">pentatonic</option>
+            <option value="wholetone">whole tone</option>
+          </select>
+        </div>
+        <div class="r">
+          <span class="l" title="shift view in octaves">oct</span>
+          <button class="btn sm" id="oct-dn">−</button>
+          <span id="oct-v" style="font-size:0.78rem;color:var(--txd);min-width:3ch;text-align:center">±0</span>
+          <button class="btn sm" id="oct-up">+</button>
+        </div>
+      </div>
+
+      <div class="cg">
+        <div class="cg-t">voices</div>
+        <div class="r" style="margin-bottom:0.45rem">
+          <span class="l">intv</span>
+          <select id="iv-sel"></select>
+        </div>
+        <div class="r" style="margin-bottom:0.45rem">
+          <span class="l" title="delay for next voice added">delay</span>
+          <input type="number" id="dist-n" value="4" min="1" max="64" style="width:4ch">
+          <span style="font-size:0.5rem;color:var(--txdd)">16ths</span>
+        </div>
+        <div class="vlist" id="vlist"></div>
+        <button class="add-v" id="btn-add">+ add voice</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="nota-sec">
+    <div class="nota-t">staff notation</div>
+    <div id="nota"></div>
+  </div>
+
+  <div class="roll-sec">
+    <div class="roll-t">piano roll — all voices</div>
+    <canvas id="roll" height="160"></canvas>
+  </div>
+
+  <div class="hint">click/drag grid to draw · space = play/stop · esc = stop · stack pitches in same column for double stops</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS (hoisted — available throughout IIFE)
+// ═══════════════════════════════════════════════════════════════════════════════
+function $(id) { return document.getElementById(id); }
+function hexA(hex, a) {
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TUNINGS
+// ═══════════════════════════════════════════════════════════════════════════════
+const C4 = 261.626;
+
+// DCA scale: semitone values within one octave (1 unit = 100¢ = 1 semitone)
+// Base 18 pitches + P4/P5 fills from non-integer steps
+const DCA_BASE = [0, 0.5, 1, 2, 2.7, 3, 3.86, 5, 5.5, 6.7, 7.5, 8, 8.4, 9, 9.7, 10, 11, 11.5];
+
+function buildDCAFull() {
+  const set = new Set(DCA_BASE);
+  DCA_BASE.forEach(s => {
+    if (s !== Math.floor(s)) {
+      set.add(Math.round(((s + 5) % 12) * 100) / 100);  // P4 up
+      set.add(Math.round(((s + 7) % 12) * 100) / 100);  // P5 up
+    }
+  });
+  return [...set].sort((a, b) => a - b);
+}
+
+const DCA_FULL = buildDCAFull();
+
+const DCA_NAMES = {
+  0:'C', 0.5:'C↑', 1:'C♯', 1.4:'C♯↑', 1.7:'D♭↑', 2:'D', 2.5:'D↑', 2.7:'D↑~',
+  3:'E♭', 3.4:'E♭↑', 3.5:'D♯↑', 3.86:'E↓(5/4)', 4:'E', 4.5:'E↑', 4.7:'E↑~',
+  5:'F', 5.5:'F↑', 6:'F♯', 6.5:'F♯↑', 6.7:'F♯↑~', 7:'G', 7.5:'G↑', 7.7:'G↑~',
+  8:'A♭', 8.4:'A♭↑(13)', 8.5:'A♭↑', 8.6:'A♭↑', 8.86:'G♯↑',
+  9:'A', 9.7:'B♭↓(7)', 10:'B♭', 10.5:'B♭↑', 10.86:'B♭↑~', 11:'B', 11.5:'B↑', 11.7:'B↑~',
+};
+function dcaLabel(s) { return DCA_NAMES[s] || (s.toFixed(1)+'st'); }
+
+const TUNINGS = {
+  '12': {
+    label:'12-TET', stepCents:100, spo:12, defRows:25,
+    names:['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'],
+    white:[1,0,1,0,1,1,0,1,0,1,0,1],
+    rowLabel(i) {
+      const pc=i%12, o=4+Math.floor(i/12);
+      return { text:pc===0?'C'+o:(this.white[pc]?this.names[pc]:''), hi:!!this.white[pc], root:pc===0 };
+    },
+    rowCents(i) { return i*100; },
+    scaleFilter:true,
+  },
+  '19': {
+    label:'19-EDO', stepCents:1200/19, spo:19, defRows:24,
+    nm:['C','','','D','','','E','','F','','','G','','','A','','','B',''],
+    rowLabel(i) {
+      const s=i%19, o=4+Math.floor(i/19);
+      return { text:s===0?'C'+o:(this.nm[s]||''), hi:!!this.nm[s], root:s===0 };
+    },
+    rowCents(i) { return i*(1200/19); },
+    scaleFilter:false,
+  },
+  '24': {
+    label:'24-EDO', stepCents:50, spo:24, defRows:30,
+    names12:['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'],
+    rowLabel(i) {
+      const s=i%24, b12=Math.floor(s/2), q=s%2===1, o=4+Math.floor(i/24);
+      if(s===0) return {text:'C'+o, hi:true, root:true};
+      return q ? {text:this.names12[b12]+'↑',hi:false,root:false} : {text:this.names12[b12],hi:true,root:false};
+    },
+    rowCents(i) { return i*50; },
+    scaleFilter:false,
+  },
+  '31': {
+    label:'31-EDO', stepCents:1200/31, spo:31, defRows:36,
+    nm:{0:'C',5:'D',10:'E',13:'F',18:'G',23:'A',28:'B'},
+    rowLabel(i) {
+      const s=i%31, o=4+Math.floor(i/31);
+      return { text:s===0?'C'+o:(this.nm[s]||''), hi:!!this.nm[s], root:s===0 };
+    },
+    rowCents(i) { return i*(1200/31); },
+    scaleFilter:false,
+  },
+  'dca': {
+    label:'DCA scale', stepCents:null, spo:null, defRows:DCA_FULL.length*2,
+    rowLabel(i) {
+      const idx=i%DCA_FULL.length, oct=Math.floor(i/DCA_FULL.length), s=DCA_FULL[idx];
+      if(s===0) return {text:'C'+(4+oct),hi:true,root:true};
+      return {text:dcaLabel(s),hi:DCA_BASE.includes(s),root:false};
+    },
+    rowCents(i) {
+      const idx=i%DCA_FULL.length, oct=Math.floor(i/DCA_FULL.length);
+      return DCA_FULL[idx]*100 + oct*1200;
+    },
+    scaleFilter:false,
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXTERNAL TUNINGS  (tunings.json → TUNINGS)
+// Pitch notation: 0=C, 1=C#, 0.5=C↑(+50¢), 9.7≈7th partial of C.
+// ═══════════════════════════════════════════════════════════════════════════════
+const _NOTE12 = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const _WHITE12 = [1,0,1,0,1,1,0,1,0,1,0,1];
+
+// Label for an arbitrary semitone value — checks DCA_NAMES first, then
+// finds nearest 12-TET pitch class and shows cent deviation (e.g. "E −8¢").
+function semToLabel(s) {
+  if(DCA_NAMES[s]) return DCA_NAMES[s];
+  const near = Math.round(s), pc = ((near%12)+12)%12;
+  const dev = Math.round((s - near) * 100);
+  return _NOTE12[pc] + (dev ? (dev>0?'+':'')+dev+'¢' : '');
+}
+
+// Build a TUNINGS entry from a "welltemp" JSON tuning (12 pitches, piano key layout).
+// Row labels show note name + cent deviation from 12-TET (e.g. "E −14¢").
+function wellTempTuning(entry) {
+  const cents = entry.pitches.map(s => s * 100);
+  return {
+    label: entry.name, stepCents: null, spo: 12, defRows: 25,
+    _cents: cents,
+    rowLabel(i) {
+      const pc = i%12, o = 4+Math.floor(i/12);
+      const dev = Math.round(cents[pc] - pc*100);
+      const devStr = dev ? ' '+(dev>0?'+':'')+dev+'¢' : '';
+      if(pc===0) return {text:'C'+o, hi:true, root:true};
+      return {text: _NOTE12[pc]+devStr, hi:!!_WHITE12[pc], root:false};
+    },
+    rowCents(i) { return this._cents[i%12] + Math.floor(i/12)*1200; },
+    scaleFilter: false,
+  };
+}
+
+// Build a TUNINGS entry from a "custom" JSON tuning (arbitrary pitch set).
+function customTuningFromJSON(entry) {
+  const pitches = entry.pitches, cents = pitches.map(s => s*100), N = pitches.length;
+  return {
+    label: entry.name, stepCents: null, spo: null, defRows: N*2,
+    _pitches: pitches, _cents: cents,
+    rowLabel(i) {
+      const idx = i%N, oct = Math.floor(i/N), s = pitches[idx];
+      if(s===0) return {text:'C'+(4+oct), hi:true, root:true};
+      return {text: semToLabel(s), hi:false, root:false};
+    },
+    rowCents(i) { return cents[i%N] + Math.floor(i/N)*1200; },
+    scaleFilter: false,
+  };
+}
+
+// Fetch tunings.json, build TUNINGS entries, and inject <option>s into the selector.
+// Safe to call multiple times (reload): replaces previously injected options.
+function loadExternalTunings(data) {
+  const sel = $('tuning-sel');
+  [...sel.options].filter(o => o.dataset.ext).forEach(o => o.remove());
+  (data.tunings || []).forEach(entry => {
+    if(!entry.id || !Array.isArray(entry.pitches) || entry.pitches.length < 2) return;
+    TUNINGS[entry.id] = entry.type === 'welltemp'
+      ? wellTempTuning(entry)
+      : customTuningFromJSON(entry);
+    const opt = document.createElement('option');
+    opt.value = entry.id;
+    opt.textContent = entry.name;
+    opt.dataset.ext = '1';
+    if(entry.description) opt.title = entry.description;
+    sel.appendChild(opt);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTERVALS
+// ═══════════════════════════════════════════════════════════════════════════════
+const INTERVALS = [
+  {name:'Unison',       cents:0},
+  {name:'m2',          cents:100},
+  {name:'M2',          cents:200},
+  {name:'m3',          cents:300},
+  {name:'M3',          cents:400},
+  {name:'P4',          cents:500},
+  {name:'TT',          cents:600},
+  {name:'P5',          cents:700},
+  {name:'m6',          cents:800},
+  {name:'M6',          cents:900},
+  {name:'7∂ (969¢)',   cents:1200*Math.log2(7/4)},
+  {name:'m7',          cents:1000},
+  {name:'M7',          cents:1100},
+  {name:'P8',          cents:1200},
+  {name:'−P4',         cents:-500},
+  {name:'−P5',         cents:-700},
+  {name:'−P8',         cents:-1200},
+];
+
+const SCALES = {
+  chromatic:  new Set([0,1,2,3,4,5,6,7,8,9,10,11]),
+  major:      new Set([0,2,4,5,7,9,11]),
+  minor:      new Set([0,2,3,5,7,8,10]),
+  pentatonic: new Set([0,2,4,7,9]),
+  wholetone:  new Set([0,2,4,6,8,10]),
+};
+
+const VCOL = ['#c0c0d0','#4a9eff','#2ecc71','#f39c12','#9b59b6','#e74c3c','#1abc9c','#e67e22'];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let numSteps=16, numRows, bpm=120, scale=SCALES.chromatic;
+let curTuning='12', playing=false, loop=true, grid;
+let notaDirty=true;
+let viewOctave=0;
+let swingRatio=0.5;   // 0.5=even … 0.875=double-dotted
+let oscType='triangle';
+function markNotaDirty(){ notaDirty=true; scheduleAutoSave(); }
+
+const voices = [{ offset:0, transCents:0, color:VCOL[0], muted:false }];
+
+function initGrid() {
+  numRows = TUNINGS[curTuning].defRows;
+  grid = Array.from({length:numRows}, () => new Array(numSteps).fill(false));
+}
+initGrid();
+
+function getRowLabel(p) {
+  const lb=TUNINGS[curTuning].rowLabel(p);
+  if(viewOctave===0) return lb;
+  const text=lb.text.replace(/(\d+)$/,n=>String(+n+viewOctave));
+  return {...lb,text};
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUDIO
+// ═══════════════════════════════════════════════════════════════════════════════
+let actx=null;
+function ac() {
+  if(!actx) actx=new(window.AudioContext||window.webkitAudioContext)();
+  if(actx.state==='suspended') actx.resume();
+  return actx;
+}
+
+function rowFreq(r) { return C4*Math.pow(2,(TUNINGS[curTuning].rowCents(r)+viewOctave*1200)/1200); }
+
+// Every voice goes through one master gain so stop can silence the notes that
+// were already handed to the 150 ms scheduler lookahead.
+let masterGain=null;
+function master() {
+  const c=ac();
+  if(!masterGain){ masterGain=c.createGain(); masterGain.gain.value=1; masterGain.connect(c.destination); }
+  return masterGain;
+}
+
+function playNote(row, transCents, when) {
+  const freq=rowFreq(row)*Math.pow(2,transCents/1200);
+  if(freq<18||freq>20000) return;
+  const c=ac();
+  const out=master();
+  const osc=c.createOscillator();
+  const g=c.createGain();
+  const isPluck = oscType==='pluck';
+  osc.type = isPluck ? 'triangle' : oscType;
+  osc.frequency.value = freq;
+  if(oscType==='sawtooth'||oscType==='square') {
+    const filt=c.createBiquadFilter();
+    filt.type='lowpass'; filt.frequency.value=Math.min(freq*5,3800); filt.Q.value=0.8;
+    osc.connect(g); g.connect(filt); filt.connect(out);
+  } else {
+    osc.connect(g).connect(out);
+  }
+  const atk=isPluck?0.002:0.008, rel=isPluck?0.13:0.38;
+  g.gain.setValueAtTime(0,when);
+  g.gain.linearRampToValueAtTime(0.12,when+atk);
+  g.gain.exponentialRampToValueAtTime(0.001,when+rel);
+  osc.start(when);
+  osc.stop(when+rel+0.05);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCHEDULER
+// ═══════════════════════════════════════════════════════════════════════════════
+let schedT=null, curStep=0, nextT=0;
+const NOTE_TAIL=0.45;   // longest note release + tail, in seconds
+function stepDur() { return 60/bpm/4; }
+function swingDur(step) {
+  if(swingRatio===0.5) return stepDur();
+  const sd=stepDur();
+  return step%2===0 ? swingRatio*2*sd : (1-swingRatio)*2*sd;
+}
+
+function sched() {
+  if(!playing||!actx) return;
+  const maxOff = voices.reduce((m,v)=>Math.max(m,v.offset),0);
+  const onceTot = numSteps + maxOff;
+
+  while(nextT<actx.currentTime+0.15) {
+    voices.forEach(v => {
+      if(v.muted) return;
+      if(!loop && curStep < v.offset) return;
+      const pat=((curStep-v.offset)%numSteps+numSteps)%numSteps;
+      for(let p=0;p<numRows;p++) {
+        if(grid[p]&&grid[p][pat]) playNote(p,v.transCents,nextT);
+      }
+    });
+    nextT+=swingDur(curStep);
+    curStep++;
+    if(loop) {
+      if(curStep>=numSteps) curStep=0;
+    } else {
+      if(curStep>=onceTot) {
+        const msRemaining=(nextT-actx.currentTime)*1000+NOTE_TAIL*1000;
+        schedT=setTimeout(stopPlay, Math.max(0,msRemaining));   // stop can cancel it
+        return;
+      }
+    }
+  }
+  schedT=setTimeout(sched,20);
+}
+
+function startPlay() {
+  ac();
+  const g=master().gain, now=actx.currentTime;
+  g.cancelScheduledValues(now);
+  g.setValueAtTime(0,now);
+  g.linearRampToValueAtTime(1,now+0.02);   // ramp back up after a stop, no click
+  nextT=now+0.05; curStep=0; playing=true;
+  $('btn-play').classList.add('active');
+  sched();
+}
+function stopPlay()  {
+  playing=false;
+  if(schedT){ clearTimeout(schedT); schedT=null; }
+  if(actx&&masterGain){                    // kill the lookahead that already fired
+    const g=masterGain.gain, now=actx.currentTime;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value,now);
+    g.linearRampToValueAtTime(0,now+0.03);
+  }
+  $('btn-play').classList.remove('active');
+}
+function togglePlay(){ playing?stopPlay():startPlay(); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GRID CANVAS
+// ═══════════════════════════════════════════════════════════════════════════════
+const CW=24, CH=12;
+const gc=$('grid'), gx=gc.getContext('2d');
+
+function resizeG() { gc.width=numSteps*CW; gc.height=numRows*CH; }
+
+function drawGrid() {
+  const W=gc.width, H=gc.height;
+  gx.clearRect(0,0,W,H);
+  const t=TUNINGS[curTuning];
+  for(let p=0;p<numRows;p++) {
+    const row=numRows-1-p;
+    const lb=getRowLabel(p);
+    const inSc=t.scaleFilter&&scale.has(p%(t.spo||12));
+    gx.fillStyle=lb.root?'#0d1022':inSc?'#0e0e18':lb.hi?'#0c0c1c':'#080810';
+    gx.fillRect(0,row*CH,W,CH);
+    if(lb.root){ gx.fillStyle='#1a1a30'; gx.fillRect(0,row*CH,W,1); }
+    for(let s=0;s<numSteps;s++) {
+      const x=s*CW, y=row*CH;
+      gx.fillStyle=s%4===0?'#12121c':'#0b0b12';
+      gx.fillRect(x,y,1,CH);
+      if(grid[p]&&grid[p][s]) {
+        gx.fillStyle='rgba(190,190,210,0.85)';
+        gx.fillRect(x+2,y+1,CW-3,CH-2);
+        gx.fillStyle='rgba(255,255,255,0.12)';
+        gx.fillRect(x+2,y+1,CW-3,2);
+      }
+    }
+  }
+  if(playing) {
+    const sx=curStep*CW;
+    gx.fillStyle='rgba(74,158,255,0.07)';
+    gx.fillRect(sx,0,CW,H);
+    gx.fillStyle='rgba(74,158,255,0.55)';
+    gx.fillRect(sx,0,2,H);
+  }
+}
+
+// Grid interaction
+let painting=false, paintV=true;
+function gpos(e) {
+  const r=gc.getBoundingClientRect();
+  const mx=(e.clientX-r.left)*gc.width/r.width;
+  const my=(e.clientY-r.top)*gc.height/r.height;
+  return {s:Math.floor(mx/CW), p:numRows-1-Math.floor(my/CH)};
+}
+function gpaint(e) {
+  const {s,p}=gpos(e);
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ grid[p][s]=paintV; markNotaDirty(); }
+}
+gc.addEventListener('mousedown',e=>{
+  const {s,p}=gpos(e);
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; markNotaDirty(); }
+});
+gc.addEventListener('mousemove',e=>{ if(painting) gpaint(e); });
+window.addEventListener('mouseup',()=>painting=false);
+gc.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  const {s,p}=gpos(e.touches[0]);
+  if(s>=0&&s<numSteps&&p>=0&&p<numRows){ paintV=!grid[p][s]; painting=true; grid[p][s]=paintV; markNotaDirty(); }
+},{passive:false});
+gc.addEventListener('touchmove',e=>{ e.preventDefault(); if(painting) gpaint(e.touches[0]); },{passive:false});
+window.addEventListener('touchend',()=>painting=false);
+window.addEventListener('touchcancel',()=>painting=false);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PITCH AXIS
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildAxis() {
+  const ax=$('paxis'); ax.innerHTML='';
+  const t=TUNINGS[curTuning];
+  for(let p=numRows-1;p>=0;p--) {
+    const lb=getRowLabel(p);
+    const d=document.createElement('div');
+    d.className='plbl'+(lb.root?' root':lb.hi?' hi':'');
+    d.style.height=CH+'px';
+    d.textContent=lb.text;
+    ax.appendChild(d);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PIANO ROLL
+// ═══════════════════════════════════════════════════════════════════════════════
+const rc=$('roll'), rx=rc.getContext('2d');
+
+function drawRoll() {
+  const W=rc.clientWidth||800, H=rc.height;
+  rc.width=W;
+  rx.fillStyle='#08080c';
+  rx.fillRect(0,0,W,H);
+  const t=TUNINGS[curTuning];
+  const cellW=W/(numSteps*2);
+
+  voices.forEach(v=>{
+    if(v.muted) return;
+    const tRows=t.stepCents?v.transCents/t.stepCents:v.transCents/50;
+    for(let loop=0;loop<2;loop++) {
+      for(let s=0;s<numSteps;s++) {
+        const absStep=loop*numSteps+s+v.offset;
+        for(let p=0;p<numRows;p++) {
+          if(!grid[p]||!grid[p][s]) continue;
+          const dp=p+tRows;
+          const x=absStep*cellW;
+          const y=H-((dp+1)/numRows)*H;
+          if(x>=0&&x<W) {
+            rx.fillStyle=hexA(v.color,0.6);
+            rx.fillRect(x,y,cellW*0.8,Math.max(2,H/numRows-1));
+          }
+        }
+      }
+    }
+  });
+
+  // Voice entry markers
+  voices.forEach(v=>{
+    if(v.offset===0) return;
+    const x=v.offset*cellW;
+    rx.strokeStyle=hexA(v.color,0.25);
+    rx.lineWidth=1; rx.setLineDash([3,3]);
+    rx.beginPath(); rx.moveTo(x,0); rx.lineTo(x,H); rx.stroke();
+    rx.setLineDash([]);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// STAFF NOTATION — custom SVG renderer
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Pitch-class → note letter + standard accidental
+const PC_VEX = [
+  {k:'c',  a:null}, // 0  C
+  {k:'c#', a:'#' }, // 1  C#
+  {k:'d',  a:null}, // 2  D
+  {k:'eb', a:'b' }, // 3  Eb
+  {k:'e',  a:null}, // 4  E
+  {k:'f',  a:null}, // 5  F
+  {k:'f#', a:'#' }, // 6  F#
+  {k:'g',  a:null}, // 7  G
+  {k:'ab', a:'b' }, // 8  Ab
+  {k:'a',  a:null}, // 9  A
+  {k:'bb', a:'b' }, // 10 Bb
+  {k:'b',  a:null}, // 11 B
+];
+
+// Diatonic pitch class: C=0 D=1 E=2 F=3 G=4 A=5 B=6
+const DPC = {c:0,d:1,e:2,f:3,g:4,a:5,b:6};
+// Staff layout: NOTA_SLSP = px between adjacent staff lines/spaces (half = step between pos units)
+const NOTA_SLSP=8, NOTA_LPAD=52, NOTA_RPAD=8, NOTA_STAVE_H=60, NOTA_GAP=18;
+
+function mkSVG(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+// cents → {key, accidental, deviation, staffPos, letter, oct}
+// staffPos: treble clef — bottom line E4=0, G4=2, B4=4, D5=6, F5=8
+function centsToNoteInfo(cents) {
+  const semi = Math.round(cents / 100);
+  const pc   = ((semi % 12) + 12) % 12;
+  const oct  = 4 + Math.floor(semi / 12);
+  const dev  = Math.round(cents - semi * 100);
+  const {k, a} = PC_VEX[pc];
+  const letter = k[0];
+  const staffPos = (oct - 4) * 7 + DPC[letter] - 2;
+  return { key:`${k}/${oct}`, accidental:a, deviation:dev, staffPos, letter, oct };
+}
+
+// staffPos + staveTop (y of top line, F5=sp8) → pixel y
+function staffPosToY(sp, staveTop) {
+  return staveTop + (8 - sp) * (NOTA_SLSP / 2);
+}
+
+// Draw ledger lines for notes outside the staff
+function drawLedgerLines(svg, x, sp, staveTop) {
+  const lw = 12;
+  if(sp < 0) {
+    // lowestLedger: round toward -∞ to nearest even
+    const lowestLedger = sp % 2 === 0 ? sp : sp + 1;
+    if(lowestLedger >= 0) return; // D4 (sp=-1) and above need no ledger
+    for(let lsp = -2; lsp >= lowestLedger; lsp -= 2) {
+      const ly = staffPosToY(lsp, staveTop);
+      svg.appendChild(mkSVG('line', {x1:x-lw, y1:ly, x2:x+lw, y2:ly, class:'nota-line'}));
+    }
+  }
+  if(sp > 8) {
+    // highestLedger: round down to nearest even
+    const highestLedger = sp % 2 === 0 ? sp : sp - 1;
+    if(highestLedger <= 8) return; // G5 (sp=9) needs no ledger
+    for(let lsp = 10; lsp <= highestLedger; lsp += 2) {
+      const ly = staffPosToY(lsp, staveTop);
+      svg.appendChild(mkSVG('line', {x1:x-lw, y1:ly, x2:x+lw, y2:ly, class:'nota-line'}));
+    }
+  }
+}
+
+function drawNotation() {
+  notaDirty = false;
+  const container = $('nota');
+  const visVoices = voices.filter(v => !v.muted);
+  container.innerHTML = '';
+  if(!visVoices.length) return;
+
+  const W = container.clientWidth || 800;
+  const totalH = 8 + visVoices.length * (NOTA_STAVE_H + NOTA_GAP) + 8;
+  const stepW = (W - NOTA_LPAD - NOTA_RPAD) / numSteps;
+
+  const svg = mkSVG('svg', {width:W, height:totalH, style:'display:block'});
+  container.appendChild(svg);
+
+  visVoices.forEach((v, vi) => {
+    const voiceIdx = voices.indexOf(v);
+    const staveTop = 8 + vi * (NOTA_STAVE_H + NOTA_GAP);
+    const staveBot = staffPosToY(0, staveTop); // y of E4 bottom line
+
+    // 5 staff lines at staffPos 0,2,4,6,8
+    for(let li = 0; li <= 8; li += 2) {
+      const y = staffPosToY(li, staveTop);
+      svg.appendChild(mkSVG('line', {x1:NOTA_LPAD, y1:y, x2:W-NOTA_RPAD, y2:y, class:'nota-line'}));
+    }
+
+    // Treble clef (voice 0 only)
+    if(vi === 0) {
+      const clef = mkSVG('text', {x:6, y:staveTop+36, class:'nota-clef'});
+      clef.textContent = '\u{1D11E}'; // 𝄞
+      svg.appendChild(clef);
+    }
+
+    // Voice label
+    const lbl = mkSVG('text', {
+      x:NOTA_LPAD-4, y:staveTop+16,
+      'text-anchor':'end', class:'nota-lbl', fill:hexA(v.color,0.7)
+    });
+    lbl.textContent = voiceIdx === 0 ? 'dux' : 'c'+(voiceIdx+1);
+    svg.appendChild(lbl);
+
+    // Notes for each step
+    for(let s = 0; s < numSteps; s++) {
+      const pat = ((s - v.offset) % numSteps + numSteps) % numSteps;
+      const pitchRows = [];
+      for(let p = 0; p < numRows; p++) {
+        if(grid[p] && grid[p][pat]) pitchRows.push(p);
+      }
+
+      const nx = NOTA_LPAD + (s + 0.5) * stepW;
+      const midY = staffPosToY(4, staveTop); // B4 = middle of staff
+
+      if(pitchRows.length === 0) {
+        // 16th rest
+        const rest = mkSVG('text', {x:nx, y:midY+4, 'text-anchor':'middle', class:'nota-rest'});
+        rest.textContent = '\u{1D13E}'; // 𝄾
+        svg.appendChild(rest);
+        continue;
+      }
+
+      pitchRows.forEach(p => {
+        const cents = TUNINGS[curTuning].rowCents(p) + v.transCents + viewOctave * 1200;
+        const {staffPos, accidental, deviation} = centsToNoteInfo(cents);
+        const ny = staffPosToY(staffPos, staveTop);
+
+        // Ledger lines (if needed)
+        drawLedgerLines(svg, nx, staffPos, staveTop);
+
+        // Stem (up if below middle line B4=sp4, down otherwise)
+        const stemUp = staffPos < 4;
+        const stemX  = stemUp ? nx + 5 : nx - 5;
+        svg.appendChild(mkSVG('line', {
+          x1:stemX, y1:ny, x2:stemX, y2:stemUp ? ny-28 : ny+28, class:'nota-stem'
+        }));
+
+        // Note head
+        const nh = mkSVG('ellipse', {
+          cx:nx, cy:ny, rx:5, ry:3.5,
+          transform:`rotate(-15,${nx},${ny})`,
+          fill:v.color,
+          'data-step':s, 'data-row':p,
+          style:'cursor:pointer'
+        });
+        svg.appendChild(nh);
+
+        // Accidental
+        if(accidental) {
+          const acc = mkSVG('text', {x:nx-9, y:ny+4, 'text-anchor':'middle', class:'nota-acc'});
+          acc.textContent = accidental === '#' ? '\u266F' : '\u266D';
+          svg.appendChild(acc);
+        }
+
+        // Cent deviation for microtonal pitches
+        if(Math.abs(deviation) > 15) {
+          const dev = mkSVG('text', {
+            x:nx, y:ny-14, 'text-anchor':'middle', class:'nota-dev', fill:'#7a7a9a'
+          });
+          dev.textContent = (deviation > 0 ? '+' : '') + deviation + '\u00A2';
+          svg.appendChild(dev);
+        }
+      });
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VOICES UI
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildVoicesUI() {
+  const list=$('vlist');
+  list.innerHTML='';
+  voices.forEach((v,i)=>{
+    const isOrig=i===0;
+    const row=document.createElement('div');
+    row.className='vrow'+(v.muted?' muted':'')+(isOrig?' source':'');
+    row.innerHTML=`
+      <div class="vpip" style="background:${v.color}"></div>
+      <span class="vfl">${isOrig?'dux':'v'+(i+1)}</span>
+      <span class="vfl" title="delay in 16ths">dly</span>
+      <input class="vf" type="number" value="${v.offset}" min="0" max="${numSteps*4}" ${isOrig?'disabled':''} data-i="${i}" data-f="off">
+      <span class="vfl" title="transposition in cents">¢</span>
+      <input class="vf w" type="number" value="${Math.round(v.transCents)}" step="100" min="-2400" max="2400" ${isOrig?'disabled':''} data-i="${i}" data-f="cents">
+      ${!isOrig?`<button class="vmute" data-i="${i}">${v.muted?'unmute':'mute'}</button><button class="vdel" data-i="${i}">×</button>`:''}
+    `;
+    list.appendChild(row);
+  });
+
+  list.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const i=+e.target.dataset.i, f=e.target.dataset.f;
+      if(f==='off') voices[i].offset=Math.max(0,parseInt(e.target.value)||0);
+      if(f==='cents'){ const v=parseFloat(e.target.value); if(!isNaN(v)) voices[i].transCents=v; }
+      markNotaDirty();
+    });
+  });
+  list.querySelectorAll('.vmute').forEach(b=>{
+    b.addEventListener('click',e=>{ const i=+e.target.dataset.i; voices[i].muted=!voices[i].muted; buildVoicesUI(); markNotaDirty(); });
+  });
+  list.querySelectorAll('.vdel').forEach(b=>{
+    b.addEventListener('click',e=>{ voices.splice(+e.target.dataset.i,1); buildVoicesUI(); markNotaDirty(); });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INTERVAL SELECTOR
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildIntervals() {
+  const sel=$('iv-sel');
+  sel.innerHTML='';
+  INTERVALS.forEach(iv=>{
+    const opt=document.createElement('option');
+    opt.value=iv.cents.toFixed(3);
+    opt.textContent=`${iv.name} (${Math.round(iv.cents)}¢)`;
+    if(iv.name==='P5') opt.selected=true;
+    sel.appendChild(opt);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TUNING SWITCH
+// ═══════════════════════════════════════════════════════════════════════════════
+// Rows are scale degrees, not fixed pitches, so a drawn note keeps its row
+// index and is simply re-tuned by the new scale — the contour survives, the
+// intonation changes, which is the whole point of the instrument. Rows past
+// the end of a shorter tuning are the only thing that can be lost, and that
+// asks first. Pass quiet=true when the caller is about to overwrite the grid
+// anyway (load), so it never prompts.
+function switchTuning(t, quiet) {
+  const newRows=TUNINGS[t].defRows;
+  let highest=-1;
+  if(grid) grid.forEach((row,p)=>{ if(row&&row.some(Boolean)) highest=p; });
+  const wipes = highest>=newRows;
+  if(!quiet && wipes && !confirm(`${TUNINGS[t].label} has only ${newRows} rows — notes above that would be lost. switch anyway?`)) {
+    $('tuning-sel').value=curTuning;
+    return;
+  }
+  curTuning=t;
+  if(quiet||wipes) {
+    initGrid();
+  } else {
+    const old=grid;
+    numRows=newRows;
+    grid=Array.from({length:numRows},(_,p)=>{
+      const row=new Array(numSteps).fill(false);
+      if(old&&old[p]) for(let s=0;s<numSteps;s++) row[s]=!!old[p][s];
+      return row;
+    });
+  }
+  buildAxis();
+  resizeG();
+  $('scale-sel').disabled=!TUNINGS[t].scaleFilter;
+  if(!TUNINGS[t].scaleFilter) scale=SCALES.chromatic;
+  markNotaDirty();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SWING
+// ═══════════════════════════════════════════════════════════════════════════════
+function swingLabel(r) {
+  if(r<0.51) return 'even';
+  if(r<0.585) return '7-let';
+  if(r<0.63) return '5-let';
+  if(r<0.71) return 'triplet';
+  if(r<0.81) return 'dotted';
+  return '2×dot';
+}
+
+function seed() {
+  for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false);
+  markNotaDirty();
+  const mid=Math.floor(numRows/2);
+  const seeds={
+    '12': [[0,0],[2,2],[4,4],[5,6],[4,8],[2,10],[0,12],[2,14]],
+    '19': [[0,0],[3,2],[6,4],[8,6],[6,8],[3,10],[0,12],[3,14]],
+    '24': [[0,0],[4,2],[7,4],[10,6],[7,8],[4,10],[0,12],[4,14]],
+    '31': [[0,0],[5,2],[10,4],[13,6],[10,8],[5,10],[0,12],[5,14]],
+    'dca':[[0,0],[3,2],[6,4],[8,6],[6,8],[3,10],[0,12],[3,14]],
+  };
+  (seeds[curTuning]||[]).forEach(([p,s])=>{
+    const row=mid+p;
+    if(row>=0&&row<numRows&&s<numSteps) grid[row][s]=true;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SAVE / LOAD  (localStorage key: canon-v1)
+// Auto-saves 1.2 s after any grid or settings change.
+// ═══════════════════════════════════════════════════════════════════════════════
+let _autoSaveTimer = null;
+function scheduleAutoSave() {
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(saveGrid, 1200);
+}
+
+function saveGrid() {
+  const state = {
+    v: 1, tuning: curTuning, numSteps, bpm, swingRatio, oscType,
+    voices: voices.map(v => ({offset:v.offset, transCents:v.transCents, muted:!!v.muted})),
+    grid: grid.map(row => row ? [...row] : null),
+  };
+  try {
+    localStorage.setItem('canon-v1', JSON.stringify(state));
+    const btn = $('btn-save');
+    if(btn) { const orig=btn.textContent; btn.textContent='saved!'; setTimeout(()=>btn.textContent=orig, 1200); }
+  } catch(e) { console.warn('canon save failed:', e); }
+}
+
+function loadGrid() {
+  const raw = localStorage.getItem('canon-v1');
+  if(!raw) return false;
+  try {
+    const s = JSON.parse(raw);
+    if(!s || s.v !== 1) return false;
+    if(s.tuning && TUNINGS[s.tuning]) {
+      $('tuning-sel').value = s.tuning;
+      switchTuning(s.tuning, true);
+    }
+    if(s.numSteps) updateSteps(s.numSteps);
+    if(s.bpm) { bpm=s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
+    if(s.swingRatio != null) {
+      swingRatio = s.swingRatio;
+      $('swing-r').value = Math.round((swingRatio-0.5)/0.375*100);
+      $('swing-v').textContent = swingLabel(swingRatio);
+    }
+    if(s.oscType) { oscType=s.oscType; $('osc-sel').value=oscType; }
+    if(s.grid) {
+      grid.forEach(row => row && row.fill(false));
+      for(let p=0; p<Math.min(s.grid.length,numRows); p++) {
+        if(s.grid[p] && grid[p]) {
+          for(let st=0; st<Math.min(s.grid[p].length,numSteps); st++) {
+            grid[p][st] = !!s.grid[p][st];
+          }
+        }
+      }
+    }
+    if(s.voices && s.voices.length > 0) {
+      voices.length = 0;
+      s.voices.forEach((v,i) => {
+        voices.push({offset:v.offset||0, transCents:v.transCents||0, color:VCOL[i%VCOL.length], muted:!!v.muted});
+      });
+      buildVoicesUI();
+    }
+    markNotaDirty();
+    return true;
+  } catch(e) { console.warn('canon load failed:', e); return false; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════════════════════════════
+$('btn-play').addEventListener('click',togglePlay);
+$('btn-stop').addEventListener('click',stopPlay);
+$('btn-loop').addEventListener('click',()=>{
+  loop=!loop;
+  $('btn-loop').classList.toggle('active',loop);
+  $('btn-loop').textContent=loop?'↺ loop':'→ once';
+});
+$('btn-clear').addEventListener('click',()=>{ for(let p=0;p<numRows;p++) if(grid[p]) grid[p].fill(false); markNotaDirty(); });
+$('btn-seed').addEventListener('click',seed);
+
+$('bpm-n').addEventListener('input',e=>{ const v=parseInt(e.target.value); if(v>=20&&v<=400){ bpm=v; $('bpm-r').value=v; } });
+$('bpm-r').addEventListener('input',e=>{ bpm=parseInt(e.target.value); $('bpm-n').value=bpm; });
+
+$('st-up').addEventListener('click',()=>updateSteps(numSteps+4));
+$('st-dn').addEventListener('click',()=>updateSteps(numSteps-4));
+
+$('oct-up').addEventListener('click',()=>{
+  if(viewOctave>=2) return;
+  viewOctave++;
+  $('oct-v').textContent=(viewOctave>=0?'+':'')+viewOctave;
+  buildAxis(); markNotaDirty();
+});
+$('oct-dn').addEventListener('click',()=>{
+  if(viewOctave<=-2) return;
+  viewOctave--;
+  $('oct-v').textContent=(viewOctave>=0?'+':'')+viewOctave;
+  buildAxis(); markNotaDirty();
+});
+
+function updateSteps(n) {
+  numSteps=Math.max(4,Math.min(64,n));
+  for(let p=0;p<numRows;p++) {
+    if(grid[p]){ while(grid[p].length<numSteps) grid[p].push(false); grid[p].length=numSteps; }
+  }
+  resizeG();
+  $('st-v').textContent=numSteps;
+  markNotaDirty();
+}
+
+$('tuning-sel').addEventListener('change',e=>switchTuning(e.target.value));
+$('scale-sel').addEventListener('change',e=>{ scale=SCALES[e.target.value]||SCALES.chromatic; });
+
+$('btn-save').addEventListener('click', saveGrid);
+$('btn-load').addEventListener('click', () => {
+  if(!loadGrid()) {
+    const btn=$('btn-load'); const orig=btn.textContent;
+    btn.textContent='nothing saved'; setTimeout(()=>btn.textContent=orig, 1400);
+  }
+});
+$('btn-reload-tuning').addEventListener('click', () => {
+  const btn=$('btn-reload-tuning');
+  fetch('./tunings.json')
+    .then(r=>r.json())
+    .then(data=>{
+      loadExternalTunings(data);
+      const orig=btn.textContent; btn.textContent='↺ ok';
+      setTimeout(()=>btn.textContent=orig, 1000);
+    })
+    .catch(()=>{ btn.textContent='✗'; setTimeout(()=>btn.textContent='↺', 1200); });
+});
+
+$('swing-r').addEventListener('input',e=>{
+  swingRatio = 0.5 + (parseInt(e.target.value)/100)*0.375;
+  $('swing-v').textContent = swingLabel(swingRatio);
+});
+
+$('osc-sel').addEventListener('change',e=>{ oscType=e.target.value; });
+
+$('btn-add').addEventListener('click',()=>{
+  if(voices.length>=VCOL.length) return;
+  voices.push({
+    offset:parseInt($('dist-n').value)||4,
+    transCents:parseFloat($('iv-sel').value)||700,
+    color:VCOL[voices.length],
+    muted:false,
+  });
+  buildVoicesUI();
+  markNotaDirty();
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  if(e.code==='Space'){ e.preventDefault(); togglePlay(); }
+  if(e.code==='Escape') stopPlay();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+buildIntervals();
+curTuning=$('tuning-sel').value;
+switchTuning(curTuning);
+buildVoicesUI();
+seed(); // show something immediately; loadGrid() below will overwrite if saved state exists
+
+// Load tunings.json (K3, Vallotti, DCA Beta, any custom entries David added),
+// then restore saved state. Falls back gracefully if file not found.
+// If opened from sequence.html (→ canon button), import that instead.
+fetch('./tunings.json')
+  .then(r=>r.json())
+  .then(data=>{ loadExternalTunings(data); loadGridOrSeq(); })
+  .catch(()=>{ loadGridOrSeq(); });
+
+function loadGridOrSeq() {
+  const raw = localStorage.getItem('seq-to-canon');
+  if(raw && new URLSearchParams(location.search).get('from') === 'seq') {
+    localStorage.removeItem('seq-to-canon');
+    try {
+      const s = JSON.parse(raw);
+      if(!s || s.v !== 1 || !Array.isArray(s.events)) throw new Error('bad');
+      const C4 = 261.626;
+      const fund = s.fundamental_hz || 220;
+      // Map events to grid rows: row 0 = C4 in 12-TET
+      // Fundamental in semitones from C4, then add ratio semitones
+      const fundSt = 12 * Math.log2(fund / C4);
+      // Target octave: put 1/1 around row 12 (C5)
+      const BASE_ROW = 12;
+      const fundRow  = BASE_ROW + Math.round(fundSt);
+      const len = Math.min(s.events.length, 64);
+      updateSteps(Math.max(16, len));
+      if(s.bpm) { bpm=s.bpm; $('bpm-n').value=bpm; $('bpm-r').value=bpm; }
+      // Clear grid
+      grid.forEach(row => row && row.fill(false));
+      s.events.slice(0, len).forEach((ev, col) => {
+        const ratioSt = 12 * Math.log2(ev.p / ev.q);
+        const row = fundRow + Math.round(ratioSt);
+        if(row >= 0 && row < numRows && col < numSteps) grid[row][col] = true;
+      });
+      markNotaDirty();
+      // Brief toast
+      const toast = document.createElement('div');
+      Object.assign(toast.style, {
+        position:'fixed', bottom:'1.5rem', left:'50%', transform:'translateX(-50%)',
+        background:'rgba(74,158,255,0.12)', border:'1px solid rgba(74,158,255,0.3)',
+        color:'rgba(74,158,255,0.9)', fontFamily:'monospace', fontSize:'0.62rem',
+        padding:'0.4rem 1rem', letterSpacing:'0.08em', zIndex:9999,
+        pointerEvents:'none', transition:'opacity 0.4s',
+      });
+      toast.textContent = `sequence loaded · ${len} steps`;
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 400); }, 2200);
+    } catch(e) { loadGrid(); }
+  } else {
+    loadGrid();
+  }
+}
+
+// Score click editing — delegate on #nota container (set up once)
+$('nota').addEventListener('click', e => {
+  const s = e.target.dataset.step, p = e.target.dataset.row;
+  if(s !== undefined && p !== undefined) { grid[+p][+s] = !grid[+p][+s]; markNotaDirty(); }
+});
+
+function rafLoop() { drawGrid(); drawRoll(); if(notaDirty) drawNotation(); requestAnimationFrame(rafLoop); }
+requestAnimationFrame(rafLoop);
+
+})();
+</script>
+</body>
+</html>
