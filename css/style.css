@@ -292,15 +292,20 @@ footer .social-links { margin-top: 1.1rem; }
 }
 
 .about-subtitle {
-  font-size: 0.85rem;
+  font-size: 1.05rem;
   letter-spacing: 0.12em;
   text-transform: lowercase;
-  color: var(--text-3);
+  color: var(--text-2);
   margin-bottom: 2rem;
 }
 
 .about-header {
   margin-bottom: 2.5rem;
+}
+
+/* phone: keep the role line on one line at 360-430 px */
+@media (max-width: 480px) {
+  .about-subtitle { font-size: 0.95rem; letter-spacing: 0.06em; }
 }
 
 /* ── Alternating bio blocks ───────────────────────────────── */
